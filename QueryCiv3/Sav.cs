@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using QueryCiv3.Sav;
 
@@ -8,6 +9,24 @@ namespace QueryCiv3 {
 		public Civ3File Sav;
 
 		public byte* scan;
+		// The end of the SAV data being parsed. Every read checks against it: the
+		// parser follows counts and offsets stored in the file, and without the
+		// checks a value it misreads makes it read or write outside its buffers,
+		// which crashes the whole game with an access violation.
+		byte* scanEnd;
+
+		// Throws if `length` bytes starting at `scan` aren't all inside the data.
+		void CheckRead(long length, string what) {
+			if (length < 0 || length > scanEnd - scan)
+				throw new InvalidDataException($"Unexpected end of the SAV file reading {what} ({length} bytes, {scanEnd - scan} left)");
+		}
+
+		int ReadCount(int offset, string what) {
+			CheckRead(offset + 4, what);
+			int count = *(int*)(scan + offset);
+			if (count < 0) throw new InvalidDataException($"Bad count {count} in the SAV file reading {what}");
+			return count;
+		}
 
 		public GAME Game;
 		public WRLD Wrld;
@@ -100,6 +119,9 @@ namespace QueryCiv3 {
 			if (length == -1) {
 				length = sizeof(T);
 			}
+			if (offset < 0 || length < 0 || offset + length > sizeof(T))
+				throw new InvalidDataException($"Bad copy of {length} bytes at {offset} into {typeof(T).Name} ({sizeof(T)} bytes)");
+			CheckRead(length, typeof(T).Name);
 
 			fixed (void* destPtr = &data) {
 				Buffer.MemoryCopy(scan, (byte*)destPtr + offset, length, length);
@@ -108,8 +130,10 @@ namespace QueryCiv3 {
 		}
 
 		public unsafe void CopyArray<T>(ref T[] data, int length) where T : unmanaged {
+			if (length < 0) throw new InvalidDataException($"Bad count {length} in the SAV file reading {typeof(T).Name}[]");
+			long dataLength = (long)length * sizeof(T);
+			CheckRead(dataLength, $"{typeof(T).Name}[{length}]");
 			data = new T[length];
-			int dataLength = length * sizeof(T);
 
 			fixed (void* destPtr = data) {
 				Buffer.MemoryCopy(scan, destPtr, dataLength, dataLength);
@@ -127,8 +151,10 @@ namespace QueryCiv3 {
 				int* header;
 				scan = bytePtr + BIQ_SECTION_START + BiqSectionLength;
 				byte* end = bytePtr + savBytes.Length;
+				scanEnd = end;
 
 				while (scan < end) {
+					CheckRead(4, "a section header");
 					header = (int*)scan;
 
 					// Every header in civ 3 files is exactly 4-chars long, which means they can be represented as 32-bit integers instead of strings
@@ -189,9 +215,9 @@ namespace QueryCiv3 {
 
 								for (int j = 0; j < LEAD_COUNT; j++) {
 									// Number of diplomacy entries stored as integer, so get pointer to that and then skip over those 4 bytes:
-									header = (int*)scan;
+									int diplomacyCount = ReadCount(0, "LEAD diplomacy count");
 									scan += 4;
-									CopyArray(ref LeadLeadDiplomacy[i, j], *header);
+									CopyArray(ref LeadLeadDiplomacy[i, j], diplomacyCount);
 								}
 
 								if (Lead[i].RaceID != -1) { // if an actual leader
@@ -220,8 +246,7 @@ namespace QueryCiv3 {
 						case 0x534c5052: // RPLS
 										 // RPLS just consists of the 4-byte header and a 32-bit integer for the number of turns (RPLTs)
 										 // Because it's so simple, don't even both memory-copying into a struct for it and just get the RPLT length
-							header = (int*)(scan + 4);
-							int rpltLength = *header;
+							int rpltLength = ReadCount(4, "RPLS turn count");
 							scan += 8; // skip RPLS header and length integer
 
 							Rplt = new RPLT[rpltLength];
@@ -241,7 +266,8 @@ namespace QueryCiv3 {
 										Copy(ref RpltRple[i][j]);
 										// Retrieve null-terminated string:
 										int counter = 0;
-										while (scan[counter++] != 0) { } // Keep incrementing until null character reached
+										while (counter < scanEnd - scan && scan[counter++] != 0) { } // Keep incrementing until null character reached
+										if (counter > MAX_STRING_LENGTH) throw new InvalidDataException($"Replay event text longer than {MAX_STRING_LENGTH} bytes in the SAV file");
 										Buffer.MemoryCopy(scan, strPtr, MAX_STRING_LENGTH, counter);
 										// Calling Util.GetString with the full buffer works, but is inefficient. Optimizing this is a TODO
 										RpltRpleDescription[i][j] = Util.GetString(stringBuffer);
@@ -266,6 +292,7 @@ namespace QueryCiv3 {
 						case 0x59544943: // CITY
 										 // Sav files contain many "bad" City headers. In fact, there are more bad ones than valid ones
 										 // The purpose behind these headers is yet to be determined, but for now, they can be skipped
+							CheckRead(5, "CITY");
 							if (scan[4] == VALID_CITY_LENGTH) {
 								Copy(ref City[CityIndex], CITY_LEN_1);
 								CopyArray(ref CityCtzn[CityIndex], City[CityIndex].Popd.CitizenCount);
@@ -337,6 +364,7 @@ namespace QueryCiv3 {
 							break;
 						case 0x47505443: // CTPG
 										 // It's unclear what CTPG does, so for now, give it the invalid CITY treatment
+							CheckRead(5, "CTPG");
 							scan = scan + scan[4] + 8;
 							break;
 						case 0x594e4c43: // CLNY
@@ -347,11 +375,12 @@ namespace QueryCiv3 {
 							// In any other case where a header isn't encounterd, we'll throw an error because something has gone wrong in the read
 							// But for these 3, I guess just skip them for now...
 							// Thoroughly magic
-							if (header[2] == 0x4c534e43) {
+							long left = scanEnd - scan; // only peek at bytes that are there
+							if (left >= 12 && header[2] == 0x4c534e43) {
 								scan += 8;
-							} else if (header[64] == 0x564c4150) {
+							} else if (left >= 260 && header[64] == 0x564c4150) {
 								scan += 256;
-							} else if (header[1] == 0x52454550) {
+							} else if (left >= 8 && header[1] == 0x52454550) {
 								scan += 4;
 							} else {
 								throw new Exception("An error occured while parsing the SAV file because no header was found where one was expected.");
