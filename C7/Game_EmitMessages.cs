@@ -281,9 +281,9 @@ public partial class Game {
 		}
 
 		static string Percent(double? value) => value is double v ? $"{v:P1}" : "n/a";
-		static int Total(List<int> series) => PlayerStats.Sum(series);
+		static long Total(List<int> series) => PlayerStats.Sum(series);
 		int last = stats.TurnCount - 1;
-		int shieldsWasted = Total(stats.shieldsOverflowed) + Total(stats.shieldsCapped) + Total(stats.shieldsLostToDisorder);
+		long shieldsWasted = Total(stats.shieldsOverflowed) + Total(stats.shieldsCapped) + Total(stats.shieldsLostToDisorder);
 
 		return $"[b]{stats.TurnCount} turns recorded[/b] (since turn {stats.turns[0]})\n\n" +
 			$"[b]Production[/b]: {stats.shieldsProduced[last]} shields last turn, {Total(stats.shieldsProduced)} in total " +
@@ -294,7 +294,26 @@ public partial class Game {
 			$"({Total(stats.foodWasted)} of {Total(stats.foodSurplus)} surplus food wasted)\n" +
 			$"[b]Population[/b]: {stats.population[last]} in {stats.cities[last]} cities\n" +
 			$"[b]Income[/b]: {stats.goldIncome[last]} gold last turn ({stats.netGold[last]:+0;-0;0} net), {Total(stats.goldIncome)} in total\n" +
-			$"[b]Improved tiles[/b]: {stats.tilesImproved[last]} of {stats.tilesOwned[last]} owned";
+			$"[b]Improved tiles[/b]: {stats.tilesImproved[last]} of {stats.tilesOwned[last]} owned\n" +
+			$"[b]Game actions[/b]: {Total(stats.actions)} ({stats.actions[last]} this turn)\n" +
+			LuckSummary(stats);
+	}
+
+	private static string LuckSummary(PlayerStats stats) {
+		if (stats.Luck() is not LuckRating luck) {
+			return "[b]Luck[/b]: no battles yet";
+		}
+
+		static string Describe(NotableBattle b) =>
+			$"{b.unit} {(b.attacking ? "attacking" : "defending against")} {b.enemyCivilization} {b.enemyUnit}, {b.winChance:P0} to win, turn {b.turn}";
+
+		string rating = luck.Percentile is double p
+			? $", luckier than {p:P0} of possible outcomes (z = {luck.ZScore:+0.00;-0.00})"
+			: "";
+		return $"[b]Luck[/b]: won {luck.won} of {luck.battles} battles, {luck.expectedWins:0.0} expected " +
+			$"({luck.WinsAboveExpected:+0.0;-0.0} wins){rating}" +
+			(stats.luckiestWin != null ? $"\n    Luckiest win: {Describe(stats.luckiestWin)}" : "") +
+			(stats.unluckiestLoss != null ? $"\n    Unluckiest loss: {Describe(stats.unluckiestLoss)}" : "");
 	}
 
 	public void EmitCivilizationDestroyedSignal(MsgCivilizationDestroyed msg) {

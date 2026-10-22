@@ -312,6 +312,10 @@ public partial class MapUnit {
 		if (Double.IsNaN(attackerOdds))
 			return result;
 
+		// For the statistics: the battle's win chance before any dice are rolled.
+		int attackerStartingHitPoints = attacker.hitPointsRemaining, defenderStartingHitPoints = defender.hitPointsRemaining;
+		double defensiveBombardHitChance = 0;
+
 		// Defensive bombard
 		MapUnit defensiveBombarder = MapUnit.NONE;
 		double defensiveBombarderStrength = 0.0;
@@ -333,7 +337,8 @@ public partial class MapUnit {
 
 			// dADB = defense Against Defensive Bombard
 			double dADB = attacker.StrengthVersus(defensiveBombarder, CombatRole.DefensiveBombardDefense, defensiveBombardDirection);
-			if (GameData.rng.NextDouble() < defensiveBombarderStrength / (defensiveBombarderStrength + dADB))
+			defensiveBombardHitChance = defensiveBombarderStrength / (defensiveBombarderStrength + dADB);
+			if (GameData.rng.NextDouble() < defensiveBombardHitChance)
 				attacker.hitPointsRemaining -= 1;
 
 			defensiveBombarder.defensiveBombardsRemaining -= 1;
@@ -378,6 +383,9 @@ public partial class MapUnit {
 			}
 		}
 
+		double attackerWinChance = CombatOdds.AttackerWinChance(attackerOdds, attackerStartingHitPoints, defenderStartingHitPoints, defensiveBombardHitChance);
+		RecordBattleStats(attacker, defender, result, attackerWinChance);
+
 		if ((result == CombatResult.AttackerKilled) || (result == CombatResult.DefenderKilled)) {
 			var (dead, alive) = (result == CombatResult.AttackerKilled) ? (attacker, defender) : (defender, attacker);
 			alive.RollToPromote(dead);
@@ -389,6 +397,12 @@ public partial class MapUnit {
 			defender.facingDirection = defenderOriginalDirection;
 
 		return result;
+	}
+
+	private static void RecordBattleStats(MapUnit attacker, MapUnit defender, CombatResult result, double attackerWinChance) {
+		GameData gameData = EngineStorage.gameData;
+		attacker.owner.stats.RecordBattle(attacker.owner, gameData, result.AttackerWon(), attackerWinChance, attacker, defender, attacking: true);
+		defender.owner.stats.RecordBattle(defender.owner, gameData, result.DefenderWon(), 1 - attackerWinChance, defender, attacker, attacking: false);
 	}
 
 	public async Task<City?> BuildCity(string cityName) {

@@ -57,12 +57,29 @@ public class PlayerStats {
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> commerceCorrupted = new();
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> beakers = new();
 
+	// Recorded while the turn is played (after turn processing), into that turn's entry.
+	// Actions = the player's commands (moves, orders, builds, research, sliders,
+	// city tile and specialist changes), not UI-only clicks. Battles = fights the
+	// player's units took part in, attacking or defending; expected wins and the
+	// variance are in ten-thousandths of a battle (so even thousands of battles in
+	// one turn fit in an int), from each battle's exact win chance.
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> actions = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battles = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battlesWon = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battleExpectedWins10k = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battleVariance10k = new();
+
+	// The least likely battle the player won, and the most likely one it lost.
+	public NotableBattle luckiestWin;
+	public NotableBattle unluckiestLoss;
+
 	/// Every per-turn series except <see cref="turns"/>.
 	public IEnumerable<List<int>> AllSeries() => [
 		shieldsProduced, shieldsCorrupted, shieldsLostToDisorder, shieldsLostToAnarchy, shieldsOverflowed, shieldsCapped,
 		foodSurplus, foodWasted,
 		population, cities, tilesOwned, tilesImproved,
 		goldIncome, goldExpenses, netGold, commerce, commerceCorrupted, beakers,
+		actions, battles, battlesWon, battleExpectedWins10k, battleVariance10k,
 	];
 
 	public int TurnCount => turns.Count;
@@ -122,6 +139,44 @@ public class PlayerStats {
 		turnOpen = false;
 	}
 
+	// Actions and battles happen while a turn is played, after turn processing
+	// opened and closed its entry, so they go into the current turn's entry. If
+	// there is none (turn 0, or a game saved before statistics were recorded), it
+	// is created here with its end-of-turn snapshot.
+	private void UseCurrentTurnEntry(Player player, GameData gameData) {
+		if (turns.Count > 0 && turns[^1] == gameData.turn) return;
+		StartTurn(gameData.turn);
+		EndTurn(player, CountLand(gameData.map).GetValueOrDefault(player));
+	}
+
+	public void RecordAction(Player player, GameData gameData) {
+		if (player.isBarbarians) return;
+		UseCurrentTurnEntry(player, gameData);
+		Add(actions, 1);
+	}
+
+	/// Records a battle from <paramref name="player"/>'s side: whether it won, and
+	/// its chance of winning before the dice were rolled.
+	public void RecordBattle(Player player, GameData gameData, bool won, double winChance, MapUnit unit, MapUnit enemy, bool attacking) {
+		if (player.isBarbarians) return;
+		UseCurrentTurnEntry(player, gameData);
+		Add(battles, 1);
+		Add(battlesWon, won ? 1 : 0);
+		Add(battleExpectedWins10k, (int)Math.Round(winChance * 1e4));
+		Add(battleVariance10k, (int)Math.Round(winChance * (1 - winChance) * 1e4));
+
+		NotableBattle battle = new() {
+			turn = gameData.turn,
+			unit = unit.unitType.name,
+			enemyUnit = enemy.unitType.name,
+			enemyCivilization = enemy.owner.civilization?.noun,
+			attacking = attacking,
+			winChance = winChance,
+		};
+		if (won && (luckiestWin == null || winChance < luckiestWin.winChance)) luckiestWin = battle;
+		if (!won && (unluckiestLoss == null || winChance > unluckiestLoss.winChance)) unluckiestLoss = battle;
+	}
+
 	public record struct LandCount(int owned, int improved);
 
 	/// Counts each player's tiles and improved tiles in one pass over the map.
@@ -145,25 +200,67 @@ public class PlayerStats {
 	/// are not counted against it: it rates the losses the player controls
 	/// (overflow, a full box, civil disorder).
 	public double? ProductionEfficiency(int fromIndex = 0, int toIndex = int.MaxValue) {
-		int usable = Sum(shieldsProduced, fromIndex, toIndex) - Sum(shieldsCorrupted, fromIndex, toIndex) - Sum(shieldsLostToAnarchy, fromIndex, toIndex);
+		long usable = Sum(shieldsProduced, fromIndex, toIndex) - Sum(shieldsCorrupted, fromIndex, toIndex) - Sum(shieldsLostToAnarchy, fromIndex, toIndex);
 		if (usable <= 0) return null;
-		int wasted = Sum(shieldsLostToDisorder, fromIndex, toIndex) + Sum(shieldsOverflowed, fromIndex, toIndex) + Sum(shieldsCapped, fromIndex, toIndex);
+		long wasted = Sum(shieldsLostToDisorder, fromIndex, toIndex) + Sum(shieldsOverflowed, fromIndex, toIndex) + Sum(shieldsCapped, fromIndex, toIndex);
 		return 1.0 - (double)wasted / usable;
 	}
 
 	/// Share of the food surplus that went into growing the cities.
 	public double? GrowthEfficiency(int fromIndex = 0, int toIndex = int.MaxValue) {
-		int surplus = Sum(foodSurplus, fromIndex, toIndex);
+		long surplus = Sum(foodSurplus, fromIndex, toIndex);
 		if (surplus <= 0) return null;
 		return 1.0 - (double)Sum(foodWasted, fromIndex, toIndex) / surplus;
 	}
 
-	public static int Sum(List<int> series, int fromIndex = 0, int toIndex = int.MaxValue) {
-		int sum = 0;
+	/// How lucky the player's battles were, or null before the first battle.
+	public LuckRating? Luck(int fromIndex = 0, int toIndex = int.MaxValue) {
+		long fought = Sum(battles, fromIndex, toIndex);
+		if (fought == 0) return null;
+		return new LuckRating(
+			battles: fought,
+			won: Sum(battlesWon, fromIndex, toIndex),
+			expectedWins: Sum(battleExpectedWins10k, fromIndex, toIndex) / 1e4,
+			variance: Sum(battleVariance10k, fromIndex, toIndex) / 1e4);
+	}
+
+	public static long Sum(List<int> series, int fromIndex = 0, int toIndex = int.MaxValue) {
+		long sum = 0;
 		for (int i = Math.Max(fromIndex, 0); i <= Math.Min(toIndex, series.Count - 1); i++) {
 			sum += series[i];
 		}
 		return sum;
+	}
+}
+
+/// A battle worth remembering, from the recording player's side.
+public class NotableBattle {
+	public int turn;
+	public string unit;
+	public string enemyUnit;
+	public string enemyCivilization;
+	public bool attacking;
+	public double winChance;
+}
+
+/// Battles won against the number expected from each battle's win chance.
+/// The z-score says how unusual the difference is (each battle is a weighted coin
+/// flip, so the spread is the square root of the summed variances); the
+/// percentile is the share of possible outcomes the player did better than.
+public readonly record struct LuckRating(long battles, long won, double expectedWins, double variance) {
+	public double WinsAboveExpected => won - expectedWins;
+
+	public double? ZScore => variance > 0 ? WinsAboveExpected / Math.Sqrt(variance) : null;
+
+	public double? Percentile => ZScore is double z ? NormalCdf(z) : null;
+
+	// Standard normal cumulative distribution, via the Abramowitz and Stegun
+	// 7.1.26 approximation of erf (error below 1.5e-7).
+	public static double NormalCdf(double z) {
+		double x = Math.Abs(z) / Math.Sqrt(2);
+		double t = 1 / (1 + 0.3275911 * x);
+		double erf = 1 - t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))) * Math.Exp(-x * x);
+		return z >= 0 ? (1 + erf) / 2 : (1 - erf) / 2;
 	}
 }
 

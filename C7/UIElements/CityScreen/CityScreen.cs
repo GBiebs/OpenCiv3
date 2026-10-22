@@ -225,6 +225,9 @@ public partial class CityScreen : Control {
 			return;
 		}
 
+		// Every case below changes the city's tiles: a game action for the statistics.
+		city.owner.stats.RecordAction(city.owner, gameData);
+
 		// If we're already working a tile and click on it, turn the citizen
 		// into a specialist.
 		if (tile.personWorkingTile != null && tile.personWorkingTile.city == city) {
@@ -802,6 +805,7 @@ public partial class CityScreen : Control {
 			tb.Pressed += () => {
 				cr.citizenType = specialistTypes[(index + 1) % specialistTypes.Count];
 				++index;
+				EngineStorage.ReadGameData((GameData gameData) => { city.owner.stats.RecordAction(city.owner, gameData); });
 				RenderPopHeads(city);
 
 				EngineStorage.ReadGameData((GameData gameData) => { RenderCommerceDetails(city); });

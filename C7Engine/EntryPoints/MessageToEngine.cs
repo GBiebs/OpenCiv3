@@ -9,6 +9,11 @@ namespace C7Engine {
 	public abstract class MessageToEngine {
 		public abstract void process();
 
+		// Whether this is a command the player gives (moves, orders, builds,
+		// research, sliders), counted as a game action in the statistics, rather
+		// than UI housekeeping.
+		public virtual bool IsPlayerAction => false;
+
 		public void send() {
 			EngineStorage.pendingMessages.Enqueue(this);
 		}
@@ -23,6 +28,8 @@ namespace C7Engine {
 	}
 
 	public class MsgSetFortification : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID unitID;
 		private bool fortifyElseWake;
 
@@ -46,6 +53,8 @@ namespace C7Engine {
 	}
 
 	public class MsgMoveUnit : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID unitID;
 		private TileDirection dir;
 
@@ -63,6 +72,8 @@ namespace C7Engine {
 	}
 
 	public class MsgSetUnitPath : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID unitID;
 		private TilePath path;
 
@@ -80,6 +91,8 @@ namespace C7Engine {
 	}
 
 	public class MsgBombard : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID unitID;
 		private readonly int tileX;
 		private readonly int tileY;
@@ -101,6 +114,8 @@ namespace C7Engine {
 	}
 
 	public class MsgLoadToTransport : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID unitID;
 		private ID transportUnitId;
 
@@ -121,6 +136,8 @@ namespace C7Engine {
 	}
 
 	public class MsgUnloadTransport : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID transportUnitId;
 
 		public MsgUnloadTransport(ID transportUnitId) {
@@ -199,6 +216,8 @@ namespace C7Engine {
 	// A Class that allows the UI to have the game engine run some
 	// terraform action.
 	public class MsgStartWorkerJob : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID UnitID;
 		private Terraform Action;
 		public MsgStartWorkerJob(ID unitID, Terraform action) {
@@ -213,6 +232,8 @@ namespace C7Engine {
 	}
 
 	public class MsgChooseProduction : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private ID cityID;
 		private string producibleName;
 
@@ -235,6 +256,8 @@ namespace C7Engine {
 	}
 
 	public class MsgChooseResearch : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private Tech tech;
 		private AdvisorState advisorState;
 		private SelectionMode selectionMode;
@@ -286,6 +309,8 @@ namespace C7Engine {
 	/// Spends a free tech advance on the given tech, then asks what to research next.
 	/// </summary>
 	public class MsgClaimFreeTech : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private Tech tech;
 
 		public MsgClaimFreeTech(Tech tech) {
@@ -302,6 +327,8 @@ namespace C7Engine {
 	}
 
 	public class MsgChangeSliders : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		public enum DomesticPolicyChoice {
 			MoreScience,
 			LessScience,
@@ -412,6 +439,8 @@ namespace C7Engine {
 	}
 
 	public class MsgPerformUnitAction : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private MapUnit unit;
 		public MsgPerformUnitAction(MapUnit unit) {
 			this.unit = unit;
@@ -423,6 +452,8 @@ namespace C7Engine {
 	}
 
 	public class MsgDoHurryProduction : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private City city;
 		public MsgDoHurryProduction(City c) {
 			city = c;
@@ -434,6 +465,8 @@ namespace C7Engine {
 	}
 
 	public class MsgDoStopWorkerAction : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private MapUnit worker;
 		public MsgDoStopWorkerAction(MapUnit worker) {
 			this.worker = worker;
@@ -470,6 +503,8 @@ namespace C7Engine {
 	}
 
 	public class MsgBuildCity : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
 		private MapUnit unit;
 		private string name;
 

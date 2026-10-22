@@ -31,6 +31,11 @@ namespace C7Engine {
 				var msg = pendingMessages.Dequeue();
 				msg.process();
 
+				if (msg.IsPlayerAction && gameData != null) {
+					Player controller = gameData.GetPlayer(uiControllerID);
+					controller?.stats.RecordAction(controller, gameData);
+				}
+
 				var type = msg.GetType();
 				if (pendingEngineWaiters.TryGetValue(type, out var tcs)) {
 					tcs.TrySetResult(msg);
