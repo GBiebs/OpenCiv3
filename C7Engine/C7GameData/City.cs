@@ -371,6 +371,8 @@ namespace C7GameData {
 			bool hasGranary = HasGranary();
 
 			foodStored += foodGrowth;
+			// Food beyond the box is thrown away, also every turn a city can't grow.
+			owner.stats.RecordGrowth(surplus: Math.Max(foodGrowth, 0), wasted: Math.Max(foodStored - foodNeededToGrow, 0));
 			foodStored = Math.Min(foodStored, foodNeededToGrow);
 
 			// Handle the city starving.
@@ -507,15 +509,35 @@ namespace C7GameData {
 		 * returns the item that is built.  Otherwise, returns null.
 		 */
 		public IProducible ComputeTurnProduction() {
-			shieldsStored += CurrentProductionYield().useful;
-			if (shieldsStored >= owner.ShieldCost(itemBeingProduced) && residents.Count > itemBeingProduced.populationCost) {
+			CorruptableValue production = CurrentProductionYield();
+			int cost = owner.ShieldCost(itemBeingProduced);
+			shieldsStored += production.useful;
+			// Shields beyond the cost are thrown away, whether the build finishes or not.
+			int excess = Math.Max(shieldsStored - cost, 0);
+
+			if (shieldsStored >= cost && residents.Count > itemBeingProduced.populationCost) {
 				shieldsStored = 0;
+				// Inflows (e.g. Wealth) turn all their shields into something else every turn.
+				RecordProductionStats(production, overflowed: itemBeingProduced is Inflow ? 0 : excess, capped: 0);
 				RemoveCitizens(itemBeingProduced.populationCost);
 				return itemBeingProduced;
 			}
 
-			shieldsStored = Math.Min(shieldsStored, owner.ShieldCost(itemBeingProduced));
+			shieldsStored = Math.Min(shieldsStored, cost);
+			RecordProductionStats(production, overflowed: 0, capped: excess);
 			return null;
+		}
+
+		private void RecordProductionStats(CorruptableValue production, int overflowed, int capped) {
+			// What the city would have had to work with without civil disorder or
+			// anarchy, which zero out its useful production.
+			int produced = production.useful + production.corrupt;
+			CorruptableValue normal = new(produced, corruption);
+			int lost = normal.useful - production.useful;
+			bool anarchy = owner.government.transitionType;
+			owner.stats.RecordProduction(produced, normal.corrupt,
+				lostToDisorder: anarchy ? 0 : lost, lostToAnarchy: anarchy ? lost : 0,
+				overflowed, capped);
 		}
 
 		public int CurrentFoodYield() {

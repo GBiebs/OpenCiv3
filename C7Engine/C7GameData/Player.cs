@@ -174,6 +174,9 @@ namespace C7GameData {
 		// The rules of this game.
 		public Rules rules;
 
+		// Statistics recorded each turn, for the statistics screens.
+		public PlayerStats stats = new();
+
 		public List<City> citiesWithCorruptionWonders = new();
 
 		// The number of free techs this player has remaining. Free techs can
@@ -790,7 +793,9 @@ namespace C7GameData {
 				throw new Exception($"{this} was unable to get the budget under control despite being under the unit support cap and zeroing out the sliders (gold={gold}, gpt={CalculateGoldPerTurn()})");
 			}
 
-			lastGoldPerTurn = CalculateGoldPerTurn();
+			PlayerCommerceBreakdown flows = AggregateFlows();
+			stats.RecordFinances(flows);
+			lastGoldPerTurn = flows.Netflows();
 			gold += lastGoldPerTurn;
 		}
 

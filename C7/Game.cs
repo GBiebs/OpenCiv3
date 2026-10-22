@@ -925,6 +925,9 @@ public partial class Game : Node {
 		if (eventKeyDown.Keycode == Godot.Key.F11) {
 			EmitSignal(SignalName.ShowGameView, C7Action.ShowDemographicsView);
 		}
+		if (eventKeyDown.Keycode == Godot.Key.F12) {
+			EmitStatisticsSummarySignal();
+		}
 
 		if (eventKeyDown.Keycode == Godot.Key.C && HasCurrentlySelectedUnit()) {
 			mapView.centerCameraOnTile(CurrentlySelectedUnit.location);

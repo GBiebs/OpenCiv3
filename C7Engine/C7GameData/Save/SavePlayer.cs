@@ -69,6 +69,9 @@ namespace C7GameData.Save {
 
 		public string alliance;
 
+		// Per-turn statistics; empty in saves made before they were recorded.
+		public PlayerStats stats = new();
+
 		// Used when importing from .biq, to make it easier to distinguish barbarians from other players.
 		// It's not meant to be saved in the json.
 		[JsonIgnore]
@@ -97,6 +100,7 @@ namespace C7GameData.Save {
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				government = governments.Find(x => x.id == governmentId),
 				rules = rules,
+				stats = stats ?? new(),
 			};
 			foreach (TileLocation tile in tileKnowledge) {
 				player.tileKnowledge.AddTileToKnown(map.tileAt(tile.X, tile.Y));
@@ -161,6 +165,7 @@ namespace C7GameData.Save {
 			turnsResearched = player.turnsResearched;
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
 			governmentId = player.government.id;
+			stats = player.stats;
 
 			foreach (KeyValuePair<ID, PlayerRelationship> keyValuePair in player.playerRelationships) {
 				playerRelationships.Add(keyValuePair.Key.ToString(), keyValuePair.Value);
