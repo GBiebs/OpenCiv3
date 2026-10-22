@@ -194,7 +194,9 @@ public partial class StatisticsView : CenterContainer {
 					string Describe(NotableBattle b) => $"{b.unit} {(b.attacking ? "attacking" : "defending against")} {b.enemyCivilization} {b.enemyUnit} ({b.winChance:P0} to win, turn {b.turn})";
 					return $"Won {luck.won} of {luck.battles} battles, {luck.expectedWins:0.0} expected{percentile}." +
 						(s.luckiestWin != null ? $"\nLuckiest win: {Describe(s.luckiestWin)}" : "") +
-						(s.unluckiestLoss != null ? $"\nUnluckiest loss: {Describe(s.unluckiestLoss)}" : "");
+						(s.unluckiestLoss != null ? $"\nUnluckiest loss: {Describe(s.unluckiestLoss)}" : "") +
+						// Civ-vs-civ battles are zero-sum; barbarians keep no statistics.
+						"\nNote: battles against barbarians count here, but the barbarians' side isn't tracked, so the civs' luck won't add up to zero.";
 				}
 			case "Start position": {
 					if (s.startRating is not StartRating r) return "No start rating: this game began before start ratings were recorded.";
