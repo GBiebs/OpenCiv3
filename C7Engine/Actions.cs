@@ -38,6 +38,7 @@ public static class C7Action {
 	public const string ShowPalaceView = "show_palace_view";
 	public const string ShowSpaceRaceView = "show_space_race_view";
 	public const string ShowDemographicsView = "show_demographics_view"; // F11
+	public const string ShowStatisticsView = "show_statistics_view"; // F12
 
 	public const string UnitBombard = "unit_bombard";
 	public const string UnitBuildCity = "unit_build_city";

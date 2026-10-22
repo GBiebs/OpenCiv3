@@ -169,7 +169,7 @@ public class PlayerStats {
 			turn = gameData.turn,
 			unit = unit.unitType.name,
 			enemyUnit = enemy.unitType.name,
-			enemyCivilization = enemy.owner.civilization?.noun,
+			enemyCivilization = enemy.owner.civilization?.adjective,
 			attacking = attacking,
 			winChance = winChance,
 		};
@@ -238,7 +238,7 @@ public class NotableBattle {
 	public int turn;
 	public string unit;
 	public string enemyUnit;
-	public string enemyCivilization;
+	public string enemyCivilization; // the adjective, e.g. "Barbarian" or "Celtic"
 	public bool attacking;
 	public double winChance;
 }

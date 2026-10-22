@@ -175,7 +175,7 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(0.2, human.stats.luckiestWin.winChance);
 		Assert.Equal(0.8, human.stats.unluckiestLoss.winChance);
 		Assert.Equal("Spearman", human.stats.luckiestWin.enemyUnit);
-		Assert.Equal(barbarians.civilization.noun, human.stats.luckiestWin.enemyCivilization);
+		Assert.Equal(barbarians.civilization.adjective, human.stats.luckiestWin.enemyCivilization);
 	}
 
 	[Fact]

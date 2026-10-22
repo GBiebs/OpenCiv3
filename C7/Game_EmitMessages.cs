@@ -254,68 +254,6 @@ public partial class Game {
 		));
 	}
 
-	// A text summary of the player's own statistics (temporary, until the
-	// statistics screen with charts exists).
-	public void EmitStatisticsSummarySignal() {
-		string message = "";
-		EngineStorage.ReadGameData(data => {
-			Player player = data.players.First(p => p.id == controller.id);
-			message = StatisticsSummary(player.stats);
-		});
-
-		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
-			new InformationPopup(
-				controller.id,
-				"Statistics",
-				message,
-				Advisor.None,
-				Mood.None,
-				520
-			)
-		));
-	}
-
-	private static string StatisticsSummary(PlayerStats stats) {
-		if (stats.TurnCount == 0) {
-			return "No statistics yet: they are recorded from the next turn on.";
-		}
-
-		static string Percent(double? value) => value is double v ? $"{v:P1}" : "n/a";
-		static long Total(List<int> series) => PlayerStats.Sum(series);
-		int last = stats.TurnCount - 1;
-		long shieldsWasted = Total(stats.shieldsOverflowed) + Total(stats.shieldsCapped) + Total(stats.shieldsLostToDisorder);
-
-		return $"[b]{stats.TurnCount} turns recorded[/b] (since turn {stats.turns[0]})\n\n" +
-			$"[b]Production[/b]: {stats.shieldsProduced[last]} shields last turn, {Total(stats.shieldsProduced)} in total " +
-			$"({Total(stats.shieldsCorrupted)} lost to corruption, {Total(stats.shieldsLostToAnarchy)} to anarchy)\n" +
-			$"[b]Production efficiency[/b]: {Percent(stats.ProductionEfficiency())} " +
-			$"({shieldsWasted} shields wasted: {Total(stats.shieldsOverflowed)} overflow, {Total(stats.shieldsCapped)} full box, {Total(stats.shieldsLostToDisorder)} disorder)\n" +
-			$"[b]Growth efficiency[/b]: {Percent(stats.GrowthEfficiency())} " +
-			$"({Total(stats.foodWasted)} of {Total(stats.foodSurplus)} surplus food wasted)\n" +
-			$"[b]Population[/b]: {stats.population[last]} in {stats.cities[last]} cities\n" +
-			$"[b]Income[/b]: {stats.goldIncome[last]} gold last turn ({stats.netGold[last]:+0;-0;0} net), {Total(stats.goldIncome)} in total\n" +
-			$"[b]Improved tiles[/b]: {stats.tilesImproved[last]} of {stats.tilesOwned[last]} owned\n" +
-			$"[b]Game actions[/b]: {Total(stats.actions)} ({stats.actions[last]} this turn)\n" +
-			LuckSummary(stats);
-	}
-
-	private static string LuckSummary(PlayerStats stats) {
-		if (stats.Luck() is not LuckRating luck) {
-			return "[b]Luck[/b]: no battles yet";
-		}
-
-		static string Describe(NotableBattle b) =>
-			$"{b.unit} {(b.attacking ? "attacking" : "defending against")} {b.enemyCivilization} {b.enemyUnit}, {b.winChance:P0} to win, turn {b.turn}";
-
-		string rating = luck.Percentile is double p
-			? $", luckier than {p:P0} of possible outcomes (z = {luck.ZScore:+0.00;-0.00})"
-			: "";
-		return $"[b]Luck[/b]: won {luck.won} of {luck.battles} battles, {luck.expectedWins:0.0} expected " +
-			$"({luck.WinsAboveExpected:+0.0;-0.0} wins){rating}" +
-			(stats.luckiestWin != null ? $"\n    Luckiest win: {Describe(stats.luckiestWin)}" : "") +
-			(stats.unluckiestLoss != null ? $"\n    Unluckiest loss: {Describe(stats.unluckiestLoss)}" : "");
-	}
-
 	public void EmitCivilizationDestroyedSignal(MsgCivilizationDestroyed msg) {
 		var friend = false;
 		EngineStorage.ReadGameData(data => {
@@ -692,9 +630,10 @@ public partial class Game {
 
 		var options = new List<ButtonAction>();
 
+		// The game statistics first, then back to the main menu.
 		var retireBtn = new ButtonAction() {
 			message = "Good! I’m Done!",
-			action = () => OnRetire()
+			action = () => gameViews.ShowStatistics(onClose: OnRetire)
 		};
 		var continueBtn = new ButtonAction() {
 			message = "Wait, lemme just play a couple of more turns..."
