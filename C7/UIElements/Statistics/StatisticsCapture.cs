@@ -41,7 +41,6 @@ public static class StatisticsCapture {
 		(string name, List<StatisticsView.CivStats> civs, StatisticsView.Layout layout, string stat, string focus, bool hover)[] shots = [
 			("dashboard", civs, StatisticsView.Layout.Dashboard, null, null, false),
 			("chart_start_position", civs, StatisticsView.Layout.ChartBrowser, "Start position", null, false),
-			("chart_start_position_own", playerOnly, StatisticsView.Layout.ChartBrowser, "Start position", null, false),
 			("chart_production_efficiency", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, false),
 			("chart_luck", civs, StatisticsView.Layout.ChartBrowser, "Luck", null, false),
 			("dashboard_focus", civs, StatisticsView.Layout.Dashboard, null, otherCiv, false),
@@ -54,7 +53,8 @@ public static class StatisticsCapture {
 		Directory.CreateDirectory(ShotsDir);
 		gameViews.Show();
 		foreach ((string name, List<StatisticsView.CivStats> shown, StatisticsView.Layout layout, string stat, string focus, bool hover) in shots) {
-			gameViews.statisticsView.ShowView(shown, layout, stat, focus: focus);
+			// The all-civs views are the end of the game; the player-only ones are mid-game.
+			gameViews.statisticsView.ShowView(shown, layout, stat, focus: focus, endOfGame: shown.Count > 1);
 			if (hover) {
 				LineChart chart = gameViews.statisticsView.bigChart;
 				chart.SetHover(new Vector2(chart.Size.X * 0.7f, chart.Size.Y * 0.5f));

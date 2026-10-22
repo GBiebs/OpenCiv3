@@ -24,6 +24,8 @@ public partial class StatisticsView : CenterContainer {
 	private List<CivStats> civs = new();
 	private Layout layout = Layout.Dashboard;
 	private int selectedStat = 0;
+	// The end of the game: every civ is compared, and the start ratings are shown.
+	private bool endOfGame = false;
 	// The civ whose numbers the headlines show and whose line is drawn thick;
 	// at the end of the game, clicking a civ in the legend switches to it.
 	private string focusName;
@@ -57,16 +59,17 @@ public partial class StatisticsView : CenterContainer {
 				: [controller];
 			shown = players.Select(p => ForPlayer(p, p == controller)).ToList();
 		});
-		ShowView(shown, Layout.Dashboard, onClose: onClose);
+		ShowView(shown, Layout.Dashboard, onClose: onClose, endOfGame: EngineStorage.gameData.gameOver);
 	}
 
 	public static CivStats ForPlayer(Player player, bool isPlayer) =>
 		new(player.civilization.name, TextureLoader.LoadColor(player.GetPlayerColor()), player.stats, isPlayer);
 
-	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null) {
+	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null, bool endOfGame = false) {
+		this.endOfGame = endOfGame;
 		civs = shown.OrderByDescending(c => c.isPlayer).ToList();
 		this.layout = layout;
-		selectedStat = Math.Max(Stats.FindIndex(s => s.name == statName), 0);
+		selectedStat = Math.Max(VisibleStats.FindIndex(s => s.name == statName), 0);
 		focusName = focus ?? Player?.name;
 		this.onClose = onClose ?? (() => GetParentOrNull<GameViews>()?.Hide());
 		Build();
@@ -137,6 +140,9 @@ public partial class StatisticsView : CenterContainer {
 	];
 
 	private static Stat StatNamed(string name) => Stats.First(s => s.name == name);
+
+	// The start ratings are a judge's view of the map: only shown once the game is over.
+	private List<Stat> VisibleStats => Stats.Where(s => endOfGame || !s.startPosition).ToList();
 
 	// Game actions only exist for human players.
 	private IEnumerable<CivStats> CivsFor(Stat stat) =>
@@ -232,7 +238,7 @@ public partial class StatisticsView : CenterContainer {
 
 	private void Open(Layout layout, string statName = null) {
 		this.layout = layout;
-		if (statName != null) selectedStat = Stats.FindIndex(s => s.name == statName);
+		if (statName != null) selectedStat = VisibleStats.FindIndex(s => s.name == statName);
 		Build();
 	}
 
@@ -243,10 +249,12 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel($"STATISTICS  ·  {TurnsText}{FocusSuffix(upper: true)}", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
 		CivStats player = Focus;
 
-		string[] cards = ["Start position", "Production efficiency", "Growth efficiency", "Luck", "Game actions"];
-		for (int i = 0; i < cards.Length; i++) {
+		List<string> cards = new[] { "Start position", "Production efficiency", "Growth efficiency", "Luck", "Game actions" }
+			.Where(name => VisibleStats.Any(s => s.name == name)).ToList();
+		float cardWidth = (876 - 10 * (cards.Count - 1)) / (float)cards.Count;
+		for (int i = 0; i < cards.Count; i++) {
 			Stat stat = StatNamed(cards[i]);
-			Rect2 rect = new(76 + i * 177, 76, 167, 86);
+			Rect2 rect = new(76 + i * (cardWidth + 10), 76, cardWidth, 86);
 			Vector2 inner = new(rect.Size.X - 16, 20);
 			AddBox(rect, () => Open(Layout.ChartBrowser, stat.name));
 			AddLabel(stat.name, new Rect2(rect.Position + new Vector2(8, 6), inner), 12, bold: true);
@@ -274,7 +282,7 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel("STATISTICS", new Rect2(142, 14, 200, 32), 18, bold: true, align: HorizontalAlignment.Center);
 		AddButton("◀  OVERVIEW", new Rect2(800, 14, 156, 32), () => Open(Layout.Dashboard));
 
-		Stat stat = Stats[selectedStat];
+		Stat stat = VisibleStats[selectedStat];
 		CivStats player = Focus;
 		string rank = Rank(stat, player);
 		AddLabel($"{stat.name}{FocusSuffix(upper: false)}", new Rect2(166, 76, 560, 28), 20, bold: true);
@@ -297,20 +305,21 @@ public partial class StatisticsView : CenterContainer {
 			bigChart.hoverEnabled = true;
 		}
 
-		for (int i = 0; i < Stats.Count; i++) {
-			string name = Stats[i].name;
+		List<Stat> listed = VisibleStats;
+		for (int i = 0; i < listed.Count; i++) {
+			string name = listed[i].name;
 			StatTile tile = new() {
 				Position = new Vector2(804, 74 + i * 44),
 				Size = new Vector2(150, 40),
 				label = name,
-				value = Headline(Stats[i], player),
+				value = Headline(listed[i], player),
 				selected = i == selectedStat,
 			};
 			tile.Clicked += () => Open(Layout.ChartBrowser, name);
 			background.AddChild(tile);
 		}
 
-		float legendTop = 74 + Stats.Count * 44 + 10;
+		float legendTop = 74 + listed.Count * 44 + 10;
 		AddLegend(new Vector2(806, legendTop), vertical: true, width: 146);
 		if (civs.Count > 1) {
 			AddLabel("Click a civ to see its numbers.", new Rect2(806, legendTop + civs.Count * 22 + 4, 146, 18), 10);
