@@ -68,6 +68,13 @@ public class PlayerStats {
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battlesWon = new();
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battleExpectedWins10k = new();
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> battleVariance10k = new();
+	// The part of the battles above that was against barbarians (who keep no
+	// statistics, so their side of these battles is never recorded); the rest
+	// were against other civs.
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> barbarianBattles = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> barbarianBattlesWon = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> barbarianExpectedWins10k = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> barbarianVariance10k = new();
 
 	// The least likely battle the player won, and the most likely one it lost.
 	public NotableBattle luckiestWin;
@@ -84,6 +91,7 @@ public class PlayerStats {
 		population, cities, tilesOwned, tilesImproved,
 		goldIncome, goldExpenses, netGold, commerce, commerceCorrupted, beakers,
 		actions, battles, battlesWon, battleExpectedWins10k, battleVariance10k,
+		barbarianBattles, barbarianBattlesWon, barbarianExpectedWins10k, barbarianVariance10k,
 	];
 
 	public int TurnCount => turns.Count;
@@ -94,11 +102,22 @@ public class PlayerStats {
 
 	/// Opens the entry for <paramref name="turn"/>; the Record methods add to it.
 	public void StartTurn(int turn) {
+		Align();
 		turns.Add(turn);
 		foreach (List<int> series in AllSeries()) {
 			series.Add(0);
 		}
 		turnOpen = true;
+	}
+
+	// A series added after a game began (missing from its save) gets zeros for
+	// the turns before it, so every series has one entry per recorded turn.
+	private void Align() {
+		foreach (List<int> series in AllSeries()) {
+			if (series.Count < turns.Count) {
+				series.InsertRange(0, new int[turns.Count - series.Count]);
+			}
+		}
 	}
 
 	private bool HasOpenTurn => turnOpen;
@@ -148,7 +167,11 @@ public class PlayerStats {
 	// there is none (turn 0, or a game saved before statistics were recorded), it
 	// is created here with its end-of-turn snapshot.
 	private void UseCurrentTurnEntry(Player player, GameData gameData) {
-		if (turns.Count > 0 && turns[^1] == gameData.turn) return;
+		if (turns.Count > 0 && turns[^1] == gameData.turn) {
+			// The entry may come from a save made before some series existed.
+			Align();
+			return;
+		}
 		StartTurn(gameData.turn);
 		EndTurn(player, CountLand(gameData.map).GetValueOrDefault(player));
 	}
@@ -168,6 +191,12 @@ public class PlayerStats {
 		Add(battlesWon, won ? 1 : 0);
 		Add(battleExpectedWins10k, (int)Math.Round(winChance * 1e4));
 		Add(battleVariance10k, (int)Math.Round(winChance * (1 - winChance) * 1e4));
+		if (enemy.owner.isBarbarians) {
+			Add(barbarianBattles, 1);
+			Add(barbarianBattlesWon, won ? 1 : 0);
+			Add(barbarianExpectedWins10k, (int)Math.Round(winChance * 1e4));
+			Add(barbarianVariance10k, (int)Math.Round(winChance * (1 - winChance) * 1e4));
+		}
 
 		NotableBattle battle = new() {
 			turn = gameData.turn,
@@ -218,15 +247,26 @@ public class PlayerStats {
 	}
 
 	/// How lucky the player's battles were, or null before the first battle.
-	public LuckRating? Luck(int fromIndex = 0, int toIndex = int.MaxValue) {
-		long fought = Sum(battles, fromIndex, toIndex);
-		if (fought == 0) return null;
-		return new LuckRating(
-			battles: fought,
-			won: Sum(battlesWon, fromIndex, toIndex),
-			expectedWins: Sum(battleExpectedWins10k, fromIndex, toIndex) / 1e4,
-			variance: Sum(battleVariance10k, fromIndex, toIndex) / 1e4);
+	public LuckRating? Luck(int fromIndex = 0, int toIndex = int.MaxValue) => Rating(Totals(fromIndex, toIndex));
+
+	/// Luck in battles against barbarians only.
+	public LuckRating? LuckAgainstBarbarians(int fromIndex = 0, int toIndex = int.MaxValue) => Rating(BarbarianTotals(fromIndex, toIndex));
+
+	/// Luck in battles against other civs only. These are zero-sum: both sides
+	/// record each battle, so all civs' luck against civs adds up to zero.
+	public LuckRating? LuckAgainstCivs(int fromIndex = 0, int toIndex = int.MaxValue) {
+		(long battles, long won, long expected10k, long variance10k) all = Totals(fromIndex, toIndex), barbarian = BarbarianTotals(fromIndex, toIndex);
+		return Rating((all.battles - barbarian.battles, all.won - barbarian.won, all.expected10k - barbarian.expected10k, all.variance10k - barbarian.variance10k));
 	}
+
+	private (long, long, long, long) Totals(int from, int to) =>
+		(Sum(battles, from, to), Sum(battlesWon, from, to), Sum(battleExpectedWins10k, from, to), Sum(battleVariance10k, from, to));
+
+	private (long, long, long, long) BarbarianTotals(int from, int to) =>
+		(Sum(barbarianBattles, from, to), Sum(barbarianBattlesWon, from, to), Sum(barbarianExpectedWins10k, from, to), Sum(barbarianVariance10k, from, to));
+
+	private static LuckRating? Rating((long battles, long won, long expected10k, long variance10k) t) =>
+		t.battles == 0 ? null : new LuckRating(t.battles, t.won, t.expected10k / 1e4, t.variance10k / 1e4);
 
 	public static long Sum(List<int> series, int fromIndex = 0, int toIndex = int.MaxValue) {
 		long sum = 0;

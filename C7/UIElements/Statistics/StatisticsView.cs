@@ -108,14 +108,28 @@ public partial class StatisticsView : CenterContainer {
 		return (turns, values);
 	}
 
-	private static (List<int>, List<double>) RunningLuck(PlayerStats s) {
+	private enum Opponents { All, Civs, Barbarians }
+
+	private static (List<int>, List<double>) RunningLuck(PlayerStats s) => RunningLuck(s, Opponents.All);
+
+	// Wins above expected so far, from all battles or only those against civs or barbarians.
+	private static (List<int>, List<double>) RunningLuck(PlayerStats s, Opponents opponents) {
 		List<double> values = new();
 		double sum = 0;
 		for (int i = 0; i < s.TurnCount; i++) {
-			sum += s.battlesWon[i] - s.battleExpectedWins10k[i] / 1e4;
+			double all = At(s.battlesWon, s, i) - At(s.battleExpectedWins10k, s, i) / 1e4;
+			double barbarian = At(s.barbarianBattlesWon, s, i) - At(s.barbarianExpectedWins10k, s, i) / 1e4;
+			sum += opponents switch { Opponents.Civs => all - barbarian, Opponents.Barbarians => barbarian, _ => all };
 			values.Add(sum);
 		}
 		return (s.turns, values);
+	}
+
+	// A series' value for turn entry i. A series missing from an older save is
+	// shorter until the game records again; its earliest turns count as zero.
+	private static int At(List<int> series, PlayerStats s, int i) {
+		int index = i - (s.TurnCount - series.Count);
+		return index >= 0 ? series[index] : 0;
 	}
 
 	private static readonly List<Stat> Stats = [
@@ -140,6 +154,13 @@ public partial class StatisticsView : CenterContainer {
 	];
 
 	private static Stat StatNamed(string name) => Stats.First(s => s.name == name);
+
+	// The luck view's two charts: battles against other civs (zero-sum between
+	// the civs) and against barbarians (who keep no statistics).
+	private static readonly Stat LuckAgainstCivs = new("Luck against civs", "wins above expected", "Against civs (wins above expected; all civs add up to zero)", "wins above expected",
+		s => RunningLuck(s, Opponents.Civs), s => s.LuckAgainstCivs()?.WinsAboveExpected, Signed, SignedWhole, zeroLine: true);
+	private static readonly Stat LuckAgainstBarbarians = new("Luck against barbarians", "wins above expected", "Against barbarians (wins above expected)", "wins above expected",
+		s => RunningLuck(s, Opponents.Barbarians), s => s.LuckAgainstBarbarians()?.WinsAboveExpected, Signed, SignedWhole, zeroLine: true);
 
 	// The start ratings are a judge's view of the map: only shown once the game is over.
 	private List<Stat> VisibleStats => Stats.Where(s => endOfGame || !s.startPosition).ToList();
@@ -172,7 +193,8 @@ public partial class StatisticsView : CenterContainer {
 	private string FocusSuffix(bool upper) => Focus == Player ? "" : $"  ·  {(upper ? Focus.name.ToUpper() : Focus.name)}";
 
 	// The breakdown shown under a statistic's headline in the big chart view.
-	private static string Details(Stat stat, PlayerStats s) {
+	private string Details(Stat stat, CivStats civ) {
+		PlayerStats s = civ.stats;
 		static long Total(List<int> series) => PlayerStats.Sum(series);
 		switch (stat.name) {
 			case "Production efficiency": {
@@ -189,10 +211,17 @@ public partial class StatisticsView : CenterContainer {
 			case "Improved tiles":
 				return s.tilesOwned.LastOrDefault() is int owned and > 0 ? $"{s.tilesImproved.Last():N0} of the {owned:N0} tiles inside its borders." : "";
 			case "Luck": {
-					if (s.Luck() is not LuckRating luck) return "No battles yet.";
-					string percentile = luck.Percentile is double p ? $", luckier than {p:P0} of possible outcomes" : "";
+					if (s.Luck() == null) return "No battles yet.";
+					string Line(string opponents, Stat split, LuckRating? rating) {
+						if (rating is not LuckRating luck) return $"Against {opponents}: no battles.";
+						string percentile = luck.Percentile is double p ? $", luckier than {p:P0}" : "";
+						string rank = Rank(split, civ);
+						return $"Against {opponents}: won {luck.won} of {luck.battles}, {luck.expectedWins:0.0} expected " +
+							$"({Signed(luck.WinsAboveExpected)}){percentile}{(rank != "" ? $"  ·  {rank}" : "")}.";
+					}
 					string Describe(NotableBattle b) => $"{b.unit} {(b.attacking ? "attacking" : "defending against")} {b.enemyCivilization} {b.enemyUnit} ({b.winChance:P0} to win, turn {b.turn})";
-					return $"Won {luck.won} of {luck.battles} battles, {luck.expectedWins:0.0} expected{percentile}." +
+					return Line("civs", LuckAgainstCivs, s.LuckAgainstCivs()) + "\n" +
+						Line("barbarians", LuckAgainstBarbarians, s.LuckAgainstBarbarians()) +
 						(s.luckiestWin != null ? $"\nLuckiest win: {Describe(s.luckiestWin)}" : "") +
 						(s.unluckiestLoss != null ? $"\nUnluckiest loss: {Describe(s.unluckiestLoss)}" : "");
 				}
@@ -259,10 +288,12 @@ public partial class StatisticsView : CenterContainer {
 			AddBox(rect, () => Open(Layout.ChartBrowser, stat.name));
 			AddLabel(stat.name, new Rect2(rect.Position + new Vector2(8, 6), inner), 12, bold: true);
 			AddLabel(Headline(stat, player), new Rect2(rect.Position + new Vector2(8, 24), new Vector2(inner.X, 34)), 24, bold: true);
-			string sub = stat.name == "Luck" && player.stats.Luck()?.Percentile is double p ? $"luckier than {p:P0}"
+			// Luck shows its two parts instead of a rank.
+			bool luck = stat.name == "Luck" && player.stats.Luck() != null;
+			string sub = luck ? $"civs {Signed(player.stats.LuckAgainstCivs()?.WinsAboveExpected ?? 0)}  ·  barbarians {Signed(player.stats.LuckAgainstBarbarians()?.WinsAboveExpected ?? 0)}"
 				: stat.actionsOnly && Headline(stat, player) == "n/a" ? "computer player"
 				: stat.cardLabel ?? stat.headlineLabel;
-			string rank = Rank(stat, player);
+			string rank = luck ? "" : Rank(stat, player);
 			AddLabel(rank != "" ? $"{sub}  ·  {rank}" : sub, new Rect2(rect.Position + new Vector2(8, 60), inner), 10);
 		}
 
@@ -289,7 +320,7 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel($"{Headline(stat, player)} {stat.headlineLabel}{(rank != "" ? $"  ·  {rank}" : "")}", new Rect2(166, 104, 560, 22), 14);
 
 		float chartTop = 134;
-		string details = Details(stat, player.stats);
+		string details = Details(stat, player);
 		if (details != "") {
 			// Lines after wrapping at the label's width.
 			int lines = details.Split('\n').Sum(line => Math.Max(1, (int)Math.Ceiling(LineChart.RegularFont.GetStringSize(line, fontSize: 12).X / 550)));
@@ -300,6 +331,12 @@ public partial class StatisticsView : CenterContainer {
 		if (stat.startPosition) {
 			bigChart = null;
 			StartPositionBars(chartRect);
+		} else if (stat.name == "Luck") {
+			// Two charts: against civs above, against barbarians below.
+			Vector2 half = new(chartRect.Size.X, (chartRect.Size.Y - 12) / 2);
+			bigChart = Chart(LuckAgainstCivs, new Rect2(chartRect.Position, half), LuckAgainstCivs.chartTitle);
+			bigChart.hoverEnabled = true;
+			Chart(LuckAgainstBarbarians, new Rect2(chartRect.Position + new Vector2(0, half.Y + 12), half), LuckAgainstBarbarians.chartTitle).hoverEnabled = true;
 		} else {
 			bigChart = Chart(stat, chartRect, stat.unit);
 			bigChart.hoverEnabled = true;

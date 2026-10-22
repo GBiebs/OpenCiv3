@@ -158,6 +158,60 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 		Assert.InRange(ai.stats.battleExpectedWins10k.Single() + human.stats.battleExpectedWins10k.Single(), 9_999, 10_001);
 	}
 
+	[Fact]
+	public async Task LuckIsSplitIntoCivsAndBarbarians() {
+		C7GameData.GameData gameData = NewGame();
+		Player human = gameData.players.First(p => p.isHuman);
+		Player ai = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		Player barbarians = gameData.players.First(p => p.isBarbarians);
+
+		await Fight(gameData, human, "Warrior", barbarians, "Warrior", 300);
+		await Fight(gameData, barbarians, "Warrior", human, "Spearman", 100);
+		await Fight(gameData, ai, "Warrior", human, "Warrior", 200);
+
+		LuckRating all = human.stats.Luck().Value;
+		LuckRating againstBarbarians = human.stats.LuckAgainstBarbarians().Value;
+		LuckRating againstCivs = human.stats.LuckAgainstCivs().Value;
+		Assert.Equal(400, againstBarbarians.battles);
+		Assert.Equal(200, againstCivs.battles);
+
+		// The two parts make up the whole.
+		Assert.Equal(all.battles, againstCivs.battles + againstBarbarians.battles);
+		Assert.Equal(all.won, againstCivs.won + againstBarbarians.won);
+		Assert.Equal(all.expectedWins, againstCivs.expectedWins + againstBarbarians.expectedWins, 6);
+		Assert.Equal(all.variance, againstCivs.variance + againstBarbarians.variance, 6);
+
+		// Against civs, one side's luck is the other's bad luck.
+		LuckRating theirs = ai.stats.LuckAgainstCivs().Value;
+		Assert.Null(ai.stats.LuckAgainstBarbarians());
+		Assert.Equal(0, againstCivs.WinsAboveExpected + theirs.WinsAboveExpected, 1);
+	}
+
+	[Fact]
+	public void SeriesMissingFromAnOlderSaveAreFilledIn() {
+		C7GameData.GameData gameData = NewGame();
+		Player human = gameData.players.First(p => p.isHuman);
+		Player barbarians = gameData.players.First(p => p.isBarbarians);
+		MapUnit ours = Spawn(gameData, human, "Warrior", human.units[0].location);
+		MapUnit theirs = Spawn(gameData, barbarians, "Warrior", human.units[0].location);
+
+		// Three recorded turns, from before the barbarian series existed.
+		PlayerStats stats = human.stats;
+		for (int turn = gameData.turn - 2; turn <= gameData.turn; turn++) {
+			stats.StartTurn(turn);
+			stats.EndTurn(human, default);
+		}
+		foreach (List<int> series in new[] { stats.barbarianBattles, stats.barbarianBattlesWon, stats.barbarianExpectedWins10k, stats.barbarianVariance10k }) {
+			series.Clear();
+		}
+
+		// A battle in the current turn's entry, then the next turn.
+		stats.RecordBattle(human, gameData, won: true, 0.5, ours, theirs, attacking: true);
+		Assert.Equal([0, 0, 1], stats.barbarianBattles);
+		stats.StartTurn(gameData.turn + 1);
+		Assert.All(stats.AllSeries(), series => Assert.Equal(4, series.Count));
+	}
+
 	// ---------------------------------------------------------------- the luck rating
 
 	[Fact]
