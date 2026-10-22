@@ -73,6 +73,10 @@ public class PlayerStats {
 	public NotableBattle luckiestWin;
 	public NotableBattle unluckiestLoss;
 
+	// The start position, rated when the game began (null for games started
+	// before ratings existed, and for Civ3 saves).
+	public StartRating startRating;
+
 	/// Every per-turn series except <see cref="turns"/>.
 	public IEnumerable<List<int>> AllSeries() => [
 		shieldsProduced, shieldsCorrupted, shieldsLostToDisorder, shieldsLostToAnarchy, shieldsOverflowed, shieldsCapped,

@@ -78,7 +78,11 @@ public partial class StatisticsView : CenterContainer {
 	private record Stat(string name, string unit, string chartTitle, string headlineLabel,
 		Func<PlayerStats, (List<int> turns, List<double> values)> perTurn, Func<PlayerStats, double?> headline,
 		Func<double, string> format, Func<double, string> axisFormat = null,
-		bool includeZero = true, bool zeroLine = false, bool actionsOnly = false);
+		bool includeZero = true, bool zeroLine = false, bool actionsOnly = false,
+		// The short label under a dashboard card's number (default: headlineLabel).
+		string cardLabel = null,
+		// A one-off rating shown as bars rather than a line over turns.
+		bool startPosition = false);
 
 	private static string Whole(double v) => v.ToString("N0");
 	private static string Percent(double v) => v.ToString("P1");
@@ -112,12 +116,14 @@ public partial class StatisticsView : CenterContainer {
 	}
 
 	private static readonly List<Stat> Stats = [
+		new("Start position", "start rating, against the game's average start (100)", "Start position", "start rating (100 = average)",
+			s => ([], []), s => s.startRating?.rating, v => v.ToString("0"), cardLabel: "100 = average", startPosition: true),
 		new("Production", "shields per turn", "Production (shields per turn)", "shields in total",
 			s => PerTurn(s, s.shieldsProduced), s => PlayerStats.Sum(s.shieldsProduced), Whole),
 		new("Production efficiency", "share of usable shields that went into builds", "Production efficiency", "of usable shields used",
-			s => Running(s, i => s.ProductionEfficiency(0, i)), s => s.ProductionEfficiency(), Percent, WholePercent, includeZero: false),
+			s => Running(s, i => s.ProductionEfficiency(0, i)), s => s.ProductionEfficiency(), Percent, WholePercent, includeZero: false, cardLabel: "of usable shields"),
 		new("Growth efficiency", "share of surplus food that went into growth", "Growth efficiency", "of surplus food used",
-			s => Running(s, i => s.GrowthEfficiency(0, i)), s => s.GrowthEfficiency(), Percent, WholePercent, includeZero: false),
+			s => Running(s, i => s.GrowthEfficiency(0, i)), s => s.GrowthEfficiency(), Percent, WholePercent, includeZero: false, cardLabel: "of surplus food"),
 		new("Population", "citizens", "Population (citizens)", "citizens now",
 			s => PerTurn(s, s.population), s => s.population.LastOrDefault(), Whole),
 		new("Commerce", "commerce per turn, before corruption", "Commerce (per turn)", "commerce in total",
@@ -125,7 +131,7 @@ public partial class StatisticsView : CenterContainer {
 		new("Improved tiles", "improved tiles inside the borders", "Improved tiles", "tiles now",
 			s => PerTurn(s, s.tilesImproved), s => s.tilesImproved.LastOrDefault(), Whole),
 		new("Game actions", "commands given per turn", "Game actions (per turn)", "actions in total",
-			s => PerTurn(s, s.actions), s => PlayerStats.Sum(s.actions), Whole, actionsOnly: true),
+			s => PerTurn(s, s.actions), s => PlayerStats.Sum(s.actions), Whole, actionsOnly: true, cardLabel: "in total"),
 		new("Luck", "battles won minus battles expected, over the game", "Luck (wins above expected)", "wins above expected",
 			RunningLuck, s => s.Luck()?.WinsAboveExpected, Signed, SignedWhole, zeroLine: true),
 	];
@@ -184,6 +190,15 @@ public partial class StatisticsView : CenterContainer {
 						(s.luckiestWin != null ? $"\nLuckiest win: {Describe(s.luckiestWin)}" : "") +
 						(s.unluckiestLoss != null ? $"\nUnluckiest loss: {Describe(s.unluckiestLoss)}" : "");
 				}
+			case "Start position": {
+					if (s.startRating is not StartRating r) return "No start rating: this game began before start ratings were recorded.";
+					string camps = r.barbarianCamps switch { 0 => "no barbarian camps", 1 => "1 barbarian camp", int n => $"{n} barbarian camps" };
+					string rival = r.nearestRival > 0 ? $", nearest rival start {r.nearestRival} tiles away" : "";
+					return $"Capital site: {r.sitePoints:N0} points from the tiles a capital there could work (index {r.siteIndex:0}).\n" +
+						$"Expansion room: {r.landShare} land tiles nearer to it than to any rival within {StartPositionRating.RoomRadius} tiles, " +
+						$"{camps} nearby{rival} (index {r.roomIndex:0}).\n" +
+						$"Resources: {r.luxuries} luxury and {r.strategics} strategic types within {StartPositionRating.ResourceRadius} tiles (index {r.resourceIndex:0}).";
+				}
 			default:
 				return "";
 		}
@@ -201,7 +216,8 @@ public partial class StatisticsView : CenterContainer {
 		TextureButton close = AdvisorUtils.CreateExitButton(background);
 		close.Pressed += () => onClose();
 
-		if (civs.Count == 0 || Player.stats.TurnCount == 0) {
+		// Nothing to show before the first turn, unless the start has been rated.
+		if (civs.Count == 0 || (Player.stats.TurnCount == 0 && Player.stats.startRating == null)) {
 			AddLabel("STATISTICS", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
 			AddLabel("No statistics yet: they are recorded from the next turn on.", new Rect2(100, 340, 824, 40), 18, align: HorizontalAlignment.Center);
 			return;
@@ -227,18 +243,19 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel($"STATISTICS  ·  {TurnsText}{FocusSuffix(upper: true)}", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
 		CivStats player = Focus;
 
-		string[] cards = ["Production efficiency", "Growth efficiency", "Luck", "Game actions"];
+		string[] cards = ["Start position", "Production efficiency", "Growth efficiency", "Luck", "Game actions"];
 		for (int i = 0; i < cards.Length; i++) {
 			Stat stat = StatNamed(cards[i]);
-			Rect2 rect = new(76 + i * 222, 76, 212, 86);
+			Rect2 rect = new(76 + i * 177, 76, 167, 86);
+			Vector2 inner = new(rect.Size.X - 16, 20);
 			AddBox(rect, () => Open(Layout.ChartBrowser, stat.name));
-			AddLabel(stat.name, new Rect2(rect.Position + new Vector2(10, 6), new Vector2(192, 20)), 13, bold: true);
-			AddLabel(Headline(stat, player), new Rect2(rect.Position + new Vector2(10, 24), new Vector2(192, 34)), 26, bold: true);
+			AddLabel(stat.name, new Rect2(rect.Position + new Vector2(8, 6), inner), 12, bold: true);
+			AddLabel(Headline(stat, player), new Rect2(rect.Position + new Vector2(8, 24), new Vector2(inner.X, 34)), 24, bold: true);
 			string sub = stat.name == "Luck" && player.stats.Luck()?.Percentile is double p ? $"luckier than {p:P0}"
 				: stat.actionsOnly && Headline(stat, player) == "n/a" ? "computer player"
-				: stat.headlineLabel;
+				: stat.cardLabel ?? stat.headlineLabel;
 			string rank = Rank(stat, player);
-			AddLabel(rank != "" ? $"{sub}  ·  {rank}" : sub, new Rect2(rect.Position + new Vector2(10, 60), new Vector2(192, 20)), 11);
+			AddLabel(rank != "" ? $"{sub}  ·  {rank}" : sub, new Rect2(rect.Position + new Vector2(8, 60), inner), 10);
 		}
 
 		AddLegend(new Vector2(78, 172), vertical: false, width: 880);
@@ -266,13 +283,19 @@ public partial class StatisticsView : CenterContainer {
 		float chartTop = 134;
 		string details = Details(stat, player.stats);
 		if (details != "") {
-			int lines = details.Count(c => c == '\n') + 1;
-			Label label = AddLabel(details, new Rect2(166, 128, 560, 18 * lines + 4), 12);
-			label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			// Lines after wrapping at the label's width.
+			int lines = details.Split('\n').Sum(line => Math.Max(1, (int)Math.Ceiling(LineChart.RegularFont.GetStringSize(line, fontSize: 12).X / 550)));
+			AddLabel(details, new Rect2(166, 128, 560, 18 * lines + 4), 12, wrap: true);
 			chartTop = 136 + 18 * lines + 8;
 		}
-		bigChart = Chart(stat, new Rect2(160, chartTop, 566, 676 - chartTop), stat.unit);
-		bigChart.hoverEnabled = true;
+		Rect2 chartRect = new(160, chartTop, 566, 676 - chartTop);
+		if (stat.startPosition) {
+			bigChart = null;
+			StartPositionBars(chartRect);
+		} else {
+			bigChart = Chart(stat, chartRect, stat.unit);
+			bigChart.hoverEnabled = true;
+		}
 
 		for (int i = 0; i < Stats.Count; i++) {
 			string name = Stats[i].name;
@@ -315,8 +338,42 @@ public partial class StatisticsView : CenterContainer {
 		return chart;
 	}
 
-	private Label AddLabel(string text, Rect2 rect, int fontSize, bool bold = false, HorizontalAlignment align = HorizontalAlignment.Left, Color? color = null) {
+	private static readonly List<(string name, Color color)> StartParts = [
+		("Capital site", new Color(0.55f, 0.34f, 0.16f)),
+		("Expansion room", new Color(0.33f, 0.50f, 0.24f)),
+		("Luxuries and strategics", new Color(0.82f, 0.60f, 0.16f)),
+	];
+
+	// One bar per civ, best start first, split into each factor's share of the rating.
+	private void StartPositionBars(Rect2 rect) {
+		StackedBarChart chart = new() {
+			Position = rect.Position,
+			Size = rect.Size,
+			partNames = StartParts.Select(p => p.name).ToList(),
+			partColors = StartParts.Select(p => p.color).ToList(),
+			referenceValue = 100,
+			referenceLabel = "average start",
+		};
+		foreach (CivStats civ in civs.Where(c => c.stats.startRating != null).OrderByDescending(c => c.stats.startRating.rating)) {
+			StartRating r = civ.stats.startRating;
+			double site = StartPositionRating.SiteWeight * r.siteIndex;
+			double room = StartPositionRating.RoomWeight * r.roomIndex;
+			double resources = StartPositionRating.ResourceWeight * r.resourceIndex;
+			chart.rows.Add(new StackedBarChart.Row {
+				label = civ.name,
+				color = civ.color,
+				emphasized = civ == Focus && civs.Count > 1,
+				parts = [site, room, resources],
+				tooltip = $"{civ.name}: {r.rating:0} = capital site {site:0} + expansion room {room:0} + resources {resources:0}",
+			});
+		}
+		background.AddChild(chart);
+	}
+
+	private Label AddLabel(string text, Rect2 rect, int fontSize, bool bold = false, HorizontalAlignment align = HorizontalAlignment.Left, Color? color = null, bool wrap = false) {
 		Label label = new() {
+			// Wrapping is set before the size: otherwise the label first grows to fit the whole line.
+			AutowrapMode = wrap ? TextServer.AutowrapMode.WordSmart : TextServer.AutowrapMode.Off,
 			Text = text,
 			Position = rect.Position,
 			Size = rect.Size,

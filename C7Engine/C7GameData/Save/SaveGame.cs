@@ -229,6 +229,9 @@ namespace C7GameData.Save {
 				p.DoCorruptionCalculations(EngineStorage.gameData);
 				p.RecalculateCitizenMoods(EngineStorage.gameData);
 			}
+
+			// Statistics: rate the start positions of a game that is just beginning.
+			StartPositionRating.RateNewGame(EngineStorage.gameData);
 		}
 
 		private GameData InitializeGameData() {

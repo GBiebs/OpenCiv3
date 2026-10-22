@@ -40,6 +40,8 @@ public static class StatisticsCapture {
 		string otherCiv = civs.FirstOrDefault(c => !c.isPlayer)?.name;
 		(string name, List<StatisticsView.CivStats> civs, StatisticsView.Layout layout, string stat, string focus, bool hover)[] shots = [
 			("dashboard", civs, StatisticsView.Layout.Dashboard, null, null, false),
+			("chart_start_position", civs, StatisticsView.Layout.ChartBrowser, "Start position", null, false),
+			("chart_start_position_own", playerOnly, StatisticsView.Layout.ChartBrowser, "Start position", null, false),
 			("chart_production_efficiency", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, false),
 			("chart_luck", civs, StatisticsView.Layout.ChartBrowser, "Luck", null, false),
 			("dashboard_focus", civs, StatisticsView.Layout.Dashboard, null, otherCiv, false),
