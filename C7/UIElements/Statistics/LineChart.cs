@@ -20,6 +20,8 @@ public partial class LineChart : Control {
 	public string title = "";
 	public List<Series> series = new();
 	public Func<double, string> formatValue = v => v.ToString("0");
+	// Values in the hover box, if more precise than the axis labels.
+	public Func<double, string> formatHoverValue = null;
 	// Draw a line at zero, for series that go negative (e.g. luck).
 	public bool showZeroLine = false;
 	// Start the value axis at zero (off for values that stay in a narrow band, like efficiencies).
@@ -36,8 +38,29 @@ public partial class LineChart : Control {
 	public static Font RegularFont => regularFont ??= ResourceLoader.Load<FontFile>("res://Fonts/NotoSans-Regular.ttf");
 	public static Font BoldFont => boldFont ??= ResourceLoader.Load<FontFile>("res://Fonts/NotoSans-Bold.ttf");
 
+	// Show every line's value at the turn under the mouse.
+	public bool hoverEnabled {
+		get => MouseFilter == MouseFilterEnum.Stop;
+		set => MouseFilter = value ? MouseFilterEnum.Stop : MouseFilterEnum.Ignore;
+	}
+
+	private Vector2? hoverPosition;
+
 	public LineChart() {
 		MouseFilter = MouseFilterEnum.Ignore;
+		MouseExited += () => SetHover(null);
+	}
+
+	/// Where the mouse is over the chart, or null (also used for developer screenshots).
+	public void SetHover(Vector2? position) {
+		hoverPosition = position;
+		QueueRedraw();
+	}
+
+	public override void _GuiInput(InputEvent @event) {
+		if (@event is InputEventMouseMotion motion) {
+			SetHover(motion.Position);
+		}
 	}
 
 	public override void _Draw() {
@@ -92,6 +115,53 @@ public partial class LineChart : Control {
 			} else {
 				DrawPolyline(points, s.color, s.emphasized ? 3f : 1.6f, antialiased: true);
 			}
+		}
+
+		if (hoverPosition is Vector2 hover && plot.HasPoint(hover)) {
+			int turn = Math.Clamp((int)Math.Round(firstTurn + (hover.X - plot.Position.X) / plot.Size.X * (lastTurn - firstTurn)), firstTurn, lastTurn);
+			DrawHover(drawn, turn, X(turn), Y, hover, plot);
+		}
+	}
+
+	private static readonly Color TooltipBackground = new(0.99f, 0.96f, 0.88f, 0.97f);
+
+	// A guide line at the turn, a dot on each line, and a box listing every
+	// line's value at that turn, highest first.
+	private void DrawHover(List<Series> drawn, int turn, float x, Func<double, float> Y, Vector2 mouse, Rect2 plot) {
+		List<(Series series, double value)> rows = drawn
+			.Select(s => (series: s, index: s.turns.IndexOf(turn)))
+			.Where(r => r.index >= 0)
+			.Select(r => (r.series, r.series.values[r.index]))
+			.OrderByDescending(r => r.Item2)
+			.ToList();
+		if (rows.Count == 0) return;
+
+		DrawLine(new Vector2(x, plot.Position.Y), new Vector2(x, plot.End.Y), ZeroInk, 1);
+		foreach ((Series series, double value) in rows) {
+			DrawCircle(new Vector2(x, Y(value)), series.emphasized ? 4.5f : 3.5f, series.color);
+		}
+
+		int size = fontSize;
+		float rowHeight = size + 6;
+		float nameWidth = rows.Max(r => (r.series.emphasized ? BoldFont : RegularFont).GetStringSize(r.series.name, fontSize: size).X);
+		Func<double, string> format = formatHoverValue ?? formatValue;
+		float valueWidth = rows.Max(r => RegularFont.GetStringSize(format(r.value), fontSize: size).X);
+		Vector2 boxSize = new(18 + nameWidth + 16 + valueWidth + 10, rowHeight * (rows.Count + 1) + 6);
+
+		// Beside the mouse, flipped to stay inside the chart.
+		Vector2 at = mouse + new Vector2(16, -boxSize.Y / 2);
+		if (at.X + boxSize.X > Size.X) at.X = mouse.X - 16 - boxSize.X;
+		at.Y = Math.Clamp(at.Y, 0, Math.Max(Size.Y - boxSize.Y, 0));
+
+		DrawRect(new Rect2(at, boxSize), TooltipBackground);
+		DrawRect(new Rect2(at, boxSize), ZeroInk, filled: false, width: 1);
+		DrawString(BoldFont, at + new Vector2(8, rowHeight), $"Turn {turn}", HorizontalAlignment.Left, boxSize.X - 16, size, Ink);
+		for (int i = 0; i < rows.Count; i++) {
+			(Series series, double value) = rows[i];
+			float baseline = at.Y + rowHeight * (i + 2);
+			DrawRect(new Rect2(at.X + 8, baseline - size * 0.7f, 10, size * 0.7f), series.color);
+			DrawString(series.emphasized ? BoldFont : RegularFont, new Vector2(at.X + 24, baseline), series.name, HorizontalAlignment.Left, nameWidth + 4, size, Ink);
+			DrawString(RegularFont, new Vector2(at.X + boxSize.X - 8 - valueWidth, baseline), format(value), HorizontalAlignment.Right, valueWidth, size, Ink);
 		}
 	}
 

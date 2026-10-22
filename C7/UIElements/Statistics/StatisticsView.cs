@@ -24,8 +24,14 @@ public partial class StatisticsView : CenterContainer {
 	private List<CivStats> civs = new();
 	private Layout layout = Layout.Dashboard;
 	private int selectedStat = 0;
+	// The civ whose numbers the headlines show and whose line is drawn thick;
+	// at the end of the game, clicking a civ in the legend switches to it.
+	private string focusName;
 	// What the exit button does: hide the screen, or (at the end of the game) leave it.
 	private Action onClose;
+
+	// The chart in the big chart view (for developer screenshots of the hover box).
+	public LineChart bigChart { get; private set; }
 
 	private static readonly Color Ink = LineChart.Ink;
 	private static readonly Color Shade = new(0.36f, 0.25f, 0.12f, 0.10f);
@@ -57,10 +63,11 @@ public partial class StatisticsView : CenterContainer {
 	public static CivStats ForPlayer(Player player, bool isPlayer) =>
 		new(player.civilization.name, TextureLoader.LoadColor(player.GetPlayerColor()), player.stats, isPlayer);
 
-	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null) {
+	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null) {
 		civs = shown.OrderByDescending(c => c.isPlayer).ToList();
 		this.layout = layout;
 		selectedStat = Math.Max(Stats.FindIndex(s => s.name == statName), 0);
+		focusName = focus ?? Player?.name;
 		this.onClose = onClose ?? (() => GetParentOrNull<GameViews>()?.Hide());
 		Build();
 		Show();
@@ -115,7 +122,7 @@ public partial class StatisticsView : CenterContainer {
 			s => PerTurn(s, s.population), s => s.population.LastOrDefault(), Whole),
 		new("Commerce", "commerce per turn, before corruption", "Commerce (per turn)", "commerce in total",
 			s => PerTurn(s, s.commerce), s => PlayerStats.Sum(s.commerce), Whole),
-		new("Improved tiles", "improved tiles inside your borders", "Improved tiles", "tiles now",
+		new("Improved tiles", "improved tiles inside the borders", "Improved tiles", "tiles now",
 			s => PerTurn(s, s.tilesImproved), s => s.tilesImproved.LastOrDefault(), Whole),
 		new("Game actions", "commands given per turn", "Game actions (per turn)", "actions in total",
 			s => PerTurn(s, s.actions), s => PlayerStats.Sum(s.actions), Whole, actionsOnly: true),
@@ -129,7 +136,11 @@ public partial class StatisticsView : CenterContainer {
 	private IEnumerable<CivStats> CivsFor(Stat stat) =>
 		stat.actionsOnly ? civs.Where(c => c.isPlayer || PlayerStats.Sum(c.stats.actions) > 0) : civs;
 
-	private static string Headline(Stat stat, CivStats civ) => stat.headline(civ.stats) is double v ? stat.format(v) : "n/a";
+	private static string Headline(Stat stat, CivStats civ) {
+		// Computer players give no commands.
+		if (stat.actionsOnly && !civ.isPlayer && PlayerStats.Sum(civ.stats.actions) == 0) return "n/a";
+		return stat.headline(civ.stats) is double v ? stat.format(v) : "n/a";
+	}
 
 	// "2nd of 8" among the civs shown, higher being better.
 	private string Rank(Stat stat, CivStats civ) {
@@ -143,6 +154,11 @@ public partial class StatisticsView : CenterContainer {
 
 	private CivStats Player => civs.FirstOrDefault(c => c.isPlayer) ?? civs.FirstOrDefault();
 
+	private CivStats Focus => civs.FirstOrDefault(c => c.name == focusName) ?? Player;
+
+	// " · SPAIN" when looking at another civ's numbers.
+	private string FocusSuffix(bool upper) => Focus == Player ? "" : $"  ·  {(upper ? Focus.name.ToUpper() : Focus.name)}";
+
 	// The breakdown shown under a statistic's headline in the big chart view.
 	private static string Details(Stat stat, PlayerStats s) {
 		static long Total(List<int> series) => PlayerStats.Sum(series);
@@ -151,7 +167,7 @@ public partial class StatisticsView : CenterContainer {
 					long wasted = Total(s.shieldsOverflowed) + Total(s.shieldsCapped) + Total(s.shieldsLostToDisorder);
 					return $"Wasted {wasted:N0} shields: {Total(s.shieldsOverflowed):N0} overflow beyond a finished build, " +
 						$"{Total(s.shieldsCapped):N0} into a full box, {Total(s.shieldsLostToDisorder):N0} to civil disorder.\n" +
-						$"Not counted against you: {Total(s.shieldsCorrupted):N0} lost to corruption, {Total(s.shieldsLostToAnarchy):N0} to anarchy.";
+						$"Not counted as waste: {Total(s.shieldsCorrupted):N0} lost to corruption, {Total(s.shieldsLostToAnarchy):N0} to anarchy.";
 				}
 			case "Growth efficiency":
 				return $"Wasted {Total(s.foodWasted):N0} of {Total(s.foodSurplus):N0} surplus food: overflow when a city grew, " +
@@ -159,7 +175,7 @@ public partial class StatisticsView : CenterContainer {
 			case "Commerce":
 				return $"{Total(s.commerceCorrupted):N0} lost to corruption; {Total(s.goldIncome):N0} gold income and {Total(s.beakers):N0} beakers in total.";
 			case "Improved tiles":
-				return s.tilesOwned.LastOrDefault() is int owned and > 0 ? $"{s.tilesImproved.Last():N0} of the {owned:N0} tiles inside your borders." : "";
+				return s.tilesOwned.LastOrDefault() is int owned and > 0 ? $"{s.tilesImproved.Last():N0} of the {owned:N0} tiles inside its borders." : "";
 			case "Luck": {
 					if (s.Luck() is not LuckRating luck) return "No battles yet.";
 					string percentile = luck.Percentile is double p ? $", luckier than {p:P0} of possible outcomes" : "";
@@ -208,8 +224,8 @@ public partial class StatisticsView : CenterContainer {
 
 	// Headline numbers on top and a grid of small charts; each opens as a big chart.
 	private void BuildDashboard() {
-		AddLabel($"STATISTICS  ·  {TurnsText}", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
-		CivStats player = Player;
+		AddLabel($"STATISTICS  ·  {TurnsText}{FocusSuffix(upper: true)}", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
+		CivStats player = Focus;
 
 		string[] cards = ["Production efficiency", "Growth efficiency", "Luck", "Game actions"];
 		for (int i = 0; i < cards.Length; i++) {
@@ -218,7 +234,9 @@ public partial class StatisticsView : CenterContainer {
 			AddBox(rect, () => Open(Layout.ChartBrowser, stat.name));
 			AddLabel(stat.name, new Rect2(rect.Position + new Vector2(10, 6), new Vector2(192, 20)), 13, bold: true);
 			AddLabel(Headline(stat, player), new Rect2(rect.Position + new Vector2(10, 24), new Vector2(192, 34)), 26, bold: true);
-			string sub = stat.name == "Luck" && player.stats.Luck()?.Percentile is double p ? $"luckier than {p:P0}" : stat.headlineLabel;
+			string sub = stat.name == "Luck" && player.stats.Luck()?.Percentile is double p ? $"luckier than {p:P0}"
+				: stat.actionsOnly && Headline(stat, player) == "n/a" ? "computer player"
+				: stat.headlineLabel;
 			string rank = Rank(stat, player);
 			AddLabel(rank != "" ? $"{sub}  ·  {rank}" : sub, new Rect2(rect.Position + new Vector2(10, 60), new Vector2(192, 20)), 11);
 		}
@@ -240,9 +258,9 @@ public partial class StatisticsView : CenterContainer {
 		AddButton("◀  OVERVIEW", new Rect2(800, 14, 156, 32), () => Open(Layout.Dashboard));
 
 		Stat stat = Stats[selectedStat];
-		CivStats player = Player;
+		CivStats player = Focus;
 		string rank = Rank(stat, player);
-		AddLabel(stat.name, new Rect2(166, 76, 560, 28), 20, bold: true);
+		AddLabel($"{stat.name}{FocusSuffix(upper: false)}", new Rect2(166, 76, 560, 28), 20, bold: true);
 		AddLabel($"{Headline(stat, player)} {stat.headlineLabel}{(rank != "" ? $"  ·  {rank}" : "")}", new Rect2(166, 104, 560, 22), 14);
 
 		float chartTop = 134;
@@ -253,7 +271,8 @@ public partial class StatisticsView : CenterContainer {
 			label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 			chartTop = 136 + 18 * lines + 8;
 		}
-		Chart(stat, new Rect2(160, chartTop, 566, 676 - chartTop), stat.unit);
+		bigChart = Chart(stat, new Rect2(160, chartTop, 566, 676 - chartTop), stat.unit);
+		bigChart.hoverEnabled = true;
 
 		for (int i = 0; i < Stats.Count; i++) {
 			string name = Stats[i].name;
@@ -268,7 +287,11 @@ public partial class StatisticsView : CenterContainer {
 			background.AddChild(tile);
 		}
 
-		AddLegend(new Vector2(806, 74 + Stats.Count * 44 + 10), vertical: true, width: 146);
+		float legendTop = 74 + Stats.Count * 44 + 10;
+		AddLegend(new Vector2(806, legendTop), vertical: true, width: 146);
+		if (civs.Count > 1) {
+			AddLabel("Click a civ to see its numbers.", new Rect2(806, legendTop + civs.Count * 22 + 4, 146, 18), 10);
+		}
 	}
 
 	// ---------------------------------------------------------------- pieces
@@ -279,13 +302,14 @@ public partial class StatisticsView : CenterContainer {
 			Size = rect.Size,
 			title = title,
 			formatValue = stat.axisFormat ?? stat.format,
+			formatHoverValue = stat.format,
 			showZeroLine = stat.zeroLine,
 			includeZero = stat.includeZero,
 			fontSize = fontSize,
 		};
 		foreach (CivStats civ in CivsFor(stat)) {
 			(List<int> turns, List<double> values) = stat.perTurn(civ.stats);
-			chart.series.Add(new LineChart.Series { name = civ.name, color = civ.color, turns = turns, values = values, emphasized = civ.isPlayer && civs.Count > 1 });
+			chart.series.Add(new LineChart.Series { name = civ.name, color = civ.color, turns = turns, values = values, emphasized = civ == Focus && civs.Count > 1 });
 		}
 		background.AddChild(chart);
 		return chart;
@@ -322,15 +346,31 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel(text, rect, 14, bold: true, align: HorizontalAlignment.Center);
 	}
 
+	// The civs' colors; with more than one civ, clicking a civ shows its numbers.
 	private void AddLegend(Vector2 position, bool vertical, float width) {
 		Vector2 at = position;
 		foreach (CivStats civ in civs) {
-			float textWidth = LineChart.RegularFont.GetStringSize(civ.name, fontSize: 13).X;
+			bool focused = civ == Focus;
+			float textWidth = (focused ? LineChart.BoldFont : LineChart.RegularFont).GetStringSize(civ.name, fontSize: 13).X;
 			if (!vertical && at.X + textWidth + 30 > position.X + width) {
 				at = new Vector2(position.X, at.Y + 20);
 			}
+			Vector2 size = new(vertical ? width : textWidth + 28, 20);
+			if (civs.Count > 1) {
+				LegendEntry entry = new() {
+					Position = at - new Vector2(2, 0),
+					Size = size + new Vector2(4, 0),
+					focused = focused,
+					TooltipText = civ.isPlayer ? "Your numbers" : $"Show the {civ.name} numbers",
+				};
+				entry.Clicked += () => {
+					focusName = civ.name;
+					Build();
+				};
+				background.AddChild(entry);
+			}
 			background.AddChild(new Swatch { Position = at + new Vector2(0, 5), Size = new Vector2(16, 10), color = civ.color });
-			AddLabel(civ.name, new Rect2(at + new Vector2(22, 0), new Vector2(vertical ? width - 22 : textWidth + 4, 20)), 13, bold: civ.isPlayer);
+			AddLabel(civ.name, new Rect2(at + new Vector2(22, 0), new Vector2(size.X - 22, 20)), 13, bold: focused);
 			at = vertical ? at + new Vector2(0, 22) : at + new Vector2(textWidth + 40, 0);
 		}
 	}
@@ -373,6 +413,17 @@ public partial class StatisticsView : CenterContainer {
 			DrawRect(new Rect2(Vector2.Zero, Size), Border, filled: false, width: selected ? 2 : 1);
 			DrawString(LineChart.BoldFont, new Vector2(6, 16), label, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
 			DrawString(LineChart.RegularFont, new Vector2(6, 33), value, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
+		}
+	}
+
+	// A civ in the legend: highlighted when it's the one shown or under the mouse.
+	private partial class LegendEntry : Clickable {
+		public bool focused;
+
+		public override void _Draw() {
+			if (focused || hovered) {
+				DrawRect(new Rect2(Vector2.Zero, Size), focused ? Highlight : Shade);
+			}
 		}
 	}
 

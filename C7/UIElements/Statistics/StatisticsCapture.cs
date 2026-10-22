@@ -36,18 +36,27 @@ public static class StatisticsCapture {
 		});
 
 		List<StatisticsView.CivStats> playerOnly = civs.Where(c => c.isPlayer).ToList();
-		(string name, List<StatisticsView.CivStats> civs, StatisticsView.Layout layout, string stat)[] shots = [
-			("dashboard", civs, StatisticsView.Layout.Dashboard, null),
-			("chart_production_efficiency", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency"),
-			("chart_luck", civs, StatisticsView.Layout.ChartBrowser, "Luck"),
-			("dashboard_own", playerOnly, StatisticsView.Layout.Dashboard, null),
-			("chart_commerce_own", playerOnly, StatisticsView.Layout.ChartBrowser, "Commerce"),
+		// Another civ in focus, and the hover box at 70% across the big chart.
+		string otherCiv = civs.FirstOrDefault(c => !c.isPlayer)?.name;
+		(string name, List<StatisticsView.CivStats> civs, StatisticsView.Layout layout, string stat, string focus, bool hover)[] shots = [
+			("dashboard", civs, StatisticsView.Layout.Dashboard, null, null, false),
+			("chart_production_efficiency", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, false),
+			("chart_luck", civs, StatisticsView.Layout.ChartBrowser, "Luck", null, false),
+			("dashboard_focus", civs, StatisticsView.Layout.Dashboard, null, otherCiv, false),
+			("chart_population_focus_hover", civs, StatisticsView.Layout.ChartBrowser, "Population", otherCiv, true),
+			("chart_production_efficiency_hover", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, true),
+			("dashboard_own", playerOnly, StatisticsView.Layout.Dashboard, null, null, false),
+			("chart_commerce_own_hover", playerOnly, StatisticsView.Layout.ChartBrowser, "Commerce", null, true),
 		];
 
 		Directory.CreateDirectory(ShotsDir);
 		gameViews.Show();
-		foreach ((string name, List<StatisticsView.CivStats> shown, StatisticsView.Layout layout, string stat) in shots) {
-			gameViews.statisticsView.ShowView(shown, layout, stat);
+		foreach ((string name, List<StatisticsView.CivStats> shown, StatisticsView.Layout layout, string stat, string focus, bool hover) in shots) {
+			gameViews.statisticsView.ShowView(shown, layout, stat, focus: focus);
+			if (hover) {
+				LineChart chart = gameViews.statisticsView.bigChart;
+				chart.SetHover(new Vector2(chart.Size.X * 0.7f, chart.Size.Y * 0.5f));
+			}
 			for (int i = 0; i < 5; i++) {
 				await game.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
 			}
