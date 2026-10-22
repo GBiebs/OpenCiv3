@@ -319,6 +319,7 @@ namespace C7GameData {
 
 			log.Debug($"Produced {producedItem} in {this}");
 			if (producedItem is UnitPrototype prototype) {
+				owner.stats.RecordUnitBuilt(prototype);
 				AddUnit(prototype, gameData);
 			} else if (producedItem is Building building) {
 				AddBuilding(building);

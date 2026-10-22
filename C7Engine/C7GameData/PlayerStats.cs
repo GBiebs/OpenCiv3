@@ -77,6 +77,10 @@ public class PlayerStats {
 	// before ratings existed, and for Civ3 saves).
 	public StartRating startRating;
 
+	// Units the player's cities built over the game, by unit type. Free units
+	// (the start units, the AI's bonus start units) aren't counted.
+	public Dictionary<string, int> unitsBuilt = new();
+
 	/// Every per-turn series except <see cref="turns"/>.
 	public IEnumerable<List<int>> AllSeries() => [
 		shieldsProduced, shieldsCorrupted, shieldsLostToDisorder, shieldsLostToAnarchy, shieldsOverflowed, shieldsCapped,
@@ -179,6 +183,10 @@ public class PlayerStats {
 		};
 		if (won && (luckiestWin == null || winChance < luckiestWin.winChance)) luckiestWin = battle;
 		if (!won && (unluckiestLoss == null || winChance > unluckiestLoss.winChance)) unluckiestLoss = battle;
+	}
+
+	public void RecordUnitBuilt(UnitPrototype unit) {
+		unitsBuilt[unit.name] = unitsBuilt.GetValueOrDefault(unit.name) + 1;
 	}
 
 	public record struct LandCount(int owned, int improved);

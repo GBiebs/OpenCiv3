@@ -8,7 +8,8 @@ using Godot;
 
 /// <summary>
 /// The statistics screen (F12, and at the end of the game): production,
-/// efficiencies, population, commerce, improved tiles, game actions and luck.
+/// efficiencies, population, commerce, improved tiles, units built, game actions
+/// and luck.
 /// It opens on a dashboard of headline numbers and small charts; clicking one
 /// shows it as a big chart, with the other statistics listed beside it. At the
 /// end of the game it compares every civ; before then it shows only the
@@ -85,7 +86,9 @@ public partial class StatisticsView : CenterContainer {
 		// The short label under a dashboard card's number (default: headlineLabel).
 		string cardLabel = null,
 		// A one-off rating shown as bars rather than a line over turns.
-		bool startPosition = false);
+		bool startPosition = false,
+		// Totals by unit type, shown as a table rather than a line over turns.
+		bool unitTable = false);
 
 	private static string Whole(double v) => v.ToString("N0");
 	private static string Percent(double v) => v.ToString("P1");
@@ -133,6 +136,8 @@ public partial class StatisticsView : CenterContainer {
 			s => PerTurn(s, s.commerce), s => PlayerStats.Sum(s.commerce), Whole),
 		new("Improved tiles", "improved tiles inside the borders", "Improved tiles", "tiles now",
 			s => PerTurn(s, s.tilesImproved), s => s.tilesImproved.LastOrDefault(), Whole),
+		new("Units built", "units built in cities, by type", "Units built", "units built",
+			s => ([], []), s => s.unitsBuilt.Values.Sum(), Whole, cardLabel: "in total", unitTable: true),
 		new("Game actions", "commands given per turn", "Game actions (per turn)", "actions in total",
 			s => PerTurn(s, s.actions), s => PlayerStats.Sum(s.actions), Whole, actionsOnly: true, cardLabel: "in total"),
 		new("Luck", "battles won minus battles expected, over the game", "Luck (wins above expected)", "wins above expected",
@@ -198,6 +203,16 @@ public partial class StatisticsView : CenterContainer {
 						// Civ-vs-civ battles are zero-sum; barbarians keep no statistics.
 						"\nNote: battles against barbarians count here, but the barbarians' side isn't tracked, so the civs' luck won't add up to zero.";
 				}
+			case "Units built": {
+					if (s.unitsBuilt.Count == 0) return "No units built yet.";
+					List<UnitPrototype> prototypes = EngineStorage.gameData?.unitPrototypes ?? new();
+					bool IsMilitary(string unit) => prototypes.FirstOrDefault(u => u.name == unit) is UnitPrototype u && (u.attack > 0 || u.defense > 0);
+					int military = s.unitsBuilt.Where(kv => IsMilitary(kv.Key)).Sum(kv => kv.Value);
+					int others = s.unitsBuilt.Values.Sum() - military;
+					KeyValuePair<string, int> most = s.unitsBuilt.MaxBy(kv => kv.Value);
+					return $"{military:N0} military units and {others:N0} others (settlers, workers and the like). Most built: {most.Key} ({most.Value:N0}).\n" +
+						"Only units finished in cities count, not free units such as the start units.";
+				}
 			case "Start position": {
 					if (s.startRating is not StartRating r) return "No start rating: this game began before start ratings were recorded.";
 					string camps = r.barbarianCamps switch { 0 => "no barbarian camps", 1 => "1 barbarian camp", int n => $"{n} barbarian camps" };
@@ -251,7 +266,7 @@ public partial class StatisticsView : CenterContainer {
 		AddLabel($"STATISTICS  ·  {TurnsText}{FocusSuffix(upper: true)}", new Rect2(172, 14, 692, 36), 20, bold: true, align: HorizontalAlignment.Center);
 		CivStats player = Focus;
 
-		List<string> cards = new[] { "Start position", "Production efficiency", "Growth efficiency", "Luck", "Game actions" }
+		List<string> cards = new[] { "Start position", "Production efficiency", "Growth efficiency", "Units built", "Luck", "Game actions" }
 			.Where(name => VisibleStats.Any(s => s.name == name)).ToList();
 		float cardWidth = (876 - 10 * (cards.Count - 1)) / (float)cards.Count;
 		for (int i = 0; i < cards.Count; i++) {
@@ -302,6 +317,9 @@ public partial class StatisticsView : CenterContainer {
 		if (stat.startPosition) {
 			bigChart = null;
 			StartPositionBars(chartRect);
+		} else if (stat.unitTable) {
+			bigChart = null;
+			UnitsBuiltTable(chartRect);
 		} else {
 			bigChart = Chart(stat, chartRect, stat.unit);
 			bigChart.hoverEnabled = true;
@@ -311,8 +329,8 @@ public partial class StatisticsView : CenterContainer {
 		for (int i = 0; i < listed.Count; i++) {
 			string name = listed[i].name;
 			StatTile tile = new() {
-				Position = new Vector2(804, 74 + i * 44),
-				Size = new Vector2(150, 40),
+				Position = new Vector2(804, 74 + i * 40),
+				Size = new Vector2(150, 36),
 				label = name,
 				value = Headline(listed[i], player),
 				selected = i == selectedStat,
@@ -321,7 +339,7 @@ public partial class StatisticsView : CenterContainer {
 			background.AddChild(tile);
 		}
 
-		float legendTop = 74 + listed.Count * 44 + 10;
+		float legendTop = 74 + listed.Count * 40 + 10;
 		AddLegend(new Vector2(806, legendTop), vertical: true, width: 146);
 		if (civs.Count > 1) {
 			AddLabel("Click a civ to see its numbers.", new Rect2(806, legendTop + civs.Count * 22 + 4, 146, 18), 10);
@@ -379,6 +397,29 @@ public partial class StatisticsView : CenterContainer {
 			});
 		}
 		background.AddChild(chart);
+	}
+
+	// Unit types in the game's own order (roughly by era), then any it doesn't know.
+	private List<string> UnitRows() {
+		HashSet<string> built = civs.SelectMany(c => c.stats.unitsBuilt.Where(kv => kv.Value > 0).Select(kv => kv.Key)).ToHashSet();
+		List<string> known = (EngineStorage.gameData?.unitPrototypes ?? new()).Select(u => u.name).Distinct().ToList();
+		return known.Where(built.Contains).Concat(built.Except(known).Order()).ToList();
+	}
+
+	// One row per unit type, one column per civ.
+	private void UnitsBuiltTable(Rect2 rect) {
+		UnitTable table = new() {
+			Position = rect.Position,
+			Size = rect.Size,
+			rowNames = UnitRows(),
+			columns = civs.Select(c => new UnitTable.Column {
+				name = c.name,
+				color = c.color,
+				emphasized = c == Focus && civs.Count > 1,
+				counts = c.stats.unitsBuilt,
+			}).ToList(),
+		};
+		background.AddChild(table);
 	}
 
 	private Label AddLabel(string text, Rect2 rect, int fontSize, bool bold = false, HorizontalAlignment align = HorizontalAlignment.Left, Color? color = null, bool wrap = false) {
@@ -480,7 +521,7 @@ public partial class StatisticsView : CenterContainer {
 			DrawRect(new Rect2(Vector2.Zero, Size), selected || hovered ? Highlight : Shade);
 			DrawRect(new Rect2(Vector2.Zero, Size), Border, filled: false, width: selected ? 2 : 1);
 			DrawString(LineChart.BoldFont, new Vector2(6, 16), label, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
-			DrawString(LineChart.RegularFont, new Vector2(6, 33), value, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
+			DrawString(LineChart.RegularFont, new Vector2(6, 31), value, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
 		}
 	}
 

@@ -43,11 +43,14 @@ public static class StatisticsCapture {
 			("chart_start_position", civs, StatisticsView.Layout.ChartBrowser, "Start position", null, false),
 			("chart_production_efficiency", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, false),
 			("chart_luck", civs, StatisticsView.Layout.ChartBrowser, "Luck", null, false),
+			("chart_units_built", civs, StatisticsView.Layout.ChartBrowser, "Units built", null, false),
+			("chart_units_built_focus", civs, StatisticsView.Layout.ChartBrowser, "Units built", otherCiv, false),
 			("dashboard_focus", civs, StatisticsView.Layout.Dashboard, null, otherCiv, false),
 			("chart_population_focus_hover", civs, StatisticsView.Layout.ChartBrowser, "Population", otherCiv, true),
 			("chart_production_efficiency_hover", civs, StatisticsView.Layout.ChartBrowser, "Production efficiency", null, true),
 			("dashboard_own", playerOnly, StatisticsView.Layout.Dashboard, null, null, false),
 			("chart_commerce_own_hover", playerOnly, StatisticsView.Layout.ChartBrowser, "Commerce", null, true),
+			("chart_units_built_own", playerOnly, StatisticsView.Layout.ChartBrowser, "Units built", null, false),
 		];
 
 		Directory.CreateDirectory(ShotsDir);

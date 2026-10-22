@@ -181,6 +181,36 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(surplus, human.stats.foodWasted[0]);
 	}
 
+	[Fact]
+	public void CitiesCountTheUnitsTheyBuild() {
+		(C7GameData.GameData gameData, Player human, City city) = GameWithACity();
+		int unitsBefore = human.units.Count;
+		foreach (string unit in new[] { "Warrior", "Archer", "Warrior" }) {
+			city.SetItemBeingProduced(Unit(gameData, unit));
+			city.SetStoredShields(human.ShieldCost(city.itemBeingProduced));
+			city.HandleCityProduction(gameData);
+		}
+
+		Assert.Equal(unitsBefore + 3, human.units.Count);
+		Assert.Equal(new Dictionary<string, int> { ["Warrior"] = 2, ["Archer"] = 1 }, human.stats.unitsBuilt);
+	}
+
+	[Fact]
+	public void FreeUnitsAreNotCountedAsBuilt() {
+		C7GameData.GameData gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		Player ai = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		CityInteractions.BuildCity(ai.units[0].location, ai, "Freebieville");
+		gameData.turn = 1;
+		gameData.gameDifficulty.ExtraStartUnit1 = 2;
+		int unitsBefore = ai.units.Count;
+
+		ai.MaybeSpawnBonusUnits(gameData);
+
+		Assert.True(ai.units.Count >= unitsBefore + 2);
+		Assert.Empty(ai.stats.unitsBuilt);
+	}
+
 	// ---------------------------------------------------------------- through real turns
 
 	private static async Task EndTurn(Player human) {
@@ -228,12 +258,16 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 	[Fact]
 	public async Task StatsSurviveSavingAndLoadingCompactly() {
 		Player human = await CreateGame.createGame(fixture.saveGame.Clone(), _ => fixture.behaviors);
-		CityInteractions.BuildCity(human.units[0].location, human, "Statsville");
+		City city = CityInteractions.BuildCity(human.units[0].location, human, "Statsville");
 		TurnHandling.OnBeginTurn();
 		TurnHandling.InitTurnData();
 		await TurnHandling.AdvanceTurn();
+		// A Warrior that finishes during the next turn's processing.
+		city.SetItemBeingProduced(EngineStorage.gameData.unitPrototypes.Find(u => u.name == "Warrior"));
+		city.SetStoredShields(human.ShieldCost(city.itemBeingProduced));
 		await EndTurn(human);
 		await EndTurn(human);
+		Assert.Equal(1, human.stats.unitsBuilt.GetValueOrDefault("Warrior"));
 
 		string path = Path.Combine(Path.GetTempPath(), "openciv3-stats-roundtrip.json");
 		SaveGame.FromGameData(EngineStorage.gameData).Save(path);
@@ -246,6 +280,7 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 
 		PlayerStats reloaded = loaded.Players.First(p => p.id == human.id).stats;
 		Assert.Equal(PublicSeries(human.stats), PublicSeries(reloaded));
+		Assert.Equal(human.stats.unitsBuilt, reloaded.unitsBuilt);
 	}
 
 	[Fact]
@@ -263,6 +298,7 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 		C7GameData.GameData gameData = oldSave.ToGameData(fixture.behaviors);
 
 		Assert.All(gameData.players, p => Assert.Equal(0, p.stats.TurnCount));
+		Assert.All(gameData.players, p => Assert.Empty(p.stats.unitsBuilt));
 		// Recording starts normally from the next turn.
 		PlayerStats stats = gameData.players[0].stats;
 		stats.StartTurn(1);
