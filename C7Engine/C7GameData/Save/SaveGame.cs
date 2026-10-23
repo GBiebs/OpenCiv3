@@ -75,6 +75,7 @@ namespace C7GameData.Save {
 				CitizenTypes = data.citizenTypes,
 				TerraForms = data.Terraforms.ConvertAll(t => t.ToSaveTerraform()),
 				Governments = data.governments,
+				CultureOpinions = data.cultureOpinions,
 				WorldSizes = data.worldSizes,
 				Difficulties = data.difficulties,
 				GameDifficulty = data.gameDifficulty,
@@ -243,6 +244,7 @@ namespace C7GameData.Save {
 				alliances = Alliances,
 				citizenTypes = CitizenTypes,
 				governments = Governments,
+				cultureOpinions = CultureOpinions,
 				worldSizes = WorldSizes,
 				difficulties = Difficulties,
 				gameDifficulty = GameDifficulty,
@@ -527,6 +529,9 @@ namespace C7GameData.Save {
 		public List<CitizenType> CitizenTypes = new();
 		public List<SaveTerraform> TerraForms = new();
 		public List<Government> Governments = new();
+		// Civ3's culture levels; saves from before they were added have none,
+		// and then captured citizens never resist.
+		public List<CultureOpinion> CultureOpinions = new();
 		public List<WorldSize> WorldSizes = new();
 		public Dictionary<string, List<HistTurnRecord>> History = new();
 

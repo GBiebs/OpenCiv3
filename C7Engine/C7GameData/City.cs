@@ -267,6 +267,10 @@ namespace C7GameData {
 				return new HurryProductionDetails() { errorMessage = "The city is in disorder and cannot hurry production." };
 			}
 
+			if (IsInResistance()) {
+				return new HurryProductionDetails() { errorMessage = "We cannot hurry production while our city is in resistance." };
+			}
+
 			if (this.itemBeingProduced is Building building) {
 				// TODO: expose rules and make configurable
 				if (building.greatWonderProperties != null || building.isSmallWonder)
@@ -391,9 +395,14 @@ namespace C7GameData {
 			foodStored += foodGrowth;
 			foodStored = Math.Min(foodStored, foodNeededToGrow);
 
-			// Handle the city starving.
+			// Handle the city starving. Resisters are the first to starve.
 			if (foodStored < 0) {
-				RemoveLastCitizen();
+				CityResident resister = residents.FirstOrDefault(r => r.resisting);
+				if (resister != null) {
+					RemoveCitizen(resister);
+				} else {
+					RemoveLastCitizen();
+				}
 				foodStored = 0;
 				return;
 			}
@@ -681,8 +690,13 @@ namespace C7GameData {
 		}
 
 		public int FoodConsumedPerTurn() {
-			// TODO: exclude resisters in the future.
-			return residents.Count * 2;
+			// Resisters eat nothing.
+			return residents.Count(r => !r.resisting) * 2;
+		}
+
+		// Whether some of this city's citizens refuse to work for its owner.
+		public bool IsInResistance() {
+			return residents.Any(r => r.resisting);
 		}
 
 
@@ -972,11 +986,11 @@ namespace C7GameData {
 		// based on the difficulty level, and after that all citizens are born
 		// unhappy. Specialists and resisters are excluded from this.
 		private void InitializeMoodsForDifficulty(Difficulty gameDifficulty) {
-			int numLaborers = residents.Count(x => x.citizenType.IsDefaultCitizen);
+			int numLaborers = residents.Count(HasMood);
 			int content = Math.Min(gameDifficulty.NumberOfCitizensBornContent, numLaborers);
 
 			foreach (CityResident r in residents) {
-				if (!r.citizenType.IsDefaultCitizen) {
+				if (!HasMood(r)) {
 					continue;
 				}
 
@@ -991,11 +1005,17 @@ namespace C7GameData {
 
 		// Attemps to move the specified number of citizens that have mood `from`
 		// to mood `to`, returning the actual number changed.
+		// Whether a citizen's mood counts: laborers do; specialists and
+		// resisters don't.
+		private static bool HasMood(CityResident r) {
+			return r.citizenType.IsDefaultCitizen && !r.resisting;
+		}
+
 		private int ApplyMoodChange(int count, CityResident.Mood from, CityResident.Mood to) {
 			int result = 0;
 
 			foreach (CityResident r in residents) {
-				if (!r.citizenType.IsDefaultCitizen) {
+				if (!HasMood(r)) {
 					continue;
 				}
 
@@ -1159,7 +1179,7 @@ namespace C7GameData {
 
 			int happyCount = 0;
 			int unhappyCount = 0;
-			foreach (CityResident cr in residents) {
+			foreach (CityResident cr in residents.Where(HasMood)) {
 				if (cr.mood == CityResident.Mood.Happy) { ++happyCount; }
 				if (cr.mood == CityResident.Mood.Unhappy) { ++unhappyCount; }
 			}

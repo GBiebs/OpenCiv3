@@ -156,7 +156,8 @@ namespace C7Engine {
 			city.capturedOnTurn = gameData.turn;
 			city.capturedFrom = loser;
 
-			// Its citizens worked the loser's land; now they work the winner's.
+			// Its citizens worked the loser's land; now they work the winner's,
+			// unless they resist.
 			CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
 			foreach (CityResident resident in city.residents) {
 				resident.tileWorked.personWorkingTile = null;
@@ -165,7 +166,8 @@ namespace C7Engine {
 			}
 			gameData.UpdateTileOwnersOnCityCapture(city, bordersBefore);
 			gameData.InvalidateCachedTradeNetwork();
-			foreach (CityResident resident in city.residents) {
+			int resisters = Resistance.StartResisting(gameData, city);
+			foreach (CityResident resident in city.residents.Where(r => !r.resisting)) {
 				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
 			}
 			city.SetItemBeingProduced(ChooseProducible.Choose(city, winner));
@@ -173,7 +175,7 @@ namespace C7Engine {
 			RelocateCapitalIfLost(loser, gameData.Buildings.Find(x => x.isCenterOfEmpire));
 			loser.DoCorruptionCalculations(gameData);
 			winner.DoCorruptionCalculations(gameData);
-			log.Information($"{winner} captures {city.name} from {loser}: {gold} gold taken, buildings lost: {string.Join(", ", lost)}; wonders taken: {string.Join(", ", wonders)}");
+			log.Information($"{winner} captures {city.name} from {loser}: {gold} gold taken, {resisters} resisters, buildings lost: {string.Join(", ", lost)}; wonders taken: {string.Join(", ", wonders)}");
 
 			gameData.CheckForCivDestructionAndNotifyUi(loser);
 
@@ -181,7 +183,7 @@ namespace C7Engine {
 				RazeCity(city, winner, gold);
 				return CaptureOutcome.Razed;
 			}
-			new MsgCityCaptured(city, winner.id, loser.id, gold, wonders).send();
+			new MsgCityCaptured(city, winner.id, loser.id, gold, wonders, resisters).send();
 			return CaptureOutcome.Captured;
 		}
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace C7GameData {
@@ -68,6 +69,17 @@ namespace C7GameData {
 		public int draftLimit;
 		public int militaryPoliceLimit;
 		public int workerRate;
+
+		// The percent chance, each turn, that a foreign citizen in a city of a
+		// civ with this government takes on its nationality.
+		public int assimilationChance;
+
+		// When a civ with this government captures a city, added to the chance
+		// that each citizen resists, and that each resister keeps resisting, by
+		// the name of the government of the citizens' civ (Civ3's GOVT_GOVT
+		// resistance modifiers: usually -5 against "lower" governments and +5
+		// against "higher" ones).
+		public Dictionary<string, int> resistanceModifiers = new();
 
 		public bool allUnitsFree;
 		public int freeUnitsPerTown;

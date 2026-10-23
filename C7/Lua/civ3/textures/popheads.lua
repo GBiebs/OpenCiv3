@@ -27,7 +27,9 @@ end
 local function get_laborer(resident, era_num)
   local column = nil
 
-  if resident.mood == resident.mood.Content then
+  if resident.resisting then
+    column = 2
+  elseif resident.mood == resident.mood.Content then
     column = 0
   elseif resident.mood == resident.mood.Happy then
     column = 1

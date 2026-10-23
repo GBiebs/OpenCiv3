@@ -13088,7 +13088,18 @@
       "freeUnitsPerTown": 0,
       "freeUnitsPerCity": 0,
       "freeUnitsPerMetropolis": 0,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 1,
+      "resistanceModifiers": {
+        "Anarchy": 0,
+        "Despotism": 5,
+        "Monarchy": 5,
+        "Communism": 5,
+        "Republic": 5,
+        "Democracy": 5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": true,
@@ -13107,7 +13118,18 @@
       "freeUnitsPerTown": 4,
       "freeUnitsPerCity": 4,
       "freeUnitsPerMetropolis": 4,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 1,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": 0,
+        "Monarchy": 5,
+        "Communism": 5,
+        "Republic": 5,
+        "Democracy": 5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13127,7 +13149,18 @@
       "freeUnitsPerTown": 2,
       "freeUnitsPerCity": 4,
       "freeUnitsPerMetropolis": 8,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 2,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": 0,
+        "Communism": 5,
+        "Republic": 5,
+        "Democracy": 5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13147,7 +13180,18 @@
       "freeUnitsPerTown": 6,
       "freeUnitsPerCity": 6,
       "freeUnitsPerMetropolis": 6,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 4,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": -5,
+        "Communism": 0,
+        "Republic": -5,
+        "Democracy": 5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13167,7 +13211,18 @@
       "freeUnitsPerTown": 1,
       "freeUnitsPerCity": 3,
       "freeUnitsPerMetropolis": 4,
-      "unitCost": 2
+      "unitCost": 2,
+      "assimilationChance": 2,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": 5,
+        "Communism": 5,
+        "Republic": 0,
+        "Democracy": 5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13187,7 +13242,18 @@
       "freeUnitsPerTown": 0,
       "freeUnitsPerCity": 0,
       "freeUnitsPerMetropolis": 0,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 4,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": -5,
+        "Communism": 5,
+        "Republic": -5,
+        "Democracy": 0,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13207,7 +13273,18 @@
       "freeUnitsPerTown": 4,
       "freeUnitsPerCity": 7,
       "freeUnitsPerMetropolis": 10,
-      "unitCost": 1
+      "unitCost": 1,
+      "assimilationChance": 2,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": 0,
+        "Communism": -10,
+        "Republic": -5,
+        "Democracy": -5,
+        "Fascism": 0,
+        "Feudalism": 0
+      }
     },
     {
       "hasTilePenalty": false,
@@ -13227,7 +13304,62 @@
       "freeUnitsPerTown": 5,
       "freeUnitsPerCity": 2,
       "freeUnitsPerMetropolis": 1,
-      "unitCost": 3
+      "unitCost": 3,
+      "assimilationChance": 3,
+      "resistanceModifiers": {
+        "Anarchy": -5,
+        "Despotism": -5,
+        "Monarchy": 5,
+        "Communism": 5,
+        "Republic": 0,
+        "Democracy": 0,
+        "Fascism": 5,
+        "Feudalism": 0
+      }
+    }
+  ],
+  "cultureOpinions": [
+    {
+      "name": "in awe of",
+      "cultureRatioPercent": 300,
+      "initialResistanceChance": 40,
+      "continuedResistanceChance": 30,
+      "propagandaChance": 30
+    },
+    {
+      "name": "admirers of",
+      "cultureRatioPercent": 200,
+      "initialResistanceChance": 50,
+      "continuedResistanceChance": 40,
+      "propagandaChance": 25
+    },
+    {
+      "name": "impressed with",
+      "cultureRatioPercent": 100,
+      "initialResistanceChance": 60,
+      "continuedResistanceChance": 50,
+      "propagandaChance": 20
+    },
+    {
+      "name": "unimpressed by",
+      "cultureRatioPercent": 75,
+      "initialResistanceChance": 70,
+      "continuedResistanceChance": 60,
+      "propagandaChance": 10
+    },
+    {
+      "name": "dismissive of",
+      "cultureRatioPercent": 50,
+      "initialResistanceChance": 80,
+      "continuedResistanceChance": 70,
+      "propagandaChance": 5
+    },
+    {
+      "name": "disdainful of",
+      "cultureRatioPercent": 33,
+      "initialResistanceChance": 90,
+      "continuedResistanceChance": 80,
+      "propagandaChance": 3
     }
   ],
   "difficulties": [

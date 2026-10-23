@@ -456,6 +456,14 @@ public partial class Game : Node {
 				Vector2 pos = mapView.screenLocationOfTile(mSTP.location, true);
 				TemporaryPopup.Show(this, mSTP.message, pos);
 				break;
+			case MsgResistanceQuelled mRQ:
+				if (mRQ.playerId == controller.id) {
+					string resistanceText = mRQ.resistanceContinues
+						? $"Our troops have quelled {mRQ.stopped} {(mRQ.stopped == 1 ? "resister" : "resisters")} in {mRQ.city.name}!"
+						: $"The resistance in {mRQ.city.name} has ended!";
+					TemporaryPopup.Show(this, resistanceText, mapView.screenLocationOfTile(mRQ.city.location, true));
+				}
+				break;
 			case MsgUnitsCaptured mUC:
 				if (mUC.TextFor(controller.id) is string capturedText) {
 					TemporaryPopup.Show(this, capturedText, mapView.screenLocationOfTile(mUC.location, true));

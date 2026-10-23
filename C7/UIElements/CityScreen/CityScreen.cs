@@ -2,6 +2,7 @@ using Godot;
 using System;
 using Serilog;
 using System.Collections.Generic;
+using System.Linq;
 using C7GameData;
 using C7.Map;
 using C7.Textures;
@@ -241,7 +242,8 @@ public partial class CityScreen : Control {
 			int worstYield = int.MaxValue;
 			CityResident worst = null;
 
-			foreach (CityResident cr in city.residents) {
+			// Resisters won't work.
+			foreach (CityResident cr in city.residents.Where(r => !r.resisting)) {
 				int tileYield = cr.tileWorked.FoodYield(city.owner).yield +
 								cr.tileWorked.ProductionYield(city.owner).yield +
 								cr.tileWorked.CommerceYield(city.owner).yield;
@@ -249,6 +251,10 @@ public partial class CityScreen : Control {
 					worstYield = tileYield;
 					worst = cr;
 				}
+			}
+
+			if (worst == null) {
+				return;
 			}
 
 			// Move the worst citizen to our new tile, being sure to update
@@ -262,21 +268,17 @@ public partial class CityScreen : Control {
 
 		// If we've clicked the city center, re-assign all the citizens using
 		// the basic AI, but specify that we want to manage moods by using
-		// entertainers if necessary.
-		//
-		// TODO: This throws away existing nationalities, fix that.
+		// entertainers if necessary. Citizens keep their nationality, and
+		// resisters keep resisting.
 		if (tile.cityAtTile == city) {
-			int numResidents = city.residents.Count;
-			city.RemoveAllCitizens();
-
-			for (int i = 0; i < numResidents; ++i) {
-				CityResident newResident = new() {
-					citizenType = citizenTypes.Find(x => x.IsDefaultCitizen),
-					nationality = city.owner.civilization,
-					city = city
-				};
-				city.AddCitizen(newResident);
-				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, newResident, manageMoods: true);
+			List<CityResident> workers = city.residents.Where(r => !r.resisting).ToList();
+			foreach (CityResident resident in workers) {
+				resident.tileWorked.personWorkingTile = null;
+				resident.tileWorked = Tile.NONE;
+				resident.citizenType = citizenTypes.Find(x => x.IsDefaultCitizen);
+			}
+			foreach (CityResident resident in workers) {
+				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident, manageMoods: true);
 			}
 		}
 	}
@@ -742,11 +744,13 @@ public partial class CityScreen : Control {
 		// Start by splitting the default residents from the specialists, since
 		// they are spaced apart in the UI.
 		List<CityResident> happyResidents =
-			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && x.mood == CityResident.Mood.Happy);
+			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && !x.resisting && x.mood == CityResident.Mood.Happy);
 		List<CityResident> contentResidents =
-			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && x.mood == CityResident.Mood.Content);
+			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && !x.resisting && x.mood == CityResident.Mood.Content);
 		List<CityResident> unhappyResidents =
-			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && x.mood == CityResident.Mood.Unhappy);
+			city.residents.FindAll(x => x.citizenType.IsDefaultCitizen && !x.resisting && x.mood == CityResident.Mood.Unhappy);
+		// Resisters are shown last among the laborers, with their own head.
+		unhappyResidents.AddRange(city.residents.FindAll(x => x.resisting));
 		List<CityResident> specialists = city.residents.FindAll(x => !x.citizenType.IsDefaultCitizen);
 
 		// Leave a 1 head gap if we have specialists.

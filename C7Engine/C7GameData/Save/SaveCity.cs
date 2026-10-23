@@ -6,6 +6,7 @@ namespace C7GameData.Save {
 		public string nationality;
 		public ID city;
 		public TileLocation tileWorked;
+		public bool resisting;
 	}
 
 	public class SaveCityBuilding {
@@ -75,6 +76,7 @@ namespace C7GameData.Save {
 					city = resident.city.id,
 					tileWorked = new TileLocation(resident.tileWorked),
 					citizenType = resident.citizenType.Id,
+					resisting = resident.resisting,
 				};
 			});
 			buildings = city.constructed_buildings.ConvertAll(building => new SaveCityBuilding(building));
@@ -120,6 +122,7 @@ namespace C7GameData.Save {
 					nationality = civilizations.Find(civ => civ.name == resident.nationality) ?? city.owner.civilization,
 					tileWorked = gameMap.tileAt(resident.tileWorked.X, resident.tileWorked.Y),
 					city = city,
+					resisting = resident.resisting,
 				};
 			});
 

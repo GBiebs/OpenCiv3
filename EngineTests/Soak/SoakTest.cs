@@ -104,6 +104,14 @@ public class SoakTest {
 			if (!city.perPlayerCulture.ContainsKey(city.owner)) {
 				problems.Add($"{city.name} has no culture record for its owner, {city.owner}");
 			}
+			foreach (CityResident resident in city.residents) {
+				if (resident.resisting && resident.tileWorked != Tile.NONE) {
+					problems.Add($"A resister in {city.name} works {resident.tileWorked}");
+				}
+				if (resident.tileWorked != Tile.NONE && resident.tileWorked.personWorkingTile != resident) {
+					problems.Add($"A citizen of {city.name} works {resident.tileWorked}, but the tile says someone else does");
+				}
+			}
 		}
 		foreach (Player player in gameData.players) {
 			if (!player.isBarbarians && player.gold < 0) {
@@ -206,6 +214,14 @@ public class SoakTest {
 		int cities = gameData.cities.Count;
 		int civsLeft = gameData.players.Count(p => !p.isBarbarians && !p.defeated);
 		string ending = gameData.gameOver ? $", won by {gameData.winner?.civilization.name ?? "nobody"}" : "";
-		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}", []);
+		// What happened, from the messages the engine queued for the UI (nothing
+		// reads them here).
+		MessageToUI[] messages = EngineStorage.messagesToUI.ToArray();
+		string events = $"{messages.OfType<MsgCityCaptured>().Count()} cities captured "
+			+ $"({messages.OfType<MsgCityCaptured>().Sum(m => m.resisters)} resisters), "
+			+ $"{messages.OfType<MsgCityRazed>().Count()} razed or destroyed, "
+			+ $"{messages.OfType<MsgUnitsCaptured>().Count()} units captured, "
+			+ $"{gameData.cities.Sum(c => c.residents.Count(r => r.resisting))} resisters now";
+		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
 	}
 }

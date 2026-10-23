@@ -42,6 +42,7 @@ namespace C7GameData {
 		public List<CitizenType> citizenTypes = new();
 		public List<Terraform> Terraforms = new();
 		public List<Government> governments = new();
+		public List<CultureOpinion> cultureOpinions = new();
 		public List<WorldSize> worldSizes = new();
 		public List<Difficulty> difficulties = new();
 		public Difficulty gameDifficulty = new();

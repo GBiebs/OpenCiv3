@@ -159,13 +159,31 @@ namespace C7Engine {
 		public ID formerOwnerId;
 		public int goldTaken;
 		public List<string> wonders;
+		public int resisters;
 
-		public MsgCityCaptured(City city, ID conquerorId, ID formerOwnerId, int goldTaken, List<string> wonders) {
+		public MsgCityCaptured(City city, ID conquerorId, ID formerOwnerId, int goldTaken, List<string> wonders, int resisters) {
 			this.city = city;
 			this.conquerorId = conquerorId;
 			this.formerOwnerId = formerOwnerId;
 			this.goldTaken = goldTaken;
 			this.wonders = wonders;
+			this.resisters = resisters;
+		}
+	}
+
+	// Some of a city's resisters stopped resisting: the garrison quelled them,
+	// or their civ made peace.
+	public class MsgResistanceQuelled : MessageToUI {
+		public ID playerId;
+		public City city;
+		public int stopped;
+		public bool resistanceContinues;
+
+		public MsgResistanceQuelled(ID playerId, City city, int stopped, bool resistanceContinues) {
+			this.playerId = playerId;
+			this.city = city;
+			this.stopped = stopped;
+			this.resistanceContinues = resistanceContinues;
 		}
 	}
 

@@ -72,6 +72,7 @@ namespace C7GameData {
 			ImportUnitPrototypes();
 			ImportUnitUpgrades();
 			ImportGovernments(); // Before buildings, which can require a government
+			ImportCultureOpinions();
 			ImportBuildings();
 			ImportCiv3TerrainTypes();
 			ImportCiv3ExperienceLevels();
@@ -2110,7 +2111,8 @@ namespace C7GameData {
 		private void ImportGovernments() {
 			BiqData theBiq = biq.Govt is null ? defaultBiq : biq;
 
-			foreach (QueryCiv3.Biq.GOVT govt in theBiq.Govt) {
+			for (int i = 0; i < theBiq.Govt.Length; ++i) {
+				QueryCiv3.Biq.GOVT govt = theBiq.Govt[i];
 				Government g = new();
 				g.id = ids.CreateID("Government");
 				g.name = govt.Name;
@@ -2132,8 +2134,29 @@ namespace C7GameData {
 				g.freeUnitsPerCity = govt.FreeUnitsPerCity;
 				g.freeUnitsPerMetropolis = govt.FreeUnitsPerMetropolis;
 				g.unitCost = govt.UnitCost;
+				g.assimilationChance = govt.AssimilationChance;
+				// GOVT_GOVT[conqueror, conquered] holds the resistance modifier
+				// for a civ with this government capturing citizens of the other.
+				for (int j = 0; j < theBiq.Govt.Length; ++j) {
+					g.resistanceModifiers[theBiq.Govt[j].Name] = theBiq.GovtGovt[i, j].ResistanceModifier;
+				}
 
 				save.Governments.Add(g);
+			}
+		}
+
+		// Civ3's culture levels ("in awe of" ... "disdainful of"), which set
+		// how likely captured citizens are to resist.
+		private void ImportCultureOpinions() {
+			BiqData theBiq = biq.Cult is null ? defaultBiq : biq;
+			foreach (QueryCiv3.Biq.CULT cult in theBiq.Cult) {
+				save.CultureOpinions.Add(new CultureOpinion {
+					name = cult.Name,
+					cultureRatioPercent = cult.CultureRatioPercentage,
+					initialResistanceChance = cult.InitialResistanceChance,
+					continuedResistanceChance = cult.ContinuedResistanceChance,
+					propagandaChance = cult.ChanceOfSuccessfulPropaganda,
+				});
 			}
 		}
 

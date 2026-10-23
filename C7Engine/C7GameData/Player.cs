@@ -655,6 +655,12 @@ namespace C7GameData {
 			return result;
 		}
 
+		// The civ's culture, as Civ3 counts it: "the sum of the cultural value
+		// of all your cities".
+		public int TotalCulture() {
+			return cities.Sum(c => c.GetCulture());
+		}
+
 		public bool HasTech(ID techId) {
 			bool hasTech = techId == null || this.knownTechs.Contains(techId);
 			return hasTech;
@@ -825,6 +831,13 @@ namespace C7GameData {
 
 		public void HandleCityUpdates(GameData gameData) {
 			foreach (City c in cities) {
+				// Garrisons quell resisters (and peace ends their resistance)
+				// before the city works its tiles this turn.
+				int stopped = Resistance.Update(gameData, c);
+				if (stopped > 0 && isHuman) {
+					new MsgResistanceQuelled(id, c, stopped, c.IsInResistance()).send();
+				}
+
 				// Ensure borders expand before we assign the new citizen, so that
 				// the new citizen can go on one of our new tiles.
 				if (c.UpdateCultureAndCheckForExpansion()) {
@@ -1297,8 +1310,7 @@ namespace C7GameData {
 			float turnScore = ScoreVictory.ComputeTurnScore(this, gameData);
 			int score = (int) Math.Floor(lastScore + (turnScore - lastScore) / (1f * (n+1)));
 
-			// Culture is "the sum of the cultural value of all your cities"
-			int totalCulture = cities.Sum(c => c.GetCulture());
+			int totalCulture = TotalCulture();
 
 			gameData.history[id.ToString()].Add(new HistTurnRecord {
 				Date = gameData.timeOptions.GetRawNumber(gameData.turn),

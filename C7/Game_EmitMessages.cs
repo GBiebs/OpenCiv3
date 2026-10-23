@@ -372,7 +372,11 @@ public partial class Game {
 				$"Supreme Lord, once again our magnificent armies are victorious!\n" +
 					$"We have captured {msg.city.name}" +
 					(msg.goldTaken > 0 ? $" and \"liberated\" {msg.goldTaken} gold" : "") + "!" +
-					(wonders != "" ? $"\nAnd we now control {wonders}!" : ""),
+					(wonders != "" ? $"\nAnd we now control {wonders}!" : "") +
+					(msg.resisters > 0
+						? $"\nThere {(msg.resisters == 1 ? "is 1 resister" : $"are {msg.resisters} resisters")} in {msg.city.name}. " +
+							"We should garrison it with ground troops to quell the resistance."
+						: ""),
 				raze: () => new MsgRazeCity(msg.city, controller.id).send()
 			)
 		));
