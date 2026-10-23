@@ -129,6 +129,11 @@ public class SoakTest {
 			if (tile.owningCity != null && !liveCities.Contains(tile.owningCity)) {
 				problems.Add($"{tile} is owned by {tile.owningCity.name}, which is no longer in the game");
 			}
+			// As in Civ3, units of different players never share a tile:
+			// enemies are fought, captured or destroyed.
+			if (tile.unitsOnTile.Select(u => u.owner).Distinct().Count() > 1) {
+				problems.Add($"{tile} holds units of {string.Join(" and ", tile.unitsOnTile.Select(u => u.owner).Distinct())}");
+			}
 		}
 		return problems;
 	}

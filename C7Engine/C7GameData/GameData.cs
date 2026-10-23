@@ -343,13 +343,69 @@ namespace C7GameData {
 				CheckForCivDestructionAndNotifyUi(unit.owner);
 		}
 
-		internal void SpawnUnit(Player player, UnitPrototype proto, Tile tile) {
+		// Gives `unit` to `newOwner`, e.g. when it's captured. It keeps its
+		// type, experience and hit points, loses its orders and can't move again
+		// this turn. Workers keep their nationality (captured workers are
+		// slaves); other units take their new owner's.
+		internal void TransferUnit(MapUnit unit, Player newOwner) {
+			Player oldOwner = unit.owner;
+			if (unit.currentAI != null) {
+				unit.currentAI.UpdateOnDeath();
+				unit.currentAI = null;
+			}
+			oldOwner.units.Remove(unit);
+			unit.owner = newOwner;
+			newOwner.units.Add(unit);
+			if (!unit.unitType.isWorker) {
+				unit.nationality = newOwner.civilization;
+			}
+			unit.isFortified = false;
+			unit.isAutomated = false;
+			unit.path = TilePath.NONE;
+			unit.WorkerJob = null;
+			unit.WorkerProgressTowardsJob = 0;
+			unit.movementPoints.onConsumeAll();
+
+			oldOwner.tileKnowledge.RecomputeActiveTiles();
+			newOwner.tileKnowledge.AddTilesToKnown(unit.location);
+			newOwner.tileKnowledge.RecomputeActiveTiles();
+			log.Information($"{unit} at {unit.location} now belongs to {newOwner} (was {oldOwner})");
+
+			if (!oldOwner.defeated) {
+				CheckForCivDestructionAndNotifyUi(oldOwner);
+			}
+		}
+
+		// Captures an enemy unit for `captor`, as Civ3 does: a settler becomes
+		// two of the rules' slave units (workers) of the settler's nationality,
+		// anything else changes hands.
+		internal void CaptureUnit(MapUnit unit, Player captor) {
+			if (!unit.unitType.isSettler) {
+				TransferUnit(unit, captor);
+				return;
+			}
+
+			UnitPrototype slave = unitPrototypes.Find(u => u.name == rules.SlaveUnitType);
+			Tile tile = unit.location;
+			Civilization nationality = unit.nationality;
+			RemoveUnit(unit);
+			if (slave == null) {
+				log.Warning($"No slave unit type '{rules.SlaveUnitType}': the captured settler is lost");
+				return;
+			}
+			for (int i = 0; i < 2; i++) {
+				MapUnit worker = SpawnUnit(captor, slave, tile, nationality);
+				worker.movementPoints.onConsumeAll();
+			}
+		}
+
+		internal MapUnit SpawnUnit(Player player, UnitPrototype proto, Tile tile, Civilization nationality = null) {
 			// TODO: consolidate unit spawning routines (here)
 
 			var defaultExpLevel = this.defaultExperienceLevel;
 			var barbExpLevel = this.experienceLevels.First(e => e.baseHitPoints == this.barbarianInfo.maxHitpoints);
 
-			MapUnit newUnit = proto.GetInstance(this.GenerateID(proto.name), proto, player, location: tile);
+			MapUnit newUnit = proto.GetInstance(this.GenerateID(proto.name), proto, player, nationality, location: tile);
 
 			newUnit.experienceLevel = player.isBarbarians ? barbExpLevel : defaultExpLevel;
 			newUnit.experienceLevelKey = player.isBarbarians ? barbExpLevel.key : defaultExpLevel.key;
@@ -361,6 +417,7 @@ namespace C7GameData {
 
 			log.Debug("New unit of type {type} added at {tile} for player {player}",
 				proto.name, tile, player);
+			return newUnit;
 		}
 
 		public int TechCostFor(Tech tech, Player player) {

@@ -31,6 +31,9 @@ public partial class MapUnit {
 		//Add to player knowledge of tiles
 		owner.tileKnowledge.AddTilesToKnown(tile);
 
+		// Enemy units still here can't defend themselves: capture or destroy them.
+		CaptureUnitsOn(tile);
+
 		// Disperse barb camp
 		if (tile.hasBarbarianCamp && !owner.isBarbarians) {
 			EngineStorage.gameData.map.barbarianCamps.Remove(tile);
@@ -216,12 +219,14 @@ public partial class MapUnit {
 		Wake();
 
 		// Trigger combat if the tile we're moving into has an enemy  Or if this unit can't fight, do nothing.
+		// Enemies that can't defend themselves don't fight: we walk in and
+		// capture or destroy them (OnEnterTile).
 		MapUnit defender = newLoc.FindTopDefender(this);
-		if (defender != MapUnit.NONE && !owner.IsAtPeaceWith(defender.owner)) {
-			if (unitType.attack <= 0) {
-				return true;
-			}
-
+		bool enemyThere = defender != MapUnit.NONE && !owner.IsAtPeaceWith(defender.owner);
+		if (enemyThere && unitType.attack <= 0) {
+			return true;
+		}
+		if (enemyThere && defender.CanDefendItself()) {
 			CombatResult combatResult = await Fight(defender);
 			this.path = TilePath.NONE;
 			// If we were killed then of course there's nothing more to do. If the combat couldn't happen for whatever
@@ -237,7 +242,8 @@ public partial class MapUnit {
 			// but still pay one movement point for the combat.
 			if (combatResult == CombatResult.DefenderKilled || combatResult == CombatResult.DefenderRetreated) {
 				this.movementPoints.onUnitMove(1);
-				if (newLoc.FindTopDefender(this) != MapUnit.NONE) {
+				MapUnit nextDefender = newLoc.FindTopDefender(this);
+				if (nextDefender != MapUnit.NONE && nextDefender.CanDefendItself()) {
 					this.facingDirection = this.facingDirection.Reversed();
 					return true;
 				}

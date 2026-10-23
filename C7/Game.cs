@@ -447,6 +447,11 @@ public partial class Game : Node {
 				Vector2 pos = mapView.screenLocationOfTile(mSTP.location, true);
 				TemporaryPopup.Show(this, mSTP.message, pos);
 				break;
+			case MsgUnitsCaptured mUC:
+				if (mUC.TextFor(controller.id) is string capturedText) {
+					TemporaryPopup.Show(this, capturedText, mapView.screenLocationOfTile(mUC.location, true));
+				}
+				break;
 			case MsgUnitMoved mUUAAB:
 				EmitSignal(SignalName.UnitMoved, new ParameterWrapper<MapUnit>(mUUAAB.Unit));
 				break;

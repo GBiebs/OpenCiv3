@@ -19,6 +19,8 @@ namespace C7GameData {
 		public string StartUnitType1;
 		public string StartUnitType2;
 		public string ScoutUnitType;
+		// The unit captured workers and settlers become (Civ3's "slave" unit).
+		public string SlaveUnitType = "Worker";
 		public int MaxRankOfWorkableTiles;
 		public int MaxRankOfBarbarianCampTiles;
 		public int BarbarianCampGold = 25; // gold for dispersing a barbarian camp; not in Civ3's BIQ, so this is also the default for Civ3 saves and older OpenCiv3 saves

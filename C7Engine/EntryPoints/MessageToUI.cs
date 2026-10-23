@@ -1,6 +1,7 @@
 namespace C7Engine {
 	using C7GameData;
 	using System;
+	using System.Collections.Generic;
 
 	public interface IMessageToUI {
 		public void send();
@@ -252,6 +253,45 @@ namespace C7Engine {
 		public MsgBarbarianCampDispersed(ID controllerId, int goldEarned) {
 			this.controllerId = controllerId;
 			this.goldEarned = goldEarned;
+		}
+	}
+
+	// Units on a tile couldn't defend themselves and were captured or
+	// destroyed by an enemy moving in. The names are the units' names before
+	// capture (a captured Settler becomes two Workers).
+	public class MsgUnitsCaptured : MessageToUI {
+		public ID capturerId;
+		public ID victimId;
+		public Tile location;
+		public List<string> captured;
+		public List<string> destroyed;
+
+		public MsgUnitsCaptured(ID capturerId, ID victimId, Tile location, List<string> captured, List<string> destroyed) {
+			this.capturerId = capturerId;
+			this.victimId = victimId;
+			this.location = location;
+			this.captured = captured;
+			this.destroyed = destroyed;
+		}
+
+		// What to tell the given player, or null if it doesn't concern them.
+		public string TextFor(ID playerId) {
+			bool weTookThem = playerId == capturerId;
+			if (!weTookThem && playerId != victimId) {
+				return null;
+			}
+			List<string> lines = new();
+			if (captured.Count > 0) {
+				lines.Add(weTookThem
+					? (captured.Count == 1 ? $"We captured an enemy {captured[0]}!" : "We captured enemy units!")
+					: (captured.Count == 1 ? $"Our {captured[0]} was captured!" : "Our units were captured!"));
+			}
+			if (destroyed.Count > 0) {
+				lines.Add(weTookThem
+					? (destroyed.Count == 1 ? $"We destroyed an enemy {destroyed[0]}!" : "We destroyed enemy units!")
+					: (destroyed.Count == 1 ? $"Our {destroyed[0]} was destroyed!" : "Our units were destroyed!"));
+			}
+			return lines.Count == 0 ? null : string.Join(" ", lines);
 		}
 	}
 

@@ -128,6 +128,21 @@ namespace C7GameData {
 			}
 		}
 
+		// Whether this unit captures enemy units that can't defend themselves
+		// (workers, settlers, artillery) when it moves onto them, rather than
+		// destroying them. In Civ3 every ground unit that can attack can,
+		// except the Regicide kings.
+		public bool canCapture {
+			get => flags.Contains(SaveUnitPrototype.Flag.CanCapture);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.CanCapture);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.CanCapture);
+				}
+			}
+		}
+
 		public HashSet<string> categories = new HashSet<string>();
 
 		public HashSet<UnitAction> actions = [];

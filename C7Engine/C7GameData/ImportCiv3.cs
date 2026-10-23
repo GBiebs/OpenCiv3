@@ -1443,6 +1443,7 @@ namespace C7GameData {
 				if (prto.LethalSeaBombardment) prototype.flags.Add(SaveUnitPrototype.Flag.LethalSeaBombardment);
 				if (prto.Radar) prototype.flags.Add(SaveUnitPrototype.Flag.Radar);
 				if (prto.Wheeled) prototype.flags.Add(SaveUnitPrototype.Flag.Wheeled);
+				if (prto.Capture) prototype.flags.Add(SaveUnitPrototype.Flag.CanCapture);
 
 				prototype.actions.UnionWith(GetUnitActions(prto));
 				prototype.terraformActions.UnionWith(GetUnitTerraforms(prto).Select(tfKey => terraformIdByCiv3Key[tfKey]));
@@ -2180,6 +2181,9 @@ namespace C7GameData {
 			}
 			if (rule.StartUnitType2 >= 0) {
 				save.Rules.StartUnitType2 = theBiq.Prto[rule.StartUnitType2].Name;
+			}
+			if (rule.Slave >= 0) {
+				save.Rules.SlaveUnitType = theBiq.Prto[rule.Slave].Name;
 			}
 			if (rule.Scout >= 0) {
 				save.Rules.ScoutUnitType = theBiq.Prto[rule.Scout].Name;

@@ -1182,6 +1182,9 @@
       ],
       "requiredResources": [
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1258,6 +1261,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1335,6 +1341,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1409,6 +1418,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1481,6 +1493,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1556,6 +1571,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1620,7 +1638,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "wheeled"
+        "wheeled",
+        "canCapture"
       ],
       "categories": [
         "Land"
@@ -1720,6 +1739,9 @@
       ],
       "requiredResources": [
         "Horses"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1796,6 +1818,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1870,6 +1895,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -1948,6 +1976,9 @@
       ],
       "requiredResources": [
         "Saltpeter"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2024,6 +2055,9 @@
       "requiredResources": [
         "Horses",
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2099,6 +2133,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2173,6 +2210,9 @@
       "requiredResources": [
         "Horses",
         "Saltpeter"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2251,6 +2291,9 @@
       ],
       "requiredResources": [
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2329,6 +2372,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2405,6 +2451,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -2481,6 +2530,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4581,7 +4633,8 @@
       ],
       "unproducible": true,
       "flags": [
-        "radar"
+        "radar",
+        "canCapture"
       ],
       "categories": [
         "Land"
@@ -4639,6 +4692,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4684,6 +4740,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4729,6 +4788,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4774,6 +4836,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4822,6 +4887,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4870,6 +4938,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -4905,7 +4976,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "wheeled"
+        "wheeled",
+        "canCapture"
       ],
       "categories": [
         "Land"
@@ -4970,6 +5042,9 @@
       "requiredResources": [
         "Horses",
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5018,6 +5093,9 @@
       ],
       "requiredResources": [
         "Horses"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5066,6 +5144,9 @@
       ],
       "requiredResources": [
         "Saltpeter"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5114,6 +5195,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5159,6 +5243,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5205,6 +5292,9 @@
       "requiredResources": [
         "Horses",
         "Saltpeter"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5254,6 +5344,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5477,6 +5570,9 @@
       ],
       "requiredResources": [
         "Horses"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5522,6 +5618,9 @@
       ],
       "requiredResources": [
         "Horses"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5567,6 +5666,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5613,6 +5715,9 @@
       "requiredResources": [
         "Horses",
         "Saltpeter"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5661,6 +5766,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5710,6 +5818,9 @@
       "requiredResources": [
         "Horses",
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5755,6 +5866,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5886,6 +6000,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -5961,6 +6078,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -6927,6 +7047,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -6962,7 +7085,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "wheeled"
+        "wheeled",
+        "canCapture"
       ],
       "categories": [
         "Land"
@@ -7185,6 +7309,9 @@
       ],
       "requiredResources": [
         "Iron"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7456,6 +7583,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7501,6 +7631,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7672,6 +7805,9 @@
       ],
       "terraformActions": [
         "Terraform-3"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7710,6 +7846,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7867,6 +8006,9 @@
       "requiredResources": [
         "Oil",
         "Rubber"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -7939,6 +8081,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -8014,6 +8159,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     },
     {
@@ -8086,6 +8234,9 @@
         "goto",
         "explore",
         "load"
+      ],
+      "flags": [
+        "canCapture"
       ]
     }
   ],
@@ -11488,6 +11639,7 @@
     "startUnitType1": "Settler",
     "startUnitType2": "Worker",
     "scoutUnitType": "Scout",
+    "slaveUnitType": "Worker",
     "maxRankOfWorkableTiles": 2,
     "maxRankOfBarbarianCampTiles": 2,
     "barbarianCampGold": 25,
