@@ -45,6 +45,13 @@ namespace C7Engine.AI.UnitAI {
 		}
 
 		C7GameData.UnitAI.MoveResult C7GameData.UnitAI.PlayTurnImpl(Player player, MapUnit unit) {
+			// The city we were sent to defend was lost and another civ has a
+			// city there now: give up these orders so the unit gets new ones.
+			if (data.destination.cityAtTile is City target && target.owner != player) {
+				log.Information($"{unit} drops its orders: {target.name} at {data.destination} now belongs to {target.owner}");
+				return C7GameData.UnitAI.Result.Error;
+			}
+
 			if (data.destination == unit.location) {
 				if (!unit.isFortified) {
 					unit.Fortify();
@@ -93,11 +100,12 @@ namespace C7Engine.AI.UnitAI {
 			}
 
 			// Make the city less important if there are already units on the
-			// way.
+			// way. Only our own cities count: a unit may still be heading to a
+			// city we lost, whose tile another civ has since settled.
 			foreach (MapUnit u in player.units) {
 				if (u.currentAI is DefenderAI defenderAi) {
-					if (defenderAi.data.destination.cityAtTile != null) {
-						cityScores[defenderAi.data.destination.cityAtTile] -= 3f;
+					if (defenderAi.data.destination.cityAtTile is City target && cityScores.ContainsKey(target)) {
+						cityScores[target] -= 3f;
 					}
 				}
 			}
