@@ -303,37 +303,77 @@ public partial class Game {
 		));
 	}
 
-	public void EmitCityRaisedSignal(MsgCityRaised msg) {
-		Player attacker = null;
-		Player defender = null;
-
+	public void EmitCityRazedSignal(MsgCityRazed msg) {
+		Player razer = null;
 		EngineStorage.ReadGameData(data => {
-			attacker = data.players.First(p => p.id == msg.controllerId);
-			defender = data.players.First(p => p.id == msg.ownerId);
+			razer = data.players.First(p => p.id == msg.razerId);
 		});
+		bool weRazedIt = msg.razerId == controller.id;
+		string gold = msg.goldTaken > 0 ? $" and \"liberated\" {msg.goldTaken} gold" : "";
+		string wonders = string.Join(" and ", msg.wondersDestroyed);
 
-		var winningMessage =
-			$"Supreme Lord, once again our magnificent armies are victorious!\n" +
-			$"We have destroyed {msg.city.name} and \"liberated\" {msg.goldTaken} gold!";
-
-		var winningMood = Mood.Happy;
-
-		var losingMessage =
-			$"Terrible news, Sir!\n" +
-			$"The evil {attacker.civilization.adjective} have stolen " +
-			$"[i]{msg.goldTaken} gold[/i] from {msg.city.name} and burned it to the ground!\n" +
-			$"They should pay dearly for this atrocity!";
-
-		var losingMood = Mood.Angry;
+		string message;
+		if (weRazedIt && msg.destroyedOnCapture) {
+			message = $"Supreme Lord, once again our magnificent armies are victorious!\n" +
+				$"We have destroyed {msg.city.name}{gold}!";
+		} else if (weRazedIt) {
+			message = $"{msg.city.name} has been burned to the ground." +
+				(msg.slavesTaken > 0 ? $"\nWe have taken {msg.slavesTaken} of its people as slaves." : "") +
+				(wonders != "" ? $"\n{wonders} lies in ruins." : "");
+		} else {
+			message = $"Terrible news, Sir!\n" +
+				$"The evil {razer.civilization.adjective} have burned {msg.city.name} to the ground" +
+				(msg.goldTaken > 0 ? $" and stolen [i]{msg.goldTaken} gold[/i] from its vaults" : "") + "!" +
+				(wonders != "" ? $"\nThey destroyed {wonders}!" : "") +
+				"\nThey should pay dearly for this atrocity!";
+		}
 
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(
 				controller.id,
 				"Military Advisor",
-				msg.controllerWon ? winningMessage : losingMessage,
+				message,
 				Advisor.Military,
-				msg.controllerWon ? winningMood : losingMood,
+				weRazedIt ? Mood.Happy : Mood.Angry,
 				350
+			)
+		));
+	}
+
+	// The conqueror chooses to keep or raze the city; its former owner hears
+	// the bad news.
+	public void EmitCityCapturedSignal(MsgCityCaptured msg) {
+		string wonders = string.Join(" and ", msg.wonders);
+		if (msg.conquerorId != controller.id) {
+			Player conqueror = null;
+			EngineStorage.ReadGameData(data => {
+				conqueror = data.players.First(p => p.id == msg.conquerorId);
+			});
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(
+					controller.id,
+					"Military Advisor",
+					$"Terrible news, Sir!\n" +
+						$"{msg.city.name} was captured by the evil {conqueror.civilization.adjective}!" +
+						(msg.goldTaken > 0 ? $"\nThey have stolen [i]{msg.goldTaken} gold[/i] from its vaults." : "") +
+						(wonders != "" ? $"\nAnd they have taken {wonders}!" : "") +
+						"\nWe must make them pay!",
+					Advisor.Military,
+					Mood.Angry,
+					350
+				)
+			));
+			return;
+		}
+
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new KeepOrRazePopUp(
+				controller.id,
+				$"Supreme Lord, once again our magnificent armies are victorious!\n" +
+					$"We have captured {msg.city.name}" +
+					(msg.goldTaken > 0 ? $" and \"liberated\" {msg.goldTaken} gold" : "") + "!" +
+					(wonders != "" ? $"\nAnd we now control {wonders}!" : ""),
+				raze: () => new MsgRazeCity(msg.city, controller.id).send()
 			)
 		));
 	}

@@ -19,6 +19,12 @@ public partial class MapUnit {
 		return IsLandUnit() && !CanDefendItself() && (unitType.isWorker || unitType.isSettler || unitType.bombard > 0);
 	}
 
+	// Whether this unit can take an enemy city by moving in (Civ3: "only
+	// combat units can capture cities"). Barbarians ransack instead.
+	public bool CanTakeCities() {
+		return IsLandUnit() && (unitType.attack > 0 || unitType.canCapture);
+	}
+
 	// Called when this unit has moved onto `tile`. Any enemy units left there
 	// can't defend themselves, so they're captured or destroyed, and their
 	// owners are told.

@@ -486,6 +486,22 @@ namespace C7Engine {
 		}
 	}
 
+	// The player chose to raze a city they've just captured.
+	public class MsgRazeCity : MessageToEngine {
+		private City city;
+		private ID playerId;
+
+		public MsgRazeCity(City city, ID playerId) {
+			this.city = city;
+			this.playerId = playerId;
+		}
+
+		public override void process() {
+			Player player = EngineStorage.gameData.GetPlayer(playerId);
+			CityInteractions.RazeCity(city, player);
+		}
+	}
+
 	public class MsgDiplomacyCompleted : MessageToEngine {
 		public override void process() { }
 	}

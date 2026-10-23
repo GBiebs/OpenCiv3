@@ -79,6 +79,12 @@ namespace C7GameData {
 
 		public bool isInCivilDisorder = false;
 
+		// The turn this city was last captured, or -1, and who from. Its new
+		// owner may raze it only on that turn, as Civ3 offers right after the
+		// capture. Not saved.
+		public int capturedOnTurn = -1;
+		public Player capturedFrom;
+
 		public static City NONE = new City(Tile.NONE, null, "Dummy City", ID.None("city"));
 
 		public static bool IsValidCity(City city) {
@@ -697,6 +703,10 @@ namespace C7GameData {
 			residents.RemoveAt(index);
 		}
 
+		public void RemoveCitizen(CityResident resident) {
+			RemoveCitizenAt(residents.IndexOf(resident));
+		}
+
 		public void AddCitizen(CityResident cr) {
 			residents.Add(cr);
 		}
@@ -734,10 +744,19 @@ namespace C7GameData {
 			int result = 0;
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in GetBuildings()) {
+				if (IsCapturedWonder(cb)) {
+					continue;
+				}
 				var multiplier = AgeMultiplier(cb);
 				result += cb.building.culturePerTurn * multiplier;
 			}
 			return result;
+		}
+
+		// A great wonder that another civ built and we captured keeps its
+		// effects but makes no culture for us, as in Civ3.
+		private bool IsCapturedWonder(CityBuilding cb) {
+			return cb.building.IsGreatWonder() && cb.builtByPlayer != null && cb.builtByPlayer != owner;
 		}
 
 		private int AgeMultiplier(CityBuilding cb) {
@@ -938,7 +957,9 @@ namespace C7GameData {
 			int start = GetBorderExpansionLevel();
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in GetBuildings()) {
-				cb.totalCulture += cb.building.culturePerTurn;
+				if (!IsCapturedWonder(cb)) {
+					cb.totalCulture += cb.building.culturePerTurn;
+				}
 			}
 
 			perPlayerCulture[owner] += GetCulturePerTurn();

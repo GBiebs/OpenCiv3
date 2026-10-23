@@ -95,7 +95,9 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgShowTemporaryPopup mSTP:
 						continue;
-					case MsgCityRaised mCR:
+					case MsgCityRazed mCR:
+						continue;
+					case MsgCityCaptured mCC:
 						continue;
 					case MsgCityDestroyed mCD:
 						continue;

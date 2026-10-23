@@ -101,6 +101,9 @@ public class SoakTest {
 			if (city.residents.Count == 0) {
 				problems.Add($"{city.name} has no citizens but is still in the game");
 			}
+			if (!city.perPlayerCulture.ContainsKey(city.owner)) {
+				problems.Add($"{city.name} has no culture record for its owner, {city.owner}");
+			}
 		}
 		foreach (Player player in gameData.players) {
 			if (!player.isBarbarians && player.gold < 0) {

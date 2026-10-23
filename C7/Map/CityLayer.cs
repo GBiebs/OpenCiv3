@@ -14,6 +14,11 @@ namespace C7.Map {
 			EraseCity(city);
 		}
 
+		// The city's scene shows its owner's colors, so it's rebuilt.
+		public void UpdateAfterCityCaptured(City city) {
+			EraseCity(city);
+		}
+
 		private void EraseCity(City city) {
 			citySceneLookup.Remove(city, out CityScene cityScene);
 			if (cityScene != null) {

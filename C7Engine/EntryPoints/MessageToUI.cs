@@ -150,19 +150,44 @@ namespace C7Engine {
 		}
 	}
 
-	public class MsgCityRaised : MessageToUI {
-		public ID controllerId;
-		public ID ownerId;
+	// A city was captured and its conqueror keeps it, for now: a human
+	// conqueror is asked whether to keep or raze it (answering with
+	// MsgRazeCity), and its former owner is told.
+	public class MsgCityCaptured : MessageToUI {
 		public City city;
+		public ID conquerorId;
+		public ID formerOwnerId;
 		public int goldTaken;
-		public bool controllerWon;
+		public List<string> wonders;
 
-		public MsgCityRaised(ID controllerId, ID ownerId, City city, int goldTaken, bool controllerWon) {
-			this.controllerId = controllerId;
-			this.ownerId = ownerId;
+		public MsgCityCaptured(City city, ID conquerorId, ID formerOwnerId, int goldTaken, List<string> wonders) {
 			this.city = city;
+			this.conquerorId = conquerorId;
+			this.formerOwnerId = formerOwnerId;
 			this.goldTaken = goldTaken;
-			this.controllerWon = controllerWon;
+			this.wonders = wonders;
+		}
+	}
+
+	// A city was razed by the civ that captured it, or destroyed as it was
+	// captured (a size 1 city with no culture).
+	public class MsgCityRazed : MessageToUI {
+		public City city;
+		public ID razerId;
+		public ID formerOwnerId;
+		public int goldTaken;
+		public List<string> wondersDestroyed;
+		public int slavesTaken;
+		public bool destroyedOnCapture;
+
+		public MsgCityRazed(City city, ID razerId, ID formerOwnerId, int goldTaken, List<string> wondersDestroyed, int slavesTaken, bool destroyedOnCapture = false) {
+			this.city = city;
+			this.razerId = razerId;
+			this.formerOwnerId = formerOwnerId;
+			this.goldTaken = goldTaken;
+			this.wondersDestroyed = wondersDestroyed;
+			this.slavesTaken = slavesTaken;
+			this.destroyedOnCapture = destroyedOnCapture;
 		}
 	}
 

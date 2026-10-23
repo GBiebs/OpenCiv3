@@ -47,8 +47,8 @@ public partial class MapUnit {
 			}
 		}
 
-		// Destroy the enemy city on the tile unless we're the barbarians,
-		// in which case we'll just take some gold.
+		// Take the enemy city on the tile, unless we're the barbarians, in
+		// which case we'll just take some gold.
 		if (tile.HasCity() && !owner.IsAtPeaceWith(tile.cityAtTile.owner)) {
 			if (owner.isBarbarians) {
 				int goldTaken = RansackGold(tile.cityAtTile);
@@ -58,7 +58,7 @@ public partial class MapUnit {
 					new MsgCityRansacked(tile.cityAtTile.owner.id, tile.cityAtTile, this.owner.civilization.adjective, goldTaken).send();
 				}
 			} else {
-				CityInteractions.DestroyCity(tile);
+				CityInteractions.CaptureCity(tile.cityAtTile, this);
 			}
 		}
 
@@ -224,6 +224,10 @@ public partial class MapUnit {
 		MapUnit defender = newLoc.FindTopDefender(this);
 		bool enemyThere = defender != MapUnit.NONE && !owner.IsAtPeaceWith(defender.owner);
 		if (enemyThere && unitType.attack <= 0) {
+			return true;
+		}
+		// Only units that can fight can take a city, even an empty one.
+		if (newLoc.HasCity() && !owner.IsAtPeaceWith(newLoc.cityAtTile.owner) && !CanTakeCities()) {
 			return true;
 		}
 		if (enemyThere && defender.CanDefendItself()) {

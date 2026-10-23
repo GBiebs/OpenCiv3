@@ -226,8 +226,20 @@ namespace C7GameData {
 
 		public void UpdateTileOwnersOnCityDestruction(City city) {
 			city.location.owningCity = null;
+			ClearBorderClaims(city, city.GetTilesWithinBorders());
+			UpdateTileOwners();
+		}
 
-			var borderTiles = city.GetTilesWithinBorders();
+		// A captured city claims tiles with its new owner's culture in it
+		// (usually none, so its borders shrink): clears what it claimed under
+		// its old owner, `bordersBefore`, and reassigns the tiles.
+		public void UpdateTileOwnersOnCityCapture(City city, List<Tile> bordersBefore) {
+			ClearBorderClaims(city, bordersBefore);
+			city.location.owningCity = city;
+			UpdateTileOwners();
+		}
+
+		private void ClearBorderClaims(City city, List<Tile> borderTiles) {
 			var borderTileIds = borderTiles.Select(x => x.Id).ToHashSet();
 
 			foreach (Tile tile in borderTiles) {
@@ -246,8 +258,6 @@ namespace C7GameData {
 					fringeTile.owningCity = null;
 				}
 			}
-
-			UpdateTileOwners();
 		}
 
 		public void CheckForCivDestructionAndNotifyUi(Player player) {

@@ -359,11 +359,20 @@ public partial class Game : Node {
 					this.ensureLocationIsInView(mCD.city.location);
 				this.mapView.cityLayer.UpdateAfterCityDestruction(mCD.city);
 				break;
-			case MsgCityRaised mCR:
-				if (mCR.city.owner.id == controller.id)
-					this.ensureLocationIsInView(mCR.city.location);
+			case MsgCityRazed mCR:
 				this.mapView.cityLayer.UpdateAfterCityDestruction(mCR.city);
-				this.EmitCityRaisedSignal(mCR);
+				if (mCR.formerOwnerId == controller.id || mCR.razerId == controller.id) {
+					this.ensureLocationIsInView(mCR.city.location);
+					this.EmitCityRazedSignal(mCR);
+				}
+				break;
+			case MsgCityCaptured mCC:
+				// Redraw the city in its new owner's colors.
+				this.mapView.cityLayer.UpdateAfterCityCaptured(mCC.city);
+				if (mCC.conquerorId == controller.id || mCC.formerOwnerId == controller.id) {
+					this.ensureLocationIsInView(mCC.city.location);
+					this.EmitCityCapturedSignal(mCC);
+				}
 				break;
 			case MsgCityRansacked mCRS:
 				if (mCRS.city.owner.id == controller.id)

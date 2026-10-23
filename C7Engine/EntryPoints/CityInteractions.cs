@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using C7Engine.AI;
 using Serilog;
@@ -61,10 +62,8 @@ namespace C7Engine {
 			Tile tile = gameData.map.tileAt(X, Y);
 			Player owner = tile.cityAtTile.owner;
 
-			// TODO: this will get removed eventually, since we will be capturing non-combat units,
-			// plus, it doesn't what it says, if the city is abandoned for example, ALL units are removed.
-			// I am leaving it as it is for the moment.
-			tile.DisbandNonDefendingUnits(owner);
+			// Land units stay on the tile; ships and aircraft can't.
+			tile.RemoveUnitsStrandedOnLand();
 
 			tile.cityAtTile.RemoveAllCitizens();
 			tile.cityAtTile.owner.cities.Remove(tile.cityAtTile);
@@ -89,6 +88,161 @@ namespace C7Engine {
 			// Redo corruption calculations after a city is destroyed, since it
 			// may change rank corruption values.
 			owner.DoCorruptionCalculations(gameData);
+		}
+
+		// What became of a city an enemy took.
+		public enum CaptureOutcome {
+			Captured,
+			// A size 1 city with no culture: Civ3 destroys it instead.
+			Destroyed,
+			// The AI conqueror razed it.
+			Razed,
+		}
+
+		// `conqueror` has moved into `city`, which nothing defends any more, and
+		// takes it, as in Civ3:
+		// - the conqueror "liberates" the city's share of the loser's gold;
+		// - a citizen of the loser's nationality dies, or, in a size 1 city with
+		//   no culture, the city is destroyed;
+		// - the palace, small wonders and buildings that make culture are lost,
+		//   other buildings may be, and great wonders change hands;
+		// - the city's culture was its old owner's, so its borders shrink;
+		// - if it was the loser's capital, the palace moves.
+		// A human conqueror is then asked whether to keep or raze it
+		// (MsgCityCaptured, answered with MsgRazeCity); the AI decides here.
+		public static CaptureOutcome CaptureCity(City city, MapUnit conqueror) {
+			GameData gameData = EngineStorage.gameData;
+			Player loser = city.owner;
+			Player winner = conqueror.owner;
+
+			int gold = CaptureGold(city, winner);
+			loser.gold -= gold;
+			winner.gold += gold;
+
+			if (city.residents.Count == 1) {
+				// Unless its last citizen isn't one of the loser's own.
+				if (city.GetCultureFor(loser) == 0 && city.residents[0].nationality == loser.civilization) {
+					log.Information($"{winner} takes {city.name}, a size 1 city with no culture, and it's destroyed ({gold} gold taken)");
+					DestroyCity(city);
+					new MsgCityRazed(city, winner.id, loser.id, gold, [], 0, destroyedOnCapture: true).send();
+					return CaptureOutcome.Destroyed;
+				}
+			} else {
+				CityResident victim = city.residents.FirstOrDefault(r => r.nationality == loser.civilization);
+				if (victim != null) {
+					city.RemoveCitizen(victim);
+				}
+			}
+
+			List<string> wonders = new();
+			List<string> lost = new();
+			foreach (CityBuilding cb in city.constructed_buildings.ToList()) {
+				if (cb.building.IsGreatWonder()) {
+					wonders.Add(cb.building.name);
+				} else if (GameData.rng.Next(100) >= BuildingCaptureSurvivalChance(city, cb.building)) {
+					lost.Add(cb.building.name);
+					city.RemoveBuilding(cb);
+				}
+			}
+
+			List<Tile> bordersBefore = city.GetTilesWithinBorders();
+			loser.cities.Remove(city);
+			winner.cities.Add(city);
+			city.owner = winner;
+			city.capital = false;
+			city.perPlayerCulture.TryAdd(winner, 0);
+			city.isInCivilDisorder = false;
+			city.SetStoredShields(0);
+			city.capturedOnTurn = gameData.turn;
+			city.capturedFrom = loser;
+
+			// Its citizens worked the loser's land; now they work the winner's.
+			CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
+			foreach (CityResident resident in city.residents) {
+				resident.tileWorked.personWorkingTile = null;
+				resident.tileWorked = Tile.NONE;
+				resident.citizenType = laborer;
+			}
+			gameData.UpdateTileOwnersOnCityCapture(city, bordersBefore);
+			gameData.InvalidateCachedTradeNetwork();
+			foreach (CityResident resident in city.residents) {
+				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
+			}
+			city.SetItemBeingProduced(ChooseProducible.Choose(city, winner));
+
+			RelocateCapitalIfLost(loser, gameData.Buildings.Find(x => x.isCenterOfEmpire));
+			loser.DoCorruptionCalculations(gameData);
+			winner.DoCorruptionCalculations(gameData);
+			log.Information($"{winner} captures {city.name} from {loser}: {gold} gold taken, buildings lost: {string.Join(", ", lost)}; wonders taken: {string.Join(", ", wonders)}");
+
+			gameData.CheckForCivDestructionAndNotifyUi(loser);
+
+			if (!winner.isHuman && AiRazesCapturedCity(city, winner)) {
+				RazeCity(city, winner, gold);
+				return CaptureOutcome.Razed;
+			}
+			new MsgCityCaptured(city, winner.id, loser.id, gold, wonders).send();
+			return CaptureOutcome.Captured;
+		}
+
+		// Whether the AI razes a city it has just captured rather than keeping
+		// it. For now it keeps them all.
+		private static bool AiRazesCapturedCity(City city, Player ai) {
+			return false;
+		}
+
+		// Razes a city its owner captured this turn, as Civ3 offers right after
+		// a capture: the city is destroyed, with any great wonders in it, and its
+		// owner gets slaves, one of the rules' slave units (workers) for every two
+		// citizens left, with those citizens' nationality, foreigners first.
+		// `goldTaken` is only for the message to the city's former owner.
+		// Returns false, doing nothing, if the city can't be razed.
+		public static bool RazeCity(City city, Player razer, int goldTaken = 0) {
+			GameData gameData = EngineStorage.gameData;
+			if (city.owner != razer || city.capturedOnTurn != gameData.turn) {
+				log.Warning($"{razer} can't raze {city.name}: only a city captured this turn can be razed");
+				return false;
+			}
+
+			Tile tile = city.location;
+			List<Civilization> slaveNationalities = city.residents
+				.Select(r => r.nationality ?? razer.civilization)
+				.OrderBy(n => n == razer.civilization ? 1 : 0)
+				.Take(city.residents.Count / 2)
+				.ToList();
+			List<string> wonders = city.constructed_buildings
+				.Where(cb => cb.building.IsGreatWonder())
+				.Select(cb => cb.building.name)
+				.ToList();
+
+			DestroyCity(city);
+
+			UnitPrototype slave = gameData.unitPrototypes.Find(u => u.name == gameData.rules.SlaveUnitType);
+			if (slave != null) {
+				foreach (Civilization nationality in slaveNationalities) {
+					MapUnit worker = gameData.SpawnUnit(razer, slave, tile, nationality);
+					worker.movementPoints.onConsumeAll();
+				}
+			}
+			log.Information($"{razer} razes {city.name}, taking {slaveNationalities.Count} slaves; wonders destroyed: {string.Join(", ", wonders)}");
+			new MsgCityRazed(city, razer.id, city.capturedFrom?.id, goldTaken, wonders, slaveNationalities.Count).send();
+			return true;
+		}
+
+		// The gold a conqueror takes from a city's owner, from the Lua behavior
+		// gameplay.cities.capture_gold, kept between 0 and the owner's gold.
+		private static int CaptureGold(City city, Player conqueror) {
+			Player owner = city.owner;
+			int ownerCitizens = owner.cities.Sum(c => c.residents.Count);
+			Func<City, Player, int, int> captureGold = EngineStorage.gameData.luaBehaviorEngine.ImportFunc<Func<City, Player, int, int>>("gameplay.cities.capture_gold");
+			return Math.Clamp(captureGold.Invoke(city, conqueror, ownerCitizens), 0, Math.Max(owner.gold, 0));
+		}
+
+		// The percent chance a building (not a great wonder) survives its city's
+		// capture, from the Lua behavior gameplay.cities.building_capture_survival_chance.
+		private static int BuildingCaptureSurvivalChance(City city, Building building) {
+			Func<City, Building, int> chance = EngineStorage.gameData.luaBehaviorEngine.ImportFunc<Func<City, Building, int>>("gameplay.cities.building_capture_survival_chance");
+			return Math.Clamp(chance.Invoke(city, building), 0, 100);
 		}
 
 		// How strongly a city claims to be the new capital when the old one is

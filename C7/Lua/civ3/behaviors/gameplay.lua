@@ -56,6 +56,35 @@ local function building_sale_value(city, building, shield_cost)
   return math.floor(shield_cost / shields_per_gold)
 end
 
+-- Capturing a city "liberates" the city's share of its owner's treasury: the
+-- owner's gold times the city's share of the owner's citizens. Civ3 shows the
+-- amount but its formula isn't documented; this is Civilization II's.
+local function capture_gold(city, conqueror, owner_citizens)
+  if owner_citizens <= 0 then
+    return 0
+  end
+  return math.floor(city.owner.gold * #city.residents / owner_citizens)
+end
+
+-- The percent chance a building survives its city's capture. As in Civ3, the
+-- palace and small wonders are always lost, and so are buildings that make
+-- culture (so a conqueror gets no culture for free); the buildings that let
+-- a city grow past a size limit (aqueduct, hospital) always survive.
+-- Players report others as often lost; the exact chance isn't documented.
+-- Great wonders always change hands and aren't asked about.
+local function building_capture_survival_chance(city, building)
+  if building.isCenterOfEmpire or building.isSmallWonder then
+    return 0
+  end
+  if building.culturePerTurn > 0 then
+    return 0
+  end
+  if building.allowsCitySize2 or building.allowsCitySize3 then
+    return 100
+  end
+  return 50
+end
+
 local function get_display_time_text(raw_time)
   local bc = game_data().timeOptions.negativeLabel
   local ad = game_data().timeOptions.positiveLabel
@@ -154,6 +183,19 @@ gameplay = {
     -- Returns the gold the owner gets for selling the building.
     sale_value = function(city, building, shield_cost)
       return building_sale_value(city, building, shield_cost)
+    end,
+  },
+  cities = {
+    -- Context = City city (still its old owner's), Player conqueror,
+    -- int ownerCitizens (all the old owner's citizens, this city's included)
+    -- Returns the gold the conqueror takes from the old owner.
+    capture_gold = function(city, conqueror, owner_citizens)
+      return capture_gold(city, conqueror, owner_citizens)
+    end,
+    -- Context = City city, Building building (not a great wonder)
+    -- Returns the percent chance (0-100) the building survives the capture.
+    building_capture_survival_chance = function(city, building)
+      return building_capture_survival_chance(city, building)
     end,
   },
   time = {

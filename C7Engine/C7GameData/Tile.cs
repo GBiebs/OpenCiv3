@@ -466,25 +466,12 @@ namespace C7GameData {
 		}
 
 		/// <summary>
-		/// Disbands non-defending units on a tile.  This should only be called when all defending units have been destroyed,
-		/// hence its name.  E.g. if only air/sea units remain after a land battle, this should be called.
-		///
-		/// Eventually, we should also have a method to make relevant units (workers, artillery, etc.) be captured.
+		/// Removes the units that can't stay on this land tile once its city is
+		/// gone: ships, and aircraft based there. Land units stay.
 		/// </summary>
-		/// <param name="tile"></param>
-		public void DisbandNonDefendingUnits(Player owner) {
-			//There may have been naval units, if so, disband them
-			if (unitsOnTile.Count > 0) {
-				//Copy to a separate array so we don't crash due to concurrent modification exceptions
-				MapUnit[] unitsOnTile = new MapUnit[this.unitsOnTile.Count];
-				this.unitsOnTile.CopyTo(unitsOnTile);
-				foreach (MapUnit destroyedUnit in unitsOnTile) {
-					// Ensure we only destroy units of the losing side of the
-					// combat, not the unit entering the city.
-					if (destroyedUnit.owner == owner) {
-						destroyedUnit.RemoveFromPlay();
-					}
-				}
+		public void RemoveUnitsStrandedOnLand() {
+			foreach (MapUnit unit in unitsOnTile.Where(u => u.IsWaterUnit() || u.IsAirUnit()).ToList()) {
+				unit.RemoveFromPlay();
 			}
 		}
 
