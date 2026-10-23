@@ -378,6 +378,10 @@ public partial class Game : Node {
 				if (mBCD.controllerId == controller.id)
 					this.EmitBarbarianCampDispersedSignal(mBCD);
 				break;
+			case MsgBuildingSold mBS:
+				if (mBS.playerId == controller.id)
+					this.EmitBuildingSoldSignal(mBS);
+				break;
 			case MsgShowScienceAdvisor mSSA:
 				EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowScienceAdvisor);
 				break;

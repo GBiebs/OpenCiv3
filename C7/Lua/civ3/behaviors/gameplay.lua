@@ -45,6 +45,12 @@ local function ransack_gold(barbarian, city)
   return math.floor(city.owner.gold / 4)
 end
 
+-- A sold building returns a quarter of its shield cost in gold, as Civ3 does
+-- by players' accounts (for example 5 gold for 20-shield walls).
+local function building_sale_value(city, building, shield_cost)
+  return math.floor(shield_cost / 4)
+end
+
 local function get_display_time_text(raw_time)
   local bc = game_data().timeOptions.negativeLabel
   local ad = game_data().timeOptions.positiveLabel
@@ -135,6 +141,14 @@ gameplay = {
     -- Returns the gold the barbarian takes from the city's owner when it ransacks the city.
     ransack_gold = function(barbarian, city)
       return ransack_gold(barbarian, city)
+    end,
+  },
+  buildings = {
+    -- Context = City city, Building building, int shieldCost (what the
+    -- building costs the city's owner)
+    -- Returns the gold the owner gets for selling the building.
+    sale_value = function(city, building, shield_cost)
+      return building_sale_value(city, building, shield_cost)
     end,
   },
   time = {

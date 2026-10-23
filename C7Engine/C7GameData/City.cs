@@ -786,6 +786,27 @@ namespace C7GameData {
 			constructed_buildings.Remove(building);
 		}
 
+		// Wonders and the palace can't be sold.
+		public static bool CanBeSold(Building building) {
+			return !building.IsGreatWonder() && !building.isSmallWonder && !building.isCenterOfEmpire;
+		}
+
+		// The gold the owner gets for selling a building. The formula is the Lua
+		// behavior gameplay.buildings.sale_value, so game modes can change it.
+		public int SaleValue(Building building) {
+			Func<City, Building, int, int> saleValue = EngineStorage.gameData.luaBehaviorEngine.ImportFunc<Func<City, Building, int, int>>("gameplay.buildings.sale_value");
+			return Math.Max(0, saleValue.Invoke(this, building, building.ShieldCost(owner, 1.0f)));
+		}
+
+		// Sells a building: it's removed and the owner gets its sale value.
+		// Returns the gold received.
+		public int SellBuilding(CityBuilding cityBuilding) {
+			int gold = SaleValue(cityBuilding.building);
+			RemoveBuilding(cityBuilding);
+			owner.gold += gold;
+			return gold;
+		}
+
 		public void AddUnit(UnitPrototype proto, GameData gameData) {
 			MapUnit newUnit = proto.GetInstance(gameData.GenerateID(proto.name), proto, owner, location: location);
 			newUnit.experienceLevelKey = gameData.defaultExperienceLevelKey;

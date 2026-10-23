@@ -271,6 +271,19 @@ public partial class Game {
 		));
 	}
 
+	public void EmitBuildingSoldSignal(MsgBuildingSold msg) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(
+				controller.id,
+				"Domestic Advisor",
+				$"Our treasury is empty! We had to sell the {msg.buildingName} in {msg.cityName} for {msg.goldReceived} gold to pay our upkeep.",
+				Advisor.Domestic,
+				Mood.Sad,
+				350
+			)
+		));
+	}
+
 	public void EmitCivilizationDestroyedSignal(MsgCivilizationDestroyed msg) {
 		var friend = false;
 		EngineStorage.ReadGameData(data => {

@@ -786,12 +786,41 @@ namespace C7GameData {
 					continue;
 				}
 
-				// If the budget still isn't under control, something is wrong.
-				throw new Exception($"{this} was unable to get the budget under control despite being under the unit support cap and zeroing out the sliders (gold={gold}, gpt={CalculateGoldPerTurn()})");
+				// Then sell buildings, as Civ3 does when the treasury can't pay
+				// their upkeep.
+				if (SellBuildingForUpkeep()) {
+					continue;
+				}
+
+				// Nothing left that can be sold: the treasury stays empty.
+				log.Warning($"{this} can't pay its upkeep and has nothing left to sell (gold={gold}, gpt={CalculateGoldPerTurn()})");
+				break;
 			}
 
 			lastGoldPerTurn = CalculateGoldPerTurn();
-			gold += lastGoldPerTurn;
+			gold = Math.Max(0, gold + lastGoldPerTurn);
+		}
+
+		// Sells the building with the highest upkeep (the cheaper one on a tie)
+		// to help pay the bills, and tells the player. Returns false if there is
+		// nothing with upkeep left to sell.
+		private bool SellBuildingForUpkeep() {
+			(City city, CityBuilding building) = cities
+				.SelectMany(c => c.constructed_buildings.Select(cb => (c, cb)))
+				.Where(x => x.cb.building.maintenanceCost > 0 && City.CanBeSold(x.cb.building))
+				.OrderByDescending(x => x.cb.building.maintenanceCost)
+				.ThenBy(x => x.cb.building.ShieldCost(this, 1.0f))
+				.FirstOrDefault();
+			if (building == null) {
+				return false;
+			}
+
+			int goldReceived = city.SellBuilding(building);
+			log.Information($"{this} is out of gold and sells the {building.building.name} in {city.name} for {goldReceived} gold");
+			if (isHuman) {
+				new MsgBuildingSold(id, city.name, building.building.name, goldReceived).send();
+			}
+			return true;
 		}
 
 		public void HandleCityUpdates(GameData gameData) {

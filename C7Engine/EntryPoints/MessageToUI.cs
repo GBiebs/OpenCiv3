@@ -255,6 +255,21 @@ namespace C7Engine {
 		}
 	}
 
+	// A building was sold because the treasury couldn't pay the upkeep.
+	public class MsgBuildingSold : MessageToUI {
+		public ID playerId;
+		public string cityName;
+		public string buildingName;
+		public int goldReceived;
+
+		public MsgBuildingSold(ID playerId, string cityName, string buildingName, int goldReceived) {
+			this.playerId = playerId;
+			this.cityName = cityName;
+			this.buildingName = buildingName;
+			this.goldReceived = goldReceived;
+		}
+	}
+
 	public class MsgShowTemporaryPopup : MessageToUI {
 		public string message;
 		public Tile location;
