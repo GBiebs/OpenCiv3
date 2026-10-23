@@ -49,7 +49,7 @@ public class StartRatingTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(100, ratings.Average(r => r.roomIndex), 9);
 		Assert.Equal(100, ratings.Average(r => r.resourceIndex), 9);
 		// The factors' weights add up, so the rating is their weighted sum.
-		Assert.All(ratings, r => Assert.Equal(0.5 * r.siteIndex + 0.35 * r.roomIndex + 0.15 * r.resourceIndex, r.rating, 9));
+		Assert.All(ratings, r => Assert.Equal(StartPositionRating.SiteWeight * r.siteIndex + StartPositionRating.RoomWeight * r.roomIndex + StartPositionRating.ResourceWeight * r.resourceIndex, r.rating, 9));
 	}
 
 	[Fact]

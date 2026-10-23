@@ -45,9 +45,14 @@ public class StartRating {
 /// - resources: distinct luxury (counted twice) and strategic types nearby.
 /// </summary>
 public static class StartPositionRating {
-	public const double SiteWeight = 0.5;
-	public const double RoomWeight = 0.35;
-	public const double ResourceWeight = 0.15;
+	// Fitted on 200 all-AI games of 300 turns: the capital site's index varies far
+	// less than the others, so it needs the biggest weight to matter (here about
+	// 40% of the rating's spread, room 50%, resources 10%). Resources predicted
+	// nothing once site and room were known; they keep a small weight for human
+	// players, who use luxuries more than the AI.
+	public const double SiteWeight = 0.70;
+	public const double RoomWeight = 0.25;
+	public const double ResourceWeight = 0.05;
 
 	public const int ResourceRadius = 6;
 	public const int RoomRadius = 12;
