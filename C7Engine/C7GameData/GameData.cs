@@ -231,7 +231,10 @@ namespace C7GameData {
 			var borderTileIds = borderTiles.Select(x => x.Id).ToHashSet();
 
 			foreach (Tile tile in borderTiles) {
-				tile.owningCity = null;
+				// Another city inside the borders keeps its own tile.
+				if (!tile.HasCity() || tile.cityAtTile == city) {
+					tile.owningCity = null;
+				}
 
 				// Aggressively remove ownership from edge neighbors around the city outside the natural border.
 				// This clears out tile ownership due to Law VII or Law VIII.
@@ -445,7 +448,9 @@ namespace C7GameData {
 				if (r <= 0) continue;
 				Tile winner = t.FindInRing(r, tile => tile.HasCity() && (tile.cityAtTile == a || tile.cityAtTile == b), false);
 				if (winner == null) continue;
-				owner = winner.owningCity;
+				// The city on the tile, not the tile's owner: while borders are
+				// being reassigned, a city's tile can briefly have no owner.
+				owner = winner.cityAtTile;
 				return true;
 			}
 
