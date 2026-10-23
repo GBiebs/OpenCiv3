@@ -45,10 +45,15 @@ local function ransack_gold(barbarian, city)
   return math.floor(city.owner.gold / 4)
 end
 
--- A sold building returns a quarter of its shield cost in gold, as Civ3 does
--- by players' accounts (for example 5 gold for 20-shield walls).
+-- A sold building returns its shield cost converted to gold at the rules'
+-- shields-per-gold rate (4 in Civ3, the rate Wealth uses), as Civ3 does by
+-- players' accounts: for example 5 gold for 20-shield walls.
 local function building_sale_value(city, building, shield_cost)
-  return math.floor(shield_cost / 4)
+  local shields_per_gold = rules().ShieldCostPerGold
+  if shields_per_gold <= 0 then
+    return 0
+  end
+  return math.floor(shield_cost / shields_per_gold)
 end
 
 local function get_display_time_text(raw_time)

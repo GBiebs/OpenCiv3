@@ -16,7 +16,8 @@ public class BrokeTreasuryTest : IClassFixture<SaveGameFixture> {
 	private readonly City city;
 
 	public BrokeTreasuryTest(SaveGameFixture fixture) {
-		gameData = fixture.saveGame.ToGameData(fixture.behaviors);
+		// A clone, because tests change the rules, which the game shares with the save.
+		gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
 		EngineStorage.InitializeGameDataForTests(gameData);
 		EngineStorage.messagesToUI.Clear();
 		player = gameData.players.First(p => p.isHuman);
@@ -73,10 +74,14 @@ public class BrokeTreasuryTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
-	public void ABuildingSellsForAQuarterOfItsShieldCost() {
+	public void ABuildingSellsForItsShieldCostAtTheShieldsPerGoldRate() {
 		Building building = Sellable(b => b.ShieldCost(player, 1.0f) >= 40);
+		Assert.Equal(4, gameData.rules.ShieldCostPerGold); // Civ3's rate: a quarter of the cost
 
 		Assert.Equal(building.ShieldCost(player, 1.0f) / 4, city.SaleValue(building));
+
+		gameData.rules.ShieldCostPerGold = 8;
+		Assert.Equal(building.ShieldCost(player, 1.0f) / 8, city.SaleValue(building));
 	}
 
 	[Fact]
