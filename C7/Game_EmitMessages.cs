@@ -79,7 +79,7 @@ public partial class Game {
 		options.Add(mapBtn);
 
 		var loadGameBtn = new ButtonAction() {
-			message = "Load Game",
+			message = "Load Game (Ctrl-L)",
 			action = () => OnLoadGame(),
 		};
 		options.Add(loadGameBtn);
@@ -93,13 +93,13 @@ public partial class Game {
 		options.Add(preferencesBtn);
 
 		var retireBtn = new ButtonAction() {
-			message = "Retire",
-			action = () => OnRetire(),
+			message = "Retire (Ctrl-Q)",
+			action = () => EmitRetireConfirmationSignal(),
 		};
 		options.Add(retireBtn);
 
 		var saveBtn = new ButtonAction() {
-			message = "Save Game",
+			message = "Save Game (Ctrl-S)",
 			action = () => OnSaveGame(),
 		};
 		options.Add(saveBtn);
@@ -120,6 +120,24 @@ public partial class Game {
 				Mood.None,
 				hSize: 350,
 				margins: new Margins(top: 100)
+			)
+		));
+	}
+
+	public void EmitRetireConfirmationSignal() {
+		var message = "Retire from this game? All progress since your last save will be lost.";
+
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Do you want to retire?",
+				message,
+				Advisor.None,
+				Mood.None,
+				"Yes, retire from this game",
+				"No, let me keep playing",
+				() => OnRetire(),
+				hSize: 500
 			)
 		));
 	}
@@ -800,7 +818,7 @@ public partial class Game {
 
 		bool gridVisible = mapView != null ? mapView.gridLayer.visible : PreferencesSettings.GetShowGrid();
 		var showGridBtn = new ButtonAction() {
-			message = $"Show Grid (Ctrl+G): {(gridVisible ? "On" : "Off")}",
+			message = $"Show Grid (Ctrl-G): {(gridVisible ? "On" : "Off")}",
 			action = () => {
 				if (mapView != null) {
 					bool newValue = !mapView.gridLayer.visible;
