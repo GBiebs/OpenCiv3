@@ -55,6 +55,10 @@ namespace C7GameData {
 
 		public ID loadedOnUnitId { get; set; }
 
+		// Whether this unit has produced a great leader (Civ3's "Elite*"): each
+		// unit can produce only one.
+		public bool hasProducedLeader { get; set; }
+
 		public UnitAI currentAI;
 
 		public MapUnit(ID id) {

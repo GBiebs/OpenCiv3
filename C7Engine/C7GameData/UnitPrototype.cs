@@ -22,7 +22,9 @@ namespace C7GameData {
 		Unload,
 		Pillage,
 		JoinCity,
-		Upgrade
+		Upgrade,
+		BuildArmy,
+		HurryProduction
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {
@@ -170,6 +172,30 @@ namespace C7GameData {
 					flags.Add(SaveUnitPrototype.Flag.Draftable);
 				} else {
 					flags.Remove(SaveUnitPrototype.Flag.Draftable);
+				}
+			}
+		}
+
+		// A great leader, born in battle (see MapUnit.MaybeProduceLeader).
+		public bool isLeader {
+			get => flags.Contains(SaveUnitPrototype.Flag.Leader);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.Leader);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.Leader);
+				}
+			}
+		}
+
+		// An army, which other units load into (see MapUnit_Army.cs).
+		public bool isArmy {
+			get => flags.Contains(SaveUnitPrototype.Flag.Army);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.Army);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.Army);
 				}
 			}
 		}

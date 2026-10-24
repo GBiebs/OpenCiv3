@@ -4609,6 +4609,9 @@
         "Maya"
       ],
       "unproducible": true,
+      "flags": [
+        "leader"
+      ],
       "categories": [
         "Land"
       ],
@@ -4619,7 +4622,9 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "buildArmy",
+        "hurryProduction"
       ]
     },
     {
@@ -4694,7 +4699,8 @@
       "flags": [
         "radar",
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "army"
       ],
       "categories": [
         "Land"
@@ -10152,6 +10158,7 @@
         "Kushite",
         "Barbarian"
       ],
+      "greatLeaderNames": [],
       "isBarbarian": true
     },
     {
@@ -10210,6 +10217,16 @@
         "Teurnia",
         "Curia"
       ],
+      "greatLeaderNames": [
+        "Trajan",
+        "Hadrian",
+        "Maximus",
+        "Germanicus",
+        "Claudius",
+        "Anthony",
+        "Octavian",
+        "Titus"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-3"
@@ -10260,6 +10277,14 @@
         "Oryx",
         "Sebennytus",
         "Cairo"
+      ],
+      "greatLeaderNames": [
+        "Ramses",
+        "Cheops",
+        "Khufu",
+        "Mentuhotep",
+        "Seti",
+        "Na'rmer"
       ],
       "startingTechs": [
         "tech-7",
@@ -10312,6 +10337,12 @@
         "Apollonia",
         "Apolyton"
       ],
+      "greatLeaderNames": [
+        "Pyrrhus",
+        "Hector",
+        "Ajax",
+        "Ulysess"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-1"
@@ -10361,6 +10392,13 @@
         "Nina",
         "Ebla"
       ],
+      "greatLeaderNames": [
+        "Agum",
+        "Sumuabum",
+        "Ashurbanipal",
+        "Naboplasser",
+        "Nebuchadnezzar"
+      ],
       "startingTechs": [
         "tech-1",
         "tech-7"
@@ -10398,6 +10436,13 @@
         "Salzburg",
         "Dortmund",
         "Brandenburg"
+      ],
+      "greatLeaderNames": [
+        "Barbarossa",
+        "Richtofen",
+        "Hengest",
+        "Horsa",
+        "Rommel"
       ],
       "startingTechs": [
         "tech-6",
@@ -10460,6 +10505,14 @@
         "Suzdal'",
         "Magnitogorsk"
       ],
+      "greatLeaderNames": [
+        "Ivan the Terrible",
+        "Peter the Great",
+        "Stalin",
+        "Lenin",
+        "Trotsky",
+        "Zukhov"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-1"
@@ -10499,6 +10552,13 @@
         "Ningpo",
         "Paoting",
         "Yangchow"
+      ],
+      "greatLeaderNames": [
+        "K'uang-yin",
+        "Sun Tzu",
+        "Qianlong",
+        "Jin Qiu",
+        "General Tso"
       ],
       "startingTechs": [
         "tech-6",
@@ -10562,6 +10622,15 @@
         "Palo Alto",
         "Spokane"
       ],
+      "greatLeaderNames": [
+        "Washington",
+        "Lee",
+        "Sherman",
+        "Jackson",
+        "Grant",
+        "MacArthur",
+        "Patton"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-2"
@@ -10610,6 +10679,11 @@
         "Kozuke",
         "Sado"
       ],
+      "greatLeaderNames": [
+        "Tojo",
+        "Hirohito",
+        "Fujiwara"
+      ],
       "startingTechs": [
         "tech-5",
         "tech-7"
@@ -10653,6 +10727,12 @@
         "Bordeaux",
         "Rennes"
       ],
+      "greatLeaderNames": [
+        "Napoleon",
+        "Richelieu",
+        "De Gaulle",
+        "Charlemagne"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-2"
@@ -10691,6 +10771,16 @@
         "Indus",
         "Ganges",
         "Pune"
+      ],
+      "greatLeaderNames": [
+        "Chandragupta",
+        "Shivaji",
+        "Porus",
+        "Bindusara",
+        "Asoka",
+        "Akbar",
+        "Singh",
+        "Tilak"
       ],
       "startingTechs": [
         "tech-3",
@@ -10742,6 +10832,11 @@
         "Bunyan",
         "Charsadda",
         "Ura Tyube"
+      ],
+      "greatLeaderNames": [
+        "Darius",
+        "Cyrus",
+        "Achaemenes"
       ],
       "startingTechs": [
         "tech-1",
@@ -10801,6 +10896,18 @@
         "Ayotzinco",
         "Iztapam"
       ],
+      "greatLeaderNames": [
+        "Ahuitzotl",
+        "Itzcóatl",
+        "Acamapichtli",
+        "Axayacatl",
+        "Tizoc",
+        "Huitzilhuitl",
+        "Chimalpopoca",
+        "Maxtla",
+        "Nezahualcóyotl",
+        "Nezahualpilli"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-4"
@@ -10838,6 +10945,12 @@
         "Isipezi",
         "Amatikulu",
         "Zunguin"
+      ],
+      "greatLeaderNames": [
+        "Mpande",
+        "Zwelithini",
+        "Dingane",
+        "Cetshwayo"
       ],
       "startingTechs": [
         "tech-6",
@@ -10890,6 +11003,13 @@
         "Skannayutenate",
         "Onnontare"
       ],
+      "greatLeaderNames": [
+        "Shenandoah",
+        "Cornplanter",
+        "Tecumseh",
+        "Red Cloud",
+        "Sitting Bull"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-3"
@@ -10940,6 +11060,15 @@
         "Berwick",
         "Bath",
         "The Mumbles"
+      ],
+      "greatLeaderNames": [
+        "Edward",
+        "Boudicea",
+        "Nelson",
+        "Wallace",
+        "Cornwallis",
+        "Clinton",
+        "Wellington"
       ],
       "startingTechs": [
         "tech-3",
@@ -10993,6 +11122,14 @@
         "Saynshand",
         "Tumentsogt"
       ],
+      "greatLeaderNames": [
+        "Ogodei",
+        "Jochi",
+        "Chagatai",
+        "Tolui",
+        "Kublai",
+        "Mongke"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-4"
@@ -11045,6 +11182,14 @@
         "Burgos",
         "Vigo",
         "Badajoz"
+      ],
+      "greatLeaderNames": [
+        "Cordoba",
+        "Bartolome",
+        "Columbus",
+        "Zuniga",
+        "Olivares",
+        "Zumalacarregui"
       ],
       "startingTechs": [
         "tech-3",
@@ -11101,6 +11246,14 @@
         "Keflavik",
         "Thunderfall"
       ],
+      "greatLeaderNames": [
+        "Healfdene",
+        "Inwaaer",
+        "Hubba",
+        "Erik Bloodaxe",
+        "Leif Eriksson",
+        "Canute II"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-3"
@@ -11151,6 +11304,14 @@
         "Yozgat",
         "Tokat",
         "Van"
+      ],
+      "greatLeaderNames": [
+        "Orhan",
+        "Murad I",
+        "Suleyman I",
+        "Selim",
+        "Mehmed II",
+        "Bayezid II"
       ],
       "startingTechs": [
         "tech-1",
@@ -11204,6 +11365,14 @@
         "Arausio",
         "Durocortorum"
       ],
+      "greatLeaderNames": [
+        "Vercingetorix",
+        "Orgetorix",
+        "Caractacus",
+        "Boudicca",
+        "Cunobelinus",
+        "Dumnorix"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-7"
@@ -11253,6 +11422,13 @@
         "Tabuk",
         "Sana'a",
         "Shihr"
+      ],
+      "greatLeaderNames": [
+        "Uthman",
+        "Mu'awiya",
+        "Hind",
+        "Ziyad Ibn Abihi",
+        "Saffah"
       ],
       "startingTechs": [
         "tech-4",
@@ -11306,6 +11482,13 @@
         "Tacape",
         "Zama"
       ],
+      "greatLeaderNames": [
+        "Hamilcar",
+        "Mago",
+        "Hanno",
+        "Himilco",
+        "Hasdrubal"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-2"
@@ -11358,6 +11541,14 @@
         "Kumgang",
         "Oijongbu"
       ],
+      "greatLeaderNames": [
+        "Yi Song-gye",
+        "Chu-Mong",
+        "Pak Hyokkose",
+        "Onjo",
+        "Syngman Rhee",
+        "Kim Il Sung"
+      ],
       "startingTechs": [
         "tech-1",
         "tech-3"
@@ -11404,6 +11595,13 @@
         "Babil",
         "Apisala",
         "Dabrum"
+      ],
+      "greatLeaderNames": [
+        "Lugalzaggesi",
+        "Etana",
+        "Meskiaggasher",
+        "Enmerkar",
+        "Lugalbanda"
       ],
       "startingTechs": [
         "tech-4",
@@ -11452,6 +11650,13 @@
         "Kultepe",
         "Alisar Huyuk"
       ],
+      "greatLeaderNames": [
+        "Suppiluliumas",
+        "Muwatallis",
+        "Hattusilis",
+        "Huzziya",
+        "Anitta"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-3"
@@ -11498,6 +11703,13 @@
         "Leerdam",
         "Hilversum",
         "Roosendaal"
+      ],
+      "greatLeaderNames": [
+        "Abel Tasman",
+        "Willem Jansz",
+        "Dirck Hartog",
+        "Henry Hudson",
+        "Willem Jantszoon"
       ],
       "startingTechs": [
         "tech-4",
@@ -11557,6 +11769,16 @@
         "Mina",
         "Pederneira"
       ],
+      "greatLeaderNames": [
+        "Viriato",
+        "Afonso",
+        "Dinis",
+        "da Gama",
+        "Magellan",
+        "Cabral",
+        "Dias",
+        "Cabrillo"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-4"
@@ -11603,6 +11825,13 @@
         "Ani",
         "Edessa",
         "Taormina"
+      ],
+      "greatLeaderNames": [
+        "Justinian",
+        "Belisarius",
+        "Constantine",
+        "Theodosius",
+        "Irene"
       ],
       "startingTechs": [
         "tech-1",
@@ -11651,6 +11880,16 @@
         "Tambo Colorado",
         "Huaca"
       ],
+      "greatLeaderNames": [
+        "Tupa Inca-Yupanqui",
+        "Huayna Capac",
+        "Huascar",
+        "Atahuallpa",
+        "Manco Inca",
+        "Sayri Tupa Inca",
+        "Titu Cusi",
+        "Tupa Amaru"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-2"
@@ -11698,6 +11937,11 @@
         "Tazumal",
         "Cozumel",
         ""
+      ],
+      "greatLeaderNames": [
+        "Blue-Quetzal-Macaw",
+        "Eighteen Rabbit",
+        "Cauac-Sky"
       ],
       "startingTechs": [
         "tech-2",
@@ -11784,6 +12028,11 @@
     "slaveUnitType": "Worker",
     "upgradeCost": 3,
     "turnPenaltyForEachDraftedCitizen": 20,
+    "battleCreatedUnitType": "Leader",
+    "leaderChanceOneIn": 16,
+    "increasedLeaderChanceOneIn": 12,
+    "armyUnitType": "Army",
+    "citiesNeededToSupportAnArmy": 4,
     "maxRankOfWorkableTiles": 2,
     "maxRankOfBarbarianCampTiles": 2,
     "barbarianCampGold": 25,

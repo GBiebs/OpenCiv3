@@ -168,6 +168,13 @@ namespace C7GameData {
 		// to true), the turn number at which switching governments is allowed.
 		public int inAnarchyUntilTurn = 0;
 
+		// Whether one of our armies has won a battle; the Military Academy and
+		// the Heroic Epic require it.
+		public bool hasVictoriousArmy;
+
+		// How many great leaders we have had, which picks the next one's name.
+		public int leadersCreated;
+
 		// The current government of the player.
 		public Government government;
 

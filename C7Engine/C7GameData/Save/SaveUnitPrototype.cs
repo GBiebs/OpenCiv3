@@ -15,6 +15,10 @@ namespace C7GameData.Save {
 			CanCapture,
 			ZoneOfControl,
 			Draftable,
+			// A great leader (Civ3's "leader" ability).
+			Leader,
+			// An army: a unit that other units load into to move and fight together.
+			Army,
 		}
 
 		public string name { get; set; }

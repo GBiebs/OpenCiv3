@@ -541,6 +541,10 @@ namespace C7GameData {
 				foreach (RACE_City city in theBiq.RaceCityName[i]) {
 					civ.cityNames.Add(city.Name);
 				}
+				civ.greatLeaderNames = (theBiq.RaceGreatLeaderName?[i] ?? [])
+					.Select(leader => leader.Name.Trim())
+					.Where(name => name.Length > 0)
+					.ToList();
 				civ.traits = LoadCivTraits(race).ToHashSet();
 				civ.cultureGroupKey = GetCultureGroupIdentifier(race.CultureGroup);
 
@@ -670,6 +674,8 @@ namespace C7GameData {
 				if (leader.Researching > -1) {
 					player.currentlyResearchedTech = save.Techs[leader.Researching].id;
 				}
+
+				player.hasVictoriousArmy = leader.HasVictoriousArmy;
 
 				// Record any techs that this player knows.
 				for (int k = 0; k < savData.KnownTechFlags.Length; ++k) {
@@ -1122,6 +1128,7 @@ namespace C7GameData {
 					WorkerProgressTowardsJob = unit.WorkerProgressTowardsJob,
 					WorkerJob = (unit.WorkerJob==-1) ? null: save.TerraForms[unit.WorkerJob].Id,
 					isAutomated = unit.IsAutomated,
+					hasProducedLeader = unit.GeneratedLeader,
 				};
 				// since this is a .sav unit, we need to adjust things like the hp, remaining moves, etc
 				// TODO: there are surely more things to add here, e.x. has this unit used its defensive bombardment this round?
@@ -1375,6 +1382,8 @@ namespace C7GameData {
 			if (prto.Pillage) yield return UnitAction.Pillage;
 			if (prto.JoinCity) yield return UnitAction.JoinCity;
 			if (prto.UpgradeUnit) yield return UnitAction.Upgrade;
+			if (prto.BuildArmy) yield return UnitAction.BuildArmy;
+			if (prto.FinishImprovements) yield return UnitAction.HurryProduction;
 		}
 
 		private static IEnumerable<TerraformKey> GetUnitTerraforms(PRTO prto) {
@@ -1450,6 +1459,8 @@ namespace C7GameData {
 				if (prto.Capture) prototype.flags.Add(SaveUnitPrototype.Flag.CanCapture);
 				if (prto.ZoneOfControl != 0) prototype.flags.Add(SaveUnitPrototype.Flag.ZoneOfControl);
 				if (prto.Draft) prototype.flags.Add(SaveUnitPrototype.Flag.Draftable);
+				if (prto.Leader) prototype.flags.Add(SaveUnitPrototype.Flag.Leader);
+				if (prto.Army) prototype.flags.Add(SaveUnitPrototype.Flag.Army);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
 
@@ -2236,6 +2247,13 @@ namespace C7GameData {
 			}
 			save.Rules.UpgradeCost = rule.UpgradeCost;
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
+			if (rule.BattleCreatedUnit >= 0) {
+				save.Rules.BattleCreatedUnitType = theBiq.Prto[rule.BattleCreatedUnit].Name;
+			}
+			if (rule.BuildArmyUnit >= 0) {
+				save.Rules.ArmyUnitType = theBiq.Prto[rule.BuildArmyUnit].Name;
+			}
+			save.Rules.CitiesNeededToSupportAnArmy = rule.CitiesNeededToSupportAnArmy;
 			if (rule.Scout >= 0) {
 				save.Rules.ScoutUnitType = theBiq.Prto[rule.Scout].Name;
 			}

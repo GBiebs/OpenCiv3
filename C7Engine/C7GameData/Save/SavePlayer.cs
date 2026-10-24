@@ -69,6 +69,12 @@ namespace C7GameData.Save {
 
 		public string alliance;
 
+		// Whether one of the player's armies has won a battle (which the
+		// Military Academy and Heroic Epic require), and how many great leaders
+		// the player has had, which picks the next one's name.
+		public bool hasVictoriousArmy;
+		public int leadersCreated;
+
 		// Used when importing from .biq, to make it easier to distinguish barbarians from other players.
 		// It's not meant to be saved in the json.
 		[JsonIgnore]
@@ -95,6 +101,8 @@ namespace C7GameData.Save {
 				gold = gold,
 				turnsUntilPriorityReevaluation = turnsUntilPriorityReevaluation,
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
+				hasVictoriousArmy = hasVictoriousArmy,
+				leadersCreated = leadersCreated,
 				government = governments.Find(x => x.id == governmentId),
 				rules = rules,
 			};
@@ -160,6 +168,8 @@ namespace C7GameData.Save {
 			beakers = player.beakers;
 			turnsResearched = player.turnsResearched;
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
+			hasVictoriousArmy = player.hasVictoriousArmy;
+			leadersCreated = player.leadersCreated;
 			governmentId = player.government.id;
 
 			foreach (KeyValuePair<ID, PlayerRelationship> keyValuePair in player.playerRelationships) {

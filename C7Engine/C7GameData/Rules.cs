@@ -25,6 +25,20 @@ namespace C7GameData {
 		public int UpgradeCost = 3;
 		// How long each drafted citizen makes a city unhappier, in turns.
 		public int TurnPenaltyForEachDraftedCitizen = 20;
+		// The unit elite units can produce by winning battles (Civ3's
+		// "battle-created unit": the military great leader).
+		public string BattleCreatedUnitType = "Leader";
+		// The chance, one in this many, that an elite unit winning an attack
+		// against another civ produces a great leader; defending halves it.
+		// Civ3's BIQ has no such value; these are Civ3's (CivFanatics,
+		// "Creating and Using Leaders"): 16, or 12 with a building that
+		// increases the chance (the Heroic Epic).
+		public int LeaderChanceOneIn = 16;
+		public int IncreasedLeaderChanceOneIn = 12;
+		// The unit a leader turns into to build an army, and how many cities the
+		// player needs for each army.
+		public string ArmyUnitType = "Army";
+		public int CitiesNeededToSupportAnArmy = 4;
 		public int MaxRankOfWorkableTiles;
 		public int MaxRankOfBarbarianCampTiles;
 		public int BarbarianCampGold = 25; // gold for dispersing a barbarian camp; not in Civ3's BIQ, so this is also the default for Civ3 saves and older OpenCiv3 saves
