@@ -359,6 +359,19 @@ namespace C7Engine {
 		}
 	}
 
+	// One of the player's elite units produced a great leader at `location`.
+	public class MsgLeaderBorn : MessageToUI {
+		public ID playerId;
+		public Tile location;
+		public string leaderName;
+
+		public MsgLeaderBorn(ID playerId, Tile location, string leaderName) {
+			this.playerId = playerId;
+			this.location = location;
+			this.leaderName = leaderName;
+		}
+	}
+
 	// A unit that won a battle enslaved the unit it defeated, which became a
 	// `result` (by unit type name) for the winner.
 	public class MsgUnitEnslaved : MessageToUI {

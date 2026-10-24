@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using C7Engine;
 
@@ -46,7 +47,10 @@ public partial class MapUnit {
 	}
 
 	// Upgrades this unit where it is, paying for it. It keeps its experience,
-	// nationality, damage and moves left. Returns false if it couldn't.
+	// nationality, damage and moves left, except that a unit that has
+	// produced a great leader comes out a level lower (an elite one a veteran)
+	// and can produce another once promoted again, as in Civ3. Returns false
+	// if it couldn't.
 	public bool Upgrade() {
 		if (UpgradeOffer() is not (UnitPrototype target, int cost) || cost > owner.gold) {
 			return false;
@@ -55,6 +59,15 @@ public partial class MapUnit {
 		owner.gold -= cost;
 		unitType = target;
 		name = target.name;
+		if (hasProducedLeader) {
+			hasProducedLeader = false;
+			List<ExperienceLevel> levels = EngineStorage.gameData.experienceLevels;
+			int level = levels.IndexOf(experienceLevel);
+			if (level > 0) {
+				experienceLevel = levels[level - 1];
+				experienceLevelKey = experienceLevel.key;
+			}
+		}
 		hitPointsRemaining = Math.Min(hitPointsRemaining, maxHitPoints);
 		log.Information($"{owner} upgrades a {from.name} at {location} to a {target.name} for {cost} gold");
 		return true;

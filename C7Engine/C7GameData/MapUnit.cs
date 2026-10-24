@@ -743,6 +743,9 @@ namespace C7GameData {
 			if (UpgradeOffer() != null) {
 				result.Add(UnitAction.Upgrade);
 			}
+			if (CanHurryProduction()) {
+				result.Add(UnitAction.HurryProduction);
+			}
 
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.
 			// unit.availableActions.Add("rename");

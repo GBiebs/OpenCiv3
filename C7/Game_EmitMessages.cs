@@ -355,6 +355,19 @@ public partial class Game {
 		));
 	}
 
+	public void EmitLeaderBornSignal(MsgLeaderBorn msg) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(
+				controller.id,
+				"Military Advisor",
+				$"Our victory has produced a great military leader, {msg.leaderName}!",
+				Advisor.Military,
+				Mood.Happy,
+				350
+			)
+		));
+	}
+
 	public void EmitBuildingSoldSignal(MsgBuildingSold msg) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(

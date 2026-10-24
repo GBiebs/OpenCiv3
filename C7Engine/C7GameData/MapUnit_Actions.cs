@@ -400,6 +400,8 @@ public partial class MapUnit {
 
 		if ((result == CombatResult.AttackerKilled) || (result == CombatResult.DefenderKilled)) {
 			var (dead, alive) = (result == CombatResult.AttackerKilled) ? (attacker, defender) : (defender, attacker);
+			// Before promoting, so a unit only just made elite doesn't also roll.
+			alive.MaybeProduceLeader(dead, attacking: alive == attacker);
 			alive.RollToPromote(dead);
 			await dead.animateAsync(MapUnit.AnimatedAction.DEATH);
 			dead.RemoveFromPlay();

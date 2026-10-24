@@ -502,6 +502,18 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgUnitHurryProduction : MessageToEngine {
+		private ID unitId;
+
+		public MsgUnitHurryProduction(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			EngineStorage.gameData.GetUnit(unitId)?.HurryProduction();
+		}
+	}
+
 	public class MsgJoinCity : MessageToEngine {
 		private ID unitId;
 

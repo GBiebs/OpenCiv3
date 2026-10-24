@@ -117,6 +117,41 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(oldType, poor.unitType);
 	}
 
+	private MapUnit SpawnElite() {
+		MapUnit unit = Spawn();
+		unit.experienceLevel = gameData.experienceLevels.Last();
+		unit.experienceLevelKey = unit.experienceLevel.key;
+		unit.hitPointsRemaining = unit.maxHitPoints;
+		return unit;
+	}
+
+	// Civ3 (CivFanatics, "Creating and Using Leaders"): an upgraded "Elite*"
+	// unit becomes a veteran, and can produce a leader once elite again.
+	[Fact]
+	public void AUnitThatProducedALeaderComesOutAVeteran() {
+		city.AddBuilding(Barracks());
+		MapUnit unit = SpawnElite();
+		unit.hasProducedLeader = true;
+
+		Assert.True(unit.Upgrade());
+
+		ExperienceLevel veteran = gameData.experienceLevels[^2];
+		Assert.Equal(veteran, unit.experienceLevel);
+		Assert.Equal(veteran.key, unit.experienceLevelKey);
+		Assert.Equal(unit.maxHitPoints, unit.hitPointsRemaining);
+		Assert.False(unit.hasProducedLeader);
+	}
+
+	[Fact]
+	public void OtherEliteUnitsStayElite() {
+		city.AddBuilding(Barracks());
+		MapUnit unit = SpawnElite();
+
+		Assert.True(unit.Upgrade());
+
+		Assert.True(unit.IsElite());
+	}
+
 	[Fact]
 	public void TheCiv3RulesetHasConquestsUpgradeRules() {
 		Assert.Equal(3, gameData.rules.UpgradeCost);

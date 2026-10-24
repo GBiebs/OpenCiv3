@@ -58,13 +58,19 @@ public class EnslavementTest : IClassFixture<SaveGameFixture> {
 	private async Task<MapUnit> AttackUntilEnslaved(MapUnit attacker) {
 		for (int i = 0; i < 100; i++) {
 			attacker.hitPointsRemaining = 3;
-			int unitsBefore = attacker.owner.units.Count;
+			int enslavedBefore = EngineStorage.messagesToUI.OfType<MsgUnitEnslaved>().Count();
 			Assert.Equal(CombatResult.DefenderKilled, await attacker.Fight(Spawn(them, "Warrior", to)));
-			if (attacker.owner.units.Count > unitsBefore) {
-				return attacker.owner.units.Last();
+			if (EngineStorage.messagesToUI.OfType<MsgUnitEnslaved>().Count() > enslavedBefore) {
+				return attacker.owner.units.Last(u => u.unitType == attacker.unitType.enslaveResult);
 			}
 		}
 		throw new Exception("Nothing was enslaved in 100 won battles");
+	}
+
+	// The units on our tile, apart from great leaders, which our units may
+	// produce once they win enough to become elite.
+	private MapUnit[] UnitsOnOurTileBesidesLeaders() {
+		return from.unitsOnTile.Where(u => !u.unitType.isLeader).ToArray();
 	}
 
 	[Fact]
@@ -118,12 +124,12 @@ public class EnslavementTest : IClassFixture<SaveGameFixture> {
 	public async Task DefendersEnslaveToo() {
 		MapUnit javelin = Spawn(us, "Javelin Thrower", from);
 
-		for (int i = 0; i < 100 && us.units.Count(u => u.location == from) == 1; i++) {
+		for (int i = 0; i < 100 && UnitsOnOurTileBesidesLeaders().Length == 1; i++) {
 			javelin.hitPointsRemaining = 3;
 			Assert.Equal(CombatResult.AttackerKilled, await Spawn(them, "Warrior", to).Fight(javelin));
 		}
 
-		MapUnit slave = Assert.Single(from.unitsOnTile, u => u != javelin);
+		MapUnit slave = Assert.Single(UnitsOnOurTileBesidesLeaders(), u => u != javelin);
 		Assert.Equal("Worker", slave.unitType.name);
 		Assert.Equal(us, slave.owner);
 		Assert.Equal(them.civilization, slave.nationality);
@@ -139,7 +145,7 @@ public class EnslavementTest : IClassFixture<SaveGameFixture> {
 			Assert.Equal(CombatResult.DefenderKilled, await archer.Fight(Spawn(them, "Warrior", to)));
 		}
 
-		Assert.Equal([archer], from.unitsOnTile);
+		Assert.Equal([archer], UnitsOnOurTileBesidesLeaders());
 		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgUnitEnslaved>());
 	}
 
@@ -167,7 +173,7 @@ public class EnslavementTest : IClassFixture<SaveGameFixture> {
 			await javelin.Fight(Spawn(them, "Warrior", to));
 		}
 
-		Assert.Equal([javelin], from.unitsOnTile);
+		Assert.Equal([javelin], UnitsOnOurTileBesidesLeaders());
 	}
 
 	[Fact]

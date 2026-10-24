@@ -480,6 +480,13 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, capturedText, mapView.screenLocationOfTile(mUC.location, true));
 				}
 				break;
+			case MsgLeaderBorn mLB:
+				if (mLB.playerId == controller.id) {
+					this.ensureLocationIsInView(mLB.location);
+					EmitLeaderBornSignal(mLB);
+					InterestingEvent();
+				}
+				break;
 			case MsgUnitEnslaved mUE:
 				if (mUE.TextFor(controller.id) is string enslavedText) {
 					TemporaryPopup.Show(this, enslavedText, mapView.screenLocationOfTile(mUE.location, true));
@@ -1288,6 +1295,10 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.UnitJoinCity) {
 			new MsgJoinCity(CurrentlySelectedUnit.id).send();
+		}
+
+		if (currentAction == C7Action.UnitHurryProduction) {
+			new MsgUnitHurryProduction(CurrentlySelectedUnit.id).send();
 		}
 
 		if (currentAction == C7Action.UnitUpgrade) {

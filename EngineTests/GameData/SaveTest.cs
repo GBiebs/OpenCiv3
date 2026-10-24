@@ -107,6 +107,8 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgUnitEnslaved mUE:
 						continue;
+					case MsgLeaderBorn mLB:
+						continue;
 					case MsgBuildingSold mBS:
 						continue;
 					case MsgCivilizationDestroyed mCVD:

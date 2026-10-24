@@ -253,6 +253,15 @@ namespace C7GameData {
 			}
 		}
 
+		// The name for our next great leader: our civ's names in turn, starting
+		// over once they run out, or the leader type's name if the civ has none.
+		public string NextGreatLeaderName(UnitPrototype leaderType) {
+			List<string> names = civilization.greatLeaderNames;
+			string name = names.Count > 0 ? names[leadersCreated % names.Count] : leaderType.name;
+			leadersCreated++;
+			return name;
+		}
+
 		public string GetNextCityName() {
 			// Convert to hashset for faster lookups
 			HashSet<string> cityNameHashSet = cities.Select(city => city.name).ToHashSet();
