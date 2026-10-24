@@ -43,6 +43,7 @@ namespace C7Engine {
 			}
 
 			UpgradeUnits(player);
+			DraftForDefense(player, EngineStorage.gameData);
 			FillArmies(player);
 
 			await DoUnitActions(player);
@@ -208,7 +209,44 @@ namespace C7Engine {
 					unit.currentAI = GetAIForUnit(unit, player);
 				}
 
+				if (unit.hitPointsRemaining > 0) {
+					MaybePillage(unit, player);
+				}
+
 				player.tileKnowledge.AddTilesToKnown(unit.location);
+			}
+		}
+
+		// A unit left with moves after its plan raids: standing on improved
+		// land of a civ we're at war with, and with no enemy next to it, it
+		// pillages (Civ3's AI ravages its enemies' roads and mines). Using only
+		// leftover moves, a raid never delays an attack.
+		internal static void MaybePillage(MapUnit unit, Player player) {
+			Player landOwner = unit.location.owningCity?.owner;
+			if (landOwner == null || landOwner == player || player.IsAtPeaceWith(landOwner) || !unit.CanPillage()) {
+				return;
+			}
+			bool enemyNextToUs = unit.location.neighbors.Values.Any(t =>
+				t.unitsOnTile.Any(u => u.owner != player && !player.IsAtPeaceWith(u.owner) && u.IsCombatUnit()));
+			if (!enemyNextToUs) {
+				unit.Pillage();
+			}
+		}
+
+		// A threatened city drafts a defender (Civ3's AI drafts when attacked):
+		// at war, with an enemy combat unit within two tiles and fewer than two
+		// defenders, a city that can draft does.
+		internal static void DraftForDefense(Player player, GameData gameData) {
+			if (!IsInAnyWar(player, gameData.players)) {
+				return;
+			}
+			foreach (City city in player.cities.ToList()) {
+				int defenders = city.location.unitsOnTile.Count(u => u.owner == player && u.CanDefendOnLand() && !u.IsInArmy());
+				bool threatened = city.location.GetTilesWithinRankDistance(2).Any(t =>
+					t.unitsOnTile.Any(u => u.owner != player && !player.IsAtPeaceWith(u.owner) && u.IsCombatUnit()));
+				if (threatened && defenders < 2 && city.WhyCannotDraft(gameData) == null) {
+					city.Draft(gameData);
+				}
 			}
 		}
 

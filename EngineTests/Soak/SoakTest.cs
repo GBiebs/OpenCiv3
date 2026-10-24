@@ -231,6 +231,8 @@ public class SoakTest {
 			+ $"{messages.OfType<MsgCityRazed>().Count()} razed or destroyed, "
 			+ $"{messages.OfType<MsgUnitsCaptured>().Count()} units captured, "
 			+ $"{messages.OfType<MsgUnitEnslaved>().Count()} enslaved, "
+			+ $"{messages.OfType<MsgTilePillaged>().Count()} tiles pillaged, "
+			+ $"{gameData.mapUnits.Count(u => u.experienceLevelKey == "Conscript")} conscripts now, "
 			+ $"{gameData.cities.Sum(c => c.residents.Count(r => r.resisting))} resisters now, "
 			+ $"{messages.OfType<MsgLeaderBorn>().Count()} leaders born, "
 			+ $"{gameData.mapUnits.Count(u => u.IsArmy())} armies now "
