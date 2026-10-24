@@ -185,7 +185,7 @@ namespace C7GameData {
 					target.hitPointsRemaining -= 1;
 					await tile.AnimateAsync(this.hitList[GameData.rng.Next(0, hitList.Count)]);
 				}
-
+				WarWeariness.OnBombarded(target, owner);
 			} else
 				await tile.AnimateAsync(tile.IsWater() ? AnimatedEffect.WaterMiss : AnimatedEffect.Miss);
 
@@ -267,6 +267,7 @@ namespace C7GameData {
 				// Civ3 destroys improvements in the same order as pillaging.
 				destroyed.AddRange(tile.overlays.PillageNext());
 			});
+			WarWeariness.OnImprovementsDestroyed(tile, owner, destroyed.Count);
 
 			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {string.Join(" and ", destroyed.Select(i => i.key))}.");
 		}

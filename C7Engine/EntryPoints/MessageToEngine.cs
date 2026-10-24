@@ -177,10 +177,7 @@ namespace C7Engine {
 		}
 
 		public override void process() {
-			GameData gD = EngineStorage.gameData;
-			Government transitionGovt = gD.governments.Find(x => x.transitionType);
-			player.government = transitionGovt;
-			player.inAnarchyUntilTurn = gD.turn + player.GetTurnsOfAnarchyForTransition(gD);
+			player.StartRevolution(EngineStorage.gameData);
 
 			// Update the domestic advisor once we know how long the anarchy is.
 			new MsgUpdateUiAfterDomesticChange().send();

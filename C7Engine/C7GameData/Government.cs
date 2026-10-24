@@ -70,6 +70,15 @@ namespace C7GameData {
 		public int militaryPoliceLimit;
 		public int workerRate;
 
+		// How much war weariness this government suffers (in Civ3, low for
+		// the Republic and Feudalism, high for Democracy). See WarWeariness.
+		public enum WarWearinessType {
+			None,
+			Low,
+			High,
+		};
+		public WarWearinessType warWeariness;
+
 		// The percent chance, each turn, that a foreign citizen in a city of a
 		// civ with this government takes on its nationality.
 		public int assimilationChance;

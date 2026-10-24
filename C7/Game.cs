@@ -457,7 +457,9 @@ public partial class Game : Node {
 				EmitStartARevolutionSignal(mSR);
 				break;
 			case MsgDescendIntoAnarchy mDIA:
-				EmitDescendIntoAnarchySignal(mDIA);
+				// Also sent when war weariness overthrows a government.
+				if (mDIA.controllerId == controller.id)
+					EmitDescendIntoAnarchySignal(mDIA);
 				break;
 			case MsgAlreadyInRevolution mAIR:
 				EmitAlreadyInRevolutionSignal(mAIR);

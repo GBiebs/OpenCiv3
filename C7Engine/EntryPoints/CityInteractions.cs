@@ -115,6 +115,8 @@ namespace C7Engine {
 			Player loser = city.owner;
 			Player winner = conqueror.owner;
 
+			WarWeariness.OnCityLost(loser, winner, city.residents.Count);
+
 			int gold = CaptureGold(city, winner);
 			loser.gold -= gold;
 			winner.gold += gold;

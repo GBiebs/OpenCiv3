@@ -42,6 +42,10 @@ public class PlayerRelationship {
 
 	public bool declaredWarWithActiveRightOfPassage = false;
 
+	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness
+	// against p2. See WarWeariness.
+	public int warWearinessPoints = 0;
+
 	public bool AtWar() {
 		return multiTurnDeals.Count == 0;
 	}
@@ -116,6 +120,9 @@ public class PlayerRelationship {
 
 		// update whether the defender was sneak attacked
 		defenderRelationshipToAggressor.wasSneakAttacked = sneakAttack;
+
+		// The defender's people rally against the aggressor.
+		defenderRelationshipToAggressor.warWearinessPoints += WarWeariness.DeclaredWarOn;
 
 		// Set for how many turns the defender will refuse contact from the aggressor
 		defenderRelationshipToAggressor.refuseContactUntilTurn = refuseContactUntilTurn;

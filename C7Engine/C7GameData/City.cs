@@ -1208,7 +1208,11 @@ namespace C7GameData {
 				contentToHappyMoves -= (turnsOfUnhappinessDueToDrafting - 1) / Math.Max(1, gameData.rules.TurnPenaltyForEachDraftedCitizen) + 1;
 			}
 
-			// TODO: add penalty for war weariness
+			// War weariness, or war happiness while another civ's declaration
+			// of war on us still rallies the people (see WarWeariness).
+			(int warWeary, int warHappy) = WarWeariness.CitizensAffected(gameData, this);
+			contentToHappyMoves += warHappy - warWeary;
+
 			// TODO: add penalty for aggression against home country
 
 			// Building happiness/unhappiness, which only affects the unhappy to

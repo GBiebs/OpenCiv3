@@ -427,6 +427,8 @@ public partial class MapUnit {
 			alive.MaybeEnslave(dead);
 		}
 
+		WarWeariness.OnBattle(attacker, defender, attackerKilled: result == CombatResult.AttackerKilled);
+
 		if (result.DefenderWon())
 			defender.facingDirection = defenderOriginalDirection;
 

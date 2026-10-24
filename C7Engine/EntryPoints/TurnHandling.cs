@@ -60,6 +60,7 @@ namespace C7Engine {
 				BarbarianInteractions.SpawnBarbarians(gameData);
 
 				gameData.turn++;
+				WarWeariness.UpdateForNewTurn(gameData);
 				foreach (Player player in gameData.players) {
 					player.MaybeSpawnBonusUnits(gameData);
 					player.DecrementCityUnhappinessPenalties(gameData);

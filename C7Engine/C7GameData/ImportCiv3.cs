@@ -712,6 +712,7 @@ namespace C7GameData {
 			foreach (QueryCiv3.Sav.LEAD leader in savData.Lead) {
 				List<int> contacts = leader.GetContact();
 				List<int> refuseContactForTurns = leader.GetRefuseContactForTurns();
+				List<int> warWearinessPoints = leader.GetWarWearinessPoints();
 				for (int j = 0; j < contacts.Count; ++j) {
 					if (contacts[j] > 0) {
 						QueryCiv3.Sav.LEAD_LEAD relationship = savData.ReputationRelationship[i][j];
@@ -724,6 +725,7 @@ namespace C7GameData {
 							refuseContactUntilTurn =
 								refuseContactForTurns[j] > 0 ?
 									save.TurnNumber + refuseContactForTurns[j] : -1,
+							warWearinessPoints = warWearinessPoints[j],
 						});
 					}
 				}
@@ -2184,6 +2186,7 @@ namespace C7GameData {
 				g.draftLimit = govt.DraftLimit;
 				g.militaryPoliceLimit = govt.MilitaryPoliceLimit;
 				g.workerRate = govt.WorkerRate;
+				g.warWeariness = (Government.WarWearinessType)Math.Clamp(govt.WarWeariness, 0, 2);
 				g.allUnitsFree = govt.FreeUnits == -1;
 				g.freeUnitsPerTown = govt.FreeUnitsPerTown;
 				g.freeUnitsPerCity = govt.FreeUnitsPerCity;

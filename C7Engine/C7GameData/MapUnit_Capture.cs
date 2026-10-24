@@ -51,6 +51,7 @@ public partial class MapUnit {
 		movementPoints.onConsumeAll();
 		animate(AnimatedAction.ATTACK1);
 		Player landOwner = location.owningCity?.owner;
+		WarWeariness.OnImprovementsDestroyed(location, owner, destroyed.Count);
 		log.Information($"{this} pillages {string.Join(" and ", destroyed.Select(i => i.key))} at {location} (land of {landOwner?.ToString() ?? "nobody"})");
 		new MsgTilePillaged(location, owner.id, landOwner?.id, destroyed.Select(i => i.key).ToList()).send();
 		return destroyed;
@@ -107,6 +108,7 @@ public partial class MapUnit {
 					enemy.RemoveFromPlay();
 				}
 			}
+			WarWeariness.OnUnitsLost(byOwner.Key, owner, captured.Count + destroyed.Count);
 			log.Information($"{this} at {tile} captured {string.Join(", ", captured)} and destroyed {string.Join(", ", destroyed)} of {byOwner.Key}");
 			new MsgUnitsCaptured(owner.id, byOwner.Key.id, tile, captured, destroyed).send();
 		}

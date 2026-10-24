@@ -819,6 +819,13 @@ namespace C7GameData {
 			return result;
 		}
 
+		// Starts a revolution, chosen or forced by war weariness: the civ falls
+		// into anarchy, and picks a new government when it ends.
+		public void StartRevolution(GameData gameData) {
+			government = gameData.governments.Find(x => x.transitionType);
+			inAnarchyUntilTurn = gameData.turn + GetTurnsOfAnarchyForTransition(gameData);
+		}
+
 		public void DoPerTurnFinanceUpdates(GameData gameData) {
 			if (isBarbarians) {
 				return;

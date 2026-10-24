@@ -123,6 +123,16 @@ namespace QueryCiv3.Sav {
 		private fixed byte UnknownBuffer8[128];
 		private fixed int WarWearinessPoints[32];
 
+		// Returns a list of integers, where the i'th integer is this leader's
+		// war weariness points against the i'th leader.
+		public List<int> GetWarWearinessPoints() {
+			List<int> result = new();
+			for (int i = 0; i < 32; ++i) {
+				result.Add(WarWearinessPoints[i]);
+			}
+			return result;
+		}
+
 		private fixed bool WarStatus[32];
 
 		// Returns a list of booleans, where the i'th boolean being true means
