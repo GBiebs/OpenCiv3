@@ -388,7 +388,7 @@ namespace C7GameData {
 			SetItemBeingProduced(ChooseProducible.Choose(this, owner));
 		}
 
-		private IProducible GetMostExpensiveItemToProduce() {
+		internal IProducible GetMostExpensiveItemToProduce() {
 			IProducible best = null;
 			foreach (IProducible ip in ListProductionOptions(EngineStorage.gameData)) {
 				if (best == null || owner.ShieldCost(ip) > owner.ShieldCost(best)) {
@@ -574,8 +574,18 @@ namespace C7GameData {
 
 		public CorruptableValue CurrentProductionYield() {
 			int yield = location.ProductionYield(this).yield;
+			int tilesMakingShields = yield > 0 ? 1 : 0;
 			foreach (CityResident r in residents) {
-				yield += r.tileWorked.ProductionYield(this).yield;
+				int tileYield = r.tileWorked.ProductionYield(this).yield;
+				yield += tileYield;
+				if (tileYield > 0) {
+					tilesMakingShields++;
+				}
+			}
+			// Mobilized, a city building a military unit makes a shield more on
+			// every tile that makes one (Civilopedia "Mobilization").
+			if (owner.mobilized && itemBeingProduced is UnitPrototype unit && unit.IsMilitary()) {
+				yield += tilesMakingShields;
 			}
 			CorruptableValue result = new(yield, corruption);
 

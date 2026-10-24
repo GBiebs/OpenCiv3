@@ -41,7 +41,8 @@ public class Inflow : IProducible {
 	public bool CanProduce(City city, HashSet<Resource> accessibleResources) {
 		// TODO: add the option to unlock after researching a tech, or have a certain building, or having a certain resource
 		// as well as rendering it obsolete by a building/tech/resource. Basically make this as configurable as it can be
-		return true;
+		// Mobilized, a civ builds only military units and improvements.
+		return !city.owner.mobilized;
 	}
 
 	public Inflow(SaveInflow saveInflow, BehaviorEngine luaRulesEngine) {

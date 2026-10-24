@@ -273,12 +273,25 @@ namespace C7GameData {
 			return this.greatWonderProperties != null;
 		}
 
+		// A military improvement, which a mobilized civ may still build. The
+		// BIQ marks no buildings military except through the militaristic
+		// trait (Barracks, Walls, Coastal Fortress, the Pentagon...), so that's
+		// what counts.
+		public bool IsMilitary() {
+			return dataSource.traits.Contains(Civilization.Trait.Militaristic);
+		}
+
 		public bool HasWonderFlag(SaveBuilding.WonderFlag flag) {
 			return wonderFlags.Contains(flag);
 		}
 
 		public bool CanProduce(City city, HashSet<Resource> accessibleResources) {
 			if (!city.owner.HasRequiredTechnology(this)) {
+				return false;
+			}
+
+			// Mobilized, a civ builds only military improvements.
+			if (city.owner.mobilized && !IsMilitary()) {
 				return false;
 			}
 

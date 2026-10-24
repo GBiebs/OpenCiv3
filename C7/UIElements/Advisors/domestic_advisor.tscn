@@ -16,7 +16,7 @@ font_color = Color(0, 0, 0, 1)
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5hkgh"]
 
-[node name="DomesticAdvisor" type="CenterContainer" node_paths=PackedStringArray("background", "close", "changeGovernment", "governmentLabel", "scienceStatus", "treasury", "incomeDetails", "expenseDetails", "incomeSummary", "expenseSummary", "sumSummary", "growth", "cityListContainer", "eatenFood", "fullFood", "wastedShield", "goodShield", "wastedGold", "goodGold", "happyFace", "contentFace", "beaker", "treasuryIcon", "scienceSlider", "luxurySlider")]
+[node name="DomesticAdvisor" type="CenterContainer" node_paths=PackedStringArray("background", "close", "changeGovernment", "governmentLabel", "mobilize", "mobilizationLabel", "scienceStatus", "treasury", "incomeDetails", "expenseDetails", "incomeSummary", "expenseSummary", "sumSummary", "growth", "cityListContainer", "eatenFood", "fullFood", "wastedShield", "goodShield", "wastedGold", "goodGold", "happyFace", "contentFace", "beaker", "treasuryIcon", "scienceSlider", "luxurySlider")]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -28,6 +28,8 @@ background = NodePath("Background")
 close = NodePath("Background/Close")
 changeGovernment = NodePath("Background/ChangeGovernment")
 governmentLabel = NodePath("Background/ChangeGovernment/GovernmentLabel")
+mobilize = NodePath("Background/Mobilize")
+mobilizationLabel = NodePath("Background/Mobilize/MobilizationLabel")
 scienceStatus = NodePath("Background/ScienceStatus")
 treasury = NodePath("Background/Treasury")
 incomeDetails = NodePath("Background/IncomeDetails")
@@ -85,6 +87,31 @@ offset_top = 189.0
 offset_right = 642.0
 offset_bottom = 209.0
 text = "Government"
+label_settings = SubResource("LabelSettings_0b8py")
+
+[node name="Mobilize" type="TextureButton" parent="Background"]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 214.0
+offset_right = 795.0
+offset_bottom = 238.0
+script = ExtResource("3")
+
+[node name="MobilizationLabel" type="Label" parent="Background/Mobilize"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 2.0
+offset_right = 139.0
+offset_bottom = 22.0
+text = "Normalcy"
+
+[node name="MobilizationCaption" type="Label" parent="Background"]
+layout_mode = 0
+offset_left = 559.0
+offset_top = 217.0
+offset_right = 642.0
+offset_bottom = 237.0
+text = "Mobilization"
 label_settings = SubResource("LabelSettings_0b8py")
 
 [node name="ScienceStatus" type="Label" parent="Background"]

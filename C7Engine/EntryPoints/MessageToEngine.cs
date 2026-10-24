@@ -503,6 +503,21 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgSetMobilization : MessageToEngine {
+		private ID playerId;
+		private bool mobilize;
+
+		public MsgSetMobilization(ID playerId, bool mobilize) {
+			this.playerId = playerId;
+			this.mobilize = mobilize;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			gameData.players.Find(p => p.id == playerId)?.SetMobilized(mobilize, gameData);
+		}
+	}
+
 	public class MsgBuildArmy : MessageToEngine {
 		private ID unitId;
 

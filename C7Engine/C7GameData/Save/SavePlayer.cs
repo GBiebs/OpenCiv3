@@ -75,6 +75,11 @@ namespace C7GameData.Save {
 		public bool hasVictoriousArmy;
 		public int leadersCreated;
 
+		// Whether the player is mobilized for war, and has signed a peace
+		// treaty since, which lets it return to normalcy.
+		public bool mobilized;
+		public bool signedPeaceSinceMobilizing;
+
 		// Used when importing from .biq, to make it easier to distinguish barbarians from other players.
 		// It's not meant to be saved in the json.
 		[JsonIgnore]
@@ -103,6 +108,8 @@ namespace C7GameData.Save {
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				hasVictoriousArmy = hasVictoriousArmy,
 				leadersCreated = leadersCreated,
+				mobilized = mobilized,
+				signedPeaceSinceMobilizing = signedPeaceSinceMobilizing,
 				government = governments.Find(x => x.id == governmentId),
 				rules = rules,
 			};
@@ -170,6 +177,8 @@ namespace C7GameData.Save {
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
 			hasVictoriousArmy = player.hasVictoriousArmy;
 			leadersCreated = player.leadersCreated;
+			mobilized = player.mobilized;
+			signedPeaceSinceMobilizing = player.signedPeaceSinceMobilizing;
 			governmentId = player.government.id;
 
 			foreach (KeyValuePair<ID, PlayerRelationship> keyValuePair in player.playerRelationships) {

@@ -683,6 +683,51 @@ public partial class Game {
 		));
 	}
 
+	// Civ3's "Set mobilization level to..." (Shift-M or the Domestic Advisor):
+	// Normalcy or War-Time, whichever we may switch to.
+	private void EmitChangeMobilizationSignal() {
+		bool canMobilize = false;
+		bool canDemobilize = false;
+		bool mobilized = false;
+		string enablingTech = null;
+		EngineStorage.ReadGameData(data => {
+			Player player = data.players.First(p => p.id == controller.id);
+			canMobilize = player.CanMobilize();
+			canDemobilize = player.CanDemobilize();
+			mobilized = player.mobilized;
+			enablingTech = data.techs.FirstOrDefault(t => t.HasFlag(C7GameData.Save.SaveTech.Flag.EnablesMobilization))?.Name;
+		});
+
+		if (!canMobilize && !canDemobilize) {
+			string why = mobilized
+				? "We are on a war footing, and can't return to normalcy until we sign a peace treaty."
+				: $"We can't mobilize our economy for war until we learn {enablingTech ?? "how"}.";
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "Domestic Advisor", why, Advisor.Domestic, Mood.Sad, 350)));
+			return;
+		}
+
+		List<ButtonAction> options = [];
+		if (canDemobilize) {
+			options.Add(new ButtonAction() { message = "Normalcy", action = () => new MsgSetMobilization(controller.id, false).send() });
+		}
+		if (canMobilize) {
+			options.Add(new ButtonAction() { message = "War-Time", action = () => new MsgSetMobilization(controller.id, true).send() });
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(
+				controller.id,
+				"Mobilization",
+				"Set mobilization level to...",
+				options,
+				Advisor.Domestic,
+				Mood.None,
+				350,
+				margins: new Margins(top: 100)
+			)
+		));
+	}
+
 	private void EmitSelectTransportSignal(MsgSelectTransport msg) {
 		var options = new List<ButtonAction>();
 

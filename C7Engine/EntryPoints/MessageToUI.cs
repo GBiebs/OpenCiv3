@@ -233,6 +233,15 @@ namespace C7Engine {
 		}
 	}
 
+	// Asks the UI to offer the player a change of mobilization level.
+	public class MsgChangeMobilization : MessageToUI {
+		public ID controllerId;
+
+		public MsgChangeMobilization(ID controllerId) {
+			this.controllerId = controllerId;
+		}
+	}
+
 	public class MsgSelectGovernment : MessageToUI {
 		public ID controllerId;
 

@@ -175,6 +175,15 @@ namespace C7GameData {
 		// How many great leaders we have had, which picks the next one's name.
 		public int leadersCreated;
 
+		// Civ3's mobilization (Civilopedia "Mobilization"): with a tech that
+		// enables it (Nationalism), a civ puts its economy on a war footing.
+		// Its cities build only military units and military improvements, and
+		// a city building a military unit makes a shield more on every tile
+		// that makes one (City.CurrentProductionYield). It can't go back until
+		// it has signed a peace treaty.
+		public bool mobilized;
+		public bool signedPeaceSinceMobilizing;
+
 		// The current government of the player.
 		public Government government;
 
@@ -251,6 +260,34 @@ namespace C7GameData {
 				}
 				loopCounter++;
 			}
+		}
+
+		public bool CanMobilize() {
+			return !mobilized && !isBarbarians && HasTechWithFlag(SaveTech.Flag.EnablesMobilization);
+		}
+
+		public bool CanDemobilize() {
+			return mobilized && signedPeaceSinceMobilizing;
+		}
+
+		// Mobilizes, or returns to normalcy, if allowed. On mobilizing, cities
+		// building what's no longer allowed switch to the most expensive thing
+		// they can build. Returns whether anything changed.
+		public bool SetMobilized(bool mobilize, GameData gameData) {
+			if (mobilize ? !CanMobilize() : !CanDemobilize()) {
+				return false;
+			}
+			mobilized = mobilize;
+			signedPeaceSinceMobilizing = false;
+			if (mobilize) {
+				foreach (City city in cities) {
+					if (!city.itemBeingProduced.CanProduce(city, city.GetAccessibleResources(gameData))) {
+						city.SetItemBeingProduced(city.GetMostExpensiveItemToProduce());
+					}
+				}
+			}
+			log.Information($"{this} {(mobilize ? "mobilizes for war" : "returns to normalcy")}");
+			return true;
 		}
 
 		public int ArmyCount() {

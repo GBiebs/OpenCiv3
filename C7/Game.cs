@@ -446,6 +446,10 @@ public partial class Game : Node {
 			case MsgSelectGovernment mSG:
 				EmitSelectGovernmentSignal(mSG);
 				break;
+			case MsgChangeMobilization mCM:
+				if (mCM.controllerId == controller.id)
+					EmitChangeMobilizationSignal();
+				break;
 			case MsgSelectTransport mSelT:
 				EmitSelectTransportSignal(mSelT);
 				break;
@@ -1129,6 +1133,11 @@ public partial class Game : Node {
 			} else {
 				preferences.ShowPreferences();
 			}
+			return;
+		}
+
+		if (currentAction == C7Action.ChangeMobilization) {
+			EmitChangeMobilizationSignal();
 			return;
 		}
 

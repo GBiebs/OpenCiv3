@@ -151,6 +151,10 @@ public class PlayerRelationship {
 		left.playerRelationships[right.id].refuseContactUntilTurn = -1;
 		right.playerRelationships[left.id].refuseContactUntilTurn = -1;
 
+		// A mobilized civ may return to normalcy once it has signed a peace.
+		left.signedPeaceSinceMobilizing |= left.mobilized;
+		right.signedPeaceSinceMobilizing |= right.mobilized;
+
 		log.Information($"{left} signed a peace treaty with {right}");
 	}
 

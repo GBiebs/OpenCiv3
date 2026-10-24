@@ -13,6 +13,8 @@ public partial class DomesticAdvisor : Control {
 	[Export] TextureButton close;
 	[Export] TextureButton changeGovernment;
 	[Export] Label governmentLabel;
+	[Export] TextureButton mobilize;
+	[Export] Label mobilizationLabel;
 	[Export] Label scienceStatus;
 	[Export] Label treasury;
 	[Export] Label incomeDetails;
@@ -86,6 +88,9 @@ public partial class DomesticAdvisor : Control {
 
 		TextureLoader.SetButtonTextures(changeGovernment, "advisors.domestic.button");
 		changeGovernment.Pressed += ChangeGovernments;
+
+		TextureLoader.SetButtonTextures(mobilize, "advisors.domestic.button");
+		mobilize.Pressed += () => new MsgChangeMobilization(playerController.id).send();
 
 		ImageTexture scienceSliderTexture = TextureLoader.Load("icons.science");
 		ImageTexture luxurySliderTexture = TextureLoader.Load("icons.luxury");
@@ -221,6 +226,9 @@ public partial class DomesticAdvisor : Control {
 			luxurySliderLabel.Text = $"{luxuryRate * 10}%";
 
 			governmentLabel.Text = $"{playerController.government.name}";
+			// Civ3's two mobilization levels.
+			mobilizationLabel.Text = playerController.mobilized ? "War-Time" : "Normalcy";
+			mobilize.Disabled = !playerController.CanMobilize() && !playerController.CanDemobilize();
 			scienceStatus.Text = playerController.SummarizeScience(gameData);
 			treasury.Text = $"Treasury: {playerController.gold}";
 

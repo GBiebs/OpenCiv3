@@ -188,6 +188,12 @@ namespace C7GameData {
 			}
 		}
 
+		// A unit that fights or bombards; not a worker, settler, explorer or
+		// leader. Mobilization speeds up only these (Civilopedia).
+		public bool IsMilitary() {
+			return attack > 0 || defense > 0 || bombard > 0;
+		}
+
 		// Can attack more than once a turn (see MapUnit.CanAttackThisTurn).
 		public bool blitz {
 			get => flags.Contains(SaveUnitPrototype.Flag.Blitz);
