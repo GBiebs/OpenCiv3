@@ -253,6 +253,16 @@ namespace C7GameData {
 			}
 		}
 
+		public int ArmyCount() {
+			return units.Count(u => u.IsArmy());
+		}
+
+		// Whether we have the cities for one more army: the rules' number of
+		// cities for each (four in Civ3).
+		public bool CanSupportAnotherArmy() {
+			return (ArmyCount() + 1) * rules.CitiesNeededToSupportAnArmy <= cities.Count;
+		}
+
 		// The name for our next great leader: our civ's names in turn, starting
 		// over once they run out, or the leader type's name if the civ has none.
 		public string NextGreatLeaderName(UnitPrototype leaderType) {

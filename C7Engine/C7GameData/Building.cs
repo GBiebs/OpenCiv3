@@ -154,9 +154,14 @@ namespace C7GameData {
 		// DoublesResearchOutput is purely for matching the BIQ format. The actual
 		// science bonus is captured in researchBonus.
 		//
-		// TODO: RequiresVictoriousArmy and RequiresEliteShip are not tracked yet,
-		// so CanProduce currently refuses to build anything with either flag.
-		// Update that check when armies and elite ships are tracked on the player.
+		// - RequiresVictoriousArmy: CanProduce, against Player.hasVictoriousArmy.
+		// - IncreasesLeaderChance: MapUnit.LeaderChanceOneIn.
+		// - AllowsBuildArmy: UnitPrototype.CanProduce (armies in that city).
+		// - AllowsLargerArmies: MapUnit.ArmyCapacity.
+		//
+		// TODO: RequiresEliteShip is not tracked yet, so CanProduce refuses to
+		// build anything with it. Update that check when elite ships are
+		// tracked on the player.
 		//
 		// TODO: Wire up the remaining flags to actual in-game logic and bonuses.
 		// They are inert for now.
@@ -327,17 +332,17 @@ namespace C7GameData {
 				}
 			}
 
-			// TODO: This is fragile. MapUnit has no "is an army" flag, so we count
-			// the player's land units that can transport as armies. Update this
-			// when MapUnit has a more robust interface for armies.
-			if (numberOfArmiesRequired > 0 &&
-				city.owner.units.Count(u => u.CanTransport() && u.IsLandUnit()) < numberOfArmiesRequired) {
+			if (numberOfArmiesRequired > 0 && city.owner.ArmyCount() < numberOfArmiesRequired) {
 				return false;
 			}
 
-			// TODO: Victorious armies and elite ships are not yet tracked on the
-			// player, so we refuse to build these. Update this logic when they are.
-			if (HasWonderFlag(SaveBuilding.WonderFlag.RequiresEliteShip) || HasWonderFlag(SaveBuilding.WonderFlag.RequiresVictoriousArmy)) {
+			if (HasWonderFlag(SaveBuilding.WonderFlag.RequiresVictoriousArmy) && !city.owner.hasVictoriousArmy) {
+				return false;
+			}
+
+			// TODO: Elite ships are not yet tracked on the player, so we refuse
+			// to build these. Update this logic when they are.
+			if (HasWonderFlag(SaveBuilding.WonderFlag.RequiresEliteShip)) {
 				return false;
 			}
 

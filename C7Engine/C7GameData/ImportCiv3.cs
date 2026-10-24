@@ -1106,6 +1106,9 @@ namespace C7GameData {
 		private void ImportSavUnits() {
 			var shadowIdMap = new Dictionary<int, ID>();
 			var loadMap = new Dictionary<ID, int>();
+			// For armies: each unit's full hit points, and each army's damage.
+			Dictionary<ID, int> maxHitPoints = new();
+			Dictionary<ID, int> armyDamage = new();
 
 			foreach (QueryCiv3.Sav.UNIT unit in savData.Unit) {
 				if (unit.OwnerID < 0 || unit.OwnerID >= save.Players.Count) {
@@ -1133,6 +1136,10 @@ namespace C7GameData {
 				// since this is a .sav unit, we need to adjust things like the hp, remaining moves, etc
 				// TODO: there are surely more things to add here, e.x. has this unit used its defensive bombardment this round?
 				saveUnit.hitPointsRemaining += prototype.HPBonus - unit.Damage;
+				maxHitPoints[saveUnit.id] = experience.baseHitPoints + prototype.HPBonus;
+				if (prototype.Army) {
+					armyDamage[saveUnit.id] = unit.Damage;
+				}
 				saveUnit.movePointsRemaining -= (unit.MovementUsed / 3f);
 				if (unit.Fortified) {
 					saveUnit.action = "fortified";
@@ -1152,6 +1159,15 @@ namespace C7GameData {
 			foreach (var saveUnit in save.Units) {
 				if (loadMap.TryGetValue(saveUnit.id, out var loadedOnUnitId))
 					saveUnit.loadedOnUnitId = shadowIdMap[loadedOnUnitId];
+			}
+
+			// Civ3 keeps an army's damage on the army; its hit points are its
+			// members' pooled (see MapUnit_Army.cs).
+			foreach (SaveUnit army in save.Units.Where(u => armyDamage.ContainsKey(u.id))) {
+				List<SaveUnit> members = save.Units.Where(u => u.loadedOnUnitId == army.id).ToList();
+				if (members.Count > 0) {
+					army.hitPointsRemaining = Math.Max(1, members.Sum(m => maxHitPoints[m.id]) - armyDamage[army.id]);
+				}
 			}
 		}
 

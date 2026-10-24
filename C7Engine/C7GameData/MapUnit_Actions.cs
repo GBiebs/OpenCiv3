@@ -9,16 +9,18 @@ namespace C7GameData;
 
 public partial class MapUnit {
 	public void OnBeginTurn(bool skipTurn = false) {
-		int maxMP = unitType.movement;
+		int maxMP = MovementPerTurn();
 		if (movementPoints.remaining >= maxMP && !skipTurn) {
 			int maxHP = maxHitPoints;
+			// Units heal faster in an army (the Conquests readme): an army
+			// heals as much as each of its members would.
 			if (hitPointsRemaining < maxHP)
-				hitPointsRemaining += HealRateAt(location);
+				hitPointsRemaining += HealRateAt(location) * Math.Max(1, IsArmy() ? Passengers().Count : 1);
 			if (hitPointsRemaining > maxHP)
 				hitPointsRemaining = maxHP;
 		}
 
-		if (skipTurn) {
+		if (skipTurn || IsInArmy()) {
 			movementPoints.skipTurn();
 		} else {
 			movementPoints.reset(maxMP);
@@ -223,7 +225,7 @@ public partial class MapUnit {
 		// capture or destroy them (OnEnterTile).
 		MapUnit defender = newLoc.FindTopDefender(this);
 		bool enemyThere = defender != MapUnit.NONE && !owner.IsAtPeaceWith(defender.owner);
-		if (enemyThere && unitType.attack <= 0) {
+		if (enemyThere && CombatType(CombatRole.Attack).attack <= 0) {
 			return true;
 		}
 		// Only units that can fight can take a city, even an empty one.
@@ -270,10 +272,12 @@ public partial class MapUnit {
 		if (!location.unitsOnTile.Remove(this))
 			throw new System.Exception("Failed to remove unit from tile it's supposed to be on");
 
-		// Move transported units, too
+		// Move transported units, too, and the units in them (an army's
+		// members on a ship).
 		if (CanTransport()) {
 			var transported = location.unitsOnTile
 					.Where(u => u.IsLoadedIn(this)).ToList();
+			transported.AddRange(transported.SelectMany(u => u.Passengers()).ToList());
 
 			foreach (var tu in transported) {
 				if (!location.unitsOnTile.Remove(tu))
@@ -315,21 +319,29 @@ public partial class MapUnit {
 		IEnumerable<StrengthBonus> attackBonuses  = attacker.ListStrengthBonusesVersus(defender, CombatRole.Attack , attackerAttackDirection),
 								   defenseBonuses = defender.ListStrengthBonusesVersus(attacker, CombatRole.Defense, attackerAttackDirection);
 
-		double attackerStrength = attacker.unitType.attack  * StrengthBonus.ListToMultiplier(attackBonuses),
-			   defenderStrength = defender.unitType.defense * StrengthBonus.ListToMultiplier(defenseBonuses);
+		double attackMultiplier = StrengthBonus.ListToMultiplier(attackBonuses),
+			   defenseMultiplier = StrengthBonus.ListToMultiplier(defenseBonuses);
 
-		log.Information($"Combat log: {attacker} ({attackerStrength}) attacking {defender} ({defenderStrength})");
-		log.Information($"\tAttacker: {attacker.unitType.name}, base strength {attacker.unitType.BaseStrength(CombatRole.Attack)}");
+		// An army fights with one member at a time, which changes as the army
+		// loses hit points (see ArmyFighter), so the odds are worked out for
+		// every round.
+		double AttackerOdds() {
+			double attackerStrength = attacker.CombatType(CombatRole.Attack).attack * attackMultiplier;
+			double defenderStrength = defender.CombatType(CombatRole.Defense).defense * defenseMultiplier;
+			return attackerStrength / (attackerStrength + defenderStrength);
+		}
+
+		log.Information($"Combat log: {attacker} attacking {defender}");
+		log.Information($"\tAttacker: {attacker.CombatType(CombatRole.Attack).name}, base strength {attacker.CombatType(CombatRole.Attack).BaseStrength(CombatRole.Attack)}");
 		foreach (StrengthBonus bonus in attackBonuses)
 			log.Information($"\t\t+{100.0 * bonus.amount}%\t{bonus.description}");
-		log.Information($"\tDefender: {defender.unitType.name}, base strength {defender.unitType.BaseStrength(CombatRole.Defense)}");
+		log.Information($"\tDefender: {defender.CombatType(CombatRole.Defense).name}, base strength {defender.CombatType(CombatRole.Defense).BaseStrength(CombatRole.Defense)}");
 		foreach (StrengthBonus bonus in defenseBonuses)
 			log.Information($"\t\t+{100.0 * bonus.amount}%\t{bonus.description}");
 
 		CombatResult result = CombatResult.Impossible;
 
-		double attackerOdds = attackerStrength / (attackerStrength + defenderStrength);
-		if (Double.IsNaN(attackerOdds))
+		if (double.IsNaN(AttackerOdds()))
 			return result;
 
 		// Defensive bombard
@@ -366,7 +378,7 @@ public partial class MapUnit {
 		while (true) {
 			defender.animate(MapUnit.AnimatedAction.ATTACK1);
 			await attacker.animateAsync(MapUnit.AnimatedAction.ATTACK1);
-			if (GameData.rng.NextDouble() < attackerOdds) {
+			if (GameData.rng.NextDouble() < AttackerOdds()) {
 				if (defenderEligibleToRetreat &&
 					defender.hitPointsRemaining == 1 &&
 					GameData.rng.NextDouble() < defender.RetreatChance(attacker, false)) {
@@ -402,7 +414,11 @@ public partial class MapUnit {
 			var (dead, alive) = (result == CombatResult.AttackerKilled) ? (attacker, defender) : (defender, attacker);
 			// Before promoting, so a unit only just made elite doesn't also roll.
 			alive.MaybeProduceLeader(dead, attacking: alive == attacker);
-			alive.RollToPromote(dead);
+			if (alive.IsArmy()) {
+				alive.ArmyWon(dead, alive == attacker ? CombatRole.Attack : CombatRole.Defense);
+			} else {
+				alive.RollToPromote(dead);
+			}
 			await dead.animateAsync(MapUnit.AnimatedAction.DEATH);
 			dead.RemoveFromPlay();
 			alive.MaybeEnslave(dead);
@@ -503,6 +519,10 @@ public partial class MapUnit {
 	/// </summary>
 	/// <param name="mapUnit">The unit to load on a transport</param>
 	private void Board(MapUnit mapUnit) {
+		if (IsArmy()) {
+			TakeIntoArmy(mapUnit);
+			return;
+		}
 		mapUnit.loadedOnUnitId = this.id;
 		// TODO: consume moves?
 	}

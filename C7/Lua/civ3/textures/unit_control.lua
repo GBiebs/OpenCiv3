@@ -35,6 +35,7 @@ local unit_control = {
   unit_unload = make_entry(0, 1),
   unit_pillage = make_entry(2, 1),
   unit_bombard = make_entry(3, 1),
+  unit_build_army = make_entry(5, 1),
   unit_hurry_production = make_entry(6, 1),
   unit_upgrade = make_entry(7, 1),
 

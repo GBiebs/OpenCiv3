@@ -38,6 +38,13 @@ namespace C7GameData {
 		public int hitPointsRemaining { get; set; }
 		public int maxHitPoints {
 			get {
+				// An army's hit points are its members' pooled (see MapUnit_Army.cs).
+				if (IsArmy() && location != null) {
+					List<MapUnit> members = Passengers();
+					if (members.Count > 0) {
+						return members.Sum(m => m.maxHitPoints);
+					}
+				}
 				return this.experienceLevel.baseHitPoints + this.unitType.hpBonus;
 			}
 		}
@@ -92,19 +99,24 @@ namespace C7GameData {
 		}
 
 		public bool IsCombatUnit() {
+			if (IsArmy()) {
+				return Passengers().Count > 0;
+			}
 			return this.unitType.attack > 0 || this.unitType.defense > 0;
 		}
 
 		public bool CanBeActive() {
-			return !this.IsBusy() && this.movementPoints.canMove;
+			return !this.IsBusy() && this.movementPoints.canMove && !IsInArmy();
 		}
 
 		public bool IsCaptive() {
 			return !string.Equals(this.nationality.name, this.owner.civilization.name, StringComparison.CurrentCultureIgnoreCase);
 		}
 
+		// Whether units can load into this one: a transport with the unload
+		// order, or an army (which they can't leave).
 		public bool CanTransport() {
-			return this.unitType.capacity > 0 && this.unitType.actions.Contains(UnitAction.Unload);
+			return this.unitType.capacity > 0 && (this.unitType.actions.Contains(UnitAction.Unload) || IsArmy());
 		}
 
 		public bool IsLoadable() {
@@ -150,6 +162,9 @@ namespace C7GameData {
 		}
 
 		public string Describe() {
+			if (IsArmy()) {
+				return DescribeArmy();
+			}
 			UnitPrototype type = this.unitType;
 			string exp = this.IsCombatUnit() ? $"{this.experienceLevel.displayName}" : "";
 			string hPDesc = ((type.attack > 0) || (type.defense > 0)) ? $" ({this.hitPointsRemaining}/{this.maxHitPoints})" : "";
@@ -157,6 +172,16 @@ namespace C7GameData {
 			string attackDesc = (type.bombard > 0) ? $"{type.attack}({type.bombard})" : type.attack.ToString();
 			string stats = $" ({attackDesc}.{type.defense}.{(EngineStorage.uiControllerID == this.owner.id ? $"{this.movementPoints.getMixedNumber()}/" : "")}{type.movement})";
 			return $"{exp}{hPDesc}{displayName}{stats}".Trim();
+		}
+
+		// Like "(9/12) Army of Swordsman, Swordsman, Horseman (3.2.1/2)": the
+		// pooled hit points, the members, and the strengths it fights with now.
+		private string DescribeArmy() {
+			List<MapUnit> members = Passengers();
+			string contents = members.Count > 0 ? $" of {string.Join(", ", members.Select(m => m.name))}" : " (empty)";
+			string moves = EngineStorage.uiControllerID == owner.id ? $"{movementPoints.getMixedNumber()}/" : "";
+			string stats = $"({CombatType(CombatRole.Attack).attack}.{CombatType(CombatRole.Defense).defense}.{moves}{MovementPerTurn()})";
+			return $"({hitPointsRemaining}/{maxHitPoints}) {name}{contents} {stats}";
 		}
 
 		// TODO: The contents of this enum are copy-pasted from UnitAction in Civ3UnitSprite.cs. We should unify these so we don't have two different
@@ -286,7 +311,7 @@ namespace C7GameData {
 		}
 
 		public double StrengthVersus(MapUnit opponent, CombatRole role, TileDirection? attackDirection) {
-			return unitType.BaseStrength(role) * StrengthBonus.ListToMultiplier(ListStrengthBonusesVersus(opponent, role, attackDirection));
+			return CombatType(role).BaseStrength(role) * StrengthBonus.ListToMultiplier(ListStrengthBonusesVersus(opponent, role, attackDirection));
 		}
 
 		public bool CanDefendAgainst(MapUnit attacker) {
@@ -351,8 +376,10 @@ namespace C7GameData {
 			}
 		}
 
+		// An army retreats like its fighting member, at the army's speed.
 		public double RetreatChance(MapUnit opponent, bool isAttacking) {
-			return ((unitType.movement > 1) && (opponent.unitType.movement <= 1)) ? experienceLevel.retreatChance : 0.0;
+			ExperienceLevel experience = ArmyFighter(isAttacking ? CombatRole.Attack : CombatRole.Defense).experienceLevel;
+			return ((MovementPerTurn() > 1) && (opponent.MovementPerTurn() <= 1)) ? experience.retreatChance : 0.0;
 		}
 
 		internal TileDirection GetAttackAnimationDirection(TileDirection attackDirection) {
@@ -564,13 +591,17 @@ namespace C7GameData {
 		}
 
 		private bool CanLoad(MapUnit mapUnit) {
+			if (IsArmy())
+				return CanTakeIntoArmy(mapUnit);
+
 			if (owner != mapUnit.owner)
 				return false;
 
 			if (!mapUnit.IsLoadable())
 				return false;
 
-			var hasRoom = !IsFull();
+			// An army needs a place for itself and one for each member.
+			bool hasRoom = FreeCapacity() >= 1 + mapUnit.Passengers().Count;
 
 			// TODO: type restrictions: only subs can carry nukes, carriers take aircraft, etc.
 			var suitableUnit = mapUnit.IsLandUnit();  // only land units in transports for now
@@ -581,20 +612,21 @@ namespace C7GameData {
 		// TODO: Amphibious assault
 
 		private bool CanUnloadToTile(Tile tile) {
-			if (!CanTransport())
+			// Units can't leave an army.
+			if (!CanTransport() || IsArmy())
 				return false;
 
 			var isValidLanding = tile.IsLand();
 			return !IsEmpty() && isValidLanding;
 		}
 
+		// Counting an army on board as itself and its members.
 		public int FreeCapacity() {
-			var loaded = this.location.unitsOnTile.Where(u => u.IsLoadedIn(this)).ToList();
-			return this.unitType.capacity - loaded.Count;
+			int capacity = IsArmy() ? ArmyCapacity() : this.unitType.capacity;
+			return capacity - Passengers().Sum(u => 1 + u.Passengers().Count);
 		}
 
-		private bool IsEmpty() => unitType.capacity > 0 && FreeCapacity() == unitType.capacity;
-		private bool IsFull() => unitType.capacity > 0 && FreeCapacity() == 0;
+		private bool IsEmpty() => unitType.capacity > 0 && Passengers().Count == 0;
 
 		private static bool HasHostileUnits(Tile tile, Player player) {
 			foreach (MapUnit other in tile.unitsOnTile) {
@@ -706,6 +738,11 @@ namespace C7GameData {
 		public List<UnitAction> GetAvailableActions() {
 			List<UnitAction> result = new();
 
+			// Units in an army only act with it.
+			if (IsInArmy()) {
+				return result;
+			}
+
 			// Eventually, we should look this up somewhere to see what all actions we have (and mods might add more)
 			// For now, this is still an improvement over the last iteration.
 			UnitAction[] implementedActions = { UnitAction.Hold, UnitAction.Wait, UnitAction.Fortify, UnitAction.Disband, UnitAction.Goto, UnitAction.Bombard };
@@ -725,7 +762,8 @@ namespace C7GameData {
 				result.Add(UnitAction.Automate);
 			}
 
-			if (CanBoardTransportOnTile(this.location) && this.loadedOnUnitId == null) {
+			// The load order also puts a unit into an army on its tile.
+			if (GetTransportsToBoard(this.location).Count > 0 && this.loadedOnUnitId == null) {
 				result.Add(UnitAction.Load);
 			}
 			if (CanUnloadToTile(this.location) && this.location.HasCity()) {
@@ -742,6 +780,9 @@ namespace C7GameData {
 			// gold, so the player can see the price.
 			if (UpgradeOffer() != null) {
 				result.Add(UnitAction.Upgrade);
+			}
+			if (CanBuildArmy()) {
+				result.Add(UnitAction.BuildArmy);
 			}
 			if (CanHurryProduction()) {
 				result.Add(UnitAction.HurryProduction);

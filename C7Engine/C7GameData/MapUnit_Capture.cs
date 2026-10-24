@@ -9,7 +9,7 @@ public partial class MapUnit {
 	// (workers, settlers, artillery, explorers and so on) don't fight: an enemy
 	// moving onto them captures or destroys them instead.
 	public bool CanDefendItself() {
-		return unitType.defense > 0;
+		return CombatType(CombatRole.Defense).defense > 0;
 	}
 
 	// Whether an enemy that can capture units takes this unit when it moves
@@ -20,9 +20,10 @@ public partial class MapUnit {
 	}
 
 	// Whether this unit can take an enemy city by moving in (Civ3: "only
-	// combat units can capture cities"). Barbarians ransack instead.
+	// combat units can capture cities"; an army needs members). Barbarians
+	// ransack instead.
 	public bool CanTakeCities() {
-		return IsLandUnit() && (unitType.attack > 0 || unitType.canCapture);
+		return IsLandUnit() && (CombatType(CombatRole.Attack).attack > 0 || (unitType.canCapture && !IsArmy()));
 	}
 
 	// Whether this unit can pillage the tile it's on: it has the order and

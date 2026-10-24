@@ -25,9 +25,10 @@ namespace C7GameData {
 			return from.DistanceTo(zoneTile) == 1 && to.DistanceTo(zoneTile) == 1;
 		}
 
-		// A unit's strength for its free shot.
+		// A unit's strength for its free shot (an army's, its fighting member's).
 		public static int Strength(MapUnit unit) {
-			return Math.Max(unit.unitType.attack, unit.unitType.bombard);
+			UnitPrototype type = unit.CombatType(CombatRole.Attack);
+			return Math.Max(type.attack, type.bombard);
 		}
 
 		// The chance that a shot of strength `attack` takes a hit point off a
@@ -42,6 +43,7 @@ namespace C7GameData {
 		private static bool CanShootAt(MapUnit unit, MapUnit mover) {
 			return unit.unitType.zoneOfControl
 				&& !unit.IsAirUnit()
+				&& !unit.IsInArmy()
 				&& unit.owner != mover.owner
 				&& !unit.owner.IsAtPeaceWith(mover.owner)
 				&& unit.IsLandUnit() == mover.IsLandUnit()
@@ -83,7 +85,7 @@ namespace C7GameData {
 			await interceptor.animateAsync(MapUnit.AnimatedAction.ATTACK1);
 			interceptor.facingDirection = facing;
 
-			if (GameData.rng.NextDouble() >= HitChance(Strength(interceptor), mover.unitType.defense)) {
+			if (GameData.rng.NextDouble() >= HitChance(Strength(interceptor), mover.CombatType(CombatRole.Defense).defense)) {
 				return MapUnit.NONE;
 			}
 			mover.hitPointsRemaining -= 1;

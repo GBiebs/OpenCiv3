@@ -19,12 +19,13 @@ public partial class MapUnit {
 	// (the Heroic Epic), and half that when it was defending. Each unit
 	// produces one leader at most, a player has one leader at a time, and
 	// nobody gets one from fighting barbarians. The leader appears with the
-	// unit and is named from its civ's list. Returns the leader, if any.
+	// unit and is named from its civ's list. Armies don't produce leaders.
+	// Returns the leader, if any.
 	internal MapUnit MaybeProduceLeader(MapUnit defeated, bool attacking) {
 		GameData gameData = EngineStorage.gameData;
 		Rules rules = gameData.rules;
 		UnitPrototype leaderType = gameData.unitPrototypes.Find(u => u.name == rules.BattleCreatedUnitType);
-		if (leaderType == null || owner.isBarbarians || defeated.owner.isBarbarians || hasProducedLeader || !IsElite()) {
+		if (leaderType == null || owner.isBarbarians || defeated.owner.isBarbarians || IsArmy() || hasProducedLeader || !IsElite()) {
 			return null;
 		}
 		if (owner.units.Any(u => u.unitType == leaderType)) {

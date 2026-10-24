@@ -309,6 +309,13 @@ namespace C7GameData {
 
 		/// Whether a given city can produce this unit, given available resources.
 		public bool CanProduce(City city, HashSet<Resource> accessibleResources) {
+			// Armies are built only where a building allows it (the Military
+			// Academy), while we have the cities to support another.
+			if (isArmy) {
+				return city.HasBuildingAllowingArmies() && city.owner.CanSupportAnotherArmy()
+					&& city.owner.HasRequiredTechnology(this);
+			}
+
 			var civ = city.owner.civilization;
 			return this.IsAvailableTo(civ)
 				   && this.MeetsProductionRequirements(city, accessibleResources)

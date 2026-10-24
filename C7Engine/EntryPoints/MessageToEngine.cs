@@ -118,8 +118,9 @@ namespace C7Engine {
 				unit.BoardTransport(transports.Find(t => t.id == transportUnitId));
 			} else if (transports.Count > 1) {
 				new MsgSelectTransport(unit, transports).send();
-			} else {
-				unit.TryBoardingTransportOnTile(unit.location);
+			} else if (transports.Count == 1) {
+				// Also an army on the tile, which moving can't board.
+				unit.BoardTransport(transports[0]);
 			}
 		}
 	}
@@ -499,6 +500,18 @@ namespace C7Engine {
 
 		public override void process() {
 			EngineStorage.gameData.GetUnit(unitId)?.Pillage();
+		}
+	}
+
+	public class MsgBuildArmy : MessageToEngine {
+		private ID unitId;
+
+		public MsgBuildArmy(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			EngineStorage.gameData.GetUnit(unitId)?.BuildArmy();
 		}
 	}
 

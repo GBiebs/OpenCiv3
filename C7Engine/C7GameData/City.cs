@@ -543,9 +543,18 @@ namespace C7GameData {
 		 * Computes turn production.  If the production queue finishes,
 		 * returns the item that is built.  Otherwise, returns null.
 		 */
+		// Whether this city has a building that lets it build armies (the
+		// Military Academy).
+		public bool HasBuildingAllowingArmies() {
+			return constructed_buildings.Any(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.AllowsBuildArmy) && !cb.building.IsObsolete(owner));
+		}
+
 		public IProducible ComputeTurnProduction() {
 			shieldsStored += CurrentProductionYield().useful;
-			if (shieldsStored >= owner.ShieldCost(itemBeingProduced) && residents.Count > itemBeingProduced.populationCost) {
+			// An army waits, keeping its shields, while we lack the cities to
+			// support another (upstream proposal #1011; Civ3 doesn't say).
+			bool armyWaits = itemBeingProduced is UnitPrototype { isArmy: true } && !owner.CanSupportAnotherArmy();
+			if (shieldsStored >= owner.ShieldCost(itemBeingProduced) && residents.Count > itemBeingProduced.populationCost && !armyWaits) {
 				shieldsStored = 0;
 				RemoveCitizens(itemBeingProduced.populationCost);
 				return itemBeingProduced;

@@ -556,10 +556,11 @@ public class CityTest : MapBase {
 	// TODO: This builds "armies" the same fragile way Building.CanProduce counts
 	// them (land units that can transport). Update this and the test below when
 	// MapUnit has a more robust interface for armies.
-	private static MapUnit MakeUnit(Player owner, string category, bool canTransport) {
-		UnitPrototype prototype = new() { capacity = canTransport ? 3 : 0 };
+	// A transport with room for three: an army, or one with the unload order.
+	private static MapUnit MakeUnit(Player owner, string category, bool isArmy) {
+		UnitPrototype prototype = new() { capacity = 3, isArmy = isArmy };
 		prototype.categories.Add(category);
-		if (canTransport) {
+		if (!isArmy) {
 			prototype.actions.Add(UnitAction.Unload);
 		}
 		MapUnit unit = new(ID.None("unit")) { unitType = prototype, owner = owner };
@@ -567,9 +568,8 @@ public class CityTest : MapBase {
 		return unit;
 	}
 
-	// TODO: Update when MapUnit has a more robust interface for armies, see MakeUnit.
 	[Fact]
-	public void NumberOfArmiesRequired_CountsOnlyLandUnitsThatCanTransport() {
+	public void NumberOfArmiesRequired_CountsOnlyArmies() {
 		Player player = MakePlayerForProduction();
 		City city = MakeCity(player);
 		Building pentagon = MakeBuilding(new SaveBuilding {
@@ -580,17 +580,17 @@ public class CityTest : MapBase {
 
 		Assert.False(pentagon.CanProduce(city, NoResources()));
 
-		// Transports at sea and land units that can't transport aren't armies.
-		MakeUnit(player, "Sea", canTransport: true);
-		MakeUnit(player, "Land", canTransport: false);
-		MakeUnit(player, "Land", canTransport: true);
+		// Other transports, on land or at sea, aren't armies.
+		MakeUnit(player, "Sea", isArmy: false);
+		MakeUnit(player, "Land", isArmy: false);
+		MakeUnit(player, "Land", isArmy: true);
 		Assert.False(pentagon.CanProduce(city, NoResources()));
 
 		// Another player's armies don't count.
-		MakeUnit(MakePlayerForProduction(), "Land", canTransport: true);
+		MakeUnit(MakePlayerForProduction(), "Land", isArmy: true);
 		Assert.False(pentagon.CanProduce(city, NoResources()));
 
-		MakeUnit(player, "Land", canTransport: true);
+		MakeUnit(player, "Land", isArmy: true);
 		Assert.True(pentagon.CanProduce(city, NoResources()));
 		Assert.True(MakeSmallWonder().CanProduce(city, NoResources()));
 	}

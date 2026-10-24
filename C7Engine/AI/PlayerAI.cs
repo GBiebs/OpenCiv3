@@ -136,6 +136,11 @@ namespace C7Engine {
 
 			// Do things with units. Copy into an array first to avoid collection-was-modified exception
 			foreach (MapUnit unit in player.units.ToArray()) {
+				// Units in an army only act with it.
+				if (unit.IsInArmy()) {
+					continue;
+				}
+
 				// Don't waste time recalculating behaviors for fortified units.
 				// This means we'll have to unfortify all our units after
 				// interesting events like war declarations, but this seems like

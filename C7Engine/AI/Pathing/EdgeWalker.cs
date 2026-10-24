@@ -36,7 +36,7 @@ namespace C7Engine.Pathing {
 				}
 
 				float tileMovementCost = TilePath.GetMovementCost(unit.owner, node, direction, neighbor);
-				float unitMovementPoints = unit.unitType.movement;
+				float unitMovementPoints = unit.MovementPerTurn();
 
 				// If this tile would consume all of the movement points of this
 				// unit, it has a cost of 1 turn. Otherwise we use the fraction

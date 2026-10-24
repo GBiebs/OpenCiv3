@@ -323,6 +323,16 @@ namespace C7GameData {
 		}
 
 		internal void RemoveUnit(MapUnit unit) {
+			// The units in it go with it: an army's members, and a ship's cargo
+			// at sea. A ship's cargo in port is set down instead.
+			foreach (MapUnit passenger in unit.Passengers()) {
+				if (!unit.IsArmy() && unit.location.IsLand()) {
+					passenger.loadedOnUnitId = null;
+				} else {
+					RemoveUnit(passenger);
+				}
+			}
+
 			// Set unit's hit points to zero to indicate that it's no longer alive. Ultimately we may not want to do this. I'm only doing it right
 			// now since this way all the UI needs to do to check if the selected unit has been destroyed is to check its hit points.
 			unit.hitPointsRemaining = 0;

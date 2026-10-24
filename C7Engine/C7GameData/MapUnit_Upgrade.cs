@@ -13,9 +13,10 @@ public partial class MapUnit {
 	// becomes the best unit of its upgrade line the city could build (with
 	// that city's resources); and it costs the difference in shields times the
 	// rules' upgrade cost (3 gold a shield in Conquests), half that with a
-	// wonder that makes upgrades cheaper (Leonardo's Workshop).
+	// wonder that makes upgrades cheaper (Leonardo's Workshop). Units in an
+	// army can't be upgraded.
 	public (UnitPrototype target, int cost)? UpgradeOffer() {
-		if (!unitType.actions.Contains(UnitAction.Upgrade)) {
+		if (!unitType.actions.Contains(UnitAction.Upgrade) || IsInArmy()) {
 			return null;
 		}
 		City city = location.cityAtTile;
