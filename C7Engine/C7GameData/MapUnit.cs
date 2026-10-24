@@ -731,6 +731,10 @@ namespace C7GameData {
 				result.Add(UnitAction.Unload);
 			}
 
+			if (CanPillage()) {
+				result.Add(UnitAction.Pillage);
+			}
+
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.
 			// unit.availableActions.Add("rename");
 

@@ -486,6 +486,18 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgPillage : MessageToEngine {
+		private ID unitId;
+
+		public MsgPillage(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			EngineStorage.gameData.GetUnit(unitId)?.Pillage();
+		}
+	}
+
 	// The player chose to raze a city they've just captured.
 	public class MsgRazeCity : MessageToEngine {
 		private City city;

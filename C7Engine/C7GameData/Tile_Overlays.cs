@@ -172,6 +172,40 @@ public partial class Tile {
 			return GetManMadeImprovements().Any();
 		}
 
+		// What a pillage or a successful bombardment of this tile destroys
+		// next, in Civ3's order: a railroad first (reduced to a road), then the
+		// road together with any irrigation or mine, then a fortress (a
+		// barricade is reduced to a fortress). Empty if there's nothing left.
+		public List<TerrainImprovement> NextToPillage() {
+			TerrainImprovement road = ImprovementAtLayer(Layer.Roads);
+			if (road?.upgradesFrom != null) {
+				return [road];
+			}
+			List<TerrainImprovement> result = new();
+			if (road != null) {
+				result.Add(road);
+			}
+			if (ImprovementAtLayer(Layer.ResourceDevelopment) is TerrainImprovement development) {
+				result.Add(development);
+			}
+			if (result.Count == 0 && ImprovementAtLayer(Layer.Holdings) is TerrainImprovement holding) {
+				result.Add(holding);
+			}
+			return result;
+		}
+
+		// Destroys what NextToPillage names, reducing any improvement that
+		// upgrades from another (railroad, barricade) to that one. Returns what
+		// was destroyed.
+		public List<TerrainImprovement> PillageNext() {
+			List<TerrainImprovement> destroyed = NextToPillage();
+			foreach (TerrainImprovement improvement in destroyed) {
+				Remove(improvement);
+				Add(improvement.upgradesFrom);
+			}
+			return destroyed;
+		}
+
 		public IEnumerable<StrengthBonus> GetDefenseBonuses() {
 			return terrainImprovementByLayer.Values
 				.Select(ti => ti.defenseBonus)

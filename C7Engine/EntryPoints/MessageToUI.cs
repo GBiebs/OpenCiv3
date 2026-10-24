@@ -338,6 +338,33 @@ namespace C7Engine {
 		}
 	}
 
+	// A unit pillaged a tile's improvements (by their keys, like "road").
+	public class MsgTilePillaged : MessageToUI {
+		public Tile location;
+		public ID pillagerId;
+		public ID landOwnerId;
+		public List<string> destroyed;
+
+		public MsgTilePillaged(Tile location, ID pillagerId, ID landOwnerId, List<string> destroyed) {
+			this.location = location;
+			this.pillagerId = pillagerId;
+			this.landOwnerId = landOwnerId;
+			this.destroyed = destroyed;
+		}
+
+		// What to tell the given player, or null if it doesn't concern them.
+		public string TextFor(ID playerId) {
+			string what = string.Join(" and ", destroyed);
+			if (playerId == pillagerId) {
+				return $"We pillaged the {what}!";
+			}
+			if (playerId == landOwnerId) {
+				return $"Enemy troops pillaged our {what}!";
+			}
+			return null;
+		}
+	}
+
 	// A building was sold because the treasury couldn't pay the upkeep.
 	public class MsgBuildingSold : MessageToUI {
 		public ID playerId;

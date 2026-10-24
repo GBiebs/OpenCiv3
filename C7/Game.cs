@@ -464,6 +464,11 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, resistanceText, mapView.screenLocationOfTile(mRQ.city.location, true));
 				}
 				break;
+			case MsgTilePillaged mTP:
+				if (mTP.TextFor(controller.id) is string pillagedText) {
+					TemporaryPopup.Show(this, pillagedText, mapView.screenLocationOfTile(mTP.location, true));
+				}
+				break;
 			case MsgUnitsCaptured mUC:
 				if (mUC.TextFor(controller.id) is string capturedText) {
 					TemporaryPopup.Show(this, capturedText, mapView.screenLocationOfTile(mUC.location, true));
@@ -1248,6 +1253,10 @@ public partial class Game : Node {
 			}
 		}
 
+
+		if (currentAction == C7Action.UnitPillage) {
+			new MsgPillage(CurrentlySelectedUnit.id).send();
+		}
 
 		if (currentAction == C7Action.UnitLoad) {
 			// TODO: Which transport?

@@ -25,6 +25,36 @@ public partial class MapUnit {
 		return IsLandUnit() && (unitType.attack > 0 || unitType.canCapture);
 	}
 
+	// Whether this unit can pillage the tile it's on: it has the order and
+	// moves left, there's something to destroy, and it's not a city, nor the
+	// land of a civ we're at peace with.
+	public bool CanPillage() {
+		if (!unitType.actions.Contains(UnitAction.Pillage) || !IsLandUnit() || !movementPoints.canMove) {
+			return false;
+		}
+		if (location.HasCity() || location.overlays.NextToPillage().Count == 0) {
+			return false;
+		}
+		Player landOwner = location.owningCity?.owner;
+		return landOwner == null || landOwner == owner || !owner.IsAtPeaceWith(landOwner);
+	}
+
+	// Pillages the tile this unit is on, destroying the next improvements in
+	// Civ3's order (see TileOverlays.NextToPillage); it takes the rest of the
+	// unit's turn. The land's owner is told. Returns what was destroyed.
+	public List<TerrainImprovement> Pillage() {
+		if (!CanPillage()) {
+			return [];
+		}
+		List<TerrainImprovement> destroyed = location.overlays.PillageNext();
+		movementPoints.onConsumeAll();
+		animate(AnimatedAction.ATTACK1);
+		Player landOwner = location.owningCity?.owner;
+		log.Information($"{this} pillages {string.Join(" and ", destroyed.Select(i => i.key))} at {location} (land of {landOwner?.ToString() ?? "nobody"})");
+		new MsgTilePillaged(location, owner.id, landOwner?.id, destroyed.Select(i => i.key).ToList()).send();
+		return destroyed;
+	}
+
 	// Called when this unit has moved onto `tile`. Any enemy units left there
 	// can't defend themselves, so they're captured or destroyed, and their
 	// owners are told.

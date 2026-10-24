@@ -248,9 +248,7 @@ namespace C7GameData {
 			const int tileImprovementDefence = 3;
 
 			var hitCount = 0;
-
-			var improvement = tile.overlays.GetManMadeImprovements()
-				.OrderBy(x => GameData.rng.Next()).FirstOrDefault();
+			List<TerrainImprovement> destroyed = new();
 
 			// Anecdotal, just by observing the game; I think rate of fire doesn't apply to improvements
 			double bombardStrength  = StrengthVersus(null, CombatRole.Bombard, facingDirection);
@@ -261,14 +259,11 @@ namespace C7GameData {
 
 			await RunAnimatedBombard(tile, attackerOdds, () => {
 				hitCount += 1;
-				// Remove top improvement
-				tile.overlays.Remove(improvement);
-				// "Replace" with downgraded improvement if it exists
-				tile.overlays.Add(improvement?.upgradesFrom);
-				// TODO: Re-target?
+				// Civ3 destroys improvements in the same order as pillaging.
+				destroyed.AddRange(tile.overlays.PillageNext());
 			});
 
-			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {improvement?.key}.");
+			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {string.Join(" and ", destroyed.Select(i => i.key))}.");
 		}
 
 		private async Task RunAnimatedBombard(Tile tile, double attackerOdds, Action callback) {
