@@ -21,6 +21,13 @@ namespace C7Engine {
 			owner.cities.Add(newCity);
 			tileWithNewCity.cityAtTile = newCity;
 
+			// Every city has a road on its tile, as in Civ3, so roads leading
+			// to it connect it to the trade network (Civilopedia "Trade Route
+			// Connections"). Civ3 saves already have them.
+			if (!tileWithNewCity.IsRoaded()) {
+				tileWithNewCity.overlays.Add(gameData.terrainImprovements.Find(i => i.key == Tile.TileOverlays.ROAD));
+			}
+
 			CityResident firstResident = new CityResident();
 			firstResident.nationality = owner.civilization;
 			firstResident.city = newCity;

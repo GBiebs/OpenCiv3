@@ -101,8 +101,14 @@ namespace C7Engine.Pathing {
 			return false;
 		}
 
+		// Whether the city is on the same network as its owner's capital (the
+		// city with the palace, not necessarily the first city).
 		public bool ConnectedToCapital(Player p, City c) {
-			return segments[p][c] == segments[p][p.cities[0]];
+			City capital = p.cities.Find(city => city.IsCapital());
+			return capital != null
+				&& segments[p].TryGetValue(c, out TradeNetworkSegment segment)
+				&& segments[p].TryGetValue(capital, out TradeNetworkSegment capitalSegment)
+				&& segment == capitalSegment;
 		}
 	}
 }
