@@ -138,6 +138,12 @@ namespace C7GameData {
 			return players.Find(p => p.id == id);
 		}
 
+		// The civ whose people have this nationality, if it's still in the
+		// game (citizens keep their nationality after their civ is gone).
+		public Player PlayerOfNationality(Civilization nationality) {
+			return players.FirstOrDefault(p => p.civilization == nationality && !p.defeated && !p.isBarbarians);
+		}
+
 		public Tech GetTech(ID id) {
 			return techs.Find(p => p.id == id);
 		}

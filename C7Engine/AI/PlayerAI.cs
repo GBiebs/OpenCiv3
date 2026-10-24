@@ -540,17 +540,19 @@ namespace C7Engine {
 		}
 
 		// In each city, reassign citizens, managing moods, to ensure that we
-		// don't have any cities that will riot.
+		// don't have any cities that will riot. Citizens keep their
+		// nationality, and resisters stay as they are.
 		private static void FixRemainingUnhappyCities(Player player) {
 			foreach (City city in player.cities) {
-				// TODO: This throws away existing nationalities, fix that.
-				int numResidents = city.residents.Count;
-				city.RemoveAllCitizens();
+				List<CityResident> workers = city.residents.Where(r => !r.resisting).ToList();
+				foreach (CityResident worker in workers) {
+					city.RemoveCitizen(worker);
+				}
 
-				for (int i = 0; i < numResidents; ++i) {
+				foreach (CityResident worker in workers) {
 					CityResident newResident = new() {
 						citizenType = EngineStorage.gameData.citizenTypes.Find(x => x.IsDefaultCitizen),
-						nationality = city.owner.civilization,
+						nationality = worker.nationality ?? city.owner.civilization,
 						city = city
 					};
 					city.AddCitizen(newResident);

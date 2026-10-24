@@ -1172,6 +1172,23 @@ namespace C7GameData {
 			ApplyMoodChange(contentToHappyMoves, unhappy, content);
 		}
 
+		// The citizens of this city whose civ is at war with its owner. In Civ3
+		// (Civilopedia "Nationality") they "become unhappy more quickly": the
+		// user's Civ3 saves show one unhappy face for each, specialists
+		// included. Resisters don't count; they have no mood at all.
+		public int CitizensOfEnemyNationality(GameData gameData) {
+			int count = 0;
+			foreach (IGrouping<Civilization, CityResident> nationals in residents
+					.Where(r => !r.resisting && r.nationality != null && r.nationality != owner.civilization)
+					.GroupBy(r => r.nationality)) {
+				Player home = gameData.PlayerOfNationality(nationals.Key);
+				if (home != null && PlayerRelationship.AtWar(home, owner)) {
+					count += nationals.Count();
+				}
+			}
+			return count;
+		}
+
 		public enum Mood {
 			Unhappy,
 			Happy
@@ -1213,7 +1230,9 @@ namespace C7GameData {
 			(int warWeary, int warHappy) = WarWeariness.CitizensAffected(gameData, this);
 			contentToHappyMoves += warHappy - warWeary;
 
-			// TODO: add penalty for aggression against home country
+			// Citizens whose civ we're at war with resent our aggression
+			// against their home country: one unhappy face each.
+			contentToHappyMoves -= CitizensOfEnemyNationality(gameData);
 
 			// Building happiness/unhappiness, which only affects the unhappy to
 			// content transition, nothing with happy faces.

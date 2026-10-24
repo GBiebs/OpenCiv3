@@ -53,13 +53,8 @@ namespace C7GameData {
 			return opinion == null ? 0 : Math.Clamp(opinion.continuedResistanceChance + GovernmentModifier(citizens, ruler), 0, 100);
 		}
 
-		// The civ a citizen comes from, if it's still in the game.
-		private static Player HomeOf(GameData gameData, CityResident resident) {
-			return gameData.players.FirstOrDefault(p => p.civilization == resident.nationality && !p.defeated && !p.isBarbarians);
-		}
-
 		private static bool WouldResist(GameData gameData, CityResident resident, City city, out Player home) {
-			home = HomeOf(gameData, resident);
+			home = gameData.PlayerOfNationality(resident.nationality);
 			return home != null && home != city.owner && PlayerRelationship.AtWar(home, city.owner);
 		}
 
