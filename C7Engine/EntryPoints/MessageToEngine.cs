@@ -510,6 +510,22 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgUpgradeUnit : MessageToEngine {
+		private ID unitId;
+
+		public MsgUpgradeUnit(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			MapUnit unit = EngineStorage.gameData.GetUnit(unitId);
+			if (unit != null && unit.Upgrade()) {
+				// Refreshes the unit's buttons and info.
+				new MsgUnitMoved(unit).send();
+			}
+		}
+	}
+
 	// The player sells a building in one of their cities.
 	public class MsgSellBuilding : MessageToEngine {
 		private City city;

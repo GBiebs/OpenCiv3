@@ -1038,7 +1038,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ]
     },
     {
@@ -1348,7 +1349,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -1426,7 +1428,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -1502,7 +1505,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -1578,7 +1582,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -1663,7 +1668,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -1748,7 +1754,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -1828,7 +1835,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -1909,7 +1917,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -1988,7 +1997,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Saltpeter"
@@ -2067,7 +2077,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses",
@@ -2150,7 +2161,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -2224,7 +2236,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses",
@@ -2308,7 +2321,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Rubber"
@@ -2389,7 +2403,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil",
@@ -2638,7 +2653,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ]
     },
     {
@@ -2718,7 +2734,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron",
@@ -2798,7 +2815,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ]
     },
     {
@@ -3188,7 +3206,8 @@
         "disband",
         "goto",
         "explore",
-        "unload"
+        "unload",
+        "upgrade"
       ]
     },
     {
@@ -3265,7 +3284,8 @@
         "disband",
         "goto",
         "explore",
-        "unload"
+        "unload",
+        "upgrade"
       ]
     },
     {
@@ -3421,7 +3441,8 @@
         "disband",
         "goto",
         "explore",
-        "unload"
+        "unload",
+        "upgrade"
       ]
     },
     {
@@ -3496,7 +3517,8 @@
         "fortify",
         "disband",
         "goto",
-        "explore"
+        "explore",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron",
@@ -4116,7 +4138,8 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil"
@@ -4345,7 +4368,8 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil",
@@ -4723,7 +4747,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -4772,7 +4797,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -4821,7 +4847,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -4870,7 +4897,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -4919,7 +4947,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -4971,7 +5000,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -5027,7 +5057,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -5076,7 +5107,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses",
@@ -5129,7 +5161,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -5181,7 +5214,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Saltpeter"
@@ -5233,7 +5267,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -5285,7 +5320,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -5385,7 +5421,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil",
@@ -5614,7 +5651,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -5664,7 +5702,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -5717,7 +5756,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -5763,7 +5803,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses",
@@ -5817,7 +5858,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -5869,7 +5911,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses",
@@ -5922,7 +5965,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -5976,7 +6020,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ],
       "requiredResources": [
         "Saltpeter"
@@ -6054,7 +6099,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -6136,7 +6182,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -7106,7 +7153,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -7159,7 +7207,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Horses"
@@ -7321,7 +7370,8 @@
         "disband",
         "goto",
         "explore",
-        "unload"
+        "unload",
+        "upgrade"
       ]
     },
     {
@@ -7367,7 +7417,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Iron"
@@ -7489,7 +7540,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ]
     },
     {
@@ -7645,7 +7697,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -7694,7 +7747,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -7746,7 +7800,8 @@
         "disband",
         "goto",
         "explore",
-        "unload"
+        "unload",
+        "upgrade"
       ]
     },
     {
@@ -7824,7 +7879,8 @@
         "fortify",
         "disband",
         "goto",
-        "explore"
+        "explore",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil"
@@ -7992,7 +8048,8 @@
         "fortify",
         "disband",
         "goto",
-        "explore"
+        "explore",
+        "upgrade"
       ]
     },
     {
@@ -8068,7 +8125,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "upgrade"
       ],
       "requiredResources": [
         "Oil",
@@ -8227,7 +8285,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "upgrade"
       ],
       "flags": [
         "canCapture"
@@ -11709,6 +11768,7 @@
     "startUnitType2": "Worker",
     "scoutUnitType": "Scout",
     "slaveUnitType": "Worker",
+    "upgradeCost": 3,
     "maxRankOfWorkableTiles": 2,
     "maxRankOfBarbarianCampTiles": 2,
     "barbarianCampGold": 25,

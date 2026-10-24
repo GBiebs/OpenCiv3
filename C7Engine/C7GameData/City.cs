@@ -183,7 +183,7 @@ namespace C7GameData {
 			return producibles.Where(p => p.CanProduce(this, accessibleResources));
 		}
 
-		private HashSet<Resource> GetAccessibleResources(GameData gameData) {
+		public HashSet<Resource> GetAccessibleResources(GameData gameData) {
 			return gameData.GetTradeNetwork().GetResourcesAvailableToCity(owner, this).Keys.ToHashSet();
 		}
 

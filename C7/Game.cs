@@ -1265,6 +1265,10 @@ public partial class Game : Node {
 			new MsgJoinCity(CurrentlySelectedUnit.id).send();
 		}
 
+		if (currentAction == C7Action.UnitUpgrade) {
+			EmitUpgradeSignal(CurrentlySelectedUnit);
+		}
+
 		if (currentAction == C7Action.UnitLoad) {
 			// TODO: Which transport?
 			new MsgLoadToTransport(CurrentlySelectedUnit.id).send();

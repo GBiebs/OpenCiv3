@@ -134,10 +134,14 @@ namespace C7GameData {
 		// city's total pollution value, and implement them.
 		public int pollution;
 
-		// Only used by the AI when scoring what to build (ChooseProducible). The
-		// veteran unit effect itself is implemented through
+		// The buildings that train veterans of each kind (Barracks, Harbor,
+		// Airport) are where units of that kind can be upgraded
+		// (MapUnit.UpgradeOffer); the AI also uses the ground flag when scoring
+		// what to build. The veteran unit effect itself is implemented through
 		// onFinishedUnitProduction, which City.AddUnit applies to new units.
 		public bool providesVeteranGroundUnits;
+		public bool providesVeteranSeaUnits;
+		public bool providesVeteranAirUnits;
 
 		// Wonder flags, shared by small and great wonders. Use HasWonderFlag.
 		//
@@ -247,6 +251,8 @@ namespace C7GameData {
 			doublesSacrifice = building.flags.Contains(SaveBuilding.Flag.DoublesSacrifice);
 			continentalMoodEffects = building.flags.Contains(SaveBuilding.Flag.ContinentalMoodEffects);
 			providesVeteranGroundUnits = building.flags.Contains(SaveBuilding.Flag.VeteranGroundUnits);
+			providesVeteranSeaUnits = building.flags.Contains(SaveBuilding.Flag.VeteranSeaUnits);
+			providesVeteranAirUnits = building.flags.Contains(SaveBuilding.Flag.VeteranAirUnits);
 
 			wonderFlags = new(building.wonderFlags);
 

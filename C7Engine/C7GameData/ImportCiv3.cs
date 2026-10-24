@@ -1374,6 +1374,7 @@ namespace C7GameData {
 			if (prto.Unload) yield return UnitAction.Unload;
 			if (prto.Pillage) yield return UnitAction.Pillage;
 			if (prto.JoinCity) yield return UnitAction.JoinCity;
+			if (prto.UpgradeUnit) yield return UnitAction.Upgrade;
 		}
 
 		private static IEnumerable<TerraformKey> GetUnitTerraforms(PRTO prto) {
@@ -2211,6 +2212,7 @@ namespace C7GameData {
 			if (rule.Slave >= 0) {
 				save.Rules.SlaveUnitType = theBiq.Prto[rule.Slave].Name;
 			}
+			save.Rules.UpgradeCost = rule.UpgradeCost;
 			if (rule.Scout >= 0) {
 				save.Rules.ScoutUnitType = theBiq.Prto[rule.Scout].Name;
 			}

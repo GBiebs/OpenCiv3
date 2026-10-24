@@ -67,6 +67,7 @@ public static class C7Action {
 	public const string UnitUnload = "unit_unload";
 	public const string UnitPillage = "unit_pillage";
 	public const string UnitJoinCity = "unit_join_city";
+	public const string UnitUpgrade = "unit_upgrade";
 
 	private static readonly Dictionary<string, UnitAction> toUnitAction = new() {
 		[UnitBuildCity] = UnitAction.BuildCity,
@@ -81,7 +82,8 @@ public static class C7Action {
 		[UnitExplore] = UnitAction.Explore,
 		[UnitAutomate] = UnitAction.Automate,
 		[UnitPillage] = UnitAction.Pillage,
-		[UnitJoinCity] = UnitAction.JoinCity
+		[UnitJoinCity] = UnitAction.JoinCity,
+		[UnitUpgrade] = UnitAction.Upgrade
 	};
 
 	private static readonly Dictionary<string, string> toTooltip = new() {
@@ -112,7 +114,8 @@ public static class C7Action {
 		[UnitLoad] = "Load",
 		[UnitUnload] = "Unload",
 		[UnitPillage] = "Pillage",
-		[UnitJoinCity] = "Join City"
+		[UnitJoinCity] = "Join City",
+		[UnitUpgrade] = "Upgrade"
 	};
 
 	public static UnitAction? ToUnitAction(string action) {

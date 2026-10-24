@@ -237,6 +237,42 @@ public partial class Game {
 		));
 	}
 
+	// Offers to upgrade the unit, showing the price, or says why it can't be.
+	public void EmitUpgradeSignal(MapUnit unit) {
+		(UnitPrototype target, int cost)? offer = null;
+		int gold = 0;
+		EngineStorage.ReadGameData(data => {
+			offer = unit.UpgradeOffer();
+			gold = unit.owner.gold;
+		});
+		if (offer is not (UnitPrototype target, int cost)) {
+			return;
+		}
+		if (cost > gold) {
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "Military Advisor",
+					$"Upgrading our {unit.unitType.name} to a {target.name} costs {cost} gold, but we only have {gold}.",
+					Advisor.Military, Mood.Sad, hSize: 350)
+			));
+			return;
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Military Advisor",
+				$"Upgrade our {unit.unitType.name} to a {target.name} for {cost} gold?",
+				Advisor.Military,
+				Mood.Happy,
+				"Yes, upgrade it.",
+				"No, not now.",
+				() => {
+					new MsgUpgradeUnit(unit.id).send();
+				},
+				hSize: 350
+			)
+		));
+	}
+
 	public void EmitSellBuildingSignal(MsgDisplaySellBuildingPopup msg) {
 		string reason = null;
 		int gold = 0;

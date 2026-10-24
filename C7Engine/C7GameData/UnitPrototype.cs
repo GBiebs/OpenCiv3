@@ -21,7 +21,8 @@ namespace C7GameData {
 		Load,
 		Unload,
 		Pillage,
-		JoinCity
+		JoinCity,
+		Upgrade
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {

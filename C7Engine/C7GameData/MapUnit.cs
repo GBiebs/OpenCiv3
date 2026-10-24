@@ -737,6 +737,11 @@ namespace C7GameData {
 			if (CanJoinCity()) {
 				result.Add(UnitAction.JoinCity);
 			}
+			// Shown whenever the unit could be upgraded here, even without the
+			// gold, so the player can see the price.
+			if (UpgradeOffer() != null) {
+				result.Add(UnitAction.Upgrade);
+			}
 
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.
 			// unit.availableActions.Add("rename");

@@ -1,0 +1,62 @@
+using System;
+using System.Linq;
+using C7Engine;
+
+namespace C7GameData;
+
+public partial class MapUnit {
+	// What this unit would become if upgraded where it is, and the gold it
+	// would cost, or null if it can't be upgraded here. As in Civ3: it must be
+	// in one of our cities with the building that trains veterans of its kind
+	// (Barracks for ground units, Harbor for ships, Airport for aircraft); it
+	// becomes the best unit of its upgrade line the city could build (with
+	// that city's resources); and it costs the difference in shields times the
+	// rules' upgrade cost (3 gold a shield in Conquests), half that with a
+	// wonder that makes upgrades cheaper (Leonardo's Workshop).
+	public (UnitPrototype target, int cost)? UpgradeOffer() {
+		if (!unitType.actions.Contains(UnitAction.Upgrade)) {
+			return null;
+		}
+		City city = location.cityAtTile;
+		if (city == null || city.owner != owner || !CityCanUpgradeMe(city)) {
+			return null;
+		}
+		GameData gameData = EngineStorage.gameData;
+		UnitPrototype target = unitType.GetProducibleUpgrade(city, city.GetAccessibleResources(gameData));
+		if (target == null) {
+			return null;
+		}
+		int cost = Math.Max(0, target.shieldCost - unitType.shieldCost) * gameData.rules.UpgradeCost;
+		if (owner.GetActiveWonders().Any(w => w.Item2.building.HasWonderFlag(Save.SaveBuilding.WonderFlag.CheaperUpgrades))) {
+			cost /= 2;
+		}
+		return (target, cost);
+	}
+
+	private bool CityCanUpgradeMe(City city) {
+		return city.GetBuildings().Any(cb => !cb.building.IsObsolete(owner) && (
+			(IsLandUnit() && cb.building.providesVeteranGroundUnits)
+			|| (IsWaterUnit() && cb.building.providesVeteranSeaUnits)
+			|| (IsAirUnit() && cb.building.providesVeteranAirUnits)));
+	}
+
+	// Whether this unit can be upgraded here now, with the gold we have.
+	public bool CanUpgrade() {
+		return UpgradeOffer() is (UnitPrototype, int cost) && cost <= owner.gold;
+	}
+
+	// Upgrades this unit where it is, paying for it. It keeps its experience,
+	// nationality, damage and moves left. Returns false if it couldn't.
+	public bool Upgrade() {
+		if (UpgradeOffer() is not (UnitPrototype target, int cost) || cost > owner.gold) {
+			return false;
+		}
+		UnitPrototype from = unitType;
+		owner.gold -= cost;
+		unitType = target;
+		name = target.name;
+		hitPointsRemaining = Math.Min(hitPointsRemaining, maxHitPoints);
+		log.Information($"{owner} upgrades a {from.name} at {location} to a {target.name} for {cost} gold");
+		return true;
+	}
+}

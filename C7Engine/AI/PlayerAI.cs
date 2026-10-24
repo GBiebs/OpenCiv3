@@ -42,6 +42,8 @@ namespace C7Engine {
 				await AttemptTrading(player);
 			}
 
+			UpgradeUnits(player);
+
 			await DoUnitActions(player);
 
 			// Before ending the turn, adjust our sliders. We do this after unit
@@ -50,6 +52,19 @@ namespace C7Engine {
 			AdjustSliders(player);
 
 			log.Information("-> End " + player.civilization.cityNames[0] + $" turn {stopwatch.ElapsedMilliseconds} milliseconds");
+		}
+
+		// The gold the AI keeps in hand when upgrading units.
+		internal const int UPGRADE_GOLD_RESERVE = 50;
+
+		// Upgrades the units that can be, where they stand, while there's gold
+		// to spare.
+		internal static void UpgradeUnits(Player player) {
+			foreach (MapUnit unit in player.units.ToList()) {
+				if (unit.UpgradeOffer() is (UnitPrototype, int cost) && player.gold - cost >= UPGRADE_GOLD_RESERVE) {
+					unit.Upgrade();
+				}
+			}
 		}
 
 		private static void MaybeDoPriorityReevaluation(Player player) {
