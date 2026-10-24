@@ -74,9 +74,11 @@ namespace C7Engine {
 					break;
 				case SettlerAIData.SettlerGoal.JOIN_CITY:
 					if (unit.location.cityAtTile != null) {
-						//TODO: Actually join the city.  Haven't added that action.
-						//For now, just get rid of the unit.  Sorry, bro.
-						unit.RemoveFromPlay();
+						// Join the city if there's room; otherwise the unit is
+						// of no more use.
+						if (unit.JoinCity() == null) {
+							unit.RemoveFromPlay();
+						}
 					} else {
 						//TODO: Eventually, go to the city we're supposed to join
 						//For now, just disband

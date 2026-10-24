@@ -498,6 +498,18 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgJoinCity : MessageToEngine {
+		private ID unitId;
+
+		public MsgJoinCity(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			EngineStorage.gameData.GetUnit(unitId)?.JoinCity();
+		}
+	}
+
 	// The player chose to raze a city they've just captured.
 	public class MsgRazeCity : MessageToEngine {
 		private City city;

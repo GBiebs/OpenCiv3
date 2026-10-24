@@ -67,6 +67,7 @@ public partial class UnitButtons : VBoxContainer {
 		// AddNewButton(specializedControls, "sacrifice");
 		// AddNewButton(specializedControls, "scienceAge");
 		AddNewButton(specializedControls, C7Action.UnitBuildCity);
+		AddNewButton(specializedControls, C7Action.UnitJoinCity);
 
 		SetUpTerraformButtons();
 

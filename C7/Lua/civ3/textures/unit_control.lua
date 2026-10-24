@@ -52,6 +52,7 @@ local unit_control = {
   unit_build_radar_tower = make_entry(2, 4),
   unit_build_outpost = make_entry(3, 4),
   unit_build_barricade = make_entry(4, 4),
+  unit_join_city = make_entry(0, 4),
 
   movement_indicators = {
     path = INTERFACE .. "MovementLED.PCX",

@@ -1373,6 +1373,7 @@ namespace C7GameData {
 			if (prto.Load) yield return UnitAction.Load;
 			if (prto.Unload) yield return UnitAction.Unload;
 			if (prto.Pillage) yield return UnitAction.Pillage;
+			if (prto.JoinCity) yield return UnitAction.JoinCity;
 		}
 
 		private static IEnumerable<TerraformKey> GetUnitTerraforms(PRTO prto) {

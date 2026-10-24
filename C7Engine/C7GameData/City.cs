@@ -429,11 +429,13 @@ namespace C7GameData {
 		}
 
 		private bool CanGrowPopulationByOne(GameData gD) {
-			// We can always grow up to size 6.
-			if (residents.Count + 1 <= gD.rules.MaximumLevel1CitySize) {
-				return true;
-			}
+			return residents.Count + 1 <= SizeLimit(gD);
+		}
 
+		// The largest this city can grow: a town can always reach the rules'
+		// town size; it needs fresh water or an aqueduct to become a city, and
+		// a hospital to become a metropolis.
+		public int SizeLimit(GameData gD) {
 			// If the city doesn't have fresh water and doesn't have an aqueduct
 			// then it can't grow into a city.
 			//
@@ -458,12 +460,7 @@ namespace C7GameData {
 			}
 
 			if (!canGrowIntoCity) {
-				return false;
-			}
-
-			// With fresh water or an aqueduct we can grow to size 2.
-			if (residents.Count + 1 <= gD.rules.MaximumLevel2CitySize) {
-				return true;
+				return gD.rules.MaximumLevel1CitySize;
 			}
 
 			// If we're a city trying to grow into a metropolis, we need a
@@ -471,10 +468,12 @@ namespace C7GameData {
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in GetBuildings()) {
 				if (cb.building.allowsCitySize3) {
-					return true;
+					return int.MaxValue;
 				}
 			}
-			return false;
+
+			// With fresh water or an aqueduct we can grow to a city.
+			return gD.rules.MaximumLevel2CitySize;
 		}
 
 		public bool HasGranary() {

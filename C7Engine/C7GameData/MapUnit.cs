@@ -734,6 +734,9 @@ namespace C7GameData {
 			if (CanPillage()) {
 				result.Add(UnitAction.Pillage);
 			}
+			if (CanJoinCity()) {
+				result.Add(UnitAction.JoinCity);
+			}
 
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.
 			// unit.availableActions.Add("rename");

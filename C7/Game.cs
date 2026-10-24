@@ -1258,6 +1258,10 @@ public partial class Game : Node {
 			new MsgPillage(CurrentlySelectedUnit.id).send();
 		}
 
+		if (currentAction == C7Action.UnitJoinCity) {
+			new MsgJoinCity(CurrentlySelectedUnit.id).send();
+		}
+
 		if (currentAction == C7Action.UnitLoad) {
 			// TODO: Which transport?
 			new MsgLoadToTransport(CurrentlySelectedUnit.id).send();

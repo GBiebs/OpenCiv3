@@ -55,6 +55,38 @@ public partial class MapUnit {
 		return destroyed;
 	}
 
+	// Whether this unit can join the city it's in (Civ3's settlers and
+	// workers): one of our cities, with room under its size limit for the
+	// unit's population cost.
+	public bool CanJoinCity() {
+		if (!unitType.actions.Contains(UnitAction.JoinCity) || unitType.populationCost <= 0 || !movementPoints.canMove) {
+			return false;
+		}
+		City city = location.cityAtTile;
+		return city != null && city.owner == owner
+			&& city.residents.Count + unitType.populationCost <= city.SizeLimit(EngineStorage.gameData);
+	}
+
+	// Adds this unit's population cost to the city it's in, as citizens of the
+	// unit's nationality (so captured workers become foreign nationals), and
+	// removes the unit. Returns the city, or null if the unit can't join it.
+	public City JoinCity() {
+		if (!CanJoinCity()) {
+			return null;
+		}
+		GameData gameData = EngineStorage.gameData;
+		City city = location.cityAtTile;
+		CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
+		for (int i = 0; i < unitType.populationCost; i++) {
+			CityResident resident = new() { city = city, nationality = nationality, citizenType = laborer };
+			city.AddCitizen(resident);
+			C7Engine.AI.CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
+		}
+		log.Information($"{this} joins {city.name}, now size {city.residents.Count}");
+		RemoveFromPlay();
+		return city;
+	}
+
 	// Called when this unit has moved onto `tile`. Any enemy units left there
 	// can't defend themselves, so they're captured or destroyed, and their
 	// owners are told.
