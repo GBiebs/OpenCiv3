@@ -1263,7 +1263,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -2212,7 +2213,8 @@
         "Saltpeter"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -2374,7 +2376,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -2453,7 +2456,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -2532,7 +2536,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -2835,7 +2840,8 @@
       "unproducible": false,
       "flags": [
         "rotateBeforeAttack",
-        "radar"
+        "radar",
+        "zoneOfControl"
       ],
       "categories": [
         "Land"
@@ -3916,7 +3922,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "radar"
+        "radar",
+        "zoneOfControl"
       ],
       "categories": [
         "Sea"
@@ -4634,7 +4641,8 @@
       "unproducible": true,
       "flags": [
         "radar",
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ],
       "categories": [
         "Land"
@@ -5294,7 +5302,8 @@
         "Saltpeter"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -5346,7 +5355,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -5572,7 +5582,8 @@
         "Horses"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -5620,7 +5631,8 @@
         "Horses"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -5717,7 +5729,8 @@
         "Saltpeter"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {
@@ -8008,7 +8021,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "zoneOfControl"
       ]
     },
     {

@@ -263,6 +263,9 @@ public partial class MapUnit {
 		facingDirection = dir;
 		float movementCost = TilePath.GetMovementCost(this.owner, location, dir, newLoc);
 
+		// Enemy units with a zone of control may take a shot as we pass.
+		await ZoneOfControl.Apply(this, location, newLoc);
+
 		// Leave old tile
 		if (!location.unitsOnTile.Remove(this))
 			throw new System.Exception("Failed to remove unit from tile it's supposed to be on");

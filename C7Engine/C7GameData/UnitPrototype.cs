@@ -143,6 +143,19 @@ namespace C7GameData {
 			}
 		}
 
+		// Whether this unit takes a free shot at enemies passing through the
+		// eight tiles around it (see ZoneOfControl).
+		public bool zoneOfControl {
+			get => flags.Contains(SaveUnitPrototype.Flag.ZoneOfControl);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.ZoneOfControl);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.ZoneOfControl);
+				}
+			}
+		}
+
 		public HashSet<string> categories = new HashSet<string>();
 
 		public HashSet<UnitAction> actions = [];

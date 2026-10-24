@@ -13,6 +13,7 @@ namespace C7GameData.Save {
 			Radar,
 			Wheeled,
 			CanCapture,
+			ZoneOfControl,
 		}
 
 		public string name { get; set; }
