@@ -1307,8 +1307,8 @@ namespace C7GameData {
 			unhappyToContentMoves += owner.GetNetContentFacesFromOtherCities(this);
 
 			// Depending on the government type, land defensive units can serve
-			// as military police.
-			unhappyToContentMoves += Math.Min(owner.government.militaryPoliceLimit, location.unitsOnTile.Count(x => x.CanDefendOnLand()));
+			// as military police. An army is one unit; its members don't count.
+			unhappyToContentMoves += Math.Min(owner.government.militaryPoliceLimit, location.unitsOnTile.Count(x => !x.IsInArmy() && x.CanDefendOnLand()));
 
 			// Luxury spending moves content faces to happy faces.
 			//
