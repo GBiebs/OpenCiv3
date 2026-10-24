@@ -153,6 +153,63 @@ public class LeaderAndArmyAITest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
+	public void AnArmyLeavesAloneTargetsItWouldLikelyLose() {
+		MapUnit army = ArmyNearAnEnemy();
+		us.DeclareWarOn(them, gameData.turn);
+		Join(army, "Swordsman");
+		Join(army, "Swordsman");
+		Assert.IsType<CombatAI>(C7Engine.PlayerAI.GetAIForUnit(army, us));
+
+		Type("Warrior").defense = 50;
+		Assert.IsType<DefenderAI>(C7Engine.PlayerAI.GetAIForUnit(army, us));
+	}
+
+	[Fact]
+	public void AnArmyOfDefendersStaysToDefendItsCity() {
+		MapUnit army = ArmyNearAnEnemy();
+		us.DeclareWarOn(them, gameData.turn);
+		Join(army, "Spearman");
+		Join(army, "Spearman");
+
+		DefenderAI orders = Assert.IsType<DefenderAI>(C7Engine.PlayerAI.GetAIForUnit(army, us));
+		Assert.Equal(home.location, orders.data.destination);
+	}
+
+	[Fact]
+	public void AHurtArmyGoesHomeToHeal() {
+		MapUnit army = ArmyNearAnEnemy();
+		us.DeclareWarOn(them, gameData.turn);
+		Join(army, "Swordsman");
+		Join(army, "Swordsman");
+		Tile field = home.location.neighbors.Values.First(IsEmptyLand);
+		foreach (MapUnit unit in home.location.unitsOnTile.Where(u => u == army || u.IsInArmy()).ToList()) {
+			home.location.unitsOnTile.Remove(unit);
+			field.unitsOnTile.Add(unit);
+			unit.location = field;
+		}
+
+		army.hitPointsRemaining = army.maxHitPoints / 2 - 1;
+
+		DefenderAI orders = Assert.IsType<DefenderAI>(C7Engine.PlayerAI.GetAIForUnit(army, us));
+		Assert.Equal(home.location, orders.data.destination);
+	}
+
+	[Fact]
+	public async Task AnArmyBreaksOffItsAttackOnceHurt() {
+		MapUnit army = ArmyNearAnEnemy();
+		us.DeclareWarOn(them, gameData.turn);
+		Join(army, "Swordsman");
+		Join(army, "Swordsman");
+		C7GameData.UnitAI attack = Assert.IsType<CombatAI>(C7Engine.PlayerAI.GetAIForUnit(army, us));
+
+		army.hitPointsRemaining = 1;
+		army.OnBeginTurn();
+
+		Assert.Equal(C7GameData.UnitAI.Result.Done, await attack.PlayTurn(us, army));
+		Assert.Equal(home.location, army.location);
+	}
+
+	[Fact]
 	public void InPeaceAnArmyWaitsInItsCity() {
 		MapUnit army = ArmyNearAnEnemy();
 		Join(army, "Swordsman");

@@ -95,7 +95,7 @@ namespace C7GameData {
 		}
 
 		public bool CanDefendOnLand() {
-			return IsLandUnit() && unitType.defense > 0;
+			return IsLandUnit() && CombatType(CombatRole.Defense).defense > 0;
 		}
 
 		public bool IsCombatUnit() {

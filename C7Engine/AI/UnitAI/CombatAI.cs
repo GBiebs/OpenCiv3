@@ -35,9 +35,22 @@ namespace C7Engine.AI.UnitAI {
 
 		public void UpdateOnDeath() { }
 
+		// The chance of winning an army needs before it attacks: armies are
+		// worth too much to throw away.
+		internal const double ARMY_MIN_WIN_CHANCE = 0.7;
+
+		// An army below half its hit points stops attacking, to go and heal.
+		internal static bool IsHurtArmy(MapUnit unit) {
+			return unit.IsArmy() && unit.hitPointsRemaining * 2 < unit.maxHitPoints;
+		}
+
 		public C7GameData.UnitAI.MoveResult PlayTurnImpl(Player player, MapUnit unit) {
 			if (data == null) {
 				return C7GameData.UnitAI.Result.Error;
+			}
+
+			if (IsHurtArmy(unit)) {
+				return C7GameData.UnitAI.Result.Done;
 			}
 
 			if (unit.location == data.destination) {
@@ -169,6 +182,14 @@ namespace C7Engine.AI.UnitAI {
 			// Ignore land tiles for sea units, and vice versa.
 			if (t.IsLand() != unit.IsLandUnit()) {
 				return int.MinValue;
+			}
+
+			// Armies only take battles they're likely to win.
+			if (unit.IsArmy() && hasEnemyUnits) {
+				MapUnit target = t.FindTopDefender(unit);
+				if (target != MapUnit.NONE && target.CanDefendItself() && CombatOdds.AttackerWinChance(unit, target) < ARMY_MIN_WIN_CHANCE) {
+					return int.MinValue;
+				}
 			}
 
 			// Handle the case of units running around.

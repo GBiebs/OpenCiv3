@@ -40,6 +40,19 @@ namespace C7Engine.AI.UnitAI {
 			return ai;
 		}
 
+		// Go to `city` and defend it, or null if the unit can't get there.
+		public static DefenderAIData? MakeAiDataForDefendCity(MapUnit unit, City city) {
+			TilePath path = PathingAlgorithmChooser.GetAlgorithm(unit).PathFrom(unit.location, city.location, unit);
+			if ((path?.PathLength() ?? -1) == -1) {
+				return null;
+			}
+			return new DefenderAIData {
+				destination = city.location,
+				goal = DefenderAIData.DefenderGoal.DEFEND_CITY,
+				pathToDestination = path,
+			};
+		}
+
 		public DefenderAI(DefenderAIData d) {
 			data = d;
 		}

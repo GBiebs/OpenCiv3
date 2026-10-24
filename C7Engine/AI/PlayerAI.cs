@@ -212,20 +212,26 @@ namespace C7Engine {
 			}
 		}
 
-		// An army with two members or more attacks while we're at war;
-		// otherwise it waits in one of our cities, where FillArmies adds the
-		// strongest units built there.
+		// An attacking army (two members or more, whose best attack is at
+		// least its best defense, with half its hit points or more) goes after
+		// the targets it's likely to beat while we're at war. Any other army
+		// waits in our nearest city: to be filled (see FillArmies), to heal,
+		// or, made of defenders, to defend it.
 		private static UnitAI GetAIForArmy(MapUnit army, Player player) {
-			if (army.Passengers().Count >= 2 && IsInAnyWar(player, EngineStorage.gameData.players)) {
+			bool attacker = army.Passengers().Count >= 2
+				&& army.CombatType(CombatRole.Attack).attack >= army.CombatType(CombatRole.Defense).defense
+				&& !CombatAI.IsHurtArmy(army);
+			if (attacker && IsInAnyWar(player, EngineStorage.gameData.players)) {
 				CombatAIData attack = CombatAI.MakeAiData(army, player);
 				if (attack != null) {
 					return new CombatAI(attack);
 				}
 			}
-			if (army.location.cityAtTile?.owner == player) {
-				return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(army, player));
+			City home = player.cities.OrderBy(c => c.location.DistanceTo(army.location)).FirstOrDefault();
+			if (home != null && home.location != army.location && DefenderAI.MakeAiDataForDefendCity(army, home) is DefenderAIData toCity) {
+				return new DefenderAI(toCity);
 			}
-			return new DefenderAI(DefenderAI.MakeAiDataForDefendAtRiskCity(army, player, minDefenders: int.MaxValue));
+			return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(army, player));
 		}
 
 		public static UnitAI GetAIForUnit(MapUnit unit, Player player) {
