@@ -226,18 +226,23 @@ public class SoakTest {
 		// What happened, from the messages the engine queued for the UI (nothing
 		// reads them here).
 		MessageToUI[] messages = EngineStorage.messagesToUI.ToArray();
+		List<PlayerRelationship> relationships = gameData.players.Where(p => !p.isBarbarians && !p.defeated)
+			.SelectMany(p => p.playerRelationships.Values).ToList();
 		string events = $"{messages.OfType<MsgCityCaptured>().Count()} cities captured "
 			+ $"({messages.OfType<MsgCityCaptured>().Sum(m => m.resisters)} resisters), "
 			+ $"{messages.OfType<MsgCityRazed>().Count()} razed or destroyed, "
 			+ $"{messages.OfType<MsgUnitsCaptured>().Count()} units captured, "
 			+ $"{messages.OfType<MsgUnitEnslaved>().Count()} enslaved, "
 			+ $"{messages.OfType<MsgTilePillaged>().Count()} tiles pillaged, "
-			+ $"{gameData.mapUnits.Count(u => u.experienceLevelKey == "Conscript")} conscripts now, "
+			+ $"{gameData.mapUnits.Count(u => !u.owner.isBarbarians && u.experienceLevelKey == "Conscript")} conscripts now, "
 			+ $"{gameData.cities.Sum(c => c.residents.Count(r => r.resisting))} resisters now, "
 			+ $"{messages.OfType<MsgLeaderBorn>().Count()} leaders born, "
 			+ $"{gameData.mapUnits.Count(u => u.IsArmy())} armies now "
 			+ $"({gameData.mapUnits.Count(u => u.IsInArmy())} units in them), "
-			+ $"{gameData.players.Count(p => p.hasVictoriousArmy)} civs with a victorious army";
+			+ $"{gameData.players.Count(p => p.hasVictoriousArmy)} civs with a victorious army, "
+			+ $"war weariness up to {relationships.Select(r => r.warWearinessPoints).DefaultIfEmpty(0).Max()} points, "
+			+ $"{relationships.Count(r => r.AtWar() && r.warWearinessPoints < 0)} wars still rallying the side declared on, "
+			+ $"{gameData.cities.Sum(c => c.CitizensOfEnemyNationality(gameData))} citizens of enemy nationality now";
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
 	}
 }
