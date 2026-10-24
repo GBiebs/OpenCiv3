@@ -533,6 +533,7 @@ namespace C7GameData {
 					noun = race.Noun,
 					adjective = race.Adjective,
 					leader = race.LeaderName,
+					leaderTitle = race.LeaderTitle,
 					leaderGender = race.LeaderGender == 0 ? Gender.Male : Gender.Female,
 					primaryColorIndex = race.DefaultColor,
 					secondaryColorIndex = race.UniqueColor,
@@ -1257,6 +1258,7 @@ namespace C7GameData {
 					foodStored = city.TotalFood,
 					buildings = ImportCityBuildingsFromSav(i),
 					turnsOfUnhappinessDueToPopRushing = city.TurnsOfUnhappinessDueToPopRushing,
+					celebrating = city.WeLoveTheKingDay,
 				};
 
 				List<int> culturePerLeader = city.GetCulturePerLeader();
@@ -2268,6 +2270,7 @@ namespace C7GameData {
 			}
 			save.Rules.UpgradeCost = rule.UpgradeCost;
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
+			save.Rules.MinimumPopulationForWeLoveTheKing = rule.MinimumPopulationForWeLoveTheKing;
 			if (rule.BattleCreatedUnit >= 0) {
 				save.Rules.BattleCreatedUnitType = theBiq.Prto[rule.BattleCreatedUnit].Name;
 			}

@@ -56,6 +56,8 @@ namespace C7GameData.Save {
 		// The turn citizens were last drafted here, if ever, and how many.
 		public int? draftTurn;
 		public int draftedThatTurn;
+		// Celebrating We Love the King Day.
+		public bool celebrating;
 		public List<SaveCityResident> residents = new List<SaveCityResident>();
 		public List<SaveCityBuilding> buildings = [];
 
@@ -80,6 +82,7 @@ namespace C7GameData.Save {
 			turnsOfUnhappinessDueToDrafting = city.turnsOfUnhappinessDueToDrafting;
 			draftTurn = city.draftTurn >= 0 ? city.draftTurn : null;
 			draftedThatTurn = city.draftedThatTurn;
+			celebrating = city.celebrating;
 			residents = city.residents.ConvertAll(resident => {
 				return new SaveCityResident {
 					nationality = resident.nationality?.name,
@@ -119,6 +122,7 @@ namespace C7GameData.Save {
 				turnsOfUnhappinessDueToDrafting = turnsOfUnhappinessDueToDrafting,
 				draftTurn = draftTurn ?? -1,
 				draftedThatTurn = draftedThatTurn,
+				celebrating = celebrating,
 				capital = capital,
 				constructed_buildings = this.buildings.ConvertAll(building => building.ToCityBuilding(buildings, players)),
 			};

@@ -468,6 +468,11 @@ public partial class Game : Node {
 				Vector2 pos = mapView.screenLocationOfTile(mSTP.location, true);
 				TemporaryPopup.Show(this, mSTP.message, pos);
 				break;
+			case MsgCelebration mCel:
+				if (mCel.playerId == controller.id) {
+					TemporaryPopup.Show(this, mCel.Text(), mapView.screenLocationOfTile(mCel.city.location, true));
+				}
+				break;
 			case MsgResistanceQuelled mRQ:
 				if (mRQ.playerId == controller.id) {
 					string resistanceText = mRQ.resistanceContinues

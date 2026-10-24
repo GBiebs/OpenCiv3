@@ -1251,6 +1251,16 @@ namespace C7GameData {
 			}
 		}
 
+		// Once a turn, after the moods: starts and ends our cities' We Love
+		// the King Days, telling a human.
+		public void UpdateCelebrations(GameData gameData) {
+			foreach (City c in cities) {
+				if (c.UpdateCelebration(gameData) && isHuman) {
+					new MsgCelebration(id, c, c.celebrating).send();
+				}
+			}
+		}
+
 		// Returns a list of specialists that this player can use.
 		public List<CitizenType> GetKnownSpecialists(GameData gameData) {
 			return gameData.citizenTypes.FindAll(x => {

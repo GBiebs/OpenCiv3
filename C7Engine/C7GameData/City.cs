@@ -72,6 +72,14 @@ namespace C7GameData {
 		// The amount of corruption, between 0 and 1.
 		public float corruption = 0;
 
+		// The amount of waste (the shields' corruption), between 0 and 1: the
+		// same as corruption, but less while the city celebrates.
+		public float waste = 0;
+
+		// Whether the city is celebrating We Love the King Day (see
+		// UpdateCelebration).
+		public bool celebrating = false;
+
 		// The number of turns of unhappiness this city will experience due to
 		// pop rushing. Larger values result in larger numbers of citizens being
 		// unhappy as well, in addition to the time penalty.
@@ -587,9 +595,9 @@ namespace C7GameData {
 			if (owner.mobilized && itemBeingProduced is UnitPrototype unit && unit.IsMilitary()) {
 				yield += tilesMakingShields;
 			}
-			CorruptableValue result = new(yield, corruption);
+			CorruptableValue result = new(yield, waste);
 
-			// Using our value of corruption, figure out how much useful
+			// Using our value of waste, figure out how much useful
 			// production we have to work with. Special case anarchy, where no
 			// useful production is available. We do this here rather than
 			// setting corruption to 100% because CorruptableValue would give us
@@ -1016,7 +1024,9 @@ namespace C7GameData {
 		}
 
 		// See https://forums.civfanatics.com/threads/everything-about-corruption-c3c-edition.76619/
-		private float CalculateDistanceCorruption(int numAntiCorruptionBuildings) {
+		// For the waste of a city celebrating We Love the King Day, the adjusted
+		// distance is halved.
+		private float CalculateDistanceCorruption(int numAntiCorruptionBuildings, bool celebrationWaste = false) {
 			float maxD = (location.map.numTilesWide + location.map.numTilesTall) / 4;
 
 			float distanceToPalace = owner.citiesWithCorruptionWonders.Min(x => location.RankDistanceTo(x.location));
@@ -1042,11 +1052,16 @@ namespace C7GameData {
 			float adjustedDistance =
 					(float)Math.Pow(0.5f, numAntiCorruptionBuildings)
 					* Math.Min(govtFactor * tradeFactor * distanceToPalace, maxD);
+			if (celebrationWaste) {
+				adjustedDistance /= 2;
+			}
 			return adjustedDistance / maxD;
 		}
 
 		// See https://forums.civfanatics.com/threads/everything-about-corruption-c3c-edition.76619/
-		private float CalculateRankCorruption(GameData gameData, int numAntiCorruptionBuildings) {
+		// For the waste of a city celebrating We Love the King Day, the optimal
+		// city number grows by a quarter of the map's.
+		private float CalculateRankCorruption(GameData gameData, int numAntiCorruptionBuildings, bool celebrationWaste = false) {
 			int rank = rankIndex;
 			if (owner.government.corruptionType == Government.CorruptionType.Communal) {
 				rank = owner.cities.Count / 2;
@@ -1054,7 +1069,8 @@ namespace C7GameData {
 
 			float nOpt = Math.Max(
 				1,
-				owner.GetAdjustedOptimalCityNumber(gameData) + .25f * numAntiCorruptionBuildings);
+				owner.GetAdjustedOptimalCityNumber(gameData) + .25f * numAntiCorruptionBuildings
+					+ (celebrationWaste ? .25f * gameData.map.optimalNumberOfCities : 0));
 
 			if (rank < nOpt) {
 				return rank / (2 * nOpt);
@@ -1082,6 +1098,16 @@ namespace C7GameData {
 				.9f - (.1f * numAntiCorruptionBuildings + .7f * numCorruptionReducingSmallWondersInCity));
 			corruption = Math.Max(corruption, 0);
 			corruption = Math.Min(corruption, maxCorruption);
+
+			// Waste is the same, but less while the city celebrates We Love the
+			// King Day (Civilopedia "We Love the King Day"; by how much: the
+			// article above).
+			waste = corruption;
+			if (celebrating) {
+				waste = CalculateDistanceCorruption(numAntiCorruptionBuildings, celebrationWaste: true)
+					+ CalculateRankCorruption(gameData, numAntiCorruptionBuildings, celebrationWaste: true);
+				waste = Math.Clamp(waste, 0, maxCorruption);
+			}
 		}
 
 		// Does the per turn culture updating for the city and returns whether
@@ -1187,6 +1213,34 @@ namespace C7GameData {
 				}
 			}
 			return count;
+		}
+
+		// Whether this city, with its citizens' current moods, qualifies for
+		// We Love the King Day (Civilopedia "We Love the King Day"): it isn't
+		// starving, has no resisters and no unhappy citizens, more happy than
+		// content citizens, and is at least the rules' size (6 in Conquests).
+		public bool QualifiesForCelebration(GameData gameData) {
+			if (residents.Count < gameData.rules.MinimumPopulationForWeLoveTheKing || isInCivilDisorder
+					|| residents.Any(r => r.resisting) || FoodGrowthPerTurn() < 0) {
+				return false;
+			}
+			List<CityResident> laborers = residents.Where(HasMood).ToList();
+			int happy = laborers.Count(r => r.mood == CityResident.Mood.Happy);
+			int content = laborers.Count(r => r.mood == CityResident.Mood.Content);
+			return laborers.All(r => r.mood != CityResident.Mood.Unhappy) && happy > content;
+		}
+
+		// Starts or ends the city's We Love the King Day as it qualifies or
+		// not, once a turn after its moods are worked out. A celebrating city
+		// wastes fewer shields (CalculateCorruption). Returns whether it
+		// started or ended.
+		public bool UpdateCelebration(GameData gameData) {
+			bool qualifies = QualifiesForCelebration(gameData);
+			if (qualifies == celebrating) {
+				return false;
+			}
+			celebrating = qualifies;
+			return true;
 		}
 
 		public enum Mood {

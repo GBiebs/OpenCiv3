@@ -25,6 +25,8 @@ namespace C7GameData {
 		public int UpgradeCost = 3;
 		// How long each drafted citizen makes a city unhappier, in turns.
 		public int TurnPenaltyForEachDraftedCitizen = 20;
+		// The smallest city that can celebrate We Love the King Day.
+		public int MinimumPopulationForWeLoveTheKing = 6;
 		// The unit elite units can produce by winning battles (Civ3's
 		// "battle-created unit": the military great leader).
 		public string BattleCreatedUnitType = "Leader";

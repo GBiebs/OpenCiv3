@@ -41,6 +41,9 @@ namespace C7GameData {
 		// `adjective` is "American" for "America", or "Celtic" for "Celts", etc.
 		public string adjective;
 		public string leader;
+		// The leader's title, as in "We love the Emperor day": Emperor, Queen,
+		// Shogun...
+		public string leaderTitle;
 		public int primaryColorIndex;
 		public int secondaryColorIndex;
 		public Gender leaderGender;

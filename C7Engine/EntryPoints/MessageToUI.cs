@@ -173,6 +173,27 @@ namespace C7Engine {
 
 	// Some of a city's resisters stopped resisting: the garrison quelled them,
 	// or their civ made peace.
+	// A city of the player's started or ended We Love the King Day.
+	public class MsgCelebration : MessageToUI {
+		public ID playerId;
+		public City city;
+		public bool started;
+
+		public MsgCelebration(ID playerId, City city, bool started) {
+			this.playerId = playerId;
+			this.city = city;
+			this.started = started;
+		}
+
+		// Civ3's text (script.txt WELOVEKING, WELOVEKINGOVER), with the city.
+		public string Text() {
+			string title = string.IsNullOrEmpty(city.owner.civilization.leaderTitle) ? "King" : city.owner.civilization.leaderTitle;
+			return started
+				? $"'We love the {title}' day celebrated in {city.name}."
+				: $"'We love the {title}' celebration has ended in {city.name}.";
+		}
+	}
+
 	public class MsgResistanceQuelled : MessageToUI {
 		public ID playerId;
 		public City city;

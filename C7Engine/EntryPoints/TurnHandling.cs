@@ -65,6 +65,7 @@ namespace C7Engine {
 					player.MaybeSpawnBonusUnits(gameData);
 					player.DecrementCityUnhappinessPenalties(gameData);
 					player.RecalculateCitizenMoods(gameData, goIntoDisorderIfUnhappy: true);
+					player.UpdateCelebrations(gameData);
 					player.DoCorruptionCalculations(gameData);
 
 					// Do the financial updates before updating the cities, so
