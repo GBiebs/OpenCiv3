@@ -199,6 +199,9 @@ public class SoakTest {
 			Environment.Exit(3);
 		}, null, 5000, 5000);
 
+		// Revolutions: turns on which a civ fell into anarchy.
+		int revolutions = 0;
+		HashSet<Player> inAnarchy = new();
 		try {
 			TurnHandling.OnBeginTurn();
 			TurnHandling.InitTurnData();
@@ -208,6 +211,13 @@ public class SoakTest {
 				TurnHandling.OnEndTurn(observer);
 				observer.hasPlayedThisTurn = true;
 				await TurnHandling.AdvanceTurn();
+				foreach (Player p in gameData.players.Where(p => !p.isBarbarians)) {
+					if (p.government.transitionType && inAnarchy.Add(p)) {
+						++revolutions;
+					} else if (!p.government.transitionType) {
+						inAnarchy.Remove(p);
+					}
+				}
 
 				List<string> problems = CheckInvariants(gameData);
 				if (problems.Count > 0) {
@@ -242,7 +252,10 @@ public class SoakTest {
 			+ $"{gameData.players.Count(p => p.hasVictoriousArmy)} civs with a victorious army, "
 			+ $"war weariness up to {relationships.Select(r => r.warWearinessPoints).DefaultIfEmpty(0).Max()} points, "
 			+ $"{relationships.Count(r => r.AtWar() && r.warWearinessPoints < 0)} wars still rallying the side declared on, "
-			+ $"{gameData.cities.Sum(c => c.CitizensOfEnemyNationality(gameData))} citizens of enemy nationality now";
+			+ $"{gameData.cities.Sum(c => c.CitizensOfEnemyNationality(gameData))} citizens of enemy nationality now, "
+			+ $"{gameData.cities.Count(c => c.celebrating)} cities celebrating, {revolutions} revolutions; governments: "
+			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
+				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
 	}
 }

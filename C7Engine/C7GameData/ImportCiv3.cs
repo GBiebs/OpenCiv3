@@ -525,6 +525,8 @@ namespace C7GameData {
 
 		private void ImportRaces() {
 			BiqData theBiq = biq.Race is null ? defaultBiq : biq;
+			BiqData govtBiq = biq.Govt is null ? defaultBiq : biq;
+			string GovernmentName(int index) => index >= 0 && index < govtBiq.Govt.Length ? govtBiq.Govt[index].Name : null;
 			int i = 0;
 			foreach (RACE race in theBiq.Race) {
 				Civilization civ = new Civilization{
@@ -534,6 +536,8 @@ namespace C7GameData {
 					adjective = race.Adjective,
 					leader = race.LeaderName,
 					leaderTitle = race.LeaderTitle,
+					favoriteGovernment = GovernmentName(race.FavoriteGovernment),
+					shunnedGovernment = GovernmentName(race.ShunnedGovernment),
 					leaderGender = race.LeaderGender == 0 ? Gender.Male : Gender.Female,
 					primaryColorIndex = race.DefaultColor,
 					secondaryColorIndex = race.UniqueColor,

@@ -44,6 +44,10 @@ namespace C7GameData {
 		// The leader's title, as in "We love the Emperor day": Emperor, Queen,
 		// Shogun...
 		public string leaderTitle;
+		// The names of the governments the AI leader of this civ likes and
+		// dislikes (Civ3's RACE favorite and shunned governments), if any.
+		public string favoriteGovernment;
+		public string shunnedGovernment;
 		public int primaryColorIndex;
 		public int secondaryColorIndex;
 		public Gender leaderGender;
