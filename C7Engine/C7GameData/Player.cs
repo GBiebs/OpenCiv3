@@ -897,13 +897,15 @@ namespace C7GameData {
 			// Ensure we never go below 0 gold.
 			while (gold + CalculateGoldPerTurn() < 0) {
 				// Start by disbanding units to get things under control.
+				// One whole unit at a time, until support is paid for: an army's
+				// members go with it, never alone, so one disbanding can free
+				// several units' support.
 				var (_, _, unitSupportCost) = TotalUnitsAllowedUnitsAndSupportCost();
-				if (unitSupportCost > 0) {
-					for (int i = 0; i < unitSupportCost / government.unitCost; ++i) {
-						MapUnit unitToRemove = units[GameData.rng.Next(units.Count)];
-						log.Information($"{this} is out of gold, disbanding {unitToRemove} at {unitToRemove.location} to being unit support costs under control");
-						gameData.RemoveUnit(unitToRemove);
-					}
+				List<MapUnit> disbandable = units.Where(u => !u.IsInArmy()).ToList();
+				if (unitSupportCost > 0 && disbandable.Count > 0) {
+					MapUnit unitToRemove = disbandable[GameData.rng.Next(disbandable.Count)];
+					log.Information($"{this} is out of gold, disbanding {unitToRemove} at {unitToRemove.location} to being unit support costs under control");
+					gameData.RemoveUnit(unitToRemove);
 					continue;
 				}
 

@@ -431,4 +431,38 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(4, loaded.hitPointsRemaining);
 		Assert.Equal(6, loaded.maxHitPoints);
 	}
+	[Fact]
+	public void AMemberRemovedFromAnArmyTakesItsHitPointsWithIt() {
+		MapUnit army = Army(home.location, "Swordsman", "Swordsman");
+		army.hitPointsRemaining = army.maxHitPoints;
+		int full = army.hitPointsRemaining;
+		MapUnit member = army.Passengers()[0];
+		int memberHitPoints = member.maxHitPoints;
+
+		gameData.RemoveUnit(member);
+
+		Assert.Single(army.Passengers());
+		Assert.Equal(full - memberHitPoints, army.maxHitPoints);
+		Assert.Equal(army.maxHitPoints, army.hitPointsRemaining);
+	}
+
+	[Fact]
+	public void ABrokeCivDisbandsWholeUnitsNeverAnArmyMemberAlone() {
+		// Eight full armies, so most units are army members, far more units
+		// than the free ones, and no gold to pay for them.
+		List<MapUnit> armies = Enumerable.Range(0, 8).Select(_ => Army(home.location, "Swordsman", "Swordsman", "Swordsman")).ToList();
+		int units = us.units.Count;
+		us.gold = 0;
+		us.taxRate = 10;
+		us.scienceRate = 0;
+		us.luxuryRate = 0;
+
+		us.DoPerTurnFinanceUpdates(gameData);
+
+		Assert.True(us.units.Count < units);
+		Assert.All(armies.Where(gameData.mapUnits.Contains), army => {
+			Assert.Equal(3, army.Passengers().Count);
+			Assert.True(army.hitPointsRemaining <= army.maxHitPoints);
+		});
+	}
 }

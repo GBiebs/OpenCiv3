@@ -329,6 +329,9 @@ namespace C7GameData {
 		}
 
 		internal void RemoveUnit(MapUnit unit) {
+			// A member leaving an army takes its hit points out of the pool.
+			MapUnit army = unit.IsInArmy() ? unit.Container() : null;
+
 			// The units in it go with it: an army's members, and a ship's cargo
 			// at sea. A ship's cargo in port is set down instead.
 			foreach (MapUnit passenger in unit.Passengers()) {
@@ -352,6 +355,9 @@ namespace C7GameData {
 			// EngineStorage.animTracker.endAnimation(unit, false);   TODO: Must send message instead of call directly
 			unit.location.unitsOnTile.Remove(unit);
 			mapUnits.Remove(unit);
+			if (army != null) {
+				army.hitPointsRemaining = Math.Min(army.hitPointsRemaining, army.maxHitPoints);
+			}
 
 			Player owner = unit.owner;
 			owner.units.Remove(unit);
