@@ -410,6 +410,9 @@ public partial class Game : Node {
 					humanGives: mSTO.aiWant,
 					humanWants: mSTO.aiGive);
 				break;
+			case MsgDisplaySellBuildingPopup mDSBP:
+				EmitSellBuildingSignal(mDSBP);
+				break;
 			case MsgDisplayHurryProductionPopup mDHPP:
 				EmitHurryProductionSignal(mDHPP);
 				break;

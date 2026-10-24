@@ -237,6 +237,36 @@ public partial class Game {
 		));
 	}
 
+	public void EmitSellBuildingSignal(MsgDisplaySellBuildingPopup msg) {
+		string reason = null;
+		int gold = 0;
+		EngineStorage.ReadGameData(data => {
+			reason = msg.city.WhyBuildingCannotBeSold(msg.building);
+			gold = msg.city.SaleValue(msg.building);
+		});
+		if (reason != null) {
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "Domestic Advisor", reason, Advisor.Domestic, Mood.Sad, hSize: 300)
+			));
+			return;
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Domestic Advisor",
+				$"Sell the {msg.building.name} in {msg.city.name} for {gold} gold?",
+				Advisor.Domestic,
+				Mood.Surprised,
+				"Yes, sell it.",
+				"No, keep it.",
+				() => {
+					new MsgSellBuilding(msg.city, msg.building, controller.id).send();
+				},
+				hSize: 350
+			)
+		));
+	}
+
 	public void EmitCityRansackedSignal(MsgCityRansacked msg) {
 		var ransacked = $"[url=no idea][color=Blue]ransacked[/color][/url]";
 		var message = $"{msg.city.name} was {ransacked} by {msg.barbTribe} tribe!" +

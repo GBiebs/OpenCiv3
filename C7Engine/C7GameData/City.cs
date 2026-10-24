@@ -85,6 +85,9 @@ namespace C7GameData {
 		public int capturedOnTurn = -1;
 		public Player capturedFrom;
 
+		// The turn the owner last sold a building here, or -1.
+		public int buildingSoldOnTurn = -1;
+
 		public static City NONE = new City(Tile.NONE, null, "Dummy City", ID.None("city"));
 
 		public static bool IsValidCity(City city) {
@@ -818,9 +821,34 @@ namespace C7GameData {
 			constructed_buildings.Remove(building);
 		}
 
-		// Wonders and the palace can't be sold.
+		// Wonders and the palace can't be sold, nor buildings that let a city
+		// grow past a size limit (aqueducts, hospitals): Civ3 doesn't allow it
+		// (the C3X mod adds an option to).
 		public static bool CanBeSold(Building building) {
-			return !building.IsGreatWonder() && !building.isSmallWonder && !building.isCenterOfEmpire;
+			return !building.IsGreatWonder() && !building.isSmallWonder && !building.isCenterOfEmpire
+				&& !building.allowsCitySize2 && !building.allowsCitySize3;
+		}
+
+		// Why the owner can't sell this building now, or null if they can: as
+		// in Civ3, only one building a turn per city.
+		public string WhyBuildingCannotBeSold(Building building) {
+			if (!constructed_buildings.Any(cb => cb.building == building) || !CanBeSold(building)) {
+				return $"We can't sell the {building.name}.";
+			}
+			if (buildingSoldOnTurn == EngineStorage.gameData.turn) {
+				return $"We have already sold a building in {name} this turn.";
+			}
+			return null;
+		}
+
+		// The owner sells a building by choice. Returns the gold received, or
+		// 0 if it can't be sold now.
+		public int SellBuildingByChoice(Building building) {
+			if (WhyBuildingCannotBeSold(building) != null) {
+				return 0;
+			}
+			buildingSoldOnTurn = EngineStorage.gameData.turn;
+			return SellBuilding(constructed_buildings.First(cb => cb.building == building));
 		}
 
 		// The gold the owner gets for selling a building. The formula is the Lua

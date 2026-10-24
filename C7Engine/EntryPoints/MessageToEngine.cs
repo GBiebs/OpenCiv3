@@ -510,6 +510,28 @@ namespace C7Engine {
 		}
 	}
 
+	// The player sells a building in one of their cities.
+	public class MsgSellBuilding : MessageToEngine {
+		private City city;
+		private Building building;
+		private ID playerId;
+
+		public MsgSellBuilding(City city, Building building, ID playerId) {
+			this.city = city;
+			this.building = building;
+			this.playerId = playerId;
+		}
+
+		public override void process() {
+			if (city.owner.id != playerId) {
+				return;
+			}
+			city.SellBuildingByChoice(building);
+			// Refresh the city screen, which is open.
+			new MsgShowCityScreen(city).send();
+		}
+	}
+
 	// The player chose to raze a city they've just captured.
 	public class MsgRazeCity : MessageToEngine {
 		private City city;

@@ -269,6 +269,17 @@ namespace C7Engine {
 		}
 	}
 
+	// The player clicked a building in the city screen: offer to sell it.
+	public class MsgDisplaySellBuildingPopup : MessageToUI {
+		public City city;
+		public Building building;
+
+		public MsgDisplaySellBuildingPopup(City city, Building building) {
+			this.city = city;
+			this.building = building;
+		}
+	}
+
 	public class MsgDisplayStopWorkerActionPopup : MessageToUI {
 		public MapUnit worker;
 		public Terraform workerJob;

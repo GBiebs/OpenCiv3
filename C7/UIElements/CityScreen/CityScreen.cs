@@ -299,7 +299,7 @@ public partial class CityScreen : Control {
 		RenderFoodDetails(city.Value);
 		RenderCommerceDetails(city.Value);
 		RenderProductionDetails(gameData, city.Value);
-		RenderExistingBuildings(city.Value.GetBuildings());
+		RenderExistingBuildings(city.Value);
 		RenderStrategicResources(gameData, city.Value);
 		RenderLuxuries(gameData, city.Value);
 	}
@@ -366,16 +366,22 @@ public partial class CityScreen : Control {
 		}
 	}
 
-	private void RenderExistingBuildings(List<CityBuilding> buildings) {
+	private void RenderExistingBuildings(City city) {
 		foreach (var node in existingBuildings.GetChildren()) {
 			existingBuildings.RemoveChild(node);
 		}
 
-		foreach (CityBuilding building in buildings) {
-			Label label = new() {
-				Text = building.building.name
+		// Clicking a building offers to sell it, as in Civ3.
+		foreach (CityBuilding building in city.GetBuildings()) {
+			Button button = new() {
+				Text = building.building.name,
+				Flat = true,
+				Alignment = HorizontalAlignment.Left,
+				TooltipText = "Click to sell",
 			};
-			existingBuildings.AddChild(label);
+			Building b = building.building;
+			button.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).send();
+			existingBuildings.AddChild(button);
 		}
 	}
 
