@@ -349,6 +349,34 @@ namespace C7Engine {
 		}
 	}
 
+	// A unit that won a battle enslaved the unit it defeated, which became a
+	// `result` (by unit type name) for the winner.
+	public class MsgUnitEnslaved : MessageToUI {
+		public ID enslaverId;
+		public ID victimId;
+		public Tile location;
+		public string enslaver;
+		public string defeated;
+		public string result;
+
+		public MsgUnitEnslaved(ID enslaverId, ID victimId, Tile location, string enslaver, string defeated, string result) {
+			this.enslaverId = enslaverId;
+			this.victimId = victimId;
+			this.location = location;
+			this.enslaver = enslaver;
+			this.defeated = defeated;
+			this.result = result;
+		}
+
+		// What to tell the given player, or null if it doesn't concern them.
+		public string TextFor(ID playerId) {
+			if (playerId == enslaverId) {
+				return $"Our {enslaver} enslaved the defeated {defeated}! It now serves us as a {result}.";
+			}
+			return playerId == victimId ? $"Our defeated {defeated} was enslaved by the enemy!" : null;
+		}
+	}
+
 	// A unit pillaged a tile's improvements (by their keys, like "road").
 	public class MsgTilePillaged : MessageToUI {
 		public Tile location;

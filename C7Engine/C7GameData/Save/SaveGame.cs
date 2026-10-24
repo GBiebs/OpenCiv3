@@ -388,6 +388,10 @@ namespace C7GameData.Save {
 					proto.upgradesTo = saveProto.upgradesTo.Select(x => unitPrototypeDict[x]).ToList();
 				}
 
+				if (saveProto.enslaveResult != null) {
+					proto.enslaveResult = unitPrototypeDict[saveProto.enslaveResult];
+				}
+
 				if (saveProto.requiredTech != null) {
 					proto.requiredTech = techDict[saveProto.requiredTech];
 				}

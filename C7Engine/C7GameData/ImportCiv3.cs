@@ -1450,6 +1450,8 @@ namespace C7GameData {
 				if (prto.Capture) prototype.flags.Add(SaveUnitPrototype.Flag.CanCapture);
 				if (prto.ZoneOfControl != 0) prototype.flags.Add(SaveUnitPrototype.Flag.ZoneOfControl);
 				if (prto.Draft) prototype.flags.Add(SaveUnitPrototype.Flag.Draftable);
+				// -1 means the unit doesn't enslave.
+				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
 
 				prototype.actions.UnionWith(GetUnitActions(prto));
 				prototype.terraformActions.UnionWith(GetUnitTerraforms(prto).Select(tfKey => terraformIdByCiv3Key[tfKey]));

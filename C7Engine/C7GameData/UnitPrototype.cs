@@ -74,6 +74,8 @@ namespace C7GameData {
 		public int hpBonus { get; set; }
 		public HashSet<Civilization> producibleBy { get; set; } = [];
 		public List<UnitPrototype> upgradesTo = [];
+		// What a unit this one defeats may become, or null (see MapUnit.MaybeEnslave).
+		public UnitPrototype enslaveResult;
 		public bool unproducible;
 		public HashSet<SaveUnitPrototype.Flag> flags = [];
 		public bool rotateBeforeAttack {

@@ -5467,6 +5467,7 @@
       "producibleBy": [
         "England"
       ],
+      "enslaveResult": "Man-O-War",
       "unproducible": false,
       "flags": [
         "rotateBeforeAttack"
@@ -5594,6 +5595,7 @@
         "Inca",
         "Maya"
       ],
+      "enslaveResult": "Privateer",
       "unproducible": false,
       "flags": [
         "rotateBeforeAttack"
@@ -7745,6 +7747,7 @@
       "upgradesTo": [
         "Longbowman"
       ],
+      "enslaveResult": "Worker",
       "unproducible": false,
       "categories": [
         "Land"

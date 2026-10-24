@@ -35,6 +35,9 @@ namespace C7GameData.Save {
 		public HashSet<string> producibleBy = [];
 
 		public List<string> upgradesTo;
+		// The unit type that a unit this one defeats may become (Civ3's
+		// "enslave results in"), or null if this unit doesn't enslave.
+		public string enslaveResult;
 		public bool unproducible;
 
 		// Assorted boolean flags for the unit prototype. They're stored in
@@ -67,6 +70,8 @@ namespace C7GameData.Save {
 
 			if (proto.upgradesTo != null)
 				upgradesTo = proto.upgradesTo?.Select(x => x.name).OrderBy(x => x).ToList() ?? [];
+
+			enslaveResult = proto.enslaveResult?.name;
 
 			categories = new HashSet<string>(proto.categories);
 			actions = proto.actions;

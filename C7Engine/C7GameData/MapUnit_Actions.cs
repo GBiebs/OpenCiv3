@@ -403,6 +403,7 @@ public partial class MapUnit {
 			alive.RollToPromote(dead);
 			await dead.animateAsync(MapUnit.AnimatedAction.DEATH);
 			dead.RemoveFromPlay();
+			alive.MaybeEnslave(dead);
 		}
 
 		if (result.DefenderWon())

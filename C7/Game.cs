@@ -477,6 +477,11 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, capturedText, mapView.screenLocationOfTile(mUC.location, true));
 				}
 				break;
+			case MsgUnitEnslaved mUE:
+				if (mUE.TextFor(controller.id) is string enslavedText) {
+					TemporaryPopup.Show(this, enslavedText, mapView.screenLocationOfTile(mUE.location, true));
+				}
+				break;
 			case MsgUnitMoved mUUAAB:
 				EmitSignal(SignalName.UnitMoved, new ParameterWrapper<MapUnit>(mUUAAB.Unit));
 				break;

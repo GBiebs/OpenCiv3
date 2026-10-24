@@ -110,4 +110,29 @@ public partial class MapUnit {
 			new MsgUnitsCaptured(owner.id, byOwner.Key.id, tile, captured, destroyed).send();
 		}
 	}
+
+	// Civ3 fixes the chance of enslaving at one in three.
+	private const int EnslaveOneIn = 3;
+
+	// Called when this unit has won a battle and killed `defeated`. A unit
+	// type with an enslave result (in Civ3, the Maya Javelin Thrower makes
+	// Workers; the Man-O-War and the Privateer make ships of their own type)
+	// then has a one in three chance of turning the loser into a unit of that
+	// type, attacking or defending. The new unit joins the winner's stack and
+	// can move at once, and keeps the loser's nationality (enslaved workers are
+	// foreign). Barbarians don't enslave. Returns the new unit, if any.
+	internal MapUnit MaybeEnslave(MapUnit defeated) {
+		UnitPrototype result = unitType.enslaveResult;
+		if (result == null || owner.isBarbarians) {
+			return null;
+		}
+		bool canStandHere = result.categories.Contains("Sea") ? location.IsWater() || location.HasCity() : location.IsLand();
+		if (!canStandHere || GameData.rng.Next(EnslaveOneIn) != 0) {
+			return null;
+		}
+		MapUnit slave = EngineStorage.gameData.SpawnUnit(owner, result, location, defeated.nationality ?? defeated.owner.civilization);
+		log.Information($"{this} enslaved {defeated} of {defeated.owner}, who becomes {slave} at {location}");
+		new MsgUnitEnslaved(owner.id, defeated.owner.id, location, unitType.name, defeated.unitType.name, result.name).send();
+		return slave;
+	}
 }
