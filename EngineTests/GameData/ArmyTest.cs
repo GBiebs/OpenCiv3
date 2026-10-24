@@ -250,6 +250,29 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(2, army.CombatType(CombatRole.Defense).defense);
 	}
 
+	// Conquests (Arathorn, CivFanatics; the Steam guide "The Army unit"): an
+	// army's bonus is its members' total attack (or defense) over 6, or over
+	// 4 with the Military Academy, rounded down.
+	[Fact]
+	public void ArmiesFightWithABonusOfTheirMembersTotal() {
+		MapUnit swordsmen = Army(home.location, "Swordsman", "Swordsman", "Swordsman");
+		Assert.Equal(3 + 9 / 6, swordsmen.BaseCombatStrength(CombatRole.Attack));
+		Assert.Equal(2 + 6 / 6, swordsmen.BaseCombatStrength(CombatRole.Defense));
+		Assert.Equal(swordsmen.BaseCombatStrength(CombatRole.Attack) * StrengthBonus.ListToMultiplier(swordsmen.ListStrengthBonusesVersus(null, CombatRole.Attack, null)),
+			swordsmen.StrengthVersus(null, CombatRole.Attack, null));
+
+		MapUnit horsemen = Army(home.location, "Horseman", "Horseman");
+		Assert.Equal(2, horsemen.BaseCombatStrength(CombatRole.Attack));
+
+		home.AddBuilding(gameData.Buildings.Find(b => b.name == "Military Academy"));
+		Assert.Equal(3 + 9 / 4, swordsmen.BaseCombatStrength(CombatRole.Attack));
+		Assert.Equal(2 + 6 / 4, swordsmen.BaseCombatStrength(CombatRole.Defense));
+		Assert.Equal(2 + 4 / 4, horsemen.BaseCombatStrength(CombatRole.Attack));
+
+		// Ordinary units fight with their own strength.
+		Assert.Equal(3, Spawn(us, "Swordsman", home.location).BaseCombatStrength(CombatRole.Attack));
+	}
+
 	[Fact]
 	public void AnEmptyArmyCantFightOrTakeCities() {
 		MapUnit army = Spawn(us, "Army", home.location);

@@ -79,6 +79,7 @@ public class LeaderArmyDataTest : IClassFixture<SaveGameFixture> {
 		Assert.Contains(UnitAction.BuildArmy, leader.actions);
 		Assert.Contains(UnitAction.HurryProduction, leader.actions);
 		Assert.Equal(["Army"], save.UnitPrototypes.Where(u => u.flags.Contains(SaveUnitPrototype.Flag.Army)).Select(u => u.name));
+		Assert.Contains(SaveUnitPrototype.Flag.Blitz, save.UnitPrototypes.Single(u => u.name == "Army").flags);
 		Assert.Equal("Leader", save.Rules.BattleCreatedUnitType);
 		Assert.Equal("Army", save.Rules.ArmyUnitType);
 		Assert.Equal(4, save.Rules.CitiesNeededToSupportAnArmy);

@@ -28,6 +28,9 @@ namespace C7GameData.Save {
 		// Whether this unit has produced a great leader (Civ3's "Elite*").
 		public bool hasProducedLeader;
 
+		// Whether this unit has attacked or bombarded this turn.
+		public bool attackedThisTurn;
+
 		public SaveUnit() { }
 
 		public SaveUnit(MapUnit unit) {
@@ -48,6 +51,7 @@ namespace C7GameData.Save {
 			action = unit.isFortified ? "fortified" : "";
 			isAutomated = unit.isAutomated;
 			hasProducedLeader = unit.hasProducedLeader;
+			attackedThisTurn = unit.attackedThisTurn;
 			facingDirection = unit.facingDirection;
 			experience = unit.experienceLevelKey;
 			movePointsRemaining = unit.movementPoints.remaining;
@@ -71,6 +75,7 @@ namespace C7GameData.Save {
 				isFortified = action == "fortified",
 				isAutomated = isAutomated,
 				hasProducedLeader = hasProducedLeader,
+				attackedThisTurn = attackedThisTurn,
 				facingDirection = facingDirection,
 				WorkerProgressTowardsJob = WorkerProgressTowardsJob,
 				WorkerJob = WorkerJob == null ? null:terraforms.Find(tf => tf.Id == WorkerJob)

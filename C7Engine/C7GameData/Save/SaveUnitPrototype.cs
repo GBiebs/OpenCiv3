@@ -19,6 +19,8 @@ namespace C7GameData.Save {
 			Leader,
 			// An army: a unit that other units load into to move and fight together.
 			Army,
+			// Can attack more than once a turn.
+			Blitz,
 		}
 
 		public string name { get; set; }

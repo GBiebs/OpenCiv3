@@ -1132,6 +1132,7 @@ namespace C7GameData {
 					WorkerJob = (unit.WorkerJob==-1) ? null: save.TerraForms[unit.WorkerJob].Id,
 					isAutomated = unit.IsAutomated,
 					hasProducedLeader = unit.GeneratedLeader,
+					attackedThisTurn = unit.AttackedThisTurn,
 				};
 				// since this is a .sav unit, we need to adjust things like the hp, remaining moves, etc
 				// TODO: there are surely more things to add here, e.x. has this unit used its defensive bombardment this round?
@@ -1477,6 +1478,7 @@ namespace C7GameData {
 				if (prto.Draft) prototype.flags.Add(SaveUnitPrototype.Flag.Draftable);
 				if (prto.Leader) prototype.flags.Add(SaveUnitPrototype.Flag.Leader);
 				if (prto.Army) prototype.flags.Add(SaveUnitPrototype.Flag.Army);
+				if (prto.Blitz) prototype.flags.Add(SaveUnitPrototype.Flag.Blitz);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
 

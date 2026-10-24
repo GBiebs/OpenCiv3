@@ -188,6 +188,18 @@ namespace C7GameData {
 			}
 		}
 
+		// Can attack more than once a turn (see MapUnit.CanAttackThisTurn).
+		public bool blitz {
+			get => flags.Contains(SaveUnitPrototype.Flag.Blitz);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.Blitz);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.Blitz);
+				}
+			}
+		}
+
 		// An army, which other units load into (see MapUnit_Army.cs).
 		public bool isArmy {
 			get => flags.Contains(SaveUnitPrototype.Flag.Army);

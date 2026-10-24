@@ -27,8 +27,7 @@ namespace C7GameData {
 
 		// A unit's strength for its free shot (an army's, its fighting member's).
 		public static int Strength(MapUnit unit) {
-			UnitPrototype type = unit.CombatType(CombatRole.Attack);
-			return Math.Max(type.attack, type.bombard);
+			return Math.Max((int)unit.BaseCombatStrength(CombatRole.Attack), unit.CombatType(CombatRole.Attack).bombard);
 		}
 
 		// The chance that a shot of strength `attack` takes a hit point off a
@@ -85,7 +84,7 @@ namespace C7GameData {
 			await interceptor.animateAsync(MapUnit.AnimatedAction.ATTACK1);
 			interceptor.facingDirection = facing;
 
-			if (GameData.rng.NextDouble() >= HitChance(Strength(interceptor), mover.CombatType(CombatRole.Defense).defense)) {
+			if (GameData.rng.NextDouble() >= HitChance(Strength(interceptor), (int)mover.BaseCombatStrength(CombatRole.Defense))) {
 				return MapUnit.NONE;
 			}
 			mover.hitPointsRemaining -= 1;

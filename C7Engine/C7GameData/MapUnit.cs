@@ -66,6 +66,15 @@ namespace C7GameData {
 		// unit can produce only one.
 		public bool hasProducedLeader { get; set; }
 
+		// Whether this unit has attacked or bombarded this turn. Without blitz,
+		// a unit does so once a turn (Civilopedia: blitz units "can attack
+		// multiple times in a single turn").
+		public bool attackedThisTurn { get; set; }
+
+		public bool CanAttackThisTurn() {
+			return !attackedThisTurn || unitType.blitz;
+		}
+
 		public UnitAI currentAI;
 
 		public MapUnit(ID id) {
@@ -180,7 +189,7 @@ namespace C7GameData {
 			List<MapUnit> members = Passengers();
 			string contents = members.Count > 0 ? $" of {string.Join(", ", members.Select(m => m.name))}" : " (empty)";
 			string moves = EngineStorage.uiControllerID == owner.id ? $"{movementPoints.getMixedNumber()}/" : "";
-			string stats = $"({CombatType(CombatRole.Attack).attack}.{CombatType(CombatRole.Defense).defense}.{moves}{MovementPerTurn()})";
+			string stats = $"({BaseCombatStrength(CombatRole.Attack)}.{BaseCombatStrength(CombatRole.Defense)}.{moves}{MovementPerTurn()})";
 			return $"({hitPointsRemaining}/{maxHitPoints}) {name}{contents} {stats}";
 		}
 
@@ -311,7 +320,7 @@ namespace C7GameData {
 		}
 
 		public double StrengthVersus(MapUnit opponent, CombatRole role, TileDirection? attackDirection) {
-			return CombatType(role).BaseStrength(role) * StrengthBonus.ListToMultiplier(ListStrengthBonusesVersus(opponent, role, attackDirection));
+			return BaseCombatStrength(role) * StrengthBonus.ListToMultiplier(ListStrengthBonusesVersus(opponent, role, attackDirection));
 		}
 
 		public bool CanDefendAgainst(MapUnit attacker) {
@@ -411,6 +420,7 @@ namespace C7GameData {
 			NoticeUnit,       // a non-combat unit tries to move on another owner's unit tile
 			NoticeCity,       // a non-combat unit tries to move on another owner's city tile
 			NoticeAlliance,   // a combat unit tries to move on an ally's city/unit tile
+			NoticeAttacked,   // a unit without blitz tries to fight a second battle this turn
 			WarDeclaration,   // a combat unit tries to move on another owner's city/unit tile (TODO: pillage non-enemy road/colony etc for example)
 		}
 
@@ -497,6 +507,14 @@ namespace C7GameData {
 			// TODO: add check for when we want to pillage something
 
 			if (isCombatUnit) {
+				// Without blitz, a unit fights one battle a turn (Civ3); taking
+				// units or a city that can't defend themselves isn't a battle.
+				if (hasHostileUnits && !CanAttackThisTurn()) {
+					MapUnit defender = tile.FindTopDefender(this);
+					if (defender != NONE && defender.CanDefendItself()) {
+						return Intent.NoticeAttacked;
+					}
+				}
 				if (hasHostileUnits || hasHostileCity) {
 					return Intent.Fight;
 				}

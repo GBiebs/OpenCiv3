@@ -2417,7 +2417,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "blitz"
       ]
     },
     {
@@ -2580,7 +2581,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "blitz"
       ]
     },
     {
@@ -4700,7 +4702,8 @@
         "radar",
         "canCapture",
         "zoneOfControl",
-        "army"
+        "army",
+        "blitz"
       ],
       "categories": [
         "Land"
@@ -5387,7 +5390,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "blitz"
       ]
     },
     {
@@ -5442,7 +5446,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "blitz"
       ]
     },
     {
@@ -12033,6 +12038,8 @@
     "increasedLeaderChanceOneIn": 12,
     "armyUnitType": "Army",
     "citiesNeededToSupportAnArmy": 4,
+    "armyStrengthDivisor": 6,
+    "increasedArmyStrengthDivisor": 4,
     "maxRankOfWorkableTiles": 2,
     "maxRankOfBarbarianCampTiles": 2,
     "barbarianCampGold": 25,

@@ -1372,6 +1372,10 @@ public partial class Game : Node {
 			new MsgShowTemporaryPopup($"No aggression against alliance.", info.destinationTile).send();
 			return;
 		}
+		if (info.intent == Intent.NoticeAttacked) {
+			new MsgShowTemporaryPopup($"This unit has already attacked this turn.", info.destinationTile).send();
+			return;
+		}
 
 		if (info.moveCost == -1) {
 			return;

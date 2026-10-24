@@ -204,15 +204,14 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 		}
 		unitType.Text = unit.GetDisplayName();
 		string movementPointsRemaining = unit.movementPoints.canMove ? "" + $"{(unit.movementPoints.getMixedNumber())}" : "0";
-		// An army fights with its members' strengths and moves as fast as its
-		// slowest member plus one.
+		// An army fights with its members' strengths, plus its bonus, and
+		// moves as fast as its slowest member plus one.
 		UnitPrototype attackType = unit.CombatType(CombatRole.Attack);
-		UnitPrototype defenseType = unit.CombatType(CombatRole.Defense);
 		string bombardText = "";
 		if (attackType.bombard > 0) {
 			bombardText = $"({attackType.bombard})";
 		}
-		attackDefenseMovement.Text = $"{attackType.attack}{bombardText}.{defenseType.defense} {movementPointsRemaining}/{unit.MovementPerTurn()}";
+		attackDefenseMovement.Text = $"{unit.BaseCombatStrength(CombatRole.Attack)}{bombardText}.{unit.BaseCombatStrength(CombatRole.Defense)} {movementPointsRemaining}/{unit.MovementPerTurn()}";
 
 		suggestion.Visible = false;
 

@@ -40,6 +40,10 @@ namespace C7GameData {
 			if (this.unitType.bombard == 0)
 				return false;
 
+			// Bombarding is the turn's attack for a unit without blitz.
+			if (!CanAttackThisTurn())
+				return false;
+
 			if (tile.HasCity() && tile.cityAtTile.owner == this.owner)
 				return false;
 
@@ -106,6 +110,7 @@ namespace C7GameData {
 			if (!(hasTargetUnit || hasTileImprovements || hasForeignCity))
 				return; // Nothing to bombard
 
+			attackedThisTurn = true;
 			facingDirection = location.DirectionTo(tile);
 
 			if (hasCityWalls)

@@ -27,6 +27,7 @@ public partial class MapUnit {
 		}
 
 		defensiveBombardsRemaining = 1;
+		attackedThisTurn = false;
 	}
 
 	public void OnEnterTile(Tile tile) {
@@ -326,16 +327,16 @@ public partial class MapUnit {
 		// loses hit points (see ArmyFighter), so the odds are worked out for
 		// every round.
 		double AttackerOdds() {
-			double attackerStrength = attacker.CombatType(CombatRole.Attack).attack * attackMultiplier;
-			double defenderStrength = defender.CombatType(CombatRole.Defense).defense * defenseMultiplier;
+			double attackerStrength = attacker.BaseCombatStrength(CombatRole.Attack) * attackMultiplier;
+			double defenderStrength = defender.BaseCombatStrength(CombatRole.Defense) * defenseMultiplier;
 			return attackerStrength / (attackerStrength + defenderStrength);
 		}
 
 		log.Information($"Combat log: {attacker} attacking {defender}");
-		log.Information($"\tAttacker: {attacker.CombatType(CombatRole.Attack).name}, base strength {attacker.CombatType(CombatRole.Attack).BaseStrength(CombatRole.Attack)}");
+		log.Information($"\tAttacker: {attacker.CombatType(CombatRole.Attack).name}, base strength {attacker.BaseCombatStrength(CombatRole.Attack)}");
 		foreach (StrengthBonus bonus in attackBonuses)
 			log.Information($"\t\t+{100.0 * bonus.amount}%\t{bonus.description}");
-		log.Information($"\tDefender: {defender.CombatType(CombatRole.Defense).name}, base strength {defender.CombatType(CombatRole.Defense).BaseStrength(CombatRole.Defense)}");
+		log.Information($"\tDefender: {defender.CombatType(CombatRole.Defense).name}, base strength {defender.BaseCombatStrength(CombatRole.Defense)}");
 		foreach (StrengthBonus bonus in defenseBonuses)
 			log.Information($"\t\t+{100.0 * bonus.amount}%\t{bonus.description}");
 
@@ -343,6 +344,8 @@ public partial class MapUnit {
 
 		if (double.IsNaN(AttackerOdds()))
 			return result;
+
+		attacker.attackedThisTurn = true;
 
 		// Defensive bombard
 		MapUnit defensiveBombarder = MapUnit.NONE;

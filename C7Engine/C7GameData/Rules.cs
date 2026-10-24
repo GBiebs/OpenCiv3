@@ -39,6 +39,12 @@ namespace C7GameData {
 		// player needs for each army.
 		public string ArmyUnitType = "Army";
 		public int CitiesNeededToSupportAnArmy = 4;
+		// An army fights with a bonus of its members' total attack (or defense)
+		// divided by this, rounded down; the second with a building that
+		// increases army value (the Military Academy). Not in Civ3's BIQ; these
+		// are Conquests' (MapUnit.BaseCombatStrength).
+		public int ArmyStrengthDivisor = 6;
+		public int IncreasedArmyStrengthDivisor = 4;
 		public int MaxRankOfWorkableTiles;
 		public int MaxRankOfBarbarianCampTiles;
 		public int BarbarianCampGold = 25; // gold for dispersing a barbarian camp; not in Civ3's BIQ, so this is also the default for Civ3 saves and older OpenCiv3 saves

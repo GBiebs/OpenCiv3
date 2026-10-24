@@ -113,6 +113,26 @@ public partial class MapUnit {
 		return ArmyFighter(role).unitType;
 	}
 
+	// The strength this unit fights with before terrain and other bonuses:
+	// its combat type's, plus, for an army attacking or defending, its
+	// members' total divided by the rules' army divisor (6, or 4 with a
+	// building that increases army value: the Military Academy), rounded
+	// down (Conquests; Arathorn, CivFanatics "Civ3 Conquests Additions &
+	// Changes List").
+	public double BaseCombatStrength(CombatRole role) {
+		double strength = CombatType(role).BaseStrength(role);
+		if (IsArmy() && (role == CombatRole.Attack || role == CombatRole.Defense)) {
+			List<MapUnit> members = Passengers();
+			if (members.Count > 0) {
+				Rules rules = EngineStorage.gameData.rules;
+				bool increased = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.IncreasedArmyValue));
+				int divisor = increased ? rules.IncreasedArmyStrengthDivisor : rules.ArmyStrengthDivisor;
+				strength += System.Math.Floor(members.Sum(m => m.unitType.BaseStrength(role)) / divisor);
+			}
+		}
+		return strength;
+	}
+
 	// How far this unit moves in a turn: an army with members as fast as its
 	// slowest member plus one (Conquests), anything else its type's movement.
 	public int MovementPerTurn() {
