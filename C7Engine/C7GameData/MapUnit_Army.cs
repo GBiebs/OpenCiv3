@@ -136,7 +136,7 @@ public partial class MapUnit {
 		return city != null && city.owner == owner && ArmyType() != null && owner.CanSupportAnotherArmy();
 	}
 
-	private static UnitPrototype ArmyType() {
+	internal static UnitPrototype ArmyType() {
 		GameData gameData = EngineStorage.gameData;
 		return gameData.unitPrototypes.Find(u => u.name == gameData.rules.ArmyUnitType);
 	}

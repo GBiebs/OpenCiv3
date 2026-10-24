@@ -135,6 +135,15 @@ public class SoakTest {
 			if (!unit.location.unitsOnTile.Contains(unit) && !unit.IsLoaded()) {
 				problems.Add($"{unit} thinks it's at {unit.location}, but that tile doesn't list it");
 			}
+			if (unit.IsLoaded() && unit.Container() == null) {
+				problems.Add($"{unit} is loaded on {unit.loadedOnUnitId}, which isn't on its tile");
+			}
+			if (unit.IsArmy() && unit.Passengers().Count > unit.ArmyCapacity()) {
+				problems.Add($"{unit} holds {unit.Passengers().Count} units, more than {unit.ArmyCapacity()}");
+			}
+			if (unit.IsArmy() && unit.hitPointsRemaining > unit.maxHitPoints) {
+				problems.Add($"{unit} has more hit points than its members' {unit.maxHitPoints}");
+			}
 		}
 		foreach (Tile tile in gameData.map.tiles) {
 			if (tile.owningCity != null && !liveCities.Contains(tile.owningCity)) {
@@ -221,7 +230,12 @@ public class SoakTest {
 			+ $"({messages.OfType<MsgCityCaptured>().Sum(m => m.resisters)} resisters), "
 			+ $"{messages.OfType<MsgCityRazed>().Count()} razed or destroyed, "
 			+ $"{messages.OfType<MsgUnitsCaptured>().Count()} units captured, "
-			+ $"{gameData.cities.Sum(c => c.residents.Count(r => r.resisting))} resisters now";
+			+ $"{messages.OfType<MsgUnitEnslaved>().Count()} enslaved, "
+			+ $"{gameData.cities.Sum(c => c.residents.Count(r => r.resisting))} resisters now, "
+			+ $"{messages.OfType<MsgLeaderBorn>().Count()} leaders born, "
+			+ $"{gameData.mapUnits.Count(u => u.IsArmy())} armies now "
+			+ $"({gameData.mapUnits.Count(u => u.IsInArmy())} units in them), "
+			+ $"{gameData.players.Count(p => p.hasVictoriousArmy)} civs with a victorious army";
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
 	}
 }

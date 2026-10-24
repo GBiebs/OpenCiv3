@@ -183,7 +183,7 @@ namespace C7Engine.AI.UnitAI {
 
 				// Units in our territory are a threat.
 				if (t.owningCity != null && t.owningCity.owner == player) {
-					score += 3 * defender.unitType.attack;
+					score += 3 * defender.CombatType(CombatRole.Attack).attack;
 				}
 
 				foreach (Tile neighbor in t.neighbors.Values) {
@@ -192,12 +192,12 @@ namespace C7Engine.AI.UnitAI {
 					// city but not in our borders if two cities are very close
 					// together.
 					if (neighbor.cityAtTile != null && neighbor.cityAtTile.owner == player) {
-						score += 3 * defender.unitType.attack;
+						score += 3 * defender.CombatType(CombatRole.Attack).attack;
 					}
 
 					if (neighbor == unit.location) {
 						// Units next to us are also a threat.
-						score += 1 * defender.unitType.attack;
+						score += 1 * defender.CombatType(CombatRole.Attack).attack;
 					}
 				}
 			}

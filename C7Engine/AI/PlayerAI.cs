@@ -43,6 +43,7 @@ namespace C7Engine {
 			}
 
 			UpgradeUnits(player);
+			FillArmies(player);
 
 			await DoUnitActions(player);
 
@@ -63,6 +64,30 @@ namespace C7Engine {
 			foreach (MapUnit unit in player.units.ToList()) {
 				if (unit.UpgradeOffer() is (UnitPrototype, int cost) && player.gold - cost >= UPGRADE_GOLD_RESERVE) {
 					unit.Upgrade();
+				}
+			}
+		}
+
+		// Fills our armies standing in our cities with the strongest attackers
+		// there, keeping each city's best defender at home. (The C3X mod's AI
+		// fills its armies, usually with the strongest units available.)
+		internal static void FillArmies(Player player) {
+			foreach (MapUnit army in player.units.Where(u => u.IsArmy() && u.location.cityAtTile?.owner == player).ToList()) {
+				MapUnit keepHome = army.location.unitsOnTile
+					.Where(u => u.owner == player && u.CanDefendOnLand() && !u.IsLoaded())
+					.OrderByDescending(u => u.unitType.defense)
+					.ThenByDescending(u => u.hitPointsRemaining)
+					.FirstOrDefault();
+				List<MapUnit> recruits = army.location.unitsOnTile
+					.Where(u => u != keepHome && army.CanTakeIntoArmy(u))
+					.OrderByDescending(u => u.unitType.attack)
+					.ThenByDescending(u => u.hitPointsRemaining)
+					.ToList();
+				foreach (MapUnit recruit in recruits) {
+					if (!army.CanTakeIntoArmy(recruit)) {
+						break;
+					}
+					recruit.BoardTransport(army);
 				}
 			}
 		}
@@ -187,10 +212,30 @@ namespace C7Engine {
 			}
 		}
 
+		// An army with two members or more attacks while we're at war;
+		// otherwise it waits in one of our cities, where FillArmies adds the
+		// strongest units built there.
+		private static UnitAI GetAIForArmy(MapUnit army, Player player) {
+			if (army.Passengers().Count >= 2 && IsInAnyWar(player, EngineStorage.gameData.players)) {
+				CombatAIData attack = CombatAI.MakeAiData(army, player);
+				if (attack != null) {
+					return new CombatAI(attack);
+				}
+			}
+			if (army.location.cityAtTile?.owner == player) {
+				return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(army, player));
+			}
+			return new DefenderAI(DefenderAI.MakeAiDataForDefendAtRiskCity(army, player, minDefenders: int.MaxValue));
+		}
+
 		public static UnitAI GetAIForUnit(MapUnit unit, Player player) {
 			//figure out an AI behavior
 			//TODO: Use strategies, not names
-			if (unit.unitType.name == "Settler") {
+			if (unit.unitType.isLeader) {
+				return new LeaderAI();
+			} else if (unit.IsArmy()) {
+				return GetAIForArmy(unit, player);
+			} else if (unit.unitType.name == "Settler") {
 				return new SettlerAI(SettlerAI.MakeAiData(unit, player));
 			} else if (unit.unitType.name == "Worker") {
 				return new WorkerAI(WorkerAI.MakeAiData(unit, player));
