@@ -1026,7 +1026,7 @@ namespace C7GameData {
 		// See https://forums.civfanatics.com/threads/everything-about-corruption-c3c-edition.76619/
 		// For the waste of a city celebrating We Love the King Day, the adjusted
 		// distance is halved.
-		private float CalculateDistanceCorruption(int numAntiCorruptionBuildings, bool celebrationWaste = false) {
+		private float CalculateDistanceCorruption(GameData gameData, int numAntiCorruptionBuildings, bool celebrationWaste = false) {
 			float maxD = (location.map.numTilesWide + location.map.numTilesTall) / 4;
 
 			float distanceToPalace = owner.citiesWithCorruptionWonders.Min(x => location.RankDistanceTo(x.location));
@@ -1034,8 +1034,9 @@ namespace C7GameData {
 				distanceToPalace = maxD / 4;
 			}
 
-			// TODO: Update this once we track trade networks.
-			bool connectedTocapital = false;
+			// A city on the capital's trade network (by road; harbors and
+			// airports aren't in the network yet) counts as nearer.
+			bool connectedTocapital = gameData.GetTradeNetwork().ConnectedToCapital(owner, this);
 			float tradeFactor = connectedTocapital ? 1.0f : 5.0f/4.0f;
 
 			float govtFactor = owner.government.corruptionType switch {
@@ -1067,10 +1068,14 @@ namespace C7GameData {
 				rank = owner.cities.Count / 2;
 			}
 
+			// Each courthouse or police station adds a quarter of the map's
+			// optimal city number (Nopt = OCN * (... + 0.25 * Ni) in the article),
+			// and so does a celebration, for waste.
+			int mapOptimalCityNumber = gameData.map.optimalNumberOfCities;
 			float nOpt = Math.Max(
 				1,
-				owner.GetAdjustedOptimalCityNumber(gameData) + .25f * numAntiCorruptionBuildings
-					+ (celebrationWaste ? .25f * gameData.map.optimalNumberOfCities : 0));
+				owner.GetAdjustedOptimalCityNumber(gameData) + .25f * numAntiCorruptionBuildings * mapOptimalCityNumber
+					+ (celebrationWaste ? .25f * mapOptimalCityNumber : 0));
 
 			if (rank < nOpt) {
 				return rank / (2 * nOpt);
@@ -1087,7 +1092,7 @@ namespace C7GameData {
 			// TODO: Handle the SPHQ.
 			int numCorruptionReducingSmallWondersInCity = buildings.Count(x => x.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption));
 
-			corruption = CalculateDistanceCorruption(numAntiCorruptionBuildings)
+			corruption = CalculateDistanceCorruption(gameData, numAntiCorruptionBuildings)
 					+ CalculateRankCorruption(gameData, numAntiCorruptionBuildings);
 			// TODO: apply policeman modifiers, before applying the max
 
@@ -1104,7 +1109,7 @@ namespace C7GameData {
 			// article above).
 			waste = corruption;
 			if (celebrating) {
-				waste = CalculateDistanceCorruption(numAntiCorruptionBuildings, celebrationWaste: true)
+				waste = CalculateDistanceCorruption(gameData, numAntiCorruptionBuildings, celebrationWaste: true)
 					+ CalculateRankCorruption(gameData, numAntiCorruptionBuildings, celebrationWaste: true);
 				waste = Math.Clamp(waste, 0, maxCorruption);
 			}

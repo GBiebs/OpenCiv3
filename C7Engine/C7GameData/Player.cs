@@ -742,8 +742,7 @@ namespace C7GameData {
 			int mapOptimalCityNumber = gameData.map.optimalNumberOfCities;
 			int percentOptimalCitiesForDifficultyLevel = gameData.gameDifficulty.PercentageOfOptimalCities;
 
-			// TODO: track traits.
-			bool isCommercialCiv = false;
+			bool isCommercialCiv = civilization.traits.Contains(Civilization.Trait.Commercial);
 			float commercialCivFactor = isCommercialCiv ? .25f : 0;
 
 			// TODO: Handle the SPHQ.
