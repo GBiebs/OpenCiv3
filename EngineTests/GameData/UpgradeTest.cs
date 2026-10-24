@@ -42,7 +42,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void AUnitInACityWithABarracksUpgradesForThreeGoldAShield() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit unit = Spawn();
 		unit.hitPointsRemaining = 2;
 		int expectedCost = (newType.shieldCost - oldType.shieldCost) * 3;
@@ -70,7 +70,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void OutsideOurCitiesThereIsNoUpgrade() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit unit = gameData.SpawnUnit(us, oldType, city.location.neighbors.Values.First(t => t.IsLand()));
 
 		Assert.Null(unit.UpgradeOffer());
@@ -78,7 +78,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void UpgradingNeedsTheGold() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit unit = Spawn();
 		us.gold = 1;
 
@@ -92,9 +92,9 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void LeonardosWorkshopHalvesThePrice() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		Building workshop = gameData.Buildings.First(b => b.IsGreatWonder() && b.HasWonderFlag(C7GameData.Save.SaveBuilding.WonderFlag.CheaperUpgrades));
-		city.AddBuilding(workshop);
+		city.AddBuilding(workshop, gameData);
 		MapUnit unit = Spawn();
 
 		Assert.Equal((newType.shieldCost - oldType.shieldCost) * 3 / 2, unit.UpgradeOffer()?.cost);
@@ -102,7 +102,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void TheAiUpgradesWhenItCanSpareTheGold() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit rich = Spawn();
 		int cost = rich.UpgradeOffer().Value.cost;
 		us.gold = cost + C7Engine.PlayerAI.UPGRADE_GOLD_RESERVE;
@@ -129,7 +129,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 	// unit becomes a veteran, and can produce a leader once elite again.
 	[Fact]
 	public void AUnitThatProducedALeaderComesOutAVeteran() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit unit = SpawnElite();
 		unit.hasProducedLeader = true;
 
@@ -144,7 +144,7 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void OtherEliteUnitsStayElite() {
-		city.AddBuilding(Barracks());
+		city.AddBuilding(Barracks(), gameData);
 		MapUnit unit = SpawnElite();
 
 		Assert.True(unit.Upgrade());

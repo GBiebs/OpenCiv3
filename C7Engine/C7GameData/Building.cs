@@ -143,6 +143,9 @@ namespace C7GameData {
 		public bool providesVeteranSeaUnits;
 		public bool providesVeteranAirUnits;
 
+		// Opts this building out of the age bonus. See AgeBonusRules.
+		public bool noAgeBonus;
+
 		// Wonder flags, shared by small and great wonders. Use HasWonderFlag.
 		//
 		// Implemented flags:
@@ -258,6 +261,7 @@ namespace C7GameData {
 			providesVeteranGroundUnits = building.flags.Contains(SaveBuilding.Flag.VeteranGroundUnits);
 			providesVeteranSeaUnits = building.flags.Contains(SaveBuilding.Flag.VeteranSeaUnits);
 			providesVeteranAirUnits = building.flags.Contains(SaveBuilding.Flag.VeteranAirUnits);
+			noAgeBonus = building.flags.Contains(SaveBuilding.Flag.NoAgeBonus);
 
 			wonderFlags = new(building.wonderFlags);
 
@@ -284,6 +288,11 @@ namespace C7GameData {
 		// The civilization traits this building is associated with (Civ3's
 		// BLDG characteristics), which golden ages and cheaper building look at.
 		public IReadOnlySet<Civilization.Trait> traits => dataSource.traits;
+
+		[LuaMethod]
+		public bool IsWonder() {
+			return this.greatWonderProperties != null || this.isSmallWonder;
+		}
 
 		public bool HasWonderFlag(SaveBuilding.WonderFlag flag) {
 			return wonderFlags.Contains(flag);

@@ -50,7 +50,7 @@ public class CorruptionTest : IClassFixture<SaveGameFixture> {
 		float distancePart = town.corruption - RankPart(town.rankIndex, NOpt());
 		Assert.True(distancePart > 0 && town.corruption < .9f);
 
-		town.AddBuilding(gameData.Buildings.Find(b => b.name == "Courthouse"));
+		town.AddBuilding(gameData.Buildings.Find(b => b.name == "Courthouse"), gameData);
 		us.DoCorruptionCalculations(gameData);
 
 		float expected = distancePart / 2 + RankPart(town.rankIndex, NOpt() + .25f * gameData.map.optimalNumberOfCities);

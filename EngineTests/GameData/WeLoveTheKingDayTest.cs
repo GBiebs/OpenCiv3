@@ -172,8 +172,8 @@ public class WeLoveTheKingDayTest : IClassFixture<SaveGameFixture>, IDisposable 
 		Grow(game, festival, 6);
 		// The buildings make everyone content, and four civs declaring war
 		// on us each rally a quarter of the city: four happy, two content.
-		festival.AddBuilding(game.Buildings.Find(b => b.name == "Temple"));
-		festival.AddBuilding(game.Buildings.Find(b => b.name == "Colosseum"));
+		festival.AddBuilding(game.Buildings.Find(b => b.name == "Temple"), game);
+		festival.AddBuilding(game.Buildings.Find(b => b.name == "Colosseum"), game);
 		foreach (Player ai in game.players.Where(p => !p.isHuman && !p.isBarbarians).Take(4)) {
 			ai.DeclareWarOn(human, game.turn);
 		}

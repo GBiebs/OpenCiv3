@@ -15,7 +15,7 @@ namespace C7Engine {
 			City newCity = new City(tileWithNewCity, owner, name, gameData.ids.CreateID("city"));
 			if (owner.cities.Count == 0) {
 				newCity.capital = true;
-				newCity.AddBuilding(gameData.Buildings.Find(x => x.isCenterOfEmpire));
+				newCity.AddBuilding(gameData.Buildings.Find(x => x.isCenterOfEmpire), gameData);
 			}
 			gameData.cities.Add(newCity);
 			owner.cities.Add(newCity);
@@ -306,7 +306,7 @@ namespace C7Engine {
 			City newCapital = ChooseNewCapital(owner);
 			newCapital.capital = true;
 			if (palace != null && !newCapital.constructed_buildings.Any(b => b.building == palace)) {
-				newCapital.AddBuilding(palace);
+				newCapital.AddBuilding(palace, EngineStorage.gameData);
 			}
 			log.Information($"{owner.civilization?.name} lost its capital; the palace moves to {newCapital.name}");
 			return newCapital;

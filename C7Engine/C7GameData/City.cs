@@ -411,7 +411,7 @@ namespace C7GameData {
 			if (producedItem is UnitPrototype prototype) {
 				AddUnit(prototype, gameData);
 			} else if (producedItem is Building building) {
-				AddBuilding(building);
+				AddBuilding(building, gameData);
 
 				// If we completed a great wonder, mark it as completed so no
 				// other civ can build it. If any other cities are building the
@@ -842,8 +842,7 @@ namespace C7GameData {
 				if (IsCapturedWonder(cb)) {
 					continue;
 				}
-				var multiplier = AgeMultiplier(cb);
-				result += cb.building.culturePerTurn * multiplier;
+				result += cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
 			}
 			return result;
 		}
@@ -854,14 +853,33 @@ namespace C7GameData {
 			return cb.building.IsGreatWonder() && cb.builtByPlayer != null && cb.builtByPlayer != owner;
 		}
 
-		private int AgeMultiplier(CityBuilding cb) {
-			int gameYear = EngineStorage.gameData.timeOptions.GetRawNumber(EngineStorage.gameData.turn);
-			int ageInMillennia = (int) Math.Floor((gameYear - cb.year) / 1000f);
+		// Civ 3 doubles a building's culture once it is a millennium old.
+		private int CultureAgeBonusMultiplier(CityBuilding cb) {
+			Building building = cb.building;
+			if (building.culturePerTurn <= 0 || building.noAgeBonus) {
+				return 1;
+			}
 
-			if (ageInMillennia < 0) // Workaround hack , TODO: record build year correctly
-				ageInMillennia = 0;
+			GameData gameData = EngineStorage.gameData;
+			if (gameData?.timeOptions == null) {
+				return 1;
+			}
 
-			return 1 << ageInMillennia;
+			AgeBonusRules rules = gameData.rules?.ageBonus;
+			if (rules == null || !rules.enabled) {
+				return 1;
+			}
+
+			int ageInYears = gameData.timeOptions.GetAbsoluteYear(gameData.turn) - cb.year;
+			int multiplier = rules.GetMultiplier(ageInYears, building.IsWonder());
+
+			Func<AgeBonusContext, int> luaFunc = gameData.ageBonusMultiplierFunc;
+			if (luaFunc == null) {
+				return multiplier;
+			}
+
+			AgeBonusContext context = new(owner, this, building, ageInYears, multiplier);
+			return luaFunc(context);
 		}
 
 		[MoonSharpHidden]
@@ -888,11 +906,12 @@ namespace C7GameData {
 			return (int)Math.Floor(Math.Log10(culture)) + 1;
 		}
 
-		public void AddBuilding(Building building) {
+		public void AddBuilding(Building building, GameData gameData) {
 			constructed_buildings.Add(new CityBuilding {
 				building = building,
 				builtByPlayer = owner,
-				year = 1, // TODO: Implement in-game year tracking
+				// A game without a calendar (bare test data) records year 0.
+				year = gameData.timeOptions?.GetAbsoluteYear(gameData.turn) ?? 0,
 				totalCulture = 0
 			});
 		}
@@ -1166,7 +1185,7 @@ namespace C7GameData {
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in GetBuildings()) {
 				if (!IsCapturedWonder(cb)) {
-					cb.totalCulture += cb.building.culturePerTurn;
+					cb.totalCulture += cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
 				}
 			}
 

@@ -40,8 +40,8 @@ public class BrokeTreasuryTest : IClassFixture<SaveGameFixture> {
 		Building cheapToRun = Sellable(b => b.maintenanceCost == 1);
 		Building dearToRun = Sellable(b => b.maintenanceCost == 1 && b != cheapToRun);
 		dearToRun.maintenanceCost = 20; // far more than a size 1 city's taxes
-		city.AddBuilding(cheapToRun);
-		city.AddBuilding(dearToRun);
+		city.AddBuilding(cheapToRun, gameData);
+		city.AddBuilding(dearToRun, gameData);
 		int saleValue = city.SaleValue(dearToRun);
 		Assert.True(player.CalculateGoldPerTurn() < 0);
 
@@ -62,7 +62,7 @@ public class BrokeTreasuryTest : IClassFixture<SaveGameFixture> {
 		Building palace = gameData.Buildings.Find(b => b.isCenterOfEmpire);
 		Building wonder = gameData.Buildings.First(b => b.IsGreatWonder());
 		wonder.maintenanceCost = 20;
-		city.AddBuilding(wonder);
+		city.AddBuilding(wonder, gameData);
 		Assert.True(player.CalculateGoldPerTurn() < 0);
 
 		player.DoPerTurnFinanceUpdates(gameData);
@@ -87,7 +87,7 @@ public class BrokeTreasuryTest : IClassFixture<SaveGameFixture> {
 	[Fact]
 	public void SellingABuildingRemovesItAndPaysTheOwner() {
 		Building building = Sellable(b => b.ShieldCost(player, 1.0f) >= 40);
-		city.AddBuilding(building);
+		city.AddBuilding(building, gameData);
 		player.gold = 10;
 
 		int received = city.SellBuilding(city.constructed_buildings.First(cb => cb.building == building));

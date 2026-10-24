@@ -199,8 +199,8 @@ public class GoldenAgeTest : IClassFixture<SaveGameFixture>, IDisposable {
 	public void OwningTheWondersIsntEnoughWithoutBuildingOne() {
 		us.civilization.traits = [Civilization.Trait.Militaristic, Civilization.Trait.Commercial];
 		// As if captured: their traits count, but only building one starts it.
-		city.AddBuilding(Building("The Colossus"));
-		city.AddBuilding(Building("Sun Tzu's Art of War"));
+		city.AddBuilding(Building("The Colossus"), gameData);
+		city.AddBuilding(Building("Sun Tzu's Art of War"), gameData);
 		Assert.False(us.hadGoldenAge);
 
 		Build(Building("The Great Library"));

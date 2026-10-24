@@ -33,8 +33,8 @@ public class SellBuildingTest : IClassFixture<SaveGameFixture> {
 	public void SellingABuildingPaysItsValueOnceATurn() {
 		Building temple = Named("Temple");
 		Building barracks = Named("Barracks");
-		city.AddBuilding(temple);
-		city.AddBuilding(barracks);
+		city.AddBuilding(temple, gameData);
+		city.AddBuilding(barracks, gameData);
 		int value = city.SaleValue(temple);
 		Assert.True(value > 0);
 
@@ -56,8 +56,8 @@ public class SellBuildingTest : IClassFixture<SaveGameFixture> {
 		Building aqueduct = gameData.Buildings.First(b => b.allowsCitySize2 && !b.IsGreatWonder() && !b.isSmallWonder);
 		Building wonder = gameData.Buildings.First(b => b.IsGreatWonder());
 		Building palace = gameData.Buildings.First(b => b.isCenterOfEmpire);
-		city.AddBuilding(aqueduct);
-		city.AddBuilding(wonder);
+		city.AddBuilding(aqueduct, gameData);
+		city.AddBuilding(wonder, gameData);
 
 		foreach (Building b in new[] { aqueduct, wonder, palace }) {
 			Assert.False(City.CanBeSold(b));
@@ -74,7 +74,7 @@ public class SellBuildingTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void TheTurnOfTheLastSaleIsSaved() {
-		city.AddBuilding(Named("Temple"));
+		city.AddBuilding(Named("Temple"), gameData);
 		city.SellBuildingByChoice(Named("Temple"));
 
 		C7GameData.GameData reloaded = SaveGame.FromGameData(gameData).Clone().ToGameData(fixture.behaviors);
@@ -87,7 +87,7 @@ public class SellBuildingTest : IClassFixture<SaveGameFixture> {
 	public void ABrokeCivNeverSellsItsAqueducts() {
 		Building aqueduct = gameData.Buildings.First(b => b.allowsCitySize2 && !b.IsGreatWonder() && !b.isSmallWonder);
 		aqueduct.maintenanceCost = 20;
-		city.AddBuilding(aqueduct);
+		city.AddBuilding(aqueduct, gameData);
 		us.taxRate = 10;
 		us.scienceRate = 0;
 		us.luxuryRate = 0;

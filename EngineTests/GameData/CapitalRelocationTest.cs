@@ -160,7 +160,7 @@ public class CapitalRelocationTest {
 		Building palace = MakeBuilding("Palace", isCenterOfEmpire: true);
 		Building forbiddenPalace = MakeBuilding("Forbidden Palace", isCenterOfEmpire: false);
 		City city = AddCity("Second city", 0, citizens: 5);
-		city.AddBuilding(forbiddenPalace);
+		city.AddBuilding(forbiddenPalace, EngineStorage.gameData);
 
 		CityInteractions.RelocateCapitalIfLost(player, palace);
 

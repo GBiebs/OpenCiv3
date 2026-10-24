@@ -139,7 +139,7 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 		Assert.All(swordsmen.Take(3), s => Assert.True(s.IsInArmy()));
 		Assert.DoesNotContain(UnitAction.Load, swordsmen[3].GetAvailableActions());
 
-		home.AddBuilding(gameData.Buildings.Find(b => b.name == "The Pentagon"));
+		home.AddBuilding(gameData.Buildings.Find(b => b.name == "The Pentagon"), gameData);
 		Assert.Equal(4, army.ArmyCapacity());
 		Join(swordsmen[3]);
 		Assert.Equal(4, army.Passengers().Count);
@@ -198,7 +198,7 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 			.SelectMany(u => u.upgradesTo.Select(t => (u, t)))
 			.First(pair => pair.t.requiredResources.Count == 0 && pair.t.producibleBy.Contains(us.civilization));
 		us.knownTechs.Add(newType.requiredTech.id);
-		home.AddBuilding(gameData.Buildings.First(b => b.providesVeteranGroundUnits && !b.IsGreatWonder()));
+		home.AddBuilding(gameData.Buildings.First(b => b.providesVeteranGroundUnits && !b.IsGreatWonder()), gameData);
 		us.gold = 1000;
 		MapUnit army = Spawn(us, "Army", home.location);
 		MapUnit outside = gameData.SpawnUnit(us, oldType, home.location);
@@ -264,7 +264,7 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 		MapUnit horsemen = Army(home.location, "Horseman", "Horseman");
 		Assert.Equal(2, horsemen.BaseCombatStrength(CombatRole.Attack));
 
-		home.AddBuilding(gameData.Buildings.Find(b => b.name == "Military Academy"));
+		home.AddBuilding(gameData.Buildings.Find(b => b.name == "Military Academy"), gameData);
 		Assert.Equal(3 + 9 / 4, swordsmen.BaseCombatStrength(CombatRole.Attack));
 		Assert.Equal(2 + 6 / 4, swordsmen.BaseCombatStrength(CombatRole.Defense));
 		Assert.Equal(2 + 4 / 4, horsemen.BaseCombatStrength(CombatRole.Attack));
@@ -345,7 +345,7 @@ public class ArmyTest : IClassFixture<SaveGameFixture> {
 		GiveCities(us, 4);
 		Assert.False(armyType.CanProduce(home, resources));
 
-		home.AddBuilding(gameData.Buildings.Find(b => b.name == "Military Academy"));
+		home.AddBuilding(gameData.Buildings.Find(b => b.name == "Military Academy"), gameData);
 		Assert.True(armyType.CanProduce(home, resources));
 
 		// Finished while we lack the cities for it, it waits with its shields.

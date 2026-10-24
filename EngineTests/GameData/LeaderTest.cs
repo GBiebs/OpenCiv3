@@ -120,7 +120,7 @@ public class LeaderTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal((16, 32), (hero.LeaderChanceOneIn(attacking: true), hero.LeaderChanceOneIn(attacking: false)));
 
 		City city = CityInteractions.BuildCity(us.units[0].location, us, "Epic City");
-		city.AddBuilding(gameData.Buildings.Find(b => b.name == "Heroic Epic"));
+		city.AddBuilding(gameData.Buildings.Find(b => b.name == "Heroic Epic"), gameData);
 		Assert.Equal((12, 24), (hero.LeaderChanceOneIn(attacking: true), hero.LeaderChanceOneIn(attacking: false)));
 
 		const int trials = 3000;

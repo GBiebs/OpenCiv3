@@ -211,13 +211,13 @@ public class WarWearinessTest : IClassFixture<SaveGameFixture>, IDisposable {
 		SetPoints(us, them, 31);
 		Assert.Equal(6, Unhappy(ours));
 
-		ours.AddBuilding(Building("Police Station"));
+		ours.AddBuilding(Building("Police Station"), gameData);
 		// Three quarters of 6, rounded down.
 		Assert.Equal(4, Unhappy(ours));
 
 		Tile site = gameData.map.tiles.First(t => IsEmptyLand(t) && t.DistanceTo(ours.location) == 4);
 		City other = CityInteractions.BuildCity(site, us, "Suffrage");
-		other.AddBuilding(Building("Universal Suffrage"));
+		other.AddBuilding(Building("Universal Suffrage"), gameData);
 		Assert.Equal(3, Unhappy(ours));
 	}
 

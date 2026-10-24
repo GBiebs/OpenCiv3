@@ -87,6 +87,9 @@ namespace C7GameData {
 		// An action called after initialization of EngineStorage
 		internal Action onGameCreation;
 
+		// Optional Lua hook. Null when the game mode does not define one.
+		internal Func<AgeBonusContext, int> ageBonusMultiplierFunc;
+
 		public GameData(int customSeed = -1) {
 			map = new GameMap();
 			seed = customSeed;

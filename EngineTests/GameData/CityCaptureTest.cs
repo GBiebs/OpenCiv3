@@ -153,10 +153,10 @@ public class CityCaptureTest : IClassFixture<SaveGameFixture> {
 		Building temple = BuildingWhere(b => !b.IsGreatWonder() && !b.isSmallWonder && b.culturePerTurn > 0);
 		Building aqueduct = BuildingWhere(b => !b.IsGreatWonder() && !b.isSmallWonder && b.allowsCitySize2 && b.culturePerTurn == 0);
 		Building wonder = BuildingWhere(b => b.IsGreatWonder() && b.culturePerTurn > 0);
-		target.AddBuilding(smallWonder);
-		target.AddBuilding(temple);
-		target.AddBuilding(aqueduct);
-		target.AddBuilding(wonder);
+		target.AddBuilding(smallWonder, gameData);
+		target.AddBuilding(temple, gameData);
+		target.AddBuilding(aqueduct, gameData);
+		target.AddBuilding(wonder, gameData);
 
 		await Attack();
 
