@@ -114,6 +114,15 @@ public partial class MapUnit {
 		}
 	}
 
+	// Called when this unit has won a battle and killed `defeated`, attacking
+	// or defending. A unit whose victories start a golden age (Civ3's unique
+	// units) starts its civ's, if it hasn't had one; beating barbarians
+	// doesn't count (Civilopedia "Golden Age").
+	internal bool MaybeStartGoldenAge(MapUnit defeated) {
+		return unitType.startsGoldenAge && !defeated.owner.isBarbarians && defeated.owner != owner
+			&& owner.StartGoldenAge(EngineStorage.gameData);
+	}
+
 	// Civ3 fixes the chance of enslaving at one in three.
 	private const int EnslaveOneIn = 3;
 

@@ -425,6 +425,7 @@ public partial class MapUnit {
 			await dead.animateAsync(MapUnit.AnimatedAction.DEATH);
 			dead.RemoveFromPlay();
 			alive.MaybeEnslave(dead);
+			alive.MaybeStartGoldenAge(dead);
 		}
 
 		WarWeariness.OnBattle(attacker, defender, attackerKilled: result == CombatResult.AttackerKilled);

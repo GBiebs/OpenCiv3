@@ -206,6 +206,19 @@ namespace C7GameData {
 			}
 		}
 
+		// Its victories over another civ start its own civ's golden age (see
+		// Player.StartGoldenAge).
+		public bool startsGoldenAge {
+			get => flags.Contains(SaveUnitPrototype.Flag.StartsGoldenAge);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.StartsGoldenAge);
+				}
+			}
+		}
+
 		// An army, which other units load into (see MapUnit_Army.cs).
 		public bool isArmy {
 			get => flags.Contains(SaveUnitPrototype.Flag.Army);
@@ -367,9 +380,9 @@ namespace C7GameData {
 		///
 		/// "AllowLesserUnitProduction" removes unit obsolescence.
 		private bool IsUnitObsolete(City city, HashSet<Resource> accessibleResources) {
-			// TODO: Consider golden ages when determining whether a unit is obsolete.
-			// If a golden age has not yet been triggered and a unit can trigger one,
-			// it shouldn't be marked as obsolete, even if its upgrade is available.
+			// A unit that can start a golden age the civ hasn't had yet stays
+			// worth building, even once its upgrade is available.
+			if (startsGoldenAge && !city.owner.hadGoldenAge) return false;
 
 			if (EngineStorage.gameData.rules.AllowLesserUnitProduction) return false;
 

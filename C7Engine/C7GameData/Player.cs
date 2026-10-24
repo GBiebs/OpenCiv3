@@ -175,6 +175,12 @@ namespace C7GameData {
 		// How many great leaders we have had, which picks the next one's name.
 		public int leadersCreated;
 
+		// Civ3's golden age (Civilopedia "Golden Age"), once a game: how many
+		// more turn ends it lasts, counting the current turn's, and whether we
+		// have had it.
+		public int goldenAgeTurnsLeft;
+		public bool hadGoldenAge;
+
 		// Civ3's mobilization (Civilopedia "Mobilization"): with a tech that
 		// enables it (Nationalism), a civ puts its economy on a war footing.
 		// Its cities build only military units and military improvements, and
@@ -288,6 +294,56 @@ namespace C7GameData {
 			}
 			log.Information($"{this} {(mobilize ? "mobilizes for war" : "returns to normalcy")}");
 			return true;
+		}
+
+		// Whether we're in our golden age: every tile our cities work that makes
+		// a shield makes one more, and so for commerce (Tile.Yield).
+		public bool InGoldenAge() {
+			return goldenAgeTurnsLeft > 0;
+		}
+
+		// Starts our golden age, if we haven't had it: it lasts the rules'
+		// number of turns, counting this one. Barbarians have none. Returns
+		// whether it started.
+		public bool StartGoldenAge(GameData gameData) {
+			if (hadGoldenAge || isBarbarians) {
+				return false;
+			}
+			hadGoldenAge = true;
+			goldenAgeTurnsLeft = gameData.rules.GoldenAgeDuration;
+			log.Information($"{this} enters its golden age for {goldenAgeTurnsLeft} turns");
+			if (isHuman) {
+				new MsgGoldenAge(id, started: true).send();
+			}
+			return true;
+		}
+
+		// After building a great wonder: the golden age starts if the great
+		// wonders we own, built or captured, between them have both of our
+		// civ's traits (Civilopedia "Golden Age"; a CivFanatics thread on the
+		// trigger: owning the wonders isn't enough, it takes building one).
+		public bool MaybeStartGoldenAgeFromWonders(GameData gameData) {
+			HashSet<Civilization.Trait> covered = cities
+				.SelectMany(c => c.constructed_buildings)
+				.Where(cb => cb.building.IsGreatWonder())
+				.SelectMany(cb => cb.building.traits)
+				.ToHashSet();
+			return civilization.traits.Count > 0 && civilization.traits.IsSubsetOf(covered) && StartGoldenAge(gameData);
+		}
+
+		// Once a turn, after our cities' production: a turn of the golden age
+		// is over, and a human is told when it ends.
+		public void CountDownGoldenAge() {
+			if (goldenAgeTurnsLeft <= 0) {
+				return;
+			}
+			--goldenAgeTurnsLeft;
+			if (goldenAgeTurnsLeft == 0) {
+				log.Information($"{this}'s golden age ends");
+				if (isHuman) {
+					new MsgGoldenAge(id, started: false).send();
+				}
+			}
 		}
 
 		public int ArmyCount() {

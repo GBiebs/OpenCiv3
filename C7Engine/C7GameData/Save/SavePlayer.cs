@@ -75,6 +75,11 @@ namespace C7GameData.Save {
 		public bool hasVictoriousArmy;
 		public int leadersCreated;
 
+		// The turn ends left in the player's golden age, and whether it has had
+		// one.
+		public int goldenAgeTurnsLeft;
+		public bool hadGoldenAge;
+
 		// Whether the player is mobilized for war, and has signed a peace
 		// treaty since, which lets it return to normalcy.
 		public bool mobilized;
@@ -108,6 +113,8 @@ namespace C7GameData.Save {
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				hasVictoriousArmy = hasVictoriousArmy,
 				leadersCreated = leadersCreated,
+				goldenAgeTurnsLeft = goldenAgeTurnsLeft,
+				hadGoldenAge = hadGoldenAge,
 				mobilized = mobilized,
 				signedPeaceSinceMobilizing = signedPeaceSinceMobilizing,
 				government = governments.Find(x => x.id == governmentId),
@@ -177,6 +184,8 @@ namespace C7GameData.Save {
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
 			hasVictoriousArmy = player.hasVictoriousArmy;
 			leadersCreated = player.leadersCreated;
+			goldenAgeTurnsLeft = player.goldenAgeTurnsLeft;
+			hadGoldenAge = player.hadGoldenAge;
 			mobilized = player.mobilized;
 			signedPeaceSinceMobilizing = player.signedPeaceSinceMobilizing;
 			governmentId = player.government.id;

@@ -682,6 +682,10 @@ namespace C7GameData {
 
 				player.hasVictoriousArmy = leader.HasVictoriousArmy;
 
+				// Civ3 stores the turn the golden age ends, or -1 before it.
+				player.hadGoldenAge = leader.GoldenAgeEndTurn >= 0;
+				player.goldenAgeTurnsLeft = Math.Max(0, leader.GoldenAgeEndTurn - save.TurnNumber);
+
 				// Record any techs that this player knows.
 				for (int k = 0; k < savData.KnownTechFlags.Length; ++k) {
 					if (savData.KnownTechFlags[k][i]) {
@@ -1487,6 +1491,7 @@ namespace C7GameData {
 				if (prto.Leader) prototype.flags.Add(SaveUnitPrototype.Flag.Leader);
 				if (prto.Army) prototype.flags.Add(SaveUnitPrototype.Flag.Army);
 				if (prto.Blitz) prototype.flags.Add(SaveUnitPrototype.Flag.Blitz);
+				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
 
@@ -2275,6 +2280,7 @@ namespace C7GameData {
 			save.Rules.UpgradeCost = rule.UpgradeCost;
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
 			save.Rules.MinimumPopulationForWeLoveTheKing = rule.MinimumPopulationForWeLoveTheKing;
+			save.Rules.GoldenAgeDuration = rule.GoldenAgeDuration;
 			if (rule.BattleCreatedUnit >= 0) {
 				save.Rules.BattleCreatedUnitType = theBiq.Prto[rule.BattleCreatedUnit].Name;
 			}

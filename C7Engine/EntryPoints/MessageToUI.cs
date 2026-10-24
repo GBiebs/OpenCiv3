@@ -173,6 +173,17 @@ namespace C7Engine {
 
 	// Some of a city's resisters stopped resisting: the garrison quelled them,
 	// or their civ made peace.
+	// The player's golden age started or ended.
+	public class MsgGoldenAge : MessageToUI {
+		public ID playerId;
+		public bool started;
+
+		public MsgGoldenAge(ID playerId, bool started) {
+			this.playerId = playerId;
+			this.started = started;
+		}
+	}
+
 	// A city of the player's started or ended We Love the King Day.
 	public class MsgCelebration : MessageToUI {
 		public ID playerId;

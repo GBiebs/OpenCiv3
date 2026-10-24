@@ -213,6 +213,10 @@ public class UnitPrototypeConquestsTest : RemoteSaveLoader {
 		Assert.False(spearman.GetProducibleUpgrade(amsterdam, new HashSet<Resource>() { iron, saltpeter }) == swiss);
 
 		Assert.False(spearman.CanProduce(amsterdam, new HashSet<Resource>() { iron, saltpeter }));
+		// The Swiss Mercenary can start the Dutch golden age, so it stays worth
+		// building until the Netherlands has had one (as in Civ3).
+		Assert.Equal(swiss.startsGoldenAge, swiss.CanProduce(amsterdam, new HashSet<Resource>() { iron, saltpeter }));
+		nether.hadGoldenAge = true;
 		Assert.False(swiss.CanProduce(amsterdam, new HashSet<Resource>() { iron, saltpeter }));
 		Assert.True(swiss.GetProducibleUpgrade(amsterdam, new HashSet<Resource>() { iron, saltpeter }) == rifleman);
 		Assert.True(rifleman.CanProduce(amsterdam, new HashSet<Resource>() { iron, saltpeter }));
@@ -324,6 +328,10 @@ public class UnitPrototypeConquestsTest : RemoteSaveLoader {
 		Assert.False(trebuchet.GetProducibleUpgrade(seoul, new HashSet<Resource>() { saltpeter }) == cannon);
 
 		kor.knownTechs.Add(replaceableParts.id);
+		// The Hwach'a can start the Korean golden age, so it stays worth
+		// building until Korea has had one (as in Civ3).
+		Assert.Equal(hwacha.startsGoldenAge, hwacha.CanProduce(seoul, new HashSet<Resource>() { saltpeter }));
+		kor.hadGoldenAge = true;
 		Assert.False(hwacha.CanProduce(seoul, new HashSet<Resource>() { saltpeter }));
 		Assert.True(artillery.CanProduce(seoul, new HashSet<Resource>() { }));
 		Assert.True(hwacha.GetProducibleUpgrade(seoul, new HashSet<Resource>() { }) == artillery);
@@ -383,6 +391,10 @@ public class UnitPrototypeConquestsTest : RemoteSaveLoader {
 		Assert.Null(immortals.GetProducibleUpgrade(persepolis, noResources));
 
 		per.knownTechs.Add(replaceableParts.id);
+		// The Immortals can start the Persian golden age, so they stay worth
+		// building until Persia has had one (as in Civ3).
+		Assert.Equal(immortals.startsGoldenAge, immortals.CanProduce(persepolis, new HashSet<Resource>() { iron }));
+		per.hadGoldenAge = true;
 		Assert.False(immortals.CanProduce(persepolis, new HashSet<Resource>() { iron }));
 		Assert.True(guerilla.CanProduce(persepolis, noResources));
 		Assert.True(guerilla.CanProduce(persepolis, new HashSet<Resource>() { iron }));
@@ -414,6 +426,10 @@ public class UnitPrototypeConquestsTest : RemoteSaveLoader {
 		Assert.False(warrior.CanProduce(sumer, noResources));
 		Assert.False(spearman.CanProduce(sumer, noResources));
 		Assert.True(enkidu.CanProduce(sumer, noResources));
+		// The Enkidu Warrior can start the Sumerian golden age, so it stays
+		// worth building until Sumeria has had one (as in Civ3).
+		Assert.Equal(enkidu.startsGoldenAge, enkidu.CanProduce(sumer, new HashSet<Resource>() { iron }));
+		sum.hadGoldenAge = true;
 		Assert.False(enkidu.CanProduce(sumer, new HashSet<Resource>() { iron }));
 		Assert.True(pikeman.CanProduce(sumer, new HashSet<Resource>() { iron }));
 		Assert.False(pikeman.CanProduce(sumer, noResources));

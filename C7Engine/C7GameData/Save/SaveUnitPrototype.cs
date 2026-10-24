@@ -21,6 +21,9 @@ namespace C7GameData.Save {
 			Army,
 			// Can attack more than once a turn.
 			Blitz,
+			// Its victories over another civ start its own civ's golden age
+			// (Civ3's unique units, PRTO "starts golden age").
+			StartsGoldenAge,
 		}
 
 		public string name { get; set; }

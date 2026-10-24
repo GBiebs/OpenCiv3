@@ -39,6 +39,12 @@ public partial class Tile {
 		}
 
 		private Yield ApplyPlayerModifiers(Player player) {
+			// A golden age adds a shield or a commerce to a tile already making
+			// one, before the despotism penalty (so a 2-shield tile gains
+			// nothing under Despotism, as Civ3 players note).
+			if (player.InGoldenAge() && type != YieldType.Food && yield >= 1) {
+				bonus += 1;
+			}
 			player.government.tileModifier?.Invoke(this);
 			return this;
 		}

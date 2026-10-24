@@ -770,6 +770,22 @@ public partial class Game {
 		));
 	}
 
+	// Civ3's words (script.txt SUMMARY_GOLDEN_AGE, SUMMARY_END_GOLDEN_AGE).
+	private void EmitGoldenAgeSignal(MsgGoldenAge msg) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(
+				controller.id,
+				"Domestic Advisor",
+				msg.started
+					? "Our Great Civilization has entered a Golden Age!"
+					: "Our Civilization's Golden Age has ended. So say our analysts...",
+				Advisor.Domestic,
+				msg.started ? Mood.Happy : Mood.Sad,
+				350
+			)
+		));
+	}
+
 	private void EmitDescendIntoAnarchySignal(MsgDescendIntoAnarchy msg) {
 		EngineStorage.ReadGameData(data => {
 			var player = data.players.First(p => p.id == msg.controllerId);

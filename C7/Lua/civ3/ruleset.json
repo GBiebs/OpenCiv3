@@ -4766,7 +4766,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -4816,7 +4817,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -4866,7 +4868,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -4916,7 +4919,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -4969,7 +4973,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5022,7 +5027,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5059,7 +5065,8 @@
       "unproducible": false,
       "flags": [
         "wheeled",
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ],
       "categories": [
         "Land"
@@ -5130,7 +5137,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5183,7 +5191,8 @@
         "Horses"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5236,7 +5245,8 @@
         "Saltpeter"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5289,7 +5299,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5339,7 +5350,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5391,7 +5403,8 @@
       "flags": [
         "canCapture",
         "zoneOfControl",
-        "blitz"
+        "blitz",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5447,7 +5460,8 @@
       "flags": [
         "canCapture",
         "zoneOfControl",
-        "blitz"
+        "blitz",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5481,7 +5495,8 @@
       "enslaveResult": "Man-O-War",
       "unproducible": false,
       "flags": [
-        "rotateBeforeAttack"
+        "rotateBeforeAttack",
+        "startsGoldenAge"
       ],
       "categories": [
         "Sea"
@@ -5531,7 +5546,8 @@
       "unproducible": false,
       "flags": [
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "startsGoldenAge"
       ],
       "categories": [
         "Air"
@@ -5678,7 +5694,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5729,7 +5746,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5779,7 +5797,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5831,7 +5850,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5884,7 +5904,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5938,7 +5959,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -5989,7 +6011,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "startsGoldenAge"
       ]
     },
     {
@@ -6027,7 +6050,8 @@
       "flags": [
         "wheeled",
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "startsGoldenAge"
       ],
       "categories": [
         "Land"
@@ -7179,7 +7203,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -7216,7 +7241,8 @@
       "unproducible": false,
       "flags": [
         "wheeled",
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ],
       "categories": [
         "Land"
@@ -7380,7 +7406,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "rotateBeforeAttack"
+        "rotateBeforeAttack",
+        "startsGoldenAge"
       ],
       "categories": [
         "Sea"
@@ -7447,7 +7474,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "startsGoldenAge"
       ]
     },
     {
@@ -7724,7 +7752,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -7775,7 +7804,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "startsGoldenAge"
       ]
     },
     {
@@ -7811,7 +7841,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "startsGoldenAge"
       ],
       "categories": [
         "Sea"
@@ -12127,6 +12158,7 @@
     "upgradeCost": 3,
     "turnPenaltyForEachDraftedCitizen": 20,
     "minimumPopulationForWeLoveTheKing": 6,
+    "goldenAgeDuration": 20,
     "battleCreatedUnitType": "Leader",
     "leaderChanceOneIn": 16,
     "increasedLeaderChanceOneIn": 12,

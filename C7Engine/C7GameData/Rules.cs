@@ -27,6 +27,8 @@ namespace C7GameData {
 		public int TurnPenaltyForEachDraftedCitizen = 20;
 		// The smallest city that can celebrate We Love the King Day.
 		public int MinimumPopulationForWeLoveTheKing = 6;
+		// How many turns a golden age lasts.
+		public int GoldenAgeDuration = 20;
 		// The unit elite units can produce by winning battles (Civ3's
 		// "battle-created unit": the military great leader).
 		public string BattleCreatedUnitType = "Leader";

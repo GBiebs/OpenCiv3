@@ -281,6 +281,10 @@ namespace C7GameData {
 			return dataSource.traits.Contains(Civilization.Trait.Militaristic);
 		}
 
+		// The civilization traits this building is associated with (Civ3's
+		// BLDG characteristics), which golden ages and cheaper building look at.
+		public IReadOnlySet<Civilization.Trait> traits => dataSource.traits;
+
 		public bool HasWonderFlag(SaveBuilding.WonderFlag flag) {
 			return wonderFlags.Contains(flag);
 		}
