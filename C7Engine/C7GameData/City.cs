@@ -125,8 +125,57 @@ namespace C7GameData {
 			constructed_buildings = new();
 		}
 
+		// What a city can build falls in three categories (units,
+		// improvements, wonders), and in Civ3 switching the build to another
+		// category loses half the shields in the box. Wealth is Civ3's
+		// Capitalization improvement; small wonders and spaceship parts count
+		// as wonders.
+		public enum ProductionCategory {
+			Unit,
+			Improvement,
+			Wonder,
+		}
+
+		public static ProductionCategory CategoryOf(IProducible producible) {
+			return producible switch {
+				UnitPrototype => ProductionCategory.Unit,
+				Building b when b.IsGreatWonder() || b.isSmallWonder || b.spaceshipPart != null => ProductionCategory.Wonder,
+				_ => ProductionCategory.Improvement,
+			};
+		}
+
+		// This turn's switch away from the category being built, if any: what
+		// it was, and the shields it cost, which switching back returns.
+		public ProductionCategory? switchedFromCategory;
+		public int shieldsLostToSwitching;
+
+		// Sets what the city builds. Switching to another category keeps half
+		// the shields (rounded down); switching back the same turn returns
+		// them, and a further switch costs nothing more.
 		public void SetItemBeingProduced(IProducible producible) {
+			if (itemBeingProduced != null && producible != null) {
+				ProductionCategory from = CategoryOf(itemBeingProduced);
+				ProductionCategory to = CategoryOf(producible);
+				if (switchedFromCategory == null && to != from) {
+					switchedFromCategory = from;
+					shieldsLostToSwitching = shieldsStored - shieldsStored / 2;
+					shieldsStored -= shieldsLostToSwitching;
+				} else if (switchedFromCategory == to) {
+					shieldsStored += shieldsLostToSwitching;
+					switchedFromCategory = null;
+					shieldsLostToSwitching = 0;
+				}
+			}
 			this.itemBeingProduced = producible;
+		}
+
+		// Of what the city can build now, the most expensive thing, in the same
+		// category as `like` if there is one (so a city that lost a wonder
+		// race moves its shields to another wonder without losing half).
+		internal IProducible GetMostExpensiveItemToProduce(IProducible like) {
+			List<IProducible> options = ListProductionOptions(EngineStorage.gameData).ToList();
+			List<IProducible> sameCategory = options.Where(p => like != null && CategoryOf(p) == CategoryOf(like)).ToList();
+			return (sameCategory.Count > 0 ? sameCategory : options).MaxBy(p => owner.ShieldCost(p));
 		}
 
 		public bool IsCapital() {
@@ -383,7 +432,7 @@ namespace C7GameData {
 
 						foreach (City c in p.cities) {
 							if (c.itemBeingProduced.name == building.name) {
-								c.SetItemBeingProduced(c.GetMostExpensiveItemToProduce());
+								c.SetItemBeingProduced(c.GetMostExpensiveItemToProduce(like: c.itemBeingProduced));
 							}
 						}
 					}
@@ -395,16 +444,6 @@ namespace C7GameData {
 			}
 
 			SetItemBeingProduced(ChooseProducible.Choose(this, owner));
-		}
-
-		internal IProducible GetMostExpensiveItemToProduce() {
-			IProducible best = null;
-			foreach (IProducible ip in ListProductionOptions(EngineStorage.gameData)) {
-				if (best == null || owner.ShieldCost(ip) > owner.ShieldCost(best)) {
-					best = ip;
-				}
-			}
-			return best;
 		}
 
 		public void HandleCityGrowth(GameData gameData) {
@@ -559,6 +598,10 @@ namespace C7GameData {
 		}
 
 		public IProducible ComputeTurnProduction() {
+			// A switch made this turn can't be undone any more.
+			switchedFromCategory = null;
+			shieldsLostToSwitching = 0;
+
 			shieldsStored += CurrentProductionYield().useful;
 			// An army waits, keeping its shields, while we lack the cities to
 			// support another (upstream proposal #1011; Civ3 doesn't say).

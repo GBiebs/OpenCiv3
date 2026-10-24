@@ -58,6 +58,10 @@ namespace C7GameData.Save {
 		public int draftedThatTurn;
 		// Celebrating We Love the King Day.
 		public bool celebrating;
+		// This turn's switch of the build to another category, which switching
+		// back undoes (City.SetItemBeingProduced).
+		public City.ProductionCategory? switchedFromCategory;
+		public int shieldsLostToSwitching;
 		public List<SaveCityResident> residents = new List<SaveCityResident>();
 		public List<SaveCityBuilding> buildings = [];
 
@@ -83,6 +87,8 @@ namespace C7GameData.Save {
 			draftTurn = city.draftTurn >= 0 ? city.draftTurn : null;
 			draftedThatTurn = city.draftedThatTurn;
 			celebrating = city.celebrating;
+			switchedFromCategory = city.switchedFromCategory;
+			shieldsLostToSwitching = city.shieldsLostToSwitching;
 			residents = city.residents.ConvertAll(resident => {
 				return new SaveCityResident {
 					nationality = resident.nationality?.name,
@@ -123,6 +129,8 @@ namespace C7GameData.Save {
 				draftTurn = draftTurn ?? -1,
 				draftedThatTurn = draftedThatTurn,
 				celebrating = celebrating,
+				switchedFromCategory = switchedFromCategory,
+				shieldsLostToSwitching = shieldsLostToSwitching,
 				capital = capital,
 				constructed_buildings = this.buildings.ConvertAll(building => building.ToCityBuilding(buildings, players)),
 			};

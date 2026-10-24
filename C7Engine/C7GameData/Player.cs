@@ -288,7 +288,7 @@ namespace C7GameData {
 			if (mobilize) {
 				foreach (City city in cities) {
 					if (!city.itemBeingProduced.CanProduce(city, city.GetAccessibleResources(gameData))) {
-						city.SetItemBeingProduced(city.GetMostExpensiveItemToProduce());
+						city.SetItemBeingProduced(city.GetMostExpensiveItemToProduce(like: city.itemBeingProduced));
 					}
 				}
 			}
