@@ -241,6 +241,16 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgSelectTransport : MessageToUI {
+		public MapUnit unit;
+		public List<MapUnit> transports;
+
+		public MsgSelectTransport(MapUnit unit, List<MapUnit> transports) {
+			this.unit = unit;
+			this.transports = transports;
+		}
+	}
+
 	public class MsgCivilizationDestroyed : MessageToUI {
 		public ID controllerId;
 		public Civilization civilization;
