@@ -23,6 +23,8 @@ namespace C7GameData {
 		public string SlaveUnitType = "Worker";
 		// Gold per shield of difference to upgrade a unit (3 in Conquests).
 		public int UpgradeCost = 3;
+		// How long each drafted citizen makes a city unhappier, in turns.
+		public int TurnPenaltyForEachDraftedCitizen = 20;
 		public int MaxRankOfWorkableTiles;
 		public int MaxRankOfBarbarianCampTiles;
 		public int BarbarianCampGold = 25; // gold for dispersing a barbarian camp; not in Civ3's BIQ, so this is also the default for Civ3 saves and older OpenCiv3 saves

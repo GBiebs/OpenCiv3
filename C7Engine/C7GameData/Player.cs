@@ -661,6 +661,11 @@ namespace C7GameData {
 			return cities.Sum(c => c.GetCulture());
 		}
 
+		// Whether we know a tech with the given ability, like enabling the draft.
+		public bool HasTechWithFlag(SaveTech.Flag flag) {
+			return EngineStorage.gameData.techs.Any(t => t.HasFlag(flag) && knownTechs.Contains(t.id));
+		}
+
 		public bool HasTech(ID techId) {
 			bool hasTech = techId == null || this.knownTechs.Contains(techId);
 			return hasTech;
@@ -1135,8 +1140,8 @@ namespace C7GameData {
 		// Call once at turn advance, decrement penalty turns of unhappiness for drafting / whipping
 		public void DecrementCityUnhappinessPenalties(GameData gameData) {
 			foreach (City c in cities) {
-				// TODO: Add drafting unhappiness decrement when implemented
 				c.turnsOfUnhappinessDueToPopRushing -= (c.turnsOfUnhappinessDueToPopRushing > 0) ? 1 : 0;
+				c.turnsOfUnhappinessDueToDrafting -= (c.turnsOfUnhappinessDueToDrafting > 0) ? 1 : 0;
 			}
 		}
 

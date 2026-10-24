@@ -64,6 +64,7 @@ public partial class CityScreen : Control {
 	private Label commerceTaxesDetails;
 	private Label commerceScienceDetails;
 	private Label commerceHappinessDetails;
+	private Button draftButton;
 
 	private ImageTexture shieldTexture;
 	private ImageTexture emptyShieldTexture;
@@ -143,6 +144,22 @@ public partial class CityScreen : Control {
 
 		TextureLoader.SetButtonTextures(productionButton, "city_screen.buttons.production");
 		productionButton.Pressed += () => { this.productionMenu.Visible = !this.productionMenu.Visible; };
+
+		// Civ3's "Draft" button: drafts a citizen into a conscript unit.
+		draftButton = new Button() {
+			Text = "Draft",
+			OffsetLeft = 838,
+			OffsetTop = 515,
+			OffsetRight = 900,
+			OffsetBottom = 541,
+		};
+		draftButton.Pressed += () => {
+			City city = tileAssignmentLayer.city;
+			if (city != null) {
+				new MsgDraft(city, city.owner.id).send();
+			}
+		};
+		background.AddChild(draftButton);
 
 		shieldTexture = TextureLoader.Load("icons.good_shield");
 		emptyShieldTexture = TextureLoader.Load("icons.empty_shield");
@@ -300,6 +317,7 @@ public partial class CityScreen : Control {
 		RenderCommerceDetails(city.Value);
 		RenderProductionDetails(gameData, city.Value);
 		RenderExistingBuildings(city.Value);
+		RenderDraftButton(gameData, city.Value);
 		RenderStrategicResources(gameData, city.Value);
 		RenderLuxuries(gameData, city.Value);
 	}
@@ -364,6 +382,14 @@ public partial class CityScreen : Control {
 
 			luxuriesContainer.AddChild(resourceContainer);
 		}
+	}
+
+	// The button is disabled, with the reason as its tooltip, when the city
+	// can't draft.
+	private void RenderDraftButton(GameData gameData, City city) {
+		string reason = city.WhyCannotDraft(gameData);
+		draftButton.Disabled = reason != null;
+		draftButton.TooltipText = reason ?? $"Draft a citizen into a conscript {city.DraftableUnit(gameData).name}";
 	}
 
 	private void RenderExistingBuildings(City city) {

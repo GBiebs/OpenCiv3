@@ -77,6 +77,14 @@ namespace C7GameData {
 		// unhappy as well, in addition to the time penalty.
 		public int turnsOfUnhappinessDueToPopRushing = 0;
 
+		// The same for drafting citizens: each one drafted adds the rules' turn
+		// penalty, and makes one more citizen unhappy while it lasts.
+		public int turnsOfUnhappinessDueToDrafting = 0;
+
+		// The turn citizens were last drafted here, and how many that turn.
+		public int draftTurn = -1;
+		public int draftedThatTurn = 0;
+
 		public bool isInCivilDisorder = false;
 
 		// The turn this city was last captured, or -1, and who from. Its new
@@ -821,6 +829,71 @@ namespace C7GameData {
 			constructed_buildings.Remove(building);
 		}
 
+		// The best unit this city can draft its citizens into: of the
+		// draftable units it could build (with its resources, and not made
+		// obsolete by a better one), the strongest defender.
+		public UnitPrototype DraftableUnit(GameData gameData) {
+			HashSet<Resource> resources = GetAccessibleResources(gameData);
+			return gameData.unitPrototypes
+				.Where(u => u.draftable && u.CanProduce(this, resources))
+				.OrderByDescending(u => u.defense)
+				.ThenByDescending(u => u.attack)
+				.FirstOrDefault();
+		}
+
+		// Why this city can't draft a citizen now, or null if it can. As in
+		// Civ3 (Civilopedia "Draft"): it needs the tech that enables the draft
+		// (Nationalism), a government with a draft limit (none in Anarchy), at
+		// least the rules' city size (7 in Civ3: no towns), and it may draft
+		// no more than that limit each turn.
+		public string WhyCannotDraft(GameData gameData) {
+			if (!owner.HasTechWithFlag(SaveTech.Flag.EnablesConscription)) {
+				return "We don't know how to draft citizens yet.";
+			}
+			int limit = owner.government?.draftLimit ?? 0;
+			if (limit <= 0) {
+				return "We can't draft citizens under this government.";
+			}
+			if (residents.Count <= gameData.rules.MaximumLevel1CitySize) {
+				return $"Only cities larger than {gameData.rules.MaximumLevel1CitySize} can draft citizens.";
+			}
+			if (draftTurn == gameData.turn && draftedThatTurn >= limit) {
+				return $"{name} can't draft any more citizens this turn.";
+			}
+			if (DraftableUnit(gameData) == null) {
+				return $"{name} has no unit to draft citizens into.";
+			}
+			return null;
+		}
+
+		// Drafts a citizen into a conscript of the best draftable unit, adding
+		// the rules' turns of unhappiness. Returns the unit, or null if the city
+		// can't draft now.
+		public MapUnit Draft(GameData gameData) {
+			if (WhyCannotDraft(gameData) != null) {
+				return null;
+			}
+			UnitPrototype unitType = DraftableUnit(gameData);
+			// One of the owner's own laborers goes, if there is one; never a resister.
+			CityResident drafted = residents.LastOrDefault(r => !r.resisting && r.nationality == owner.civilization)
+				?? residents.Last(r => !r.resisting);
+			RemoveCitizen(drafted);
+			if (draftTurn != gameData.turn) {
+				draftTurn = gameData.turn;
+				draftedThatTurn = 0;
+			}
+			++draftedThatTurn;
+			turnsOfUnhappinessDueToDrafting += gameData.rules.TurnPenaltyForEachDraftedCitizen;
+
+			MapUnit unit = gameData.SpawnUnit(owner, unitType, location);
+			ExperienceLevel conscript = gameData.experienceLevels.OrderBy(e => e.baseHitPoints).First();
+			unit.experienceLevel = conscript;
+			unit.experienceLevelKey = conscript.key;
+			unit.hitPointsRemaining = conscript.baseHitPoints + unitType.hpBonus;
+			log.Information($"{name} drafts a citizen into a conscript {unitType.name}");
+			return unit;
+		}
+
 		// Wonders and the palace can't be sold, nor buildings that let a city
 		// grow past a size limit (aqueducts, hospitals): Civ3 doesn't allow it
 		// (the C3X mod adds an option to).
@@ -1111,7 +1184,11 @@ namespace C7GameData {
 				contentToHappyMoves -= (turnsOfUnhappinessDueToPopRushing - 1) / gameData.rules.TurnPenaltyForEachHurrySacrifice + 1;
 			}
 
-			// TODO: add penalty for drafting
+			// The same for each citizen drafted.
+			if (turnsOfUnhappinessDueToDrafting > 0) {
+				contentToHappyMoves -= (turnsOfUnhappinessDueToDrafting - 1) / Math.Max(1, gameData.rules.TurnPenaltyForEachDraftedCitizen) + 1;
+			}
+
 			// TODO: add penalty for war weariness
 			// TODO: add penalty for aggression against home country
 

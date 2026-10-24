@@ -526,6 +526,26 @@ namespace C7Engine {
 		}
 	}
 
+	// The player drafts a citizen of one of their cities.
+	public class MsgDraft : MessageToEngine {
+		private City city;
+		private ID playerId;
+
+		public MsgDraft(City city, ID playerId) {
+			this.city = city;
+			this.playerId = playerId;
+		}
+
+		public override void process() {
+			if (city.owner.id != playerId) {
+				return;
+			}
+			city.Draft(EngineStorage.gameData);
+			// Refresh the city screen, which is open.
+			new MsgShowCityScreen(city).send();
+		}
+	}
+
 	// The player sells a building in one of their cities.
 	public class MsgSellBuilding : MessageToEngine {
 		private City city;

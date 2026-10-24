@@ -13,6 +13,14 @@ namespace C7GameData {
 		public bool EnablesBridges;
 		public bool DoublesWealthProduction;
 
+		// All of the tech's abilities (Civ3's TECH flags), like enabling the
+		// draft or map trading.
+		public HashSet<SaveTech.Flag> flags = new();
+
+		public bool HasFlag(SaveTech.Flag flag) {
+			return flags.Contains(flag);
+		}
+
 		// The civilopedia name of the era this tech is part of
 		// (like ERA_Ancient_Times). This is what art lookups are based on.
 		public string EraCivilopediaName { get; set; }

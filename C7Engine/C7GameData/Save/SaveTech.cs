@@ -6,10 +6,30 @@ namespace C7GameData.Save {
 	// This is intended for use in save games, so it does not have recursive
 	// references for prereqs.
 	public class SaveTech {
+		// Civ3's tech abilities (the BIQ's TECH flags).
 		public enum Flag {
 			BonusTechToFirstCivThatResearches,
 			EnablesBridges,
 			DoublesWealthProduction,
+			EnablesDiplomats,
+			EnablesIrrigationEverywhere,
+			DisablesDiseases,
+			EnablesConscription,
+			EnablesMobilization,
+			EnablesRecycling,
+			EnablesPrecisionBombing,
+			EnablesMutualProtection,
+			EnablesRightOfPassage,
+			EnablesMilitaryAlliances,
+			EnablesTradeEmbargoes,
+			EnablesTradeOverSea,
+			EnablesTradeOverOcean,
+			EnablesMapTrading,
+			EnablesCommunicationTrading,
+			DoublesWorkerRate,
+			CannotBeTraded,
+			PermitsSacrifice,
+			RevealsWorldMap,
 		}
 
 		public ID id;
@@ -46,6 +66,7 @@ namespace C7GameData.Save {
 				BonusTechToFirstCivThatResearches = this.flags.Contains(Flag.BonusTechToFirstCivThatResearches),
 				EnablesBridges = this.flags.Contains(Flag.EnablesBridges),
 				DoublesWealthProduction = this.flags.Contains(Flag.DoublesWealthProduction),
+				flags = new HashSet<Flag>(this.flags),
 				EraCivilopediaName = this.EraCivilopediaName,
 				SmallIconPath = this.SmallIconPath,
 				X = this.X,

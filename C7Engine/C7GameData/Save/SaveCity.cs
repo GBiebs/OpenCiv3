@@ -52,6 +52,10 @@ namespace C7GameData.Save {
 		public int turnsOfUnhappinessDueToPopRushing;
 		// The turn the owner last sold a building here, if ever.
 		public int? buildingSoldOnTurn;
+		public int turnsOfUnhappinessDueToDrafting;
+		// The turn citizens were last drafted here, if ever, and how many.
+		public int? draftTurn;
+		public int draftedThatTurn;
 		public List<SaveCityResident> residents = new List<SaveCityResident>();
 		public List<SaveCityBuilding> buildings = [];
 
@@ -73,6 +77,9 @@ namespace C7GameData.Save {
 			foodStored = city.foodStored;
 			turnsOfUnhappinessDueToPopRushing = city.turnsOfUnhappinessDueToPopRushing;
 			buildingSoldOnTurn = city.buildingSoldOnTurn >= 0 ? city.buildingSoldOnTurn : null;
+			turnsOfUnhappinessDueToDrafting = city.turnsOfUnhappinessDueToDrafting;
+			draftTurn = city.draftTurn >= 0 ? city.draftTurn : null;
+			draftedThatTurn = city.draftedThatTurn;
 			residents = city.residents.ConvertAll(resident => {
 				return new SaveCityResident {
 					nationality = resident.nationality?.name,
@@ -109,6 +116,9 @@ namespace C7GameData.Save {
 				foodStored = foodStored,
 				turnsOfUnhappinessDueToPopRushing = turnsOfUnhappinessDueToPopRushing,
 				buildingSoldOnTurn = buildingSoldOnTurn ?? -1,
+				turnsOfUnhappinessDueToDrafting = turnsOfUnhappinessDueToDrafting,
+				draftTurn = draftTurn ?? -1,
+				draftedThatTurn = draftedThatTurn,
 				capital = capital,
 				constructed_buildings = this.buildings.ConvertAll(building => building.ToCityBuilding(buildings, players)),
 			};

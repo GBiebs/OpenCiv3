@@ -1509,7 +1509,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -1842,7 +1843,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -2004,7 +2006,8 @@
         "Saltpeter"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -2165,7 +2168,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -2328,7 +2332,8 @@
         "Rubber"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -2493,7 +2498,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "draftable"
       ]
     },
     {
@@ -5969,7 +5975,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -6106,7 +6113,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -6186,7 +6194,8 @@
         "upgrade"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -7424,7 +7433,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -8210,7 +8220,8 @@
         "pillage"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "draftable"
       ]
     },
     {
@@ -11769,6 +11780,7 @@
     "scoutUnitType": "Scout",
     "slaveUnitType": "Worker",
     "upgradeCost": 3,
+    "turnPenaltyForEachDraftedCitizen": 20,
     "maxRankOfWorkableTiles": 2,
     "maxRankOfBarbarianCampTiles": 2,
     "barbarianCampGold": 25,
@@ -11917,6 +11929,10 @@
       "y": 332,
       "prerequisites": [
         "tech-3"
+      ],
+      "flags": [
+        "enablesDiplomats",
+        "enablesMilitaryAlliances"
       ]
     },
     {
@@ -12006,6 +12022,9 @@
       "prerequisites": [
         "tech-9",
         "tech-4"
+      ],
+      "flags": [
+        "enablesRightOfPassage"
       ]
     },
     {
@@ -12188,6 +12207,9 @@
       "y": 180,
       "prerequisites": [
         "tech-25"
+      ],
+      "flags": [
+        "enablesCommunicationTrading"
       ]
     },
     {
@@ -12258,6 +12280,9 @@
       "y": 429,
       "prerequisites": [
         "tech-30"
+      ],
+      "flags": [
+        "enablesTradeOverSea"
       ]
     },
     {
@@ -12301,6 +12326,9 @@
       "y": 276,
       "prerequisites": [
         "tech-32"
+      ],
+      "flags": [
+        "doublesWealthProduction"
       ]
     },
     {
@@ -12315,6 +12343,10 @@
       "y": 361,
       "prerequisites": [
         "tech-33"
+      ],
+      "flags": [
+        "enablesTradeOverOcean",
+        "enablesMapTrading"
       ]
     },
     {
@@ -12386,6 +12418,9 @@
       "y": 533,
       "prerequisites": [
         "tech-38"
+      ],
+      "flags": [
+        "enablesTradeOverOcean"
       ]
     },
     {
@@ -12411,7 +12446,13 @@
       "requiredForEraAdvancement": false,
       "smallIconPath": "Art\\tech chooser\\Icons\\51-Nationalism-small.pcx",
       "x": 75,
-      "y": 116
+      "y": 116,
+      "flags": [
+        "enablesConscription",
+        "enablesMobilization",
+        "enablesMutualProtection",
+        "enablesTradeEmbargoes"
+      ]
     },
     {
       "name": "Steam Power",
@@ -12475,6 +12516,9 @@
       "y": 464,
       "prerequisites": [
         "tech-45"
+      ],
+      "flags": [
+        "enablesIrrigationEverywhere"
       ]
     },
     {
@@ -12504,6 +12548,9 @@
       "y": 632,
       "prerequisites": [
         "tech-46"
+      ],
+      "flags": [
+        "disablesDiseases"
       ]
     },
     {
@@ -12604,6 +12651,9 @@
       "y": 509,
       "prerequisites": [
         "tech-49"
+      ],
+      "flags": [
+        "doublesWorkerRate"
       ]
     },
     {
@@ -12738,6 +12788,9 @@
       "y": 153,
       "prerequisites": [
         "tech-73"
+      ],
+      "flags": [
+        "enablesRecycling"
       ]
     },
     {
@@ -12834,6 +12887,9 @@
       "y": 382,
       "prerequisites": [
         "tech-69"
+      ],
+      "flags": [
+        "revealsWorldMap"
       ]
     },
     {
@@ -12892,6 +12948,9 @@
       "prerequisites": [
         "tech-75",
         "tech-76"
+      ],
+      "flags": [
+        "enablesPrecisionBombing"
       ]
     },
     {

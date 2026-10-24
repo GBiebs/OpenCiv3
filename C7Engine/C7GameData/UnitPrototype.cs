@@ -159,6 +159,19 @@ namespace C7GameData {
 			}
 		}
 
+		// Whether cities can draft their citizens into this unit (Civ3's
+		// Spearman, Pikeman, Musketman, Rifleman, Infantry and so on).
+		public bool draftable {
+			get => flags.Contains(SaveUnitPrototype.Flag.Draftable);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.Draftable);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.Draftable);
+				}
+			}
+		}
+
 		public HashSet<string> categories = new HashSet<string>();
 
 		public HashSet<UnitAction> actions = [];

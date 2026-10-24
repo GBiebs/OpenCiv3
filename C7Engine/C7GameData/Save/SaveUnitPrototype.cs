@@ -14,6 +14,7 @@ namespace C7GameData.Save {
 			Wheeled,
 			CanCapture,
 			ZoneOfControl,
+			Draftable,
 		}
 
 		public string name { get; set; }

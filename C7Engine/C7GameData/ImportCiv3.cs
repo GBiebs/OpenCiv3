@@ -1449,6 +1449,7 @@ namespace C7GameData {
 				if (prto.Wheeled) prototype.flags.Add(SaveUnitPrototype.Flag.Wheeled);
 				if (prto.Capture) prototype.flags.Add(SaveUnitPrototype.Flag.CanCapture);
 				if (prto.ZoneOfControl != 0) prototype.flags.Add(SaveUnitPrototype.Flag.ZoneOfControl);
+				if (prto.Draft) prototype.flags.Add(SaveUnitPrototype.Flag.Draftable);
 
 				prototype.actions.UnionWith(GetUnitActions(prto));
 				prototype.terraformActions.UnionWith(GetUnitTerraforms(prto).Select(tfKey => terraformIdByCiv3Key[tfKey]));
@@ -2003,6 +2004,25 @@ namespace C7GameData {
 				(t.BonusTechToFirstCivThatResearches, SaveTech.Flag.BonusTechToFirstCivThatResearches),
 				(t.EnablesBridges, SaveTech.Flag.EnablesBridges),
 				(t.DoublesWealthProduction, SaveTech.Flag.DoublesWealthProduction),
+				(t.EnablesDiplomats, SaveTech.Flag.EnablesDiplomats),
+				(t.EnablesIrrigationEverywhere, SaveTech.Flag.EnablesIrrigationEverywhere),
+				(t.DisablesDiseases, SaveTech.Flag.DisablesDiseases),
+				(t.EnablesConscription, SaveTech.Flag.EnablesConscription),
+				(t.EnablesMobilization, SaveTech.Flag.EnablesMobilization),
+				(t.EnablesRecycling, SaveTech.Flag.EnablesRecycling),
+				(t.EnablesPrecisionBombing, SaveTech.Flag.EnablesPrecisionBombing),
+				(t.EnablesMutualProtection, SaveTech.Flag.EnablesMutualProtection),
+				(t.EnablesRightOfPassage, SaveTech.Flag.EnablesRightOfPassage),
+				(t.EnablesMilitaryAlliances, SaveTech.Flag.EnablesMilitaryAlliances),
+				(t.EnablesTradeEmbargoes, SaveTech.Flag.EnablesTradeEmbargoes),
+				(t.EnablesTradeOverSea, SaveTech.Flag.EnablesTradeOverSea),
+				(t.EnablesTradeOverOcean, SaveTech.Flag.EnablesTradeOverOcean),
+				(t.EnablesMapTrading, SaveTech.Flag.EnablesMapTrading),
+				(t.EnablesCommunicationTrading, SaveTech.Flag.EnablesCommunicationTrading),
+				(t.DoublesWorkerRate, SaveTech.Flag.DoublesWorkerRate),
+				(t.CannotBeTraded, SaveTech.Flag.CannotBeTraded),
+				(t.PermitsSacrifice, SaveTech.Flag.PermitsSacrifice),
+				(t.RevealsWorldMap, SaveTech.Flag.RevealsWorldMap),
 			}
 			.Where(t => t.Item1)
 			.Select(t => t.Item2);
@@ -2213,6 +2233,7 @@ namespace C7GameData {
 				save.Rules.SlaveUnitType = theBiq.Prto[rule.Slave].Name;
 			}
 			save.Rules.UpgradeCost = rule.UpgradeCost;
+			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
 			if (rule.Scout >= 0) {
 				save.Rules.ScoutUnitType = theBiq.Prto[rule.Scout].Name;
 			}
