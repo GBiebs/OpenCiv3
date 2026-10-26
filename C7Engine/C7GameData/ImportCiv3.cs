@@ -1870,6 +1870,10 @@ namespace C7GameData {
 				}
 			}
 
+			if (building.wonderFlags.Contains(SaveBuilding.WonderFlag.IncreasedTradeInTilesProducingCommerce)) {
+				building.tileModifiers.Add("buildings.tile_modifiers.increases_trade_in_tiles_producing_commerce");
+			}
+
 			// Buildings that act as an extra palace for corruption all share one
 			// wonder flag, but each can have its own production rule. Any other
 			// building with the flag uses the Forbidden Palace rule.

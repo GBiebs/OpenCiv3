@@ -119,6 +119,14 @@ buildings.tile_modifiers = {
       yield.bonus = yield.bonus + 1
     end
   end,
+
+  -- The Colossus: one more commerce "in every square that already produces
+  -- at least one".
+  increases_trade_in_tiles_producing_commerce = function(yield)
+    if yield.type == YieldType.Commerce and yield.baseYield + yield.bonus - yield.penalty >= 1 then
+      yield.bonus = yield.bonus + 1
+    end
+  end,
 }
 
 return buildings

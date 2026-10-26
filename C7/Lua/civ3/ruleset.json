@@ -9055,6 +9055,9 @@
       ],
       "productionPrerequisites": [
         "buildings.production_rules.must_be_coastal"
+      ],
+      "tileModifiers": [
+        "buildings.tile_modifiers.increases_trade_in_tiles_producing_commerce"
       ]
     },
     {
