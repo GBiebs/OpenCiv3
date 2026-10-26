@@ -81,4 +81,30 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture> {
 		Assert.NotEmpty(withFlag);
 		Assert.All(withFlag, b => Assert.Contains("buildings.tile_modifiers.increases_trade_in_tiles_producing_commerce", b.tileModifiers));
 	}
+
+	// "Doubles unit combat values versus Barbarians", attacking or defending,
+	// until Metallurgy.
+	[Fact]
+	public void TheGreatWallDoublesOurUnitsAgainstBarbarians() {
+		Player barbarians = gameData.players.Find(p => p.isBarbarians);
+		Player rival = gameData.players.First(p => p != us && !p.isBarbarians);
+		// Outside the city, which the Great Wall also gives Walls.
+		Tile field = city.location.neighbors.Values.First(t => t.IsLand());
+		Tile beyond = field.neighbors.Values.First(t => t.IsLand() && t != city.location);
+		UnitPrototype spear = gameData.unitPrototypes.Find(u => u.name == "Spearman");
+		MapUnit spearman = gameData.SpawnUnit(us, spear, field);
+		MapUnit barbarian = gameData.SpawnUnit(barbarians, spear, beyond);
+		MapUnit foreigner = gameData.SpawnUnit(rival, spear, beyond);
+		CombatRole[] roles = [CombatRole.Attack, CombatRole.Defense];
+		Dictionary<CombatRole, double> before = roles.ToDictionary(r => r, r => spearman.StrengthVersus(barbarian, r, null));
+		double theirs = barbarian.StrengthVersus(spearman, CombatRole.Attack, null);
+
+		Add("The Great Wall");
+		Assert.All(roles, r => Assert.Equal(before[r] + spearman.BaseCombatStrength(r), spearman.StrengthVersus(barbarian, r, null), 6));
+		Assert.All(roles, r => Assert.Equal(before[r], spearman.StrengthVersus(foreigner, r, null), 6));
+		Assert.Equal(theirs, barbarian.StrengthVersus(spearman, CombatRole.Attack, null), 6);
+
+		MakeObsolete("The Great Wall");
+		Assert.All(roles, r => Assert.Equal(before[r], spearman.StrengthVersus(barbarian, r, null), 6));
+	}
 }

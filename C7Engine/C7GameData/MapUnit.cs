@@ -295,8 +295,17 @@ namespace C7GameData {
 			facingDirection = TileDirection.SOUTHEAST;
 		}
 
+		// The Great Wall "doubles unit combat values versus Barbarians": +100%,
+		// added to the other bonuses as Civ3's bonuses are.
+		public static readonly StrengthBonus GreatWallBonus = new("Great Wall", 1.0);
+
 		public IEnumerable<StrengthBonus> ListStrengthBonusesVersus(MapUnit opponent, CombatRole role, TileDirection? attackDirection) {
 			GameData gD = EngineStorage.gameData;
+
+			if (opponent != null && opponent.owner.isBarbarians
+				&& owner.OwnsBuilding(b => b.HasWonderFlag(Save.SaveBuilding.WonderFlag.DoubleCombatVsBarbarians))) {
+				yield return GreatWallBonus;
+			}
 
 			if (role.Defending()) {
 				if (isFortified)
