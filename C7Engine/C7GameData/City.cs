@@ -659,10 +659,29 @@ namespace C7GameData {
 				result.corrupt = yield;
 			}
 
+			// Factories and the like multiply what's left after waste.
+			result.useful = (int)Math.Floor(result.useful * (1 + ProductionBonus()));
+
 			// TODO: add specialist shields here. Do specialists still work in
 			// civil disorder?
 
 			return result;
+		}
+
+		// The fraction of extra shields the city's buildings give (Civilopedia:
+		// a Factory +50%, a power plant +50% more, a Manufacturing Plant +50%,
+		// the Iron Works +100%), added up. A building that needs another one in
+		// the city (a power plant, a Factory) does nothing without it, as one a
+		// wonder grants may (the Hoover Dam's Hydro Plant); and the power
+		// plants replace each other, so only the best one counts.
+		public double ProductionBonus() {
+			List<Building> present = GetBuildings().Select(cb => cb.building).ToList();
+			List<Building> working = present
+				.Where(b => b.productionBonus > 0 && !b.IsObsolete(owner))
+				.Where(b => b.requiredBuilding == null || b.numberOfRequiredBuildings > 0 || present.Contains(b.requiredBuilding))
+				.ToList();
+			double bestPlant = working.Where(b => b.replacesOtherBuildings).Select(b => b.productionBonus).DefaultIfEmpty(0).Max();
+			return working.Where(b => !b.replacesOtherBuildings).Sum(b => b.productionBonus) + bestPlant;
 		}
 
 		public CommerceBreakdown CurrentCommerceYieldRaw(bool respectCivilDisorder = true) {

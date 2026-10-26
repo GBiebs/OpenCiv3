@@ -117,9 +117,7 @@ namespace C7GameData {
 		public int airPower;
 
 		// The fraction of additional shields this building yields in its city,
-		// e.g. 0.5 for +50%.
-		// TODO: Wire this up to the shields yielded by the city, where that is
-		// calculated (see City.CurrentProductionYield).
+		// e.g. 0.5 for +50%. Implemented in City.ProductionBonus.
 		public double productionBonus;
 
 		// The fraction of additional research, luxury and commerce this
