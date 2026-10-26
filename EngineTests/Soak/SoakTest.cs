@@ -254,7 +254,8 @@ public class SoakTest {
 			+ $"{relationships.Count(r => r.AtWar() && r.warWearinessPoints < 0)} wars still rallying the side declared on, "
 			+ $"{gameData.cities.Sum(c => c.CitizensOfEnemyNationality(gameData))} citizens of enemy nationality now, "
 			+ $"{gameData.cities.Count(c => c.celebrating)} cities celebrating, {revolutions} revolutions, "
-			+ $"{gameData.players.Count(p => p.hadGoldenAge)} golden ages; governments: "
+			+ $"{gameData.players.Count(p => p.hadGoldenAge)} golden ages, "
+			+ $"{messages.OfType<MsgCityFlipped>().Count()} culture flips; governments: "
 			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
 				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
