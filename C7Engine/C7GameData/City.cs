@@ -101,6 +101,12 @@ namespace C7GameData {
 		public int capturedOnTurn = -1;
 		public Player capturedFrom;
 
+		// The turn this city last flipped to its owner by culture, or -1, and
+		// who from (a human gaining it may rebuff the rebels and hand it back).
+		// Not saved.
+		public int flippedOnTurn = -1;
+		public Player flippedFrom;
+
 		// The turn the owner last sold a building here, or -1.
 		public int buildingSoldOnTurn = -1;
 

@@ -66,6 +66,7 @@ namespace C7Engine {
 					player.DecrementCityUnhappinessPenalties(gameData);
 					player.RecalculateCitizenMoods(gameData, goIntoDisorderIfUnhappy: true);
 					player.UpdateCelebrations(gameData);
+					CultureFlip.CheckFlips(gameData, player);
 					player.DoCorruptionCalculations(gameData);
 
 					// Do the financial updates before updating the cities, so

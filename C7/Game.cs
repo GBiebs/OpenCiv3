@@ -366,6 +366,16 @@ public partial class Game : Node {
 					this.EmitCityRazedSignal(mCR);
 				}
 				break;
+			case MsgCityFlipped mCF:
+				this.mapView.cityLayer.UpdateAfterCityCaptured(mCF.city);
+				if (mCF.toId == controller.id || mCF.fromId == controller.id) {
+					this.ensureLocationIsInView(mCF.city.location);
+					this.EmitCityFlippedSignal(mCF);
+				}
+				break;
+			case MsgCityRebuffed mCR:
+				this.mapView.cityLayer.UpdateAfterCityCaptured(mCR.city);
+				break;
 			case MsgCityCaptured mCC:
 				// Redraw the city in its new owner's colors.
 				this.mapView.cityLayer.UpdateAfterCityCaptured(mCC.city);

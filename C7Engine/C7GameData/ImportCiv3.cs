@@ -2284,6 +2284,18 @@ namespace C7GameData {
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
 			save.Rules.MinimumPopulationForWeLoveTheKing = rule.MinimumPopulationForWeLoveTheKing;
 			save.Rules.GoldenAgeDuration = rule.GoldenAgeDuration;
+			// A scenario's own settings say whether cities can flip. A rules
+			// file without them (the stock conquests.biq sets no victory
+			// conditions at all, and its conversions flag is off, though
+			// ordinary games flip) leaves the default.
+			BiqData gameBiq = biq.Game is null ? defaultBiq : biq;
+			QueryCiv3.Biq.GAME game = gameBiq.Game[0];
+			bool hasScenarioSettings = game.DominationVictory || game.SpaceRaceVictory || game.DiplomaticVictory
+				|| game.ConquestVictory || game.CulturalVictory || game.WonderVictory || game.VictoryLocations
+				|| game.Regicide || game.MassRegicide || game.CaptureTheFlag || game.ReverseCaptureTheFlag || game.CityElimination;
+			if (hasScenarioSettings) {
+				save.Rules.AllowCulturalConversions = game.AllowCulturalConversions;
+			}
 			if (rule.BattleCreatedUnit >= 0) {
 				save.Rules.BattleCreatedUnitType = theBiq.Prto[rule.BattleCreatedUnit].Name;
 			}

@@ -29,6 +29,9 @@ namespace C7GameData {
 		public int MinimumPopulationForWeLoveTheKing = 6;
 		// How many turns a golden age lasts.
 		public int GoldenAgeDuration = 20;
+		// Whether cities can flip to another civ by culture (Civ3's GAME
+		// option "allow cultural conversions"). See CultureFlip.
+		public bool AllowCulturalConversions = true;
 		// The unit elite units can produce by winning battles (Civ3's
 		// "battle-created unit": the military great leader).
 		public string BattleCreatedUnitType = "Leader";

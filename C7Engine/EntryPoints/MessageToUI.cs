@@ -173,6 +173,30 @@ namespace C7Engine {
 
 	// Some of a city's resisters stopped resisting: the garrison quelled them,
 	// or their civ made peace.
+	// A city flipped to another civ by culture, with the great wonders in it.
+	public class MsgCityFlipped : MessageToUI {
+		public City city;
+		public ID fromId;
+		public ID toId;
+		public List<string> wonders;
+
+		public MsgCityFlipped(City city, ID fromId, ID toId, List<string> wonders) {
+			this.city = city;
+			this.fromId = fromId;
+			this.toId = toId;
+			this.wonders = wonders;
+		}
+	}
+
+	// A flipped city's new owner refused it, and it went back.
+	public class MsgCityRebuffed : MessageToUI {
+		public City city;
+
+		public MsgCityRebuffed(City city) {
+			this.city = city;
+		}
+	}
+
 	// The player's golden age started or ended.
 	public class MsgGoldenAge : MessageToUI {
 		public ID playerId;

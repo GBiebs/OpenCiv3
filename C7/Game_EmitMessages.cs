@@ -475,6 +475,49 @@ public partial class Game {
 		));
 	}
 
+	// Civ3's words (script.txt WE_CONVERT_CITY, THEY_CONVERT_CITY and their
+	// _WITH_WONDER versions). The civ that gains the city may refuse it.
+	public void EmitCityFlippedSignal(MsgCityFlipped msg) {
+		string wonders = string.Join(" and ", msg.wonders);
+		Player gainer = null;
+		EngineStorage.ReadGameData(data => {
+			gainer = data.players.First(p => p.id == msg.toId);
+		});
+		if (msg.toId != controller.id) {
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(
+					controller.id,
+					"Military Advisor",
+					$"Terrible news, Sir!\n" +
+						$"The people of {msg.city.name} have deposed our governor and pledged allegiance to the treacherous {gainer.civilization.noun}!" +
+						(wonders != ""
+							? $"\nBecause of this treachery, we have lost control of {wonders}!"
+							: $"\nWord is, the people of {msg.city.name} \"admire\" the so called \"culture\" of the {gainer.civilization.noun}... Imagine."),
+					Advisor.Military,
+					Mood.Angry,
+					350
+				)
+			));
+			return;
+		}
+
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Military Advisor",
+				$"The loyal citizens of {msg.city.name} have overthrown their oppressors and have pledged allegiance to us!" +
+					(wonders != "" ? $"\nAnd I am honored to report that the city contains {wonders}!" : "\nThey yearn to be with us."),
+				Advisor.Military,
+				Mood.Happy,
+				"Great! Install a new governor.",
+				$"We don't want {msg.city.name}. Rebuff the rebels.",
+				yesAction: () => { },
+				noAction: () => new MsgRebuffRebels(msg.city).send(),
+				hSize: 350
+			)
+		));
+	}
+
 	// The conqueror chooses to keep or raze the city; its former owner hears
 	// the bad news.
 	public void EmitCityCapturedSignal(MsgCityCaptured msg) {

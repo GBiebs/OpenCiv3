@@ -12159,6 +12159,7 @@
     "turnPenaltyForEachDraftedCitizen": 20,
     "minimumPopulationForWeLoveTheKing": 6,
     "goldenAgeDuration": 20,
+    "allowCulturalConversions": true,
     "battleCreatedUnitType": "Leader",
     "leaderChanceOneIn": 16,
     "increasedLeaderChanceOneIn": 12,

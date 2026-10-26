@@ -625,6 +625,19 @@ namespace C7Engine {
 		}
 	}
 
+	// The human refuses a city that flipped to them (CultureFlip.Rebuff).
+	public class MsgRebuffRebels : MessageToEngine {
+		private City city;
+
+		public MsgRebuffRebels(City city) {
+			this.city = city;
+		}
+
+		public override void process() {
+			CultureFlip.Rebuff(EngineStorage.gameData, city);
+		}
+	}
+
 	public class MsgDiplomacyCompleted : MessageToEngine {
 		public override void process() { }
 	}

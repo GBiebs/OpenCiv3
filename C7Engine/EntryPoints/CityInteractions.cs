@@ -154,27 +154,12 @@ namespace C7Engine {
 				}
 			}
 
-			List<Tile> bordersBefore = city.GetTilesWithinBorders();
-			loser.cities.Remove(city);
-			winner.cities.Add(city);
-			city.owner = winner;
-			city.capital = false;
-			city.perPlayerCulture.TryAdd(winner, 0);
-			city.isInCivilDisorder = false;
-			city.SetStoredShields(0);
+			ChangeOwner(gameData, city, winner);
 			city.capturedOnTurn = gameData.turn;
 			city.capturedFrom = loser;
 
 			// Its citizens worked the loser's land; now they work the winner's,
 			// unless they resist.
-			CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
-			foreach (CityResident resident in city.residents) {
-				resident.tileWorked.personWorkingTile = null;
-				resident.tileWorked = Tile.NONE;
-				resident.citizenType = laborer;
-			}
-			gameData.UpdateTileOwnersOnCityCapture(city, bordersBefore);
-			gameData.InvalidateCachedTradeNetwork();
 			int resisters = Resistance.StartResisting(gameData, city);
 			foreach (CityResident resident in city.residents.Where(r => !r.resisting)) {
 				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
@@ -194,6 +179,32 @@ namespace C7Engine {
 			}
 			new MsgCityCaptured(city, winner.id, loser.id, gold, wonders, resisters).send();
 			return CaptureOutcome.Captured;
+		}
+
+		// Hands `city` to `newOwner`, as a capture or a culture flip does: it
+		// stops being a capital, its box empties, its disorder or celebration
+		// ends, and its citizens leave their tiles (to be given new ones) and
+		// its borders are worked out again.
+		internal static void ChangeOwner(GameData gameData, City city, Player newOwner) {
+			Player oldOwner = city.owner;
+			List<Tile> bordersBefore = city.GetTilesWithinBorders();
+			oldOwner.cities.Remove(city);
+			newOwner.cities.Add(city);
+			city.owner = newOwner;
+			city.capital = false;
+			city.perPlayerCulture.TryAdd(newOwner, 0);
+			city.isInCivilDisorder = false;
+			city.celebrating = false;
+			city.SetStoredShields(0);
+
+			CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
+			foreach (CityResident resident in city.residents) {
+				resident.tileWorked.personWorkingTile = null;
+				resident.tileWorked = Tile.NONE;
+				resident.citizenType = laborer;
+			}
+			gameData.UpdateTileOwnersOnCityCapture(city, bordersBefore);
+			gameData.InvalidateCachedTradeNetwork();
 		}
 
 		// Whether the AI razes a city it has just captured rather than keeping

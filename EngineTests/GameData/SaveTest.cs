@@ -115,6 +115,10 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgGoldenAge mGA:
 						continue;
+					case MsgCityFlipped mCF:
+						continue;
+					case MsgCityRebuffed mCRb:
+						continue;
 					case MsgCivilizationDestroyed mCVD:
 						continue;
 					case MsgVictory mV:
