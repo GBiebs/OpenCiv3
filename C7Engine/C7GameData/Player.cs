@@ -1406,6 +1406,26 @@ namespace C7GameData {
 			return cities.Any(c => c.constructed_buildings.Any(cb => !cb.building.IsObsolete(this) && predicate(cb.building)));
 		}
 
+		// The extra moves our ships get from wonders: one each from the Great
+		// Lighthouse and Magellan's Voyage (Civilopedia: "all naval unit
+		// movement rates are increased by one"), two from a wonder with Civ3's
+		// +2 flag.
+		public int ShipMovementBonus() {
+			int bonus = 0;
+			foreach (City city in cities) {
+				foreach (CityBuilding cb in city.constructed_buildings) {
+					Building b = cb.building;
+					if (b.HasWonderFlag(SaveBuilding.WonderFlag.IncreasedShipMovement) && !b.IsObsolete(this)) {
+						bonus += 1;
+					}
+					if (b.HasWonderFlag(SaveBuilding.WonderFlag.PlusTwoShipMovement) && !b.IsObsolete(this)) {
+						bonus += 2;
+					}
+				}
+			}
+			return bonus;
+		}
+
 		// Whether any of this player's cities is currently producing the given
 		// item, optionally ignoring one city.
 		public bool IsProducing(IProducible item, City excludedCity = null) {

@@ -142,7 +142,8 @@ public partial class MapUnit {
 				return members.Min(m => m.unitType.movement) + 1;
 			}
 		}
-		return unitType.movement;
+		// Ships go further with the Great Lighthouse or Magellan's Voyage.
+		return IsWaterUnit() ? unitType.movement + owner.ShipMovementBonus() : unitType.movement;
 	}
 
 	// Whether this leader can build an army here: it has the order and moves
