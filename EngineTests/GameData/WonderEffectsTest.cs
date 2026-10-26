@@ -107,4 +107,23 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture> {
 		MakeObsolete("The Great Wall");
 		Assert.All(roles, r => Assert.Equal(before[r], spearman.StrengthVersus(barbarian, r, null), 6));
 	}
+
+	// Smith's "pays maintenance costs for all trade-based city improvements
+	// (Harbors, Marketplaces, Banks, Airports, Commercial Dock and Stock
+	// Exchanges)", in every city.
+	[Fact]
+	public void SmithsPaysForTradeBuildings() {
+		string[] trade = ["Harbor", "Marketplace", "Bank", "Airport", "Commercial Dock", "Stock Exchange"];
+		foreach (string name in trade.Append("Barracks").Append("Temple")) {
+			Add(name);
+		}
+		int upkeep = city.MaintenanceCostsRaw();
+		int tradeUpkeep = trade.Sum(name => Building(name).maintenanceCost);
+		Assert.True(tradeUpkeep > 0 && upkeep > tradeUpkeep);
+
+		Tile site = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity()
+			&& gameData.cities.All(c => c.location.DistanceTo(t) > 3));
+		CityInteractions.BuildCity(site, us, "Trading").AddBuilding(Building("Smith's Trading Company"), gameData);
+		Assert.Equal(upkeep - tradeUpkeep, city.MaintenanceCostsRaw());
+	}
 }

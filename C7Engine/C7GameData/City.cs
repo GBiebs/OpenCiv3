@@ -772,8 +772,15 @@ namespace C7GameData {
 
 		public int MaintenanceCostsRaw() {
 			int result = 0;
+			// Smith's Trading Company pays for the trade buildings (Civilopedia:
+			// Harbors, Marketplaces, Banks, Airports, Commercial Docks and Stock
+			// Exchanges, which are the buildings with the commercial trait).
+			bool tradePaidFor = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.PaysTradeMaintenance));
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in constructed_buildings) {
+				if (tradePaidFor && cb.building.traits.Contains(Civilization.Trait.Commercial)) {
+					continue;
+				}
 				result += cb.building.maintenanceCost;
 			}
 			return result;
