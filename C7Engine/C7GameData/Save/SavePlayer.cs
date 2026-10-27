@@ -74,6 +74,8 @@ namespace C7GameData.Save {
 		// the player has had, which picks the next one's name.
 		public bool hasVictoriousArmy;
 		public int leadersCreated;
+		public int scientificLeadersCreated;
+		public int ageOfScienceTurnsLeft;
 
 		// The turn ends left in the player's golden age, and whether it has had
 		// one.
@@ -113,6 +115,8 @@ namespace C7GameData.Save {
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				hasVictoriousArmy = hasVictoriousArmy,
 				leadersCreated = leadersCreated,
+				scientificLeadersCreated = scientificLeadersCreated,
+				ageOfScienceTurnsLeft = ageOfScienceTurnsLeft,
 				goldenAgeTurnsLeft = goldenAgeTurnsLeft,
 				hadGoldenAge = hadGoldenAge,
 				mobilized = mobilized,
@@ -184,6 +188,8 @@ namespace C7GameData.Save {
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
 			hasVictoriousArmy = player.hasVictoriousArmy;
 			leadersCreated = player.leadersCreated;
+			scientificLeadersCreated = player.scientificLeadersCreated;
+			ageOfScienceTurnsLeft = player.ageOfScienceTurnsLeft;
 			goldenAgeTurnsLeft = player.goldenAgeTurnsLeft;
 			hadGoldenAge = player.hadGoldenAge;
 			mobilized = player.mobilized;

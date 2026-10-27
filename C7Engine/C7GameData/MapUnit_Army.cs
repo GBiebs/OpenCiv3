@@ -150,7 +150,7 @@ public partial class MapUnit {
 	// left, it's in one of our cities, and we have the cities to support
 	// another army (the rules' cities per army).
 	public bool CanBuildArmy() {
-		if (!unitType.actions.Contains(UnitAction.BuildArmy) || !movementPoints.canMove) {
+		if (!unitType.actions.Contains(UnitAction.BuildArmy) || !movementPoints.canMove || scientificLeader) {
 			return false;
 		}
 		City city = location.cityAtTile;

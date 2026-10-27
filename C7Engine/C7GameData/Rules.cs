@@ -37,6 +37,15 @@ namespace C7GameData {
 		// The unit elite units can produce by winning battles (Civ3's
 		// "battle-created unit": the military great leader).
 		public string BattleCreatedUnitType = "Leader";
+		// The chance, in percent, that a civ first to discover an advance gets
+		// a scientific great leader, and with the Scientific trait; and the
+		// Age of Science such a leader can start (Civilopedia "Leaders", "Age
+		// of Science": 20 turns, research 25% more productive). The chances
+		// aren't in Civ3's BIQ; these are players' figures (CivFanatics).
+		public int ScientificLeaderChance = 3;
+		public int ScientificTraitLeaderChance = 5;
+		public int AgeOfScienceDuration = 20;
+		public int AgeOfScienceResearchBonus = 25;
 		// The chance, one in this many, that an elite unit winning an attack
 		// against another civ produces a great leader; defending halves it.
 		// Civ3's BIQ has no such value; these are Civ3's (CivFanatics,

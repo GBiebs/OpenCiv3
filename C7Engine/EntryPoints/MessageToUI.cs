@@ -473,11 +473,24 @@ namespace C7Engine {
 		public ID playerId;
 		public Tile location;
 		public string leaderName;
+		public bool scientific;
 
-		public MsgLeaderBorn(ID playerId, Tile location, string leaderName) {
+		public MsgLeaderBorn(ID playerId, Tile location, string leaderName, bool scientific = false) {
 			this.playerId = playerId;
 			this.location = location;
 			this.leaderName = leaderName;
+			this.scientific = scientific;
+		}
+	}
+
+	// The player's Age of Science started or ended.
+	public class MsgAgeOfScience : MessageToUI {
+		public ID playerId;
+		public bool started;
+
+		public MsgAgeOfScience(ID playerId, bool started) {
+			this.playerId = playerId;
+			this.started = started;
 		}
 	}
 

@@ -86,6 +86,7 @@ namespace C7Engine {
 					player.HandleCityUpdates(gameData);
 					Pollution.UpdateForNewTurn(gameData, player);
 					player.CountDownGoldenAge();
+					player.CountDownAgeOfScience();
 
 					player.UpdateHistory(gameData);
 				}

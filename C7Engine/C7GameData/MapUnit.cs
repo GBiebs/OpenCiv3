@@ -65,6 +65,10 @@ namespace C7GameData {
 		// Whether this unit has produced a great leader (Civ3's "Elite*"): each
 		// unit can produce only one.
 		public bool hasProducedLeader { get; set; }
+		// A great leader born of research rather than battle (Civ3 uses the
+		// one Leader unit for both): he can start an Age of Science and hurry
+		// great wonders, but can't lead an army.
+		public bool scientificLeader { get; set; }
 
 		// Whether this unit has attacked or bombarded this turn. Without blitz,
 		// a unit does so once a turn (Civilopedia: blitz units "can attack
@@ -826,6 +830,9 @@ namespace C7GameData {
 			}
 			if (CanHurryProduction()) {
 				result.Add(UnitAction.HurryProduction);
+			}
+			if (CanStartAgeOfScience()) {
+				result.Add(UnitAction.StartAgeOfScience);
 			}
 
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.

@@ -10198,6 +10198,7 @@
         "Barbarian"
       ],
       "greatLeaderNames": [],
+      "scientificLeaderNames": [],
       "isBarbarian": true
     },
     {
@@ -10269,6 +10270,13 @@
         "Octavian",
         "Titus"
       ],
+      "scientificLeaderNames": [
+        "Leonardo da Vinci",
+        "Galileo Galilei",
+        "Enrico Fermi",
+        "Guglieilmo Marconi",
+        "Lucretius"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-3"
@@ -10331,6 +10339,13 @@
         "Seti",
         "Na'rmer"
       ],
+      "scientificLeaderNames": [
+        "Ptolemy",
+        "Conon of Samos",
+        "Diophantus",
+        "Hypatia",
+        "Pappus"
+      ],
       "startingTechs": [
         "tech-7",
         "tech-2"
@@ -10391,6 +10406,17 @@
         "Ajax",
         "Ulysess"
       ],
+      "scientificLeaderNames": [
+        "Aristotle",
+        "Plato",
+        "Socrates",
+        "Archimedes",
+        "Euclid",
+        "Eratosthenes",
+        "Pythagorus",
+        "Heron of Alexandria",
+        "Thales of Miletus"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-1"
@@ -10450,6 +10476,14 @@
         "Naboplasser",
         "Nebuchadnezzar"
       ],
+      "scientificLeaderNames": [
+        "Hammurabi",
+        "Domninus of Larissa",
+        "Jabir Ibn Haiyan",
+        "Ibn Khaldun",
+        "Ibn Rushd",
+        "AL-Mawardi"
+      ],
       "startingTechs": [
         "tech-1",
         "tech-7"
@@ -10497,6 +10531,18 @@
         "Hengest",
         "Horsa",
         "Rommel"
+      ],
+      "scientificLeaderNames": [
+        "Copernicus",
+        "Gutenberg",
+        "Max Planck",
+        "Heinrich Hertz",
+        "Johannes Kepler",
+        "Hans Geiger",
+        "Fritz Haber",
+        "Wilhelm Röntgen",
+        "Gerardus Mercator",
+        "Albertus Magnus"
       ],
       "startingTechs": [
         "tech-6",
@@ -10570,6 +10616,13 @@
         "Trotsky",
         "Zukhov"
       ],
+      "scientificLeaderNames": [
+        "Ivan Pavlov",
+        "Korolev",
+        "Dmitri Mendeléev",
+        "Holonyak",
+        "Theremin"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-1"
@@ -10619,6 +10672,12 @@
         "Qianlong",
         "Jin Qiu",
         "General Tso"
+      ],
+      "scientificLeaderNames": [
+        "Confucius",
+        "Zhang Heng",
+        "Tsu Ch'ung Chi",
+        "Jia Xian"
       ],
       "startingTechs": [
         "tech-6",
@@ -10694,6 +10753,15 @@
         "MacArthur",
         "Patton"
       ],
+      "scientificLeaderNames": [
+        "Albert Einstein",
+        "Thomas Edison",
+        "Benjamin Franklin",
+        "Nicola Tesla",
+        "Richard Feynman",
+        "George W. Carver",
+        "Buckminster Fuller"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-2"
@@ -10750,6 +10818,11 @@
         "Hirohito",
         "Fujiwara"
       ],
+      "scientificLeaderNames": [
+        "Aida Yasuki",
+        "Kiyosi Ito",
+        "Nagaoka Hantaro"
+      ],
       "startingTechs": [
         "tech-5",
         "tech-7"
@@ -10802,6 +10875,12 @@
         "De Gaulle",
         "Charlemagne"
       ],
+      "scientificLeaderNames": [
+        "Louis Pasteur",
+        "Marie Curie",
+        "Blaise Pascal",
+        "Rene Descartes"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-2"
@@ -10853,6 +10932,14 @@
         "Akbar",
         "Singh",
         "Tilak"
+      ],
+      "scientificLeaderNames": [
+        "Brahmagupta",
+        "Nilakantha",
+        "Kamalakara",
+        "Paramesvara",
+        "Madhava",
+        "Panini"
       ],
       "startingTechs": [
         "tech-3",
@@ -10912,6 +10999,14 @@
         "Darius",
         "Cyrus",
         "Achaemenes"
+      ],
+      "scientificLeaderNames": [
+        "Al-Khwarizmi",
+        "Omar Khayyam",
+        "AL-Farghani",
+        "Al-Mahani",
+        "Nasir al-Tusi",
+        "Kushyar ibn Labban"
       ],
       "startingTechs": [
         "tech-1",
@@ -10986,6 +11081,11 @@
         "Nezahualcóyotl",
         "Nezahualpilli"
       ],
+      "scientificLeaderNames": [
+        "Chichatoyotl",
+        "Textalatzin",
+        "Quakeotzlitopotec"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-4"
@@ -11032,6 +11132,11 @@
         "Zwelithini",
         "Dingane",
         "Cetshwayo"
+      ],
+      "scientificLeaderNames": [
+        "Senzangakhona",
+        "Dingiswayo",
+        "Malandela"
       ],
       "startingTechs": [
         "tech-6",
@@ -11093,6 +11198,11 @@
         "Tecumseh",
         "Red Cloud",
         "Sitting Bull"
+      ],
+      "scientificLeaderNames": [
+        "Guyasuta",
+        "Old Smoke",
+        "Three Feathers"
       ],
       "startingTechs": [
         "tech-4",
@@ -11157,6 +11267,13 @@
         "Clinton",
         "Wellington"
       ],
+      "scientificLeaderNames": [
+        "Isaac Newton",
+        "Charles Darwin",
+        "Francis Bacon",
+        "Charles Babbage",
+        "Alan Turing"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-4"
@@ -11219,6 +11336,11 @@
         "Tolui",
         "Kublai",
         "Mongke"
+      ],
+      "scientificLeaderNames": [
+        "Ulan Bator",
+        "Minzu Wenyibao",
+        "Kumujil-yin Qoro"
       ],
       "startingTechs": [
         "tech-6",
@@ -11283,6 +11405,11 @@
         "Zuniga",
         "Olivares",
         "Zumalacarregui"
+      ],
+      "scientificLeaderNames": [
+        "Juan de Ortega",
+        "Gherard of Cremona",
+        "Joao Baptista Lavanha"
       ],
       "startingTechs": [
         "tech-3",
@@ -11350,6 +11477,13 @@
         "Leif Eriksson",
         "Canute II"
       ],
+      "scientificLeaderNames": [
+        "Anders Angstrom",
+        "Niels Bohr",
+        "Tycho Brahe",
+        "Niels Stensen",
+        "Hans Oersted"
+      ],
       "startingTechs": [
         "tech-6",
         "tech-3"
@@ -11411,6 +11545,14 @@
         "Selim",
         "Mehmed II",
         "Bayezid II"
+      ],
+      "scientificLeaderNames": [
+        "Zakariya al-Razi",
+        "Thabit Ibn Qurra",
+        "Callippus of Cyzicus",
+        "Sporus of Nicaea",
+        "Dionysodorus",
+        "Menaechmus"
       ],
       "startingTechs": [
         "tech-1",
@@ -11475,6 +11617,11 @@
         "Cunobelinus",
         "Dumnorix"
       ],
+      "scientificLeaderNames": [
+        "Maredudd ap Owain",
+        "Grufudd ap Llewelyn",
+        "Rhodri Mawr"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-7"
@@ -11534,6 +11681,11 @@
         "Hind",
         "Ziyad Ibn Abihi",
         "Saffah"
+      ],
+      "scientificLeaderNames": [
+        "Nicomachus of Gerasa",
+        "Ali Abbas",
+        "Al-Kindi"
       ],
       "startingTechs": [
         "tech-4",
@@ -11596,6 +11748,11 @@
         "Hanno",
         "Himilco",
         "Hasdrubal"
+      ],
+      "scientificLeaderNames": [
+        "Bomilcar",
+        "Tanit",
+        "Eshmuniaton"
       ],
       "startingTechs": [
         "tech-3",
@@ -11660,6 +11817,11 @@
         "Syngman Rhee",
         "Kim Il Sung"
       ],
+      "scientificLeaderNames": [
+        "Seok Tong-sik",
+        "Taro Aso Han",
+        "Roh Moo Sun"
+      ],
       "startingTechs": [
         "tech-1",
         "tech-3"
@@ -11716,6 +11878,13 @@
         "Meskiaggasher",
         "Enmerkar",
         "Lugalbanda"
+      ],
+      "scientificLeaderNames": [
+        "Ali Ibn Rabban",
+        "AL-Battani",
+        "Abul Wafa",
+        "Ibn al-Baitar",
+        "Eutocius of Ascalon"
       ],
       "startingTechs": [
         "tech-4",
@@ -11774,6 +11943,12 @@
         "Huzziya",
         "Anitta"
       ],
+      "scientificLeaderNames": [
+        "Hipparchus",
+        "Eudoxus of Cnidus",
+        "Heraclides of Pontus",
+        "Posidonius"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-3"
@@ -11830,6 +12005,12 @@
         "Dirck Hartog",
         "Henry Hudson",
         "Willem Jantszoon"
+      ],
+      "scientificLeaderNames": [
+        "Christiaan Huygens",
+        "Anton Brugmmans",
+        "Jan Swammerdam",
+        "Frans van Shooten"
       ],
       "startingTechs": [
         "tech-4",
@@ -11902,6 +12083,11 @@
         "Dias",
         "Cabrillo"
       ],
+      "scientificLeaderNames": [
+        "Anthony of Padua",
+        "Pedro Nunez",
+        "Enricho Swarez"
+      ],
       "startingTechs": [
         "tech-3",
         "tech-4"
@@ -11958,6 +12144,13 @@
         "Constantine",
         "Theodosius",
         "Irene"
+      ],
+      "scientificLeaderNames": [
+        "Geminus",
+        "Empedocles of Acragas",
+        "Apollonius of Tyana",
+        "Callinicus of Heliopolis",
+        "Ctesibius"
       ],
       "startingTechs": [
         "tech-1",
@@ -12019,6 +12212,11 @@
         "Titu Cusi",
         "Tupa Amaru"
       ],
+      "scientificLeaderNames": [
+        "Sinchi Roca",
+        "Manco Capac",
+        "Maita Capac"
+      ],
       "startingTechs": [
         "tech-4",
         "tech-2"
@@ -12074,6 +12272,11 @@
         "Blue-Quetzal-Macaw",
         "Eighteen Rabbit",
         "Cauac-Sky"
+      ],
+      "scientificLeaderNames": [
+        "Ah Cacao",
+        "Smoke-Monkey",
+        "Stormy Sky"
       ],
       "startingTechs": [
         "tech-2",
@@ -12181,6 +12384,10 @@
     "allowLesserUnitProduction": false,
     "radarTileVisibility": 2,
     "pollutionChancePerPoint": 5,
+    "scientificLeaderChance": 3,
+    "scientificTraitLeaderChance": 5,
+    "ageOfScienceDuration": 20,
+    "ageOfScienceResearchBonus": 25,
     "goodyHutGold": [
       25,
       50

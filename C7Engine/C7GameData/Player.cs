@@ -175,6 +175,10 @@ namespace C7GameData {
 
 		// How many great leaders we have had, which picks the next one's name.
 		public int leadersCreated;
+		public int scientificLeadersCreated;
+		// Turns left of our Age of Science (Civilopedia: research in every
+		// city is more productive).
+		public int ageOfScienceTurnsLeft;
 
 		// Civ3's golden age (Civilopedia "Golden Age"), once a game: how many
 		// more turn ends it lasts, counting the current turn's, and whether we
@@ -359,6 +363,58 @@ namespace C7GameData {
 
 		// The name for our next great leader: our civ's names in turn, starting
 		// over once they run out, or the leader type's name if the civ has none.
+		public string NextScientificLeaderName(UnitPrototype leaderType) {
+			List<string> names = civilization.scientificLeaderNames;
+			string name = names.Count > 0 ? names[scientificLeadersCreated % names.Count] : leaderType.name;
+			scientificLeadersCreated++;
+			return name;
+		}
+
+		public bool InAgeOfScience() {
+			return ageOfScienceTurnsLeft > 0;
+		}
+
+		// Our Age of Science starts (a scientific leader in our capital),
+		// lasting the rules' number of turns, counting this one.
+		public void StartAgeOfScience(GameData gameData) {
+			ageOfScienceTurnsLeft = gameData.rules.AgeOfScienceDuration;
+			log.Information($"{this} enters an Age of Science for {ageOfScienceTurnsLeft} turns");
+			new MsgAgeOfScience(id, started: true).send();
+		}
+
+		public void CountDownAgeOfScience() {
+			if (ageOfScienceTurnsLeft <= 0) {
+				return;
+			}
+			--ageOfScienceTurnsLeft;
+			if (ageOfScienceTurnsLeft == 0) {
+				log.Information($"{this}'s Age of Science ends");
+				new MsgAgeOfScience(id, started: false).send();
+			}
+		}
+
+		// Civilopedia "Leaders": "each time a technology is researched for the
+		// first time by any civilization there is a chance that a Scientific
+		// leader will arise", more for a Scientific civ. He appears in the
+		// capital, named from the civ's list of scientists.
+		private void MaybeProduceScientificLeader(GameData gameData) {
+			City capital = cities.Find(c => c.IsCapital());
+			UnitPrototype leaderType = gameData.unitPrototypes.Find(u => u.name == gameData.rules.BattleCreatedUnitType);
+			if (capital == null || leaderType == null || isBarbarians) {
+				return;
+			}
+			bool scientific = civilization.traits.Contains(Civilization.Trait.Scientific);
+			int chance = scientific ? gameData.rules.ScientificTraitLeaderChance : gameData.rules.ScientificLeaderChance;
+			if (GameData.rng.Next(100) >= chance) {
+				return;
+			}
+			MapUnit leader = gameData.SpawnUnit(this, leaderType, capital.location);
+			leader.scientificLeader = true;
+			leader.name = NextScientificLeaderName(leaderType);
+			log.Information($"{this} has a scientific great leader, {leader.name}");
+			new MsgLeaderBorn(id, capital.location, leader.name, scientific: true).send();
+		}
+
 		public string NextGreatLeaderName(UnitPrototype leaderType) {
 			List<string> names = civilization.greatLeaderNames;
 			string name = names.Count > 0 ? names[leadersCreated % names.Count] : leaderType.name;
@@ -1084,7 +1140,7 @@ namespace C7GameData {
 			}
 
 			--freeTechsRemaining;
-			GrantTech(gameData, tech);
+			GrantTech(gameData, tech, discovered: true);
 			DropResearchThatIsNowKnown();
 			log.Information($"Awarded {tech.Name} to player {this}");
 			return true;
@@ -1100,7 +1156,7 @@ namespace C7GameData {
 		}
 
 		private void CompleteResearchingTech(GameData gameData, Tech tech) {
-			GrantTech(gameData, tech);
+			GrantTech(gameData, tech, discovered: true);
 
 			SetCurrentlyResearchedTech(null);
 
@@ -1117,19 +1173,17 @@ namespace C7GameData {
 			}
 		}
 
-		private void GrantTech(GameData gameData, Tech tech) {
+		// `discovered`: researched or chosen as a free advance, not traded for
+		// or given (a goody hut's, the Great Library's).
+		private void GrantTech(GameData gameData, Tech tech, bool discovered = false) {
+			bool first = gameData.players.All(p => !p.knownTechs.Contains(tech.id));
 			// If this tech awards the first civ to research it a free tech and
 			// no other civs know about the tech, this player gets the bonus.
-			if (tech.BonusTechToFirstCivThatResearches) {
-				bool awardBonus = true;
-				foreach (Player p in gameData.players) {
-					if (p.knownTechs.Contains(tech.id)) {
-						awardBonus = false;
-					}
-				}
-				if (awardBonus) {
-					++freeTechsRemaining;
-				}
+			if (tech.BonusTechToFirstCivThatResearches && first) {
+				++freeTechsRemaining;
+			}
+			if (discovered && first) {
+				MaybeProduceScientificLeader(gameData);
 			}
 
 			knownTechs.Add(tech.id);

@@ -539,6 +539,18 @@ namespace C7Engine {
 		}
 	}
 
+	public class MsgStartAgeOfScience : MessageToEngine {
+		private ID unitId;
+
+		public MsgStartAgeOfScience(ID unitId) {
+			this.unitId = unitId;
+		}
+
+		public override void process() {
+			EngineStorage.gameData.GetUnit(unitId)?.StartAgeOfScience();
+		}
+	}
+
 	public class MsgJoinCity : MessageToEngine {
 		private ID unitId;
 

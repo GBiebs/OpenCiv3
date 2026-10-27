@@ -13,6 +13,9 @@ namespace C7Engine.AI.UnitAI {
 	/// less what the city would make while the leader travels there. The
 	/// leader goes to the city where it does the most good and acts there;
 	/// with nothing worth doing it waits in the nearest of our cities.
+	/// A scientific leader builds no army, can hurry great wonders too, and
+	/// weighs the Age of Science he could start in our capital: the extra
+	/// research it brings over its turns, a beaker counted as a shield.
 	/// </summary>
 	public class LeaderAI : C7GameData.UnitAI {
 		private static ILogger log = Log.ForContext<LeaderAI>();
@@ -29,10 +32,17 @@ namespace C7Engine.AI.UnitAI {
 		public C7GameData.UnitAI.MoveResult PlayTurnImpl(Player player, MapUnit unit) {
 			int armyValue = ArmyValue(player, unit);
 			(City hurryCity, int hurryValue) = BestCityToHurry(player, unit);
-			bool wantsArmy = armyValue > 0 && armyValue >= hurryValue;
+			int scienceValue = AgeOfScienceValue(player, unit);
+			bool wantsScience = scienceValue > 0 && scienceValue >= hurryValue && scienceValue >= armyValue;
+			bool wantsArmy = !wantsScience && armyValue > 0 && armyValue >= hurryValue;
 
 			City here = unit.location.cityAtTile;
-			if (here != null && here.owner == player) {
+			if (wantsScience && unit.CanStartAgeOfScience()) {
+				log.Information($"{unit} starts an Age of Science");
+				unit.StartAgeOfScience();
+				return C7GameData.UnitAI.Result.Done;
+			}
+			if (here != null && here.owner == player && !wantsScience) {
 				if (wantsArmy && unit.CanBuildArmy()) {
 					log.Information($"{unit} builds an army in {here.name}");
 					unit.BuildArmy();
@@ -45,7 +55,8 @@ namespace C7Engine.AI.UnitAI {
 				}
 			}
 
-			City goal = wantsArmy || hurryCity == null ? NearestCity(player, unit) : hurryCity;
+			City goal = wantsScience ? player.cities.Find(c => c.IsCapital())
+				: wantsArmy || hurryCity == null ? NearestCity(player, unit) : hurryCity;
 			if (goal == null || goal.location == unit.location) {
 				// Nothing worth doing now: wait, and look again next turn.
 				unit.SkipTurn();
@@ -71,7 +82,8 @@ namespace C7Engine.AI.UnitAI {
 		// shield cost divided by the armies we have.
 		internal static int ArmyValue(Player player, MapUnit leader) {
 			UnitPrototype armyType = MapUnit.ArmyType();
-			if (armyType == null || !leader.unitType.actions.Contains(UnitAction.BuildArmy) || !player.CanSupportAnotherArmy()) {
+			if (armyType == null || leader.scientificLeader || !leader.unitType.actions.Contains(UnitAction.BuildArmy)
+				|| !player.CanSupportAnotherArmy()) {
 				return 0;
 			}
 			int armies = player.ArmyCount();
@@ -88,7 +100,7 @@ namespace C7Engine.AI.UnitAI {
 			City best = null;
 			int bestValue = 0;
 			foreach (City city in player.cities) {
-				if (city.itemBeingProduced is not Building building || building.IsGreatWonder()) {
+				if (city.itemBeingProduced is not Building building || (building.IsGreatWonder() && !leader.scientificLeader)) {
 					continue;
 				}
 				int perTurn = city.CurrentProductionYield().useful;
@@ -100,6 +112,18 @@ namespace C7Engine.AI.UnitAI {
 				}
 			}
 			return (best, bestValue);
+		}
+
+		// What an Age of Science is worth to us now, in beakers: our research
+		// per turn, times its bonus, times its turns; 0 if this leader can't
+		// start one (not scientific, no capital, one on already).
+		internal static int AgeOfScienceValue(Player player, MapUnit leader) {
+			if (!leader.scientificLeader || player.InAgeOfScience() || !player.cities.Any(c => c.IsCapital())) {
+				return 0;
+			}
+			Rules rules = EngineStorage.gameData.rules;
+			int beakers = player.cities.Sum(c => c.CurrentCommerceYield().beakers);
+			return beakers * rules.AgeOfScienceResearchBonus * rules.AgeOfScienceDuration / 100;
 		}
 
 		private static City NearestCity(Player player, MapUnit unit) {

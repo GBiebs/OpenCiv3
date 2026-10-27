@@ -55,15 +55,34 @@ public partial class MapUnit {
 	// Whether this unit can hurry the production of the city it's in: it has
 	// the order and moves left, and it's in one of our cities building an
 	// improvement or a small wonder that isn't finished. Conquests' military
-	// leaders can't hurry great wonders or units.
+	// leaders can't hurry great wonders or units; scientific leaders can hurry
+	// "any improvement (including a Great Wonder)".
 	public bool CanHurryProduction() {
 		if (!unitType.actions.Contains(UnitAction.HurryProduction) || !movementPoints.canMove) {
 			return false;
 		}
 		City city = location.cityAtTile;
 		return city != null && city.owner == owner
-			&& city.itemBeingProduced is Building building && !building.IsGreatWonder()
+			&& city.itemBeingProduced is Building building && (scientificLeader || !building.IsGreatWonder())
 			&& city.shieldsStored < owner.ShieldCost(building);
+	}
+
+	// A scientific leader in our capital, with moves left, can start our Age
+	// of Science ("Increase Scientific Output"), if we aren't in one.
+	public bool CanStartAgeOfScience() {
+		City city = location.cityAtTile;
+		return scientificLeader && movementPoints.canMove && city != null && city.owner == owner && city.IsCapital()
+			&& !owner.InAgeOfScience();
+	}
+
+	// Starts our Age of Science and uses the leader up. Returns whether it did.
+	public bool StartAgeOfScience() {
+		if (!CanStartAgeOfScience()) {
+			return false;
+		}
+		owner.StartAgeOfScience(EngineStorage.gameData);
+		RemoveFromPlay();
+		return true;
 	}
 
 	// Fills the production box of the city this unit is in, so it completes

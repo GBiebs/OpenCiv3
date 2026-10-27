@@ -24,7 +24,8 @@ namespace C7GameData {
 		JoinCity,
 		Upgrade,
 		BuildArmy,
-		HurryProduction
+		HurryProduction,
+		StartAgeOfScience
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {

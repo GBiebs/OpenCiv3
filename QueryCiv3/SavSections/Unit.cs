@@ -72,5 +72,9 @@ namespace QueryCiv3.Sav {
 		public bool HasIDLSSection { get => Util.GetFlag(Flags3[3], 1); }
 
 		private fixed byte UnknownBuffer5[7];
+
+		// For a great leader, the int at offset 476 (the last four bytes): 1 a
+		// military leader, 2 a scientific one; 0 for other units.
+		public int LeaderKind { get => UnknownBuffer5[3] | (UnknownBuffer5[4] << 8) | (UnknownBuffer5[5] << 16) | (UnknownBuffer5[6] << 24); }
 	}
 }

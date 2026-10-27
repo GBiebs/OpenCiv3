@@ -556,6 +556,11 @@ namespace C7GameData {
 					.Select(leader => leader.Name.Trim())
 					.Where(name => name.Length > 0)
 					.ToList();
+				// Some of Civ3's names have non-breaking spaces.
+				civ.scientificLeaderNames = (theBiq.RaceScientificLeaderName?[i] ?? [])
+					.Select(leader => leader.Name.Replace('\u00a0', ' ').Trim())
+					.Where(name => name.Length > 0)
+					.ToList();
 				civ.traits = LoadCivTraits(race).ToHashSet();
 				civ.cultureGroupKey = GetCultureGroupIdentifier(race.CultureGroup);
 
@@ -1149,6 +1154,8 @@ namespace C7GameData {
 					WorkerJob = (unit.WorkerJob==-1) ? null: save.TerraForms[unit.WorkerJob].Id,
 					isAutomated = unit.IsAutomated,
 					hasProducedLeader = unit.GeneratedLeader,
+					// Civ3 marks its great leaders 1 military, 2 scientific.
+					scientificLeader = unit.LeaderKind == 2,
 					attackedThisTurn = unit.AttackedThisTurn,
 				};
 				// since this is a .sav unit, we need to adjust things like the hp, remaining moves, etc

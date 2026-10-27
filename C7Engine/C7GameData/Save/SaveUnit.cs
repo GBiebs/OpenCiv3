@@ -27,6 +27,7 @@ namespace C7GameData.Save {
 
 		// Whether this unit has produced a great leader (Civ3's "Elite*").
 		public bool hasProducedLeader;
+		public bool scientificLeader;
 
 		// Whether this unit has attacked or bombarded this turn.
 		public bool attackedThisTurn;
@@ -51,6 +52,7 @@ namespace C7GameData.Save {
 			action = unit.isFortified ? "fortified" : "";
 			isAutomated = unit.isAutomated;
 			hasProducedLeader = unit.hasProducedLeader;
+			scientificLeader = unit.scientificLeader;
 			attackedThisTurn = unit.attackedThisTurn;
 			facingDirection = unit.facingDirection;
 			experience = unit.experienceLevelKey;
@@ -75,6 +77,7 @@ namespace C7GameData.Save {
 				isFortified = action == "fortified",
 				isAutomated = isAutomated,
 				hasProducedLeader = hasProducedLeader,
+				scientificLeader = scientificLeader,
 				attackedThisTurn = attackedThisTurn,
 				facingDirection = facingDirection,
 				WorkerProgressTowardsJob = WorkerProgressTowardsJob,

@@ -37,6 +37,7 @@ local unit_control = {
   unit_bombard = make_entry(3, 1),
   unit_build_army = make_entry(5, 1),
   unit_hurry_production = make_entry(6, 1),
+  unit_start_age_of_science = make_entry(3, 2),
   unit_upgrade = make_entry(7, 1),
 
   unit_build_city = make_entry(5, 2),

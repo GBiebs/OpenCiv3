@@ -355,14 +355,33 @@ public partial class Game {
 		));
 	}
 
+	// Civ3's texts (script.txt NEWMILLEADER, NEWSCILEADER).
 	public void EmitLeaderBornSignal(MsgLeaderBorn msg) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(
 				controller.id,
-				"Military Advisor",
-				$"Our victory has produced a great military leader, {msg.leaderName}!",
-				Advisor.Military,
+				msg.scientific ? "Science Advisor" : "Military Advisor",
+				msg.scientific
+					? $"Our recent breakthrough in technology has proven the brilliance of a great scientific leader, {msg.leaderName}!"
+					: $"Our victory has produced a great military leader, {msg.leaderName}!",
+				msg.scientific ? Advisor.Science : Advisor.Military,
 				Mood.Happy,
+				350
+			)
+		));
+	}
+
+	// Civ3's texts (script.txt SUMMARY_SCIENCE_AGE, SUMMARY_END_SCIENCE_AGE).
+	private void EmitAgeOfScienceSignal(MsgAgeOfScience msg) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(
+				controller.id,
+				"Science Advisor",
+				msg.started
+					? "Our Great Civilization has entered an Age of Scientific Discovery!"
+					: "Our Civilization's Age of Scientific Discovery has ended. So say our analysts...",
+				Advisor.Science,
+				msg.started ? Mood.Happy : Mood.Sad,
 				350
 			)
 		));

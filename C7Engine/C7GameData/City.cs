@@ -726,7 +726,8 @@ namespace C7GameData {
 				.Select(cb => cb.building)
 				.Where(b => !b.IsObsolete(owner))
 				.ToList();
-			double researchMultiplier = 1 + activeBuildings.Sum(b => b.researchBonus);
+			double researchMultiplier = 1 + activeBuildings.Sum(b => b.researchBonus)
+				+ (owner.InAgeOfScience() ? EngineStorage.gameData.rules.AgeOfScienceResearchBonus / 100.0 : 0);
 			double luxuryMultiplier = 1 + activeBuildings.Sum(b => b.luxuryBonus);
 			double taxMultiplier = 1 + activeBuildings.Sum(b => b.commerceBonus);
 

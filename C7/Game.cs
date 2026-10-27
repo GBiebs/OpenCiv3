@@ -482,6 +482,10 @@ public partial class Game : Node {
 				if (mGA.playerId == controller.id)
 					EmitGoldenAgeSignal(mGA);
 				break;
+			case MsgAgeOfScience mAoS:
+				if (mAoS.playerId == controller.id)
+					EmitAgeOfScienceSignal(mAoS);
+				break;
 			case MsgTechsFromWonder mTW:
 				if (mTW.playerId == controller.id)
 					EmitTechsFromWonderSignal(mTW);
@@ -1342,6 +1346,10 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.UnitHurryProduction) {
 			new MsgUnitHurryProduction(CurrentlySelectedUnit.id).send();
+		}
+
+		if (currentAction == C7Action.UnitStartAgeOfScience) {
+			new MsgStartAgeOfScience(CurrentlySelectedUnit.id).send();
 		}
 
 		// B also builds cities and bombards; only a leader can build an army.

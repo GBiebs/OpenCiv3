@@ -75,6 +75,7 @@ namespace C7GameData {
 
 		// The names given to this civ's military great leaders, in order.
 		public List<string> greatLeaderNames = [];
+		public List<string> scientificLeaderNames = [];
 
 		// The IDs of all the techs that this civ starts with.
 		public HashSet<ID> startingTechs = new();
