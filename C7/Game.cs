@@ -491,6 +491,10 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, mCel.Text(), mapView.screenLocationOfTile(mCel.city.location, true));
 				}
 				break;
+			case MsgGoodyHut mGH:
+				if (mGH.playerId == controller.id)
+					EmitGoodyHutSignal(mGH);
+				break;
 			case MsgPollution mPol:
 				if (mPol.playerId == controller.id) {
 					TemporaryPopup.Show(this, mPol.Text(), mapView.screenLocationOfTile(mPol.city.location, true));

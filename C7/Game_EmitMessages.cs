@@ -829,6 +829,19 @@ public partial class Game {
 		));
 	}
 
+	private void EmitGoodyHutSignal(MsgGoodyHut msg) {
+		(string title, Advisor advisor, Mood mood) = msg.outcome switch {
+			GoodyHuts.Outcome.Tech => ("Science Advisor", Advisor.Science, Mood.Happy),
+			GoodyHuts.Outcome.Mercenaries => ("Military Advisor", Advisor.Military, Mood.Happy),
+			GoodyHuts.Outcome.Barbarians => ("Military Advisor", Advisor.Military, Mood.Surprised),
+			GoodyHuts.Outcome.Nothing => ("Domestic Advisor", Advisor.Domestic, Mood.Sad),
+			_ => ("Domestic Advisor", Advisor.Domestic, Mood.Happy),
+		};
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, title, msg.text, advisor, mood, 350)
+		));
+	}
+
 	private void EmitTechsFromWonderSignal(MsgTechsFromWonder msg) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(

@@ -37,6 +37,11 @@ public partial class MapUnit {
 		// Enemy units still here can't defend themselves: capture or destroy them.
 		CaptureUnitsOn(tile);
 
+		// Find what's in a goody hut
+		if (tile.hasGoodyHut && !owner.isBarbarians && IsLandUnit()) {
+			GoodyHuts.Enter(EngineStorage.gameData, this, tile);
+		}
+
 		// Disperse barb camp
 		if (tile.hasBarbarianCamp && !owner.isBarbarians) {
 			EngineStorage.gameData.map.barbarianCamps.Remove(tile);

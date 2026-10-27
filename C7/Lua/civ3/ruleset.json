@@ -12181,6 +12181,12 @@
     "allowLesserUnitProduction": false,
     "radarTileVisibility": 2,
     "pollutionChancePerPoint": 5,
+    "goodyHutGold": [
+      25,
+      50
+    ],
+    "goodyHutMapRadius": 5,
+    "goodyHutBarbarians": 3,
     "ageBonus": {
       "enabled": true,
       "yearsToDouble": 1000,

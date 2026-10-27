@@ -197,6 +197,21 @@ namespace C7Engine {
 		}
 	}
 
+	// A unit of the player's entered a goody hut; the text is Civ3's.
+	public class MsgGoodyHut : MessageToUI {
+		public ID playerId;
+		public GoodyHuts.Outcome outcome;
+		public string text;
+		public Tile tile;
+
+		public MsgGoodyHut(ID playerId, GoodyHuts.Outcome outcome, string text, Tile tile) {
+			this.playerId = playerId;
+			this.outcome = outcome;
+			this.text = text;
+			this.tile = tile;
+		}
+	}
+
 	// Pollution struck one of the player's cities' tiles.
 	public class MsgPollution : MessageToUI {
 		public ID playerId;

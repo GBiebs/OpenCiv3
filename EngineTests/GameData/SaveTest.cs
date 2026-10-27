@@ -109,6 +109,8 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgPollution mPol:
 						continue;
+					case MsgGoodyHut mGH:
+						continue;
 					case MsgUnitEnslaved mUE:
 						continue;
 					case MsgLeaderBorn mLB:

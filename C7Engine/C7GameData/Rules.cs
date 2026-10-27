@@ -65,6 +65,14 @@ namespace C7GameData {
 		public bool AllowLesserUnitProduction; // for example, allow building a Spearman/Pikeman when we can build a Musketman (simultaneously)
 		public int RadarTileVisibility; // how many tiles, a unit with the Radar ability, can see ahead
 
+		// What goody huts give (GoodyHuts); Civ3's amounts aren't documented,
+		// so these follow players' reports: gold of 25 or 50 ("50 gp is the
+		// max"), a map of the tiles within 5, and three angry tribesmen ("three
+		// barbarians spawn often"). Not in Civ3's BIQ.
+		public List<int> GoodyHutGold = [25, 50];
+		public int GoodyHutMapRadius = 5;
+		public int GoodyHutBarbarians = 3;
+
 		// The chance, in percent, each of a city's pollution points gives each
 		// turn that one of its tiles gets polluted (see Pollution). Civ3's
 		// figure isn't documented; not in its BIQ.
