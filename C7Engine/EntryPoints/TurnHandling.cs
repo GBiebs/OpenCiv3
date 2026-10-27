@@ -84,6 +84,7 @@ namespace C7Engine {
 					// unhappiness of a new citizen during their turn.
 					log.Information($"\n*** City growth/production for turn {gameData.turn}, player {player} ***");
 					player.HandleCityUpdates(gameData);
+					Pollution.UpdateForNewTurn(gameData, player);
 					player.CountDownGoldenAge();
 
 					player.UpdateHistory(gameData);

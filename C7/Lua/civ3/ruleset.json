@@ -12180,6 +12180,7 @@
     "shieldRateForDisbanding": 0.25,
     "allowLesserUnitProduction": false,
     "radarTileVisibility": 2,
+    "pollutionChancePerPoint": 5,
     "ageBonus": {
       "enabled": true,
       "yearsToDouble": 1000,
@@ -13618,7 +13619,13 @@
       "name": "Clear Damage",
       "civilopediaEntry": "TFRM_Clear_Damage",
       "turnsToComplete": 24,
-      "aiScore": "terraforms.ai_score.default",
+      "validators": [
+        "terraforms.validators.clear_damage"
+      ],
+      "effects": [
+        "terraforms.effects.clear_damage"
+      ],
+      "aiScore": "terraforms.ai_score.clear_damage",
       "uiAction": "unit_clear_damage",
       "buttonTexture": "ui.unit_control.unit_clear_damage"
     },

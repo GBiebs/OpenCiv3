@@ -90,6 +90,7 @@ public class SaveTerraform {
 			TerraformKey.Irrigate => "irrigate",
 			TerraformKey.ClearWetlands => "clear_wetlands",
 			TerraformKey.ClearForest => "clear_forest",
+			TerraformKey.ClearDamage => "clear_damage",
 			_ => null,
 		};
 
@@ -100,6 +101,7 @@ public class SaveTerraform {
 		switch (tfKey) {
 			case TerraformKey.ClearWetlands:
 			case TerraformKey.ClearForest:
+			case TerraformKey.ClearDamage:
 				Effects.Add($"terraforms.effects.{actionPath}");
 				break;
 		}
@@ -111,6 +113,9 @@ public class SaveTerraform {
 				break;
 			case TerraformKey.ClearForest:
 				AIScore = "terraforms.ai_score.clear_forest";
+				break;
+			case TerraformKey.ClearDamage:
+				AIScore = "terraforms.ai_score.clear_damage";
 				break;
 			case TerraformKey.BuildMine:
 			case TerraformKey.Irrigate:

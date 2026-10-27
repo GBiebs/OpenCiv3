@@ -197,6 +197,22 @@ namespace C7Engine {
 		}
 	}
 
+	// Pollution struck one of the player's cities' tiles.
+	public class MsgPollution : MessageToUI {
+		public ID playerId;
+		public City city;
+
+		public MsgPollution(ID playerId, City city) {
+			this.playerId = playerId;
+			this.city = city;
+		}
+
+		// Civ3's text (script.txt POLLUTION).
+		public string Text() {
+			return $"Pollution strikes {city.name}.";
+		}
+	}
+
 	// A wonder (the Great Library) gave the player advances.
 	public class MsgTechsFromWonder : MessageToUI {
 		public ID playerId;

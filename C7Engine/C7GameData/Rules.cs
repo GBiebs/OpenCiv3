@@ -65,6 +65,11 @@ namespace C7GameData {
 		public bool AllowLesserUnitProduction; // for example, allow building a Spearman/Pikeman when we can build a Musketman (simultaneously)
 		public int RadarTileVisibility; // how many tiles, a unit with the Radar ability, can see ahead
 
+		// The chance, in percent, each of a city's pollution points gives each
+		// turn that one of its tiles gets polluted (see Pollution). Civ3's
+		// figure isn't documented; not in its BIQ.
+		public int PollutionChancePerPoint = 5;
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 

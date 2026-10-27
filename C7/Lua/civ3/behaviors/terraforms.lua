@@ -19,6 +19,9 @@ terraforms.validators = {
   clear_forest = function(context)
     return context.tile.overlayTerrainType.allowedFoliageAction == Civ3FoliageAction.ClearForest
   end,
+  clear_damage = function(context)
+    return context.tile:HasPollution() or context.tile:HasCraters()
+  end,
 }
 
 terraforms.effects = {
@@ -28,6 +31,9 @@ terraforms.effects = {
   clear_forest = function(context)
     context.tile:MaybeAwardForestClearingShields()
     context.tile:ClearTerrainOverlay()
+  end,
+  clear_damage = function(context)
+    context.tile:ClearDamage()
   end,
 }
 
@@ -41,6 +47,8 @@ local resource_points = 20
 local clear_forest_points = 2
 local clear_wetlands_points = 3
 local railroad_transport_points = 10
+-- A polluted tile makes nothing: clean it before anything else.
+local clear_damage_points = 50
 
 -- placeholder
 function terraforms.ai_score.default(_)
@@ -49,6 +57,10 @@ end
 
 function terraforms.ai_score.clear_wetlands(context)
   return clear_wetlands_points
+end
+
+function terraforms.ai_score.clear_damage(context)
+  return clear_damage_points
 end
 
 function terraforms.ai_score.railroad(context)

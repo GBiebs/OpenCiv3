@@ -491,6 +491,11 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, mCel.Text(), mapView.screenLocationOfTile(mCel.city.location, true));
 				}
 				break;
+			case MsgPollution mPol:
+				if (mPol.playerId == controller.id) {
+					TemporaryPopup.Show(this, mPol.Text(), mapView.screenLocationOfTile(mPol.city.location, true));
+				}
+				break;
 			case MsgResistanceQuelled mRQ:
 				if (mRQ.playerId == controller.id) {
 					string resistanceText = mRQ.resistanceContinues

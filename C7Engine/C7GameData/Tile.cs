@@ -153,6 +153,14 @@ namespace C7GameData {
 			return this.overlays.GetImprovements().Any(i => i.key == CRATERS);
 		}
 
+		// A worker's "Clear Damage" (Civilopedia): pollution and craters go,
+		// "restoring the square to its former production capacity".
+		public void ClearDamage() {
+			foreach (TerrainImprovement damage in overlays.GetImprovements().Where(i => i.key == POLLUTION || i.key == CRATERS).ToList()) {
+				overlays.Remove(damage);
+			}
+		}
+
 		// TODO: this should be either an extension in C7Engine, or otherwise
 		// calculated somewhere else, but it's not obvious to someone unfamiliar
 		// with the save format that it's the overaly terrain that has actual
