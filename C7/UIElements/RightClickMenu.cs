@@ -395,6 +395,10 @@ public partial class RightClickCityMenu : RightClickMenu {
 					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
 				});
 			});
+			AddItem("Contact Governor", () => {
+				this.CloseAndDelete();
+				game.ShowGovernor(tile.cityAtTile);
+			});
 			AddItem("Abandon City", () => {
 				this.CloseAndDelete();
 				EngineStorage.ReadGameData((GameData gameData) => {
