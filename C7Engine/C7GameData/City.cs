@@ -975,9 +975,12 @@ namespace C7GameData {
 				year = gameData.timeOptions?.GetAbsoluteYear(gameData.turn) ?? 0,
 				totalCulture = 0
 			});
+			// It may be a Harbor or an Airport.
+			gameData.InvalidateCachedTradeNetwork();
 		}
 		public void RemoveBuilding(CityBuilding building) {
 			constructed_buildings.Remove(building);
+			EngineStorage.gameData?.InvalidateCachedTradeNetwork();
 		}
 
 		// The best unit this city can draft its citizens into: of the

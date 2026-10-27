@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using C7GameData;
+using C7GameData.Save;
 
 namespace C7Engine.Pathing {
 	public class TradeNetworkSegment {
@@ -18,6 +19,15 @@ namespace C7Engine.Pathing {
 				}
 			}
 		}
+
+		// Takes in another segment's tiles and resources: their cities now
+		// trade with ours.
+		public void Absorb(TradeNetworkSegment other) {
+			tiles.UnionWith(other.tiles);
+			foreach ((Resource r, int count) in other.resourceCounts) {
+				resourceCounts[r] = resourceCounts.GetValueOrDefault(r) + count;
+			}
+		}
 	}
 
 	// A class for calculating the trade networks.
@@ -27,9 +37,13 @@ namespace C7Engine.Pathing {
 	// do a simple flood fill of the road network, rather than needing to do
 	// actual pathfinding between different tiles.
 	//
-	// TODO: Handle harbors and airports
-	// TODO: Account for passing through the borders of civs we're at war with
-	// TODO: Invalidate the trade network when war status changes.
+	// Cities trade (Civilopedia "Trade Route Connections") when a road or
+	// railroad runs between them, when both have a Harbor and a water route we
+	// have seen and can sail safely joins them (coast; sea with a tech that
+	// enables trade over sea, Astronomy; ocean with one that enables it over
+	// ocean, Navigation or Magnetism), or when both have an Airport. No route
+	// passes through the territory of a civ we're at war with, and enemy ships
+	// next to a city blockade its harbor.
 	public class TradeNetwork {
 		private Dictionary<Player, Dictionary<City, TradeNetworkSegment>> segments = new();
 
@@ -67,10 +81,80 @@ namespace C7Engine.Pathing {
 					}
 
 					foreach (Tile n in x.neighbors.Values) {
-						if (n.IsRoaded() && seen.Add(n)) {
+						if (n.IsRoaded() && !IsEnemyTerritory(n, player) && seen.Add(n)) {
 							toCheck.Enqueue(n);
 						}
 					}
+				}
+			}
+
+			Join(player, player.cities.Where(c => HasWorking(c, b => b.allowsAirTrade)));
+			ConnectHarbors(player);
+		}
+
+		private static bool IsEnemyTerritory(Tile t, Player player) {
+			Player owner = t.OwningPlayer();
+			return owner != null && owner != player && !player.IsAtPeaceWith(owner);
+		}
+
+		private static bool HasWorking(City city, Func<Building, bool> predicate) {
+			return city.GetBuildings().Any(cb => predicate(cb.building) && !cb.building.IsObsolete(city.owner));
+		}
+
+		// Enemy ships next to the city blockade its harbor.
+		private static bool Blockaded(City city, Player player) {
+			return city.location.neighbors.Values.Any(t => t.IsWater()
+				&& t.unitsOnTile.Any(u => u.IsWaterUnit() && !player.IsAtPeaceWith(u.owner)));
+		}
+
+		// Labels each body of water our harbors touch that we can trade over,
+		// and joins the harbor cities on each.
+		private void ConnectHarbors(Player player) {
+			bool sea = player.HasTechWithFlag(SaveTech.Flag.EnablesTradeOverSea);
+			bool ocean = player.HasTechWithFlag(SaveTech.Flag.EnablesTradeOverOcean);
+			bool Sailable(Tile t) => t.IsWater() && (t.IsCoast() || (t.IsSea() ? sea : ocean))
+				&& player.tileKnowledge.isTileKnown(t) && !IsEnemyTerritory(t, player);
+
+			Dictionary<Tile, int> bodyOf = [];
+			List<List<City>> harborsOn = [];
+			foreach (City city in player.cities.Where(c => HasWorking(c, b => b.allowsWaterTrade) && !Blockaded(c, player))) {
+				foreach (Tile start in city.location.neighbors.Values.Where(Sailable)) {
+					if (!bodyOf.TryGetValue(start, out int body)) {
+						body = harborsOn.Count;
+						harborsOn.Add([]);
+						Queue<Tile> toCheck = new();
+						toCheck.Enqueue(start);
+						bodyOf[start] = body;
+						while (toCheck.Count > 0) {
+							foreach (Tile n in toCheck.Dequeue().neighbors.Values) {
+								if (!bodyOf.ContainsKey(n) && Sailable(n)) {
+									bodyOf[n] = body;
+									toCheck.Enqueue(n);
+								}
+							}
+						}
+					}
+					harborsOn[body].Add(city);
+				}
+			}
+			foreach (List<City> harbors in harborsOn) {
+				Join(player, harbors);
+			}
+		}
+
+		// The cities trade with each other: their segments become one.
+		private void Join(Player player, IEnumerable<City> cities) {
+			Dictionary<City, TradeNetworkSegment> ofCity = segments[player];
+			TradeNetworkSegment joined = null;
+			foreach (City city in cities) {
+				TradeNetworkSegment segment = ofCity[city];
+				if (joined == null || segment == joined) {
+					joined ??= segment;
+					continue;
+				}
+				joined.Absorb(segment);
+				foreach (City other in ofCity.Where(kv => kv.Value == segment).Select(kv => kv.Key).ToList()) {
+					ofCity[other] = joined;
 				}
 			}
 		}

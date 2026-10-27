@@ -60,6 +60,9 @@ namespace C7Engine {
 				BarbarianInteractions.SpawnBarbarians(gameData);
 
 				gameData.turn++;
+				// Ships have moved and tiles have been explored since the trade
+				// network was worked out.
+				gameData.InvalidateCachedTradeNetwork();
 				WarWeariness.UpdateForNewTurn(gameData);
 				foreach (Player player in gameData.players) {
 					player.MaybeSpawnBonusUnits(gameData);

@@ -141,6 +141,8 @@ public class PlayerRelationship {
 		log.Information($"{aggressor} declared war on {defender}{(sneakAttack ? $" in a sneak attack" : "")}!" +
 						$" Defender is refusing contact for at least up to turn {refuseContactUntilTurn}" +
 						$" ({refuseContactUntilTurn - currentTurn} turns)!");
+		// Routes through the enemy's territory are cut.
+		EngineStorage.gameData?.InvalidateCachedTradeNetwork();
 	}
 
 	public static void SignPeaceAfterWar(Player left, Player right, GameData gameData) {
@@ -162,6 +164,7 @@ public class PlayerRelationship {
 		left.signedPeaceSinceMobilizing |= left.mobilized;
 		right.signedPeaceSinceMobilizing |= right.mobilized;
 
+		gameData.InvalidateCachedTradeNetwork();
 		log.Information($"{left} signed a peace treaty with {right}");
 	}
 

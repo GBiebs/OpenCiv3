@@ -1133,6 +1133,8 @@ namespace C7GameData {
 			}
 
 			knownTechs.Add(tech.id);
+			// It may open sea or ocean trade.
+			gameData.InvalidateCachedTradeNetwork();
 			// trigger callback for techs that enable improvements to redraw map
 			TechImprovementCallback(this, tech);
 
