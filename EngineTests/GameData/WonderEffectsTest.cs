@@ -288,4 +288,60 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Finish(city, "Temple");
 		Assert.Equal(known + 2, us.knownTechs.Count);
 	}
+
+	// The hit points an elite unit of ours at `where`, down to 1, gets back
+	// for staying put a turn; and what it had lost.
+	private (int healed, int lost) Heal(string type, Tile where) {
+		MapUnit unit = gameData.SpawnUnit(us, gameData.unitPrototypes.Find(u => u.name == type), where);
+		unit.Promote();
+		unit.Promote();
+		int lost = unit.maxHitPoints - 1;
+		unit.hitPointsRemaining = 1;
+		unit.OnBeginTurn();
+		int healed = unit.hitPointsRemaining - 1;
+		gameData.RemoveUnit(unit);
+		return (healed, lost);
+	}
+
+	private int Healed(string type, Tile where) => Heal(type, where).healed;
+
+	private Tile FarSite() => gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity()
+		&& t.unitsOnTile.Count == 0 && gameData.cities.All(c => c.location.DistanceTo(t) > 4));
+
+	// Civilopedia "Repairing Damage": a unit heals "in friendly or neutral
+	// territory"; "a city with a barracks heals ground units completely in one
+	// turn", a harbor sea units; "a civilization with Battlefield Medicine
+	// heals in enemy territory".
+	[Fact]
+	public void UnitsHealByTerritoryAndBuildings() {
+		Assert.True(gameData.healRateInHostileField < gameData.healRateInNeutralField);
+		Player rival = gameData.players.First(p => p != us && !p.isBarbarians && !p.isHuman);
+		City theirs = CityInteractions.BuildCity(FarSite(), rival, "Over There");
+		Tile ours = city.location.neighbors.Values.First(t => t.IsLand() && t.unitsOnTile.Count == 0);
+		Tile their = theirs.location.neighbors.Values.First(t => t.IsLand() && t.unitsOnTile.Count == 0);
+		Tile nobodys = FarSite();
+		Assert.Equal((us, rival, null), (ours.OwningPlayer(), their.OwningPlayer(), nobodys.OwningPlayer()));
+
+		Assert.Equal(gameData.healRateInFriendlyField, Healed("Warrior", ours));
+		Assert.Equal(gameData.healRateInNeutralField, Healed("Warrior", nobodys));
+		us.EnsureRelationshipExists(rival);
+		Assert.Equal(gameData.healRateInNeutralField, Healed("Warrior", their));
+		PlayerRelationship.DeclareWar(us, rival, false, gameData.turn, -1);
+		Assert.Equal(gameData.healRateInHostileField, Healed("Warrior", their));
+
+		Tile site = FarSite();
+		CityInteractions.BuildCity(site, us, "Field Hospital").AddBuilding(Building("Battlefield Medicine"), gameData);
+		Assert.Equal(gameData.healRateInNeutralField, Healed("Warrior", their));
+
+		Assert.Equal(gameData.healRateInCity, Healed("Warrior", city.location));
+		Assert.Equal(gameData.healRateInCity, Healed("Galley", city.location));
+		Add("Barracks");
+		(int healed, int lost) = Heal("Warrior", city.location);
+		Assert.True(lost > gameData.healRateInCity);
+		Assert.Equal(lost, healed);
+		Assert.Equal(gameData.healRateInCity, Healed("Galley", city.location));
+		Add("Harbor");
+		(healed, lost) = Heal("Galley", city.location);
+		Assert.Equal(lost, healed);
+	}
 }

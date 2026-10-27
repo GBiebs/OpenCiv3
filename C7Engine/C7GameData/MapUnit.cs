@@ -408,16 +408,29 @@ namespace C7GameData {
 			return GetAttackAnimationDirection(attackDirection.Reversed());
 		}
 
+		// Civilopedia "Repairing Damage": a unit that stays put for a turn
+		// heals in friendly or neutral territory, not in enemy territory unless
+		// its civ has Battlefield Medicine; in one of our cities with a
+		// Barracks (a Harbor for ships, an Airport for planes) it heals
+		// completely.
 		public int HealRateAt(Tile location) {
 			GameData gD = EngineStorage.gameData;
 			City city = location.cityAtTile;
+			if (city != null && city != City.NONE && city.owner == owner && CityTrainsMyKind(city))
+				return maxHitPoints;
 			bool inFriendlyCity = (city != null) && (city != City.NONE) && owner.IsAtPeaceWith(city.owner);
 			if (inFriendlyCity)
 				return gD.healRateInCity;
 			if (unitType.categories.Contains("Sea"))
 				return 0;
+			Player territory = location.OwningPlayer();
+			if (territory == owner)
+				return gD.healRateInFriendlyField;
+			if (territory != null && !owner.IsAtPeaceWith(territory)) {
+				bool medicine = owner.OwnsBuilding(b => b.HasWonderFlag(Save.SaveBuilding.WonderFlag.AllowsEnemyTerritoryHealing));
+				return medicine ? gD.healRateInNeutralField : gD.healRateInHostileField;
+			}
 			return gD.healRateInNeutralField;
-			// TODO: Consider friendly/neutral/enemy territory once that's implemented, barracks, the Red Cross
 		}
 
 		public enum Intent {

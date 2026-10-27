@@ -20,7 +20,7 @@ public partial class MapUnit {
 			return null;
 		}
 		City city = location.cityAtTile;
-		if (city == null || city.owner != owner || !CityCanUpgradeMe(city)) {
+		if (city == null || city.owner != owner || !CityTrainsMyKind(city)) {
 			return null;
 		}
 		GameData gameData = EngineStorage.gameData;
@@ -35,7 +35,9 @@ public partial class MapUnit {
 		return (target, cost);
 	}
 
-	private bool CityCanUpgradeMe(City city) {
+	// Whether the city has the building that trains veterans of this unit's
+	// kind (Barracks, Harbor, Airport), where it can upgrade and heal fully.
+	private bool CityTrainsMyKind(City city) {
 		return city.GetBuildings().Any(cb => !cb.building.IsObsolete(owner) && (
 			(IsLandUnit() && cb.building.providesVeteranGroundUnits)
 			|| (IsWaterUnit() && cb.building.providesVeteranSeaUnits)
