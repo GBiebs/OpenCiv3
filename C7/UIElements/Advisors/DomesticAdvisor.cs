@@ -232,7 +232,7 @@ public partial class DomesticAdvisor : Control {
 			scienceStatus.Text = playerController.SummarizeScience(gameData);
 			treasury.Text = $"Treasury: {playerController.gold}";
 
-			incomeDetails.Text = $"From cities: +{totalIncome.CityInflows()}\nFrom taxmen: +{totalIncome.taxmenTaxes}\nFrom other civs: +{totalIncome.fromOtherCivs}\nFrom interest: +{totalIncome.interest}";
+			incomeDetails.Text = $"From cities: +{totalIncome.CityInflows()}\nFrom taxmen: +{totalIncome.taxmenTaxes}\nFrom other civs: +{totalIncome.fromOtherCivs}\nFrom interest: +{totalIncome.interest}\nFrom tourism: +{totalIncome.tourism}";
 			expenseDetails.Text = $"-{totalIncome.beakers}: Science\n-{totalIncome.happiness}: Entertainment\n-{totalIncome.corrupted}: Corruption\n-{totalIncome.maintenance}: Maintenance\n-{totalIncome.unitSupport}: Unit costs\n-{totalIncome.toOtherCivs}: To other civs";
 			incomeSummary.Text = $"Income: {totalIncome.Inflows()}";
 			expenseSummary.Text = $"Expenses: {totalIncome.Outflows()}";

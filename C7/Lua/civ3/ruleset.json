@@ -12188,7 +12188,16 @@
       "appliesToWonders": true,
       "appliesToImprovements": true,
       "luaFunctionPath": "gameplay.culture.age_bonus_multiplier"
-    }
+    },
+    "touristAttractionGold": [
+      { "years": 1000, "gold": 2 },
+      { "years": 1501, "gold": 4 },
+      { "years": 1751, "gold": 6 },
+      { "years": 1876, "gold": 8 },
+      { "years": 2001, "gold": 10 },
+      { "years": 2251, "gold": 12 },
+      { "years": 2501, "gold": 14 }
+    ]
   },
   "timeOptions": {
     "baseUnit": "years",

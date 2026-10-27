@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using C7Engine;
 using C7GameData;
@@ -343,5 +344,49 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Add("Harbor");
 		(healed, lost) = Heal("Galley", city.location);
 		Assert.Equal(lost, healed);
+	}
+
+	private void SetAge(string name, int years) {
+		int now = gameData.timeOptions.GetAbsoluteYear(gameData.turn);
+		city.constructed_buildings.Find(cb => cb.building.name == name).year = now - years;
+	}
+
+	// "A Great Wonder can become a Tourist Attraction once it has stood the
+	// test of time": 2 gold from 1000 years up to 14 from 2501, by the
+	// Civilopedia's table, into the treasury.
+	[Fact]
+	public void OldWondersDrawTourists() {
+		Add("The Pyramids");
+		Add("Magellan's Voyage");
+		// Not a tourist attraction.
+		SetAge("Magellan's Voyage", 3000);
+		(int years, int gold)[] table = [(999, 0), (1000, 2), (1500, 2), (1501, 4), (1750, 4), (1751, 6), (1875, 6),
+			(1876, 8), (2000, 8), (2001, 10), (2250, 10), (2251, 12), (2500, 12), (2501, 14), (5000, 14)];
+		foreach ((int years, int gold) in table) {
+			SetAge("The Pyramids", years);
+			Assert.Equal(gold, city.TourismGold());
+		}
+
+		// Obsolete wonders still draw them.
+		Add("The Great Library");
+		SetAge("The Great Library", 1000);
+		MakeObsolete("The Great Library");
+		Assert.Equal(16, city.TourismGold());
+
+		PlayerCommerceBreakdown flows = us.AggregateFlows();
+		Assert.Equal(16, flows.tourism);
+		SetAge("The Pyramids", 0);
+		SetAge("The Great Library", 0);
+		Assert.Equal(16, flows.Netflows() - us.AggregateFlows().Netflows());
+	}
+
+	[Fact]
+	public void TheTourismTableComesFromTheRuleset() {
+		using JsonDocument ruleset = JsonDocument.Parse(File.ReadAllText(Path.Combine(PathUtils.GameModesDir, "civ3", "ruleset.json")));
+		List<(int, int)> steps = ruleset.RootElement.GetProperty("rules").GetProperty("touristAttractionGold").EnumerateArray()
+			.Select(e => (e.GetProperty("years").GetInt32(), e.GetProperty("gold").GetInt32())).ToList();
+		Assert.Equal(7, steps.Count);
+		Assert.Equal(steps, gameData.rules.TouristAttractionGold.Select(step => (step.years, step.gold)));
+		Assert.Equal(steps, new Rules().TouristAttractionGold.Select(step => (step.years, step.gold)));
 	}
 }

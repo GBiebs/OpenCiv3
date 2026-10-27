@@ -897,6 +897,23 @@ namespace C7GameData {
 			return cb.building.IsGreatWonder() && cb.builtByPlayer != null && cb.builtByPlayer != owner;
 		}
 
+		// The gold this city's great wonders earn as tourist attractions this
+		// turn: by age, from the rules' table (Civilopedia "Tourist
+		// Attraction"). Obsolete ones too: fame is what draws the tourists.
+		public int TourismGold() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData?.timeOptions == null) {
+				return 0;
+			}
+			int year = gameData.timeOptions.GetAbsoluteYear(gameData.turn);
+			int gold = 0;
+			foreach (CityBuilding cb in constructed_buildings.Where(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.TouristAttraction))) {
+				int age = year - cb.year;
+				gold += gameData.rules.TouristAttractionGold.Where(step => age >= step.years).Select(step => step.gold).DefaultIfEmpty(0).Max();
+			}
+			return gold;
+		}
+
 		// Civ 3 doubles a building's culture once it is a millennium old.
 		private int CultureAgeBonusMultiplier(CityBuilding cb) {
 			Building building = cb.building;

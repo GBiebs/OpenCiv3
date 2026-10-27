@@ -22,12 +22,13 @@ namespace C7GameData {
 		public int fromOtherCivs;       // Income from other Civ GPT deals
 		public int toOtherCivs;         // Expenses paid to other Civ GPT deals
 		public int interest;            // Interest income from Wall Street-flag small wonder
+		public int tourism;             // Gold from great wonders that are tourist attractions
 		public int maintenance;         // Expenses due to aggregate building maintenance
 		public int unitSupport;         // Expenses due to unit support costs
 		public int wealthProduction;    // Amount of extra commerce from "building" an Inflow that produces commerce
 
 		public int Inflows() {
-			return corrupted + taxes + taxmenTaxes + beakers + happiness + fromOtherCivs + interest + wealthProduction;
+			return corrupted + taxes + taxmenTaxes + beakers + happiness + fromOtherCivs + interest + tourism + wealthProduction;
 		}
 
 		public int Outflows() {
@@ -545,6 +546,7 @@ namespace C7GameData {
 				result.happiness += cityCommerce.happiness;
 				result.maintenance += city.MaintenanceCosts();
 				result.wealthProduction += cityCommerce.wealth;
+				result.tourism += city.TourismGold();
 
 				// TODO: Skip obsolete buildings (see Building.IsObsolete).
 				interestBuildings += city.constructed_buildings.Count(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.TreasuryEarnsInterest));

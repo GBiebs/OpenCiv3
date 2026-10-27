@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace C7GameData {
 	public class Rules {
 		public int MaximumResearchTime;
@@ -65,5 +67,23 @@ namespace C7GameData {
 
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
+
+		// The gold a great wonder that's a tourist attraction earns each turn
+		// once it has stood for `years` (the Civilopedia's "Tourist Attraction"
+		// table); the last step it has reached counts. Not in Civ3's BIQ.
+		public List<TouristAttractionStep> TouristAttractionGold = [
+			new() { years = 1000, gold = 2 },
+			new() { years = 1501, gold = 4 },
+			new() { years = 1751, gold = 6 },
+			new() { years = 1876, gold = 8 },
+			new() { years = 2001, gold = 10 },
+			new() { years = 2251, gold = 12 },
+			new() { years = 2501, gold = 14 },
+		];
+	}
+
+	public class TouristAttractionStep {
+		public int years;
+		public int gold;
 	}
 }
