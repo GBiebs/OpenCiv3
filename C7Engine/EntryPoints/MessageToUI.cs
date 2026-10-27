@@ -197,6 +197,19 @@ namespace C7Engine {
 		}
 	}
 
+	// A wonder (the Great Library) gave the player advances.
+	public class MsgTechsFromWonder : MessageToUI {
+		public ID playerId;
+		public string wonder;
+		public List<string> techs;
+
+		public MsgTechsFromWonder(ID playerId, string wonder, List<string> techs) {
+			this.playerId = playerId;
+			this.wonder = wonder;
+			this.techs = techs;
+		}
+	}
+
 	// The player's golden age started or ended.
 	public class MsgGoldenAge : MessageToUI {
 		public ID playerId;

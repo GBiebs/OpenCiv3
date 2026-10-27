@@ -829,6 +829,19 @@ public partial class Game {
 		));
 	}
 
+	private void EmitTechsFromWonderSignal(MsgTechsFromWonder msg) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(
+				controller.id,
+				"Science Advisor",
+				$"{msg.wonder} has given us {string.Join(", ", msg.techs)}!",
+				Advisor.Science,
+				Mood.Happy,
+				350
+			)
+		));
+	}
+
 	private void EmitDescendIntoAnarchySignal(MsgDescendIntoAnarchy msg) {
 		EngineStorage.ReadGameData(data => {
 			var player = data.players.First(p => p.id == msg.controllerId);

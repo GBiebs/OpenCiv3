@@ -482,6 +482,10 @@ public partial class Game : Node {
 				if (mGA.playerId == controller.id)
 					EmitGoldenAgeSignal(mGA);
 				break;
+			case MsgTechsFromWonder mTW:
+				if (mTW.playerId == controller.id)
+					EmitTechsFromWonderSignal(mTW);
+				break;
 			case MsgCelebration mCel:
 				if (mCel.playerId == controller.id) {
 					TemporaryPopup.Show(this, mCel.Text(), mapView.screenLocationOfTile(mCel.city.location, true));

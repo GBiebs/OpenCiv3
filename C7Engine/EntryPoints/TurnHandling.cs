@@ -74,6 +74,7 @@ namespace C7Engine {
 					// unit support cap and cause them to lose gold unexpectedly.
 					player.DoPerTurnFinanceUpdates(gameData);
 					player.DoPerTurnScienceUpdates(gameData);
+					player.CollectGreatLibraryTechs(gameData);
 
 					// Note that we do growth after calculating citizen moods,
 					// to ensure that the player has a chance to deal with the

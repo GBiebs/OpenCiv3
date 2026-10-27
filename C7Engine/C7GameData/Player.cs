@@ -1024,6 +1024,33 @@ namespace C7GameData {
 			PlayerAI.MaybePickTechToResearch(this, gameData.techs);
 		}
 
+		// The Great Library gives "any Civilization Advance already discovered
+		// by two other known civilizations", once we could research it. It's
+		// checked every turn, and one advance may open the way to another.
+		public void CollectGreatLibraryTechs(GameData gameData) {
+			Building library = cities.SelectMany(c => c.constructed_buildings).Select(cb => cb.building)
+				.FirstOrDefault(b => b.HasWonderFlag(SaveBuilding.WonderFlag.GainAnyTechKnownByTwoCivs));
+			if (library == null) {
+				return;
+			}
+			List<Player> known = gameData.players
+				.Where(p => p != this && !p.isBarbarians && !p.defeated && playerRelationships.ContainsKey(p.id))
+				.ToList();
+			// Until it's obsolete, which may happen on the way (Education).
+			Tech Next() => library.IsObsolete(this) ? null : GetAvailableTechsToResearch(gameData.techs)
+				.FirstOrDefault(t => known.Count(p => p.knownTechs.Contains(t.id)) >= 2);
+
+			List<string> gained = [];
+			for (Tech tech = Next(); tech != null; tech = Next()) {
+				AcquireTechs(gameData, [tech]);
+				gained.Add(tech.Name);
+			}
+			if (gained.Count > 0) {
+				log.Information($"{library.name} gives {this} {string.Join(", ", gained)}");
+				new MsgTechsFromWonder(id, library.name, gained).send();
+			}
+		}
+
 		private void DropResearchThatIsNowKnown() {
 			if (currentlyResearchedTech != null && knownTechs.Contains(currentlyResearchedTech)) {
 				SetCurrentlyResearchedTech(null);

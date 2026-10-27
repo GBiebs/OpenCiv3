@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using C7Engine;
 using C7GameData;
 using C7GameData.Save;
@@ -11,16 +13,23 @@ using Xunit;
 namespace EngineTests.GameData;
 
 // The great wonders' effects, as the Conquests Civilopedia gives them.
-public class WonderEffectsTest : IClassFixture<SaveGameFixture> {
+public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
+	private readonly SaveGameFixture fixture;
 	private readonly C7GameData.GameData gameData;
 	private readonly Player us;
 	private readonly City city;
 
 	public WonderEffectsTest(SaveGameFixture fixture) {
+		this.fixture = fixture;
 		gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
 		EngineStorage.InitializeGameDataForTests(gameData);
+		EngineStorage.animationsEnabled = false;
 		us = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
 		city = CityInteractions.BuildCity(us.units[0].location, us, "Wonders");
+	}
+
+	public void Dispose() {
+		EngineStorage.messagesToUI.Clear();
 	}
 
 	private Building Building(string name) => gameData.Buildings.Find(b => b.name == name);
@@ -154,5 +163,99 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture> {
 		}
 		GrowOnce();
 		Assert.Equal(limit, city.residents.Count);
+	}
+
+	// Two civs we've met that know the next tech we could research, and one
+	// civ we haven't met. All computer players: a human newly met would be
+	// offered trades, which wait for an answer.
+	private (Tech tech, Player first, Player second, Player stranger) KnownToTwo(C7GameData.GameData game, Player owner) {
+		List<Player> others = game.players.Where(p => p != owner && !p.isBarbarians).ToList();
+		List<Player> computers = others.Where(p => !p.isHuman).ToList();
+		foreach (Player p in others) {
+			owner.playerRelationships.Remove(p.id);
+			p.playerRelationships.Remove(owner.id);
+		}
+		owner.EnsureRelationshipExists(computers[0]);
+		owner.EnsureRelationshipExists(computers[1]);
+		// Civs start with different techs: only ours, for nothing else to pass on.
+		foreach (Player p in others) {
+			p.knownTechs.Clear();
+			p.knownTechs.UnionWith(owner.knownTechs);
+		}
+		Tech tech = owner.GetAvailableTechsToResearch(game.techs).First();
+		return (tech, computers[0], computers[1], computers[2]);
+	}
+
+	// "Gets any Civilization Advance already discovered by two other known
+	// civilizations for free", until Education.
+	[Fact]
+	public void TheGreatLibraryGivesWhatTwoKnownCivsKnow() {
+		Add("The Great Library");
+		(Tech tech, Player first, Player second, Player stranger) = KnownToTwo(gameData, us);
+
+		first.knownTechs.Add(tech.id);
+		stranger.knownTechs.Add(tech.id);
+		us.CollectGreatLibraryTechs(gameData);
+		Assert.DoesNotContain(tech.id, us.knownTechs);
+
+		second.knownTechs.Add(tech.id);
+		MakeObsolete("The Great Library");
+		us.CollectGreatLibraryTechs(gameData);
+		Assert.DoesNotContain(tech.id, us.knownTechs);
+
+		us.knownTechs.Remove(Building("The Great Library").renderedObsoleteBy.id);
+		us.CollectGreatLibraryTechs(gameData);
+		Assert.Contains(tech.id, us.knownTechs);
+		MsgTechsFromWonder told = Assert.Single(EngineStorage.messagesToUI.OfType<MsgTechsFromWonder>());
+		Assert.Equal((us.id, "The Great Library"), (told.playerId, told.wonder));
+		Assert.Equal([tech.Name], told.techs);
+	}
+
+	// One advance may lead to the next: a tech whose prerequisites include
+	// the first comes too, if two known civs have it.
+	[Fact]
+	public void TheGreatLibraryFollowsTheTree() {
+		Add("The Great Library");
+		(_, Player first, Player second, _) = KnownToTwo(gameData, us);
+		bool Opens(Tech tech, Tech next) => !us.knownTechs.Contains(next.id)
+			&& next.Prerequisites.Any(p => p.id == tech.id)
+			&& next.Prerequisites.All(p => p.id == tech.id || us.knownTechs.Contains(p.id))
+			&& EraUtils.GetEraIndex(next.EraCivilopediaName) <= us.EraIndex();
+		(Tech tech, Tech next) = us.GetAvailableTechsToResearch(gameData.techs)
+			.SelectMany(a => gameData.techs.Where(t => Opens(a, t)).Select(t => (a, t)))
+			.First();
+		foreach (Player p in new[] { first, second }) {
+			p.knownTechs.Add(tech.id);
+			p.knownTechs.Add(next.id);
+		}
+
+		us.CollectGreatLibraryTechs(gameData);
+		Assert.Contains(tech.id, us.knownTechs);
+		Assert.Contains(next.id, us.knownTechs);
+	}
+
+	[Fact]
+	public async Task TheGreatLibraryWorksAtTheEndOfTheTurn() {
+		Player human = await CreateGame.createGame(fixture.saveGame.Clone(), (_) => fixture.behaviors);
+		C7GameData.GameData game = EngineStorage.gameData;
+		TurnHandling.OnBeginTurn();
+		TurnHandling.InitTurnData();
+		await TurnHandling.AdvanceTurn();
+		Player owner = game.players.First(p => !p.isHuman && !p.isBarbarians);
+		City home = CityInteractions.BuildCity(owner.units[0].location, owner, "Alexandria");
+		home.AddBuilding(game.Buildings.Find(b => b.name == "The Great Library"), game);
+		(Tech tech, Player first, Player second, _) = KnownToTwo(game, owner);
+		first.knownTechs.Add(tech.id);
+		second.knownTechs.Add(tech.id);
+		// No trading for it first.
+		game.gameDifficulty.AIToAITradeRate = 0;
+		EngineStorage.messagesToUI.Clear();
+
+		TurnHandling.OnEndTurn(human);
+		human.hasPlayedThisTurn = true;
+		await TurnHandling.AdvanceTurn();
+
+		Assert.Contains(tech.id, owner.knownTechs);
+		Assert.Contains(EngineStorage.messagesToUI.OfType<MsgTechsFromWonder>(), m => m.playerId == owner.id);
 	}
 }
