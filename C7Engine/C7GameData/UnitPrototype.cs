@@ -312,7 +312,8 @@ namespace C7GameData {
 				instance.nationality = owner.civilization;
 			instance.location = location;
 
-			instance.movementPoints.reset(movement);
+			// With any bonus (a Seafaring civ's ships, the Great Lighthouse).
+			instance.movementPoints.reset(instance.MovementPerTurn());
 			return instance;
 		}
 

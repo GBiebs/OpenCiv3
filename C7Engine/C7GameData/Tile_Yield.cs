@@ -45,7 +45,30 @@ public partial class Tile {
 			if (player.InGoldenAge() && type != YieldType.Food && yield >= 1) {
 				bonus += 1;
 			}
+
+			// An Agricultural civ's city tile makes a food more, and so does its
+			// irrigated desert (Civilopedia "Agricultural"). The despotism
+			// penalty takes the city tile's back unless the city has fresh water
+			// or is past town size (CivWiki "Stadtfeldertrag"; this matches the
+			// food Civ3 stored in the user's saves).
+			bool agriculturalCity = false;
+			// (The map generator rates sites for a player without a civilization.)
+			if (type == YieldType.Food && player.civilization?.traits.Contains(Civilization.Trait.Agricultural) == true) {
+				if (tile.HasCity()) {
+					agriculturalCity = true;
+				} else if (tile.overlayTerrainType.Key == "desert" && tile.HasIrrigation()) {
+					bonus += 1;
+				}
+			}
+			bool keepsCityFood = agriculturalCity && (tile.BordersRiver() || tile.NeighborsFreshWater()
+				|| tile.cityAtTile.residents.Count > EngineStorage.gameData.rules.MaximumLevel1CitySize);
+			if (agriculturalCity && !keepsCityFood) {
+				bonus += 1;
+			}
 			player.government.tileModifier?.Invoke(this);
+			if (keepsCityFood) {
+				bonus += 1;
+			}
 			return this;
 		}
 
@@ -77,12 +100,8 @@ public partial class Tile {
 		if (this.HasCity()) {
 			// All city centers have a food yield of 2, regardless of bonus
 			// food. See https://wiki.civforum.de/wiki/Stadtfeldertrag_(Civ3).
+			// (An Agricultural civ's extra food: Yield.ApplyPlayerModifiers.)
 			yield = 2;
-
-			// TODO: For agricultural civilizations, the city field produces
-			// a food yield of three food, but this is reduced to two by the
-			// despotism penalty, unless the city is located on a fresh
-			// water source or has already reached city size (≥ 7)
 		}
 
 		yield += this.overlays.GetBaseYieldBonus(YieldType.Food);
@@ -110,19 +129,17 @@ public partial class Tile {
 		}
 
 		if (HasCity()) {
-			// City centers always have 1 shield prior to any bonuses
-			// resources, regardless of the terrain.
-			// See https://wiki.civforum.de/wiki/Stadtfeldertrag_(Civ3).
-			yield = 1;
-
-			// There is a size bonus for larger cities.
-			if (cityAtTile.residents.Count > EngineStorage.gameData.rules.MaximumLevel1CitySize
-				&& cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel2CitySize) {
+			// A city tile makes its terrain's shields, at least one in a town,
+			// one more in a city (size 7-12) and two more in a metropolis; an
+			// Industrious civ's metropolis one more again. See
+			// https://civ-wiki.de/wiki/Stadtfeldertrag_(Civ3); it matches the
+			// shields Civ3 stored in the user's saves.
+			if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel1CitySize) {
+				yield = Math.Max(yield, 1);
+			} else if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel2CitySize) {
 				yield += 1;
-			} else if (cityAtTile.residents.Count > EngineStorage.gameData.rules.MaximumLevel2CitySize) {
+			} else {
 				yield += 2;
-
-				// Industrious civs get +1 production in metropolises
 				if (cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Industrious)) {
 					yield += 1;
 				}
@@ -164,13 +181,17 @@ public partial class Tile {
 
 		// See https://wiki.civforum.de/wiki/Stadtfeldertrag_(Civ3)
 		if (HasCity()) {
+			// A Commercial civ's cities and metropolises make two and three
+			// more (CivWiki; the cities' +2 matches Civ3's saves). A capital
+			// takes this ordinary sum when it beats its flat 4.
+			bool commercial = cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Commercial);
 			int regularCityYield;
 			if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel1CitySize) {
 				regularCityYield = 1;
 			} else if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel2CitySize) {
-				regularCityYield = 2;
+				regularCityYield = commercial ? 4 : 2;
 			} else {
-				regularCityYield = 3;
+				regularCityYield = commercial ? 6 : 3;
 			}
 			if (borderRiver) {
 				regularCityYield += 1;
@@ -184,10 +205,20 @@ public partial class Tile {
 				capitalCityYield = 4;
 			}
 
-			yield = Math.Max(regularCityYield, capitalCityYield);
-		}
+			// A Seafaring civ's coastal cities, capitals too, make a commerce
+			// more on their tile (Civilopedia "Seafaring"; matches Civ3's saves).
+			if (NeighborsOcean() && cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Seafaring)) {
+				regularCityYield += 1;
+				if (capitalCityYield > 0) {
+					capitalCityYield += 1;
+				}
+			}
 
-		yield += this.overlays.GetBaseYieldBonus(YieldType.Commerce);
+			yield = Math.Max(regularCityYield, capitalCityYield);
+		} else {
+			// The city tile's own formula above replaces the road's commerce.
+			yield += this.overlays.GetBaseYieldBonus(YieldType.Commerce);
+		}
 
 		return yield;
 	}

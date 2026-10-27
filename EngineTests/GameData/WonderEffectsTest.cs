@@ -47,7 +47,7 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 	public void LighthouseAndMagellansSpeedUpShips() {
 		MapUnit galley = Spawn("Galley");
 		MapUnit warrior = Spawn("Warrior");
-		int galleyMoves = galley.unitType.movement;
+		int galleyMoves = galley.MovementPerTurn();
 
 		Add("The Great Lighthouse");
 		Assert.Equal(galleyMoves + 1, galley.MovementPerTurn());

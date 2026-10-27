@@ -1140,6 +1140,11 @@ namespace C7GameData {
 
 			if (CanAdvanceToNextEra(gameData)) {
 				eraCivilopediaName = GetNextEraNameByIndex(EraIndex());
+				// A Scientific civ "receives a free Civilization Advance at the
+				// start of every era".
+				if (civilization.traits.Contains(Civilization.Trait.Scientific)) {
+					++freeTechsRemaining;
+				}
 			}
 		}
 
@@ -1446,12 +1451,12 @@ namespace C7GameData {
 			return cities.Any(c => c.constructed_buildings.Any(cb => !cb.building.IsObsolete(this) && predicate(cb.building)));
 		}
 
-		// The extra moves our ships get from wonders: one each from the Great
-		// Lighthouse and Magellan's Voyage (Civilopedia: "all naval unit
-		// movement rates are increased by one"), two from a wonder with Civ3's
-		// +2 flag.
+		// The extra moves our ships get: one each from the Great Lighthouse and
+		// Magellan's Voyage (Civilopedia: "all naval unit movement rates are
+		// increased by one"), two from a wonder with Civ3's +2 flag, and one
+		// for a Seafaring civ ("ships move faster"; CivFanatics: +1).
 		public int ShipMovementBonus() {
-			int bonus = 0;
+			int bonus = civilization?.traits.Contains(Civilization.Trait.Seafaring) == true ? 1 : 0;
 			foreach (City city in cities) {
 				foreach (CityBuilding cb in city.constructed_buildings) {
 					Building b = cb.building;
