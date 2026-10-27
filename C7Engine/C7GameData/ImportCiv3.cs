@@ -733,6 +733,7 @@ namespace C7GameData {
 				List<int> contacts = leader.GetContact();
 				List<int> refuseContactForTurns = leader.GetRefuseContactForTurns();
 				List<int> warWearinessPoints = leader.GetWarWearinessPoints();
+				List<bool> embassies = leader.GetEmbassies();
 				for (int j = 0; j < contacts.Count; ++j) {
 					if (contacts[j] > 0) {
 						QueryCiv3.Sav.LEAD_LEAD relationship = savData.ReputationRelationship[i][j];
@@ -746,6 +747,7 @@ namespace C7GameData {
 								refuseContactForTurns[j] > 0 ?
 									save.TurnNumber + refuseContactForTurns[j] : -1,
 							warWearinessPoints = warWearinessPoints[j],
+							hasEmbassy = embassies[j],
 						});
 					}
 				}
@@ -1038,8 +1040,6 @@ namespace C7GameData {
 				}
 			}
 
-			// TODO: create actual embassies
-
 			// In scenarios where there isn't any actual information about player relationships,
 			// the entry point of these relationships seems to be the embassies.
 			// Players that start with embassies, are aware of each other.
@@ -1051,6 +1051,7 @@ namespace C7GameData {
 						warDeclarationWithRoPActiveCount = 0,
 						wasSneakAttacked = false,
 						refuseContactUntilTurn = -1,
+						hasEmbassy = true,
 					};
 					playerWithEmbassy.playerRelationships.Add(other.id.ToString(), pr);
 
@@ -2304,6 +2305,17 @@ namespace C7GameData {
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
 			save.Rules.MinimumPopulationForWeLoveTheKing = rule.MinimumPopulationForWeLoveTheKing;
 			save.Rules.GoldenAgeDuration = rule.GoldenAgeDuration;
+			// Diplomatic and spy missions; Civ3 knows them by their place.
+			BiqData espnBiq = biq.Espn is null ? defaultBiq : biq;
+			if (espnBiq.Espn is { Length: > 0 }) {
+				save.Rules.EspionageMissions = espnBiq.Espn.Select((e, i) => new EspionageMission {
+					key = i < EspionageMission.Keys.Count ? EspionageMission.Keys[i] : e.Name,
+					name = e.Name,
+					baseCost = e.BaseCost,
+					diplomat = e.Diplomat,
+					spy = e.Spy,
+				}).ToList();
+			}
 			// A scenario's own settings say whether cities can flip. A rules
 			// file without them (the stock conquests.biq sets no victory
 			// conditions at all, and its conversions flag is off, though

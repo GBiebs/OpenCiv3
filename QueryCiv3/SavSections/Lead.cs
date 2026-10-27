@@ -146,6 +146,17 @@ namespace QueryCiv3.Sav {
 		}
 
 		private fixed bool Embassies[32];
+
+		// Returns a list of booleans, where the i'th boolean being true means
+		// this leader has an embassy with the i'th leader.
+		public List<bool> GetEmbassies() {
+			List<bool> result = new();
+			for (int i = 0; i < 32; ++i) {
+				result.Add(Embassies[i]);
+			}
+			return result;
+		}
+
 		private fixed bool Spies[32];
 		private fixed bool FailedSpyMission[32];
 		private fixed int BorderViolation[32];

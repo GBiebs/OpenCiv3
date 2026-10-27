@@ -214,6 +214,30 @@ namespace C7Engine {
 		}
 	}
 
+	// The player builds an embassy with another civ (see Embassies).
+	public class MsgEstablishEmbassy : MessageToEngine {
+		private ID playerId;
+		private ID otherId;
+
+		public MsgEstablishEmbassy(ID playerId, ID otherId) {
+			this.playerId = playerId;
+			this.otherId = otherId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			Player us = gameData.GetPlayer(playerId);
+			Player them = gameData.GetPlayer(otherId);
+			if (us == null || them == null) {
+				return;
+			}
+			int cost = Embassies.Cost(gameData, us, them);
+			if (Embassies.Establish(gameData, us, them)) {
+				new MsgEmbassyEstablished(us.id, them, Embassies.Capital(them), cost).send();
+			}
+		}
+	}
+
 	// The player set a city's governor; or every city's, and the default
 	// for cities to come.
 	public class MsgSetGovernor : MessageToEngine {

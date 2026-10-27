@@ -43,6 +43,7 @@ namespace C7Engine {
 				await AttemptTrading(player);
 			}
 
+			BuildEmbassies(player, gameData);
 			UpgradeUnits(player);
 			DraftForDefense(player, EngineStorage.gameData);
 			FillArmies(player);
@@ -59,6 +60,21 @@ namespace C7Engine {
 
 		// The gold the AI keeps in hand when upgrading units.
 		internal const int UPGRADE_GOLD_RESERVE = 50;
+
+		// Builds an embassy with every civ we've met that we can, cheapest
+		// first, while there's gold to spare.
+		internal static void BuildEmbassies(Player player, GameData gameData) {
+			List<Player> others = gameData.players
+				.Where(p => p != player && Embassies.CanEstablish(player, p))
+				.OrderBy(p => Embassies.Cost(gameData, player, p))
+				.ToList();
+			foreach (Player other in others) {
+				if (player.gold - Embassies.Cost(gameData, player, other) < UPGRADE_GOLD_RESERVE) {
+					break;
+				}
+				Embassies.Establish(gameData, player, other);
+			}
+		}
 
 		// Upgrades the units that can be, where they stand, while there's gold
 		// to spare.

@@ -213,6 +213,25 @@ namespace C7Engine {
 		}
 	}
 
+	// `playerId` built an embassy with `other` in `capital`, for `cost` gold.
+	public class MsgEmbassyEstablished : MessageToUI {
+		public ID playerId;
+		public Player other;
+		public City capital;
+		public int cost;
+
+		public MsgEmbassyEstablished(ID playerId, Player other, City capital, int cost) {
+			this.playerId = playerId;
+			this.other = other;
+			this.capital = capital;
+			this.cost = cost;
+		}
+
+		public string Text() {
+			return $"We have established an embassy with the {other.civilization.name} in {capital?.name} for {cost} gold.";
+		}
+	}
+
 	// A nuclear plant melted down (script.txt MELTDOWN).
 	public class MsgMeltdown : MessageToUI {
 		public ID playerId;

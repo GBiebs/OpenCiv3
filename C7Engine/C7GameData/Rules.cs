@@ -174,6 +174,14 @@ namespace C7GameData {
 		public int GovernorValueRatio = 4;
 		public int GovernorEmphasisFactor = 4;
 
+		// Diplomatic and spy missions (Civ3's ESPN section), with Conquests'
+		// base costs. See Embassies.
+		public List<EspionageMission> EspionageMissions = EspionageMission.Conquests();
+
+		public EspionageMission Mission(string key) {
+			return EspionageMissions.Find(m => m.key == key);
+		}
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 

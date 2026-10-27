@@ -507,6 +507,10 @@ public partial class Game : Node {
 				if (mMd.playerId == controller.id)
 					EmitBadNewsSignal(mMd.Text());
 				break;
+			case MsgEmbassyEstablished mEE:
+				if (mEE.playerId == controller.id)
+					EmitForeignAdvisorSignal(mEE.Text(), Mood.Happy);
+				break;
 			case MsgDisease mDis:
 				if (mDis.playerId == controller.id) {
 					if (mDis.city != null) {
@@ -935,8 +939,9 @@ public partial class Game : Node {
 		else if (!shiftDown && activeTile && tile.unitsOnTile.Count > 0)
 			// There are units on this title, so open that menu.
 			new RightClickTileMenu(this, tile).Open(eventMouseButton.Position);
-		else if (!shiftDown && activeTile && tile.cityAtTile?.owner == controller)
-			// There are no units, but this is the player's city.
+		else if (!shiftDown && activeTile && tile.cityAtTile != null)
+			// There are no units, but there's a city (ours, or another civ's
+			// capital to build an embassy in).
 			new RightClickCityMenu(this, tile).Open(eventMouseButton.Position);
 		else
 			ShowTileInfo(tile);

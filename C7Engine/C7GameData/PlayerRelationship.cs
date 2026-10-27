@@ -40,6 +40,10 @@ public class PlayerRelationship {
 
 	public List<MultiTurnDeal> multiTurnDeals = new List<MultiTurnDeal>();
 
+	// True if p1 and p2 have embassies with each other (always both ways).
+	// See Embassies.
+	public bool hasEmbassy = false;
+
 	public bool declaredWarWithActiveRightOfPassage = false;
 
 	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness

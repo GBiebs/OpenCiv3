@@ -868,6 +868,12 @@ public partial class Game {
 		));
 	}
 
+	private void EmitForeignAdvisorSignal(string text, Mood mood) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Foreign Advisor", text, Advisor.Foreign, mood, 400)
+		));
+	}
+
 	private void EmitTechsFromWonderSignal(MsgTechsFromWonder msg) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(

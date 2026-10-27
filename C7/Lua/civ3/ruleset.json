@@ -12462,6 +12462,17 @@
     },
     "governorValueRatio": 4,
     "governorEmphasisFactor": 4,
+    "espionageMissions": [
+      { "key": "embassy", "name": "Build an Embassy", "baseCost": 20, "diplomat": true, "spy": false },
+      { "key": "investigateCity", "name": "Investigate City", "baseCost": 10, "diplomat": true, "spy": true },
+      { "key": "stealTechnology", "name": "Steal Technology", "baseCost": 10, "diplomat": true, "spy": true },
+      { "key": "stealWorldMap", "name": "Steal World Map", "baseCost": 1, "diplomat": false, "spy": true },
+      { "key": "plantSpy", "name": "Plant Spy", "baseCost": 60, "diplomat": false, "spy": true },
+      { "key": "stealPlans", "name": "Steal Plans", "baseCost": 10, "diplomat": false, "spy": true },
+      { "key": "propaganda", "name": "Initiate Propaganda", "baseCost": 100, "diplomat": false, "spy": true },
+      { "key": "sabotageProduction", "name": "Sabotage Production", "baseCost": 10, "diplomat": false, "spy": true },
+      { "key": "exposeEnemySpy", "name": "Expose Enemy Spy", "baseCost": 80, "diplomat": false, "spy": true }
+    ],
     "warWeariness": {
       "pointsPerLevel": 30,
       "declaredWarOn": -30,

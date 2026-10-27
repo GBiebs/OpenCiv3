@@ -79,6 +79,29 @@ public partial class RightClickMenu : VBoxContainer {
 		return button;
 	}
 
+	// Another civ's capital: build an embassy there (Civ3 double-clicks the
+	// capital).
+	protected void AddEmbassyItem(Tile tile) {
+		City city = tile.cityAtTile;
+		if (city == null || city.owner == game.controller || !city.IsCapital()) {
+			return;
+		}
+		bool canEstablish = false;
+		int cost = 0;
+		EngineStorage.ReadGameData((GameData gameData) => {
+			canEstablish = Embassies.CanEstablish(game.controller, city.owner);
+			cost = Embassies.Cost(gameData, game.controller, city.owner);
+		});
+		if (!canEstablish) {
+			return;
+		}
+		Button item = AddItem($"Establish Embassy ({cost} gold)", () => {
+			CloseAndDelete();
+			new MsgEstablishEmbassy(game.controller.id, city.owner.id).send();
+		});
+		item.Disabled = game.controller.gold < cost;
+	}
+
 	protected void AddTreeSeparator() {
 		var background = new ColorRect();
 		background.Color = Color.Color8(255, 247, 222, 255);
@@ -277,6 +300,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 			if (!nonPlayerUnits[0].owner.isBarbarians)
 				AddItem($"Contact {nonPlayerUnits[0].owner.civilization.name}", contactCiv);
 		}
+		AddEmbassyItem(tile);
 	}
 
 	private static void ApplyAltItemOverrides(Button menuItem) {
@@ -333,7 +357,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 	}
 }
 
-// A right click menu for the player's city when there are no units.
+// A right click menu for a city when there are no units.
 public partial class RightClickCityMenu : RightClickMenu {
 	public RightClickCityMenu(Game game, Tile tile) : base(game) {
 		ResetItems(tile);
@@ -380,6 +404,7 @@ public partial class RightClickCityMenu : RightClickMenu {
 				});
 			});
 		}
+		AddEmbassyItem(tile);
 	}
 }
 

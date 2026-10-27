@@ -33,9 +33,19 @@ public partial class TalkScreen : TextureRect {
 		string leaderName = "";
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
+			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, fontTheme);
 			civNameText = $"{opponentPlayer.civilization.name} (Cautious)";
 			leaderName = opponentPlayer.civilization.leader;
+
+			// What our embassy tells us.
+			if (Embassies.Has(humanPlayer, opponentPlayer)) {
+				Label intelligence = new();
+				intelligence.SetPosition(new Vector2(0, 355));
+				AddChild(intelligence);
+				intelligence.Theme = fontTheme;
+				intelligence.SetTextAndCenterLabel($"Embassy: {opponentPlayer.government?.name}, {opponentPlayer.gold} gold, {opponentPlayer.knownTechs.Count} advances");
+			}
 		});
 
 		int offset = 500;
