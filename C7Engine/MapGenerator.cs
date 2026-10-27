@@ -54,6 +54,8 @@ namespace C7Engine {
 
 		public int maxRankOfWorkableTiles;
 		public int maxRankOfBarbarianCampTiles;
+		public int landTilesPerGoodyHut = new Rules().LandTilesPerGoodyHut;
+		public int goodyHutSpacing = new Rules().GoodyHutSpacing;
 
 		public WorldCharacteristics() { }
 
@@ -64,6 +66,8 @@ namespace C7Engine {
 
 			maxRankOfWorkableTiles = save.Rules.MaxRankOfWorkableTiles;
 			maxRankOfBarbarianCampTiles = save.Rules.MaxRankOfBarbarianCampTiles;
+			landTilesPerGoodyHut = save.Rules.LandTilesPerGoodyHut;
+			goodyHutSpacing = save.Rules.GoodyHutSpacing;
 
 			barbarianActivity = save.BarbarianInfo.barbarianActivity;
 		}
@@ -1356,24 +1360,26 @@ namespace C7Engine {
 		// Civ3's maps at the start of the game (the user's turn-0 saves) have a
 		// goody hut per 48-69 land tiles, on any land terrain but never on a
 		// resource, never closer than 4 tiles to another, and some as near as
-		// one tile to a starting unit.
-		public const int LandTilesPerGoodyHut = 55;
-		public const int GoodyHutSpacing = 4;
+		// one tile to a starting unit. Rules.LandTilesPerGoodyHut and
+		// GoodyHutSpacing hold those numbers (55 and 4); 0 huts per tile, none.
 
 		private static void AddGoodyHuts(WorldCharacteristics wc, GameMap m) {
 			Random rand = new(wc.mapSeed + 0x600d);
 			List<int> tileIndicies = Enumerable.Range(0, m.tiles.Count).ToList();
 			rand.Shuffle<int>(CollectionsMarshal.AsSpan(tileIndicies));
 
-			int wanted = m.tiles.Count(t => t.IsLand()) / LandTilesPerGoodyHut;
+			if (wc.landTilesPerGoodyHut <= 0) {
+				return;
+			}
+			int wanted = m.tiles.Count(t => t.IsLand()) / wc.landTilesPerGoodyHut;
 			List<Tile> huts = [];
 			for (int i = 0; i < tileIndicies.Count && huts.Count < wanted; ++i) {
 				Tile t = m.tiles[tileIndicies[i]];
 				if (!t.IsLand() || t == Tile.NONE || t.overlayTerrainType.Key == "volcano"
 					|| (t.Resource != null && t.Resource != Resource.NONE) || t.hasBarbarianCamp
 					|| m.startingLocations.Contains(t)
-					|| huts.Any(h => h.DistanceTo(t) < GoodyHutSpacing)
-					|| m.barbarianCamps.Any(c => c.DistanceTo(t) < GoodyHutSpacing)) {
+					|| huts.Any(h => h.DistanceTo(t) < wc.goodyHutSpacing)
+					|| m.barbarianCamps.Any(c => c.DistanceTo(t) < wc.goodyHutSpacing)) {
 					continue;
 				}
 				t.hasGoodyHut = true;

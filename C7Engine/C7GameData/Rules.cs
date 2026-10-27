@@ -82,10 +82,64 @@ namespace C7GameData {
 		public int GoodyHutMapRadius = 5;
 		public int GoodyHutBarbarians = 3;
 
+		// The chance of each goody hut outcome, in percent, by difficulty,
+		// easiest first (a row whose name matches the game's difficulty wins,
+		// else the row at its place), for most civs and for Expansionists. See
+		// GoodyHuts. Placing them on new maps: one for every so many land
+		// tiles, at least so far apart (and from barbarian camps). The angry
+		// tribesmen are of the advanced barbarian type this percent of the time.
+		public List<GoodyHutOdds> GoodyHutOdds = GoodyHutOddsRow.Standard();
+		public List<GoodyHutOdds> ExpansionistGoodyHutOdds = GoodyHutOddsRow.Expansionist();
+		public int LandTilesPerGoodyHut = 55;
+		public int GoodyHutSpacing = 4;
+		public int GoodyHutAdvancedBarbarianPercent = 25;
+
 		// The chance, in percent, each of a city's pollution points gives each
 		// turn that one of its tiles gets polluted (see Pollution). Civ3's
 		// figure isn't documented; not in its BIQ.
 		public int PollutionChancePerPoint = 5;
+		// The points a building that reduces pollution (Mass Transit for the
+		// citizens', a Recycling Center for the buildings') leaves: Civ3
+		// leaves 1; a community patch made it 0.
+		public int PollutionLeftByReducingBuildings = 1;
+
+		// The percent of its shields a city keeps when it switches production
+		// between a unit, an improvement and a wonder (rounded down).
+		public int ProductionSwitchKeptPercent = 50;
+
+		// The chance, one in this many, that a unit that enslaves turns a
+		// unit it beats into a slave (Civ3: one in three).
+		public int EnslaveChanceOneIn = 3;
+
+		// How much less, in percent, upgrades cost with a wonder that makes
+		// them cheaper.
+		public int UpgradeDiscountPercent = 50;
+
+		// A unit that wins defending rolls for a great leader at the attack
+		// chance divided by this (CivFanatics: half).
+		public int DefendingLeaderChanceFactor = 2;
+
+		// What a golden age adds to each tile already making a shield or a
+		// commerce.
+		public int GoldenAgeTileBonus = 1;
+
+		// Razing a city makes one slave for every so many of its citizens
+		// (Civ3: one for two); 0 makes none.
+		public int RazedCitizensPerSlave = 2;
+
+		// Zone of control: a unit's free shot at one moving past hits with the
+		// chance A / (this × D + A) (CivFanatics), taking this many hit points.
+		public int ZoneOfControlDefenseFactor = 16;
+		public int ZoneOfControlDamage = 1;
+
+		// War weariness. See WarWeariness.
+		public WarWearinessRules warWeariness = new();
+
+		// Culture flipping (Firaxis's formula). See CultureFlip.
+		public CultureFlipRules cultureFlip = new();
+
+		// The civilization traits' bonuses that aren't in Civ3's BIQ.
+		public TraitBonusRules traitBonuses = new();
 
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
@@ -107,5 +161,140 @@ namespace C7GameData {
 	public class TouristAttractionStep {
 		public int years;
 		public int gold;
+	}
+
+	// One difficulty's goody hut chances, in percent. They needn't add up to
+	// 100: the possible outcomes share the total (see GoodyHuts).
+	public class GoodyHutOdds {
+		public string difficulty;
+		public double city;
+		public double tech;
+		public double gold;
+		public double settler;
+		public double map;
+		public double mercenaries;
+		public double nothing;
+		public double barbarians;
+	}
+
+	public static class GoodyHutOddsRow {
+		private static readonly string[] Difficulties = ["Chieftain", "Warlord", "Regent", "Monarch", "Emperor", "Demigod", "Deity", "Creator"];
+
+		private static List<GoodyHutOdds> Table(double[][] rows) {
+			List<GoodyHutOdds> table = [];
+			for (int i = 0; i < rows.Length; ++i) {
+				double[] r = rows[i];
+				table.Add(new() {
+					difficulty = Difficulties[i],
+					city = r[0],
+					tech = r[1],
+					gold = r[2],
+					settler = r[3],
+					map = r[4],
+					mercenaries = r[5],
+					nothing = r[6],
+					barbarians = r[7],
+				});
+			}
+			return table;
+		}
+
+		// CivFanatics' "Probabilities of goody huts (C3C)": city, tech, gold,
+		// settler, map, mercenaries, nothing, barbarians.
+		public static List<GoodyHutOdds> Standard() => Table([
+			[5, 35, 15, 15, 10, 10, 0, 10],
+			[10, 25, 10, 10, 10, 10, 0, 25],
+			[5, 20, 10, 10, 10, 10, 0, 35],
+			[5, 15, 10, 10, 10, 10, 0, 40],
+			[5, 10, 5, 5, 5, 5, 0, 65],
+			[0, 5, 5, 5, 5, 5, 0, 75],
+			[0, 0, 5, 0, 5, 5, 0, 85],
+			[0, 0, 0, 0, 0, 0, 0, 90],
+		]);
+
+		// An Expansionist civ: the next easier level's, with no barbarians.
+		public static List<GoodyHutOdds> Expansionist() => Table([
+			[10, 35, 15, 15, 10, 10, 5, 0],
+			[10, 35, 15, 15, 10, 10, 5, 0],
+			[10, 25, 10, 10, 10, 10, 0, 0],
+			[5, 20, 10, 10, 10, 10, 0, 0],
+			[5, 15, 10, 10, 10, 10, 0, 0],
+			[5, 10, 5, 5, 5, 5, 0, 0],
+			[0, 5, 5, 5, 5, 5, 0, 0],
+			[0, 0, 5, 0, 5, 5, 0, 0],
+		]);
+	}
+
+	// War weariness points and what they do (see WarWeariness; CivFanatics,
+	// "How does war weariness work?"). Not in Civ3's BIQ.
+	public class WarWearinessRules {
+		// Each this many points, at war, is a level.
+		public int pointsPerLevel = 30;
+
+		// The points each event adds (or, if negative, takes away).
+		public int declaredWarOn = -30;
+		public int unitsInEnemyLandPerTurn = 1;
+		public int noFightingPerTurn = -1;
+		public int unitThatCantDefendLost = 1;
+		public int improvementDestroyed = 1;
+		public int bombardedDownToOneHitPoint = 1;
+		public int attackerKilled = 2;
+		public int unitAttacked = 2;
+		public int townOfSizeOneLost = 16;
+		public int cityLost = 17;
+
+		// In peace, the points divided by this, rounded up, wear away each turn.
+		public int peaceDecayDivisor = 20;
+
+		// The percent of each city's citizens made unhappy at each level (0,
+		// 1, 2...; the last for any higher level), under a government with low
+		// and with high war weariness.
+		public List<int> lowUnhappyPercent = [0, 25, 50, 50, 100];
+		public List<int> highUnhappyPercent = [0, 50, 100, 100, 100];
+
+		// The level against any enemy that overthrows a high war weariness
+		// government.
+		public int revoltLevel = 3;
+
+		// The percent of each city's citizens made happy while the points are
+		// below zero.
+		public int happyPercent = 25;
+
+		// A Police Station takes this percent of its city's war weariness
+		// away, and Universal Suffrage this many unhappy citizens in every city.
+		public int policeStationReductionPercent = 25;
+		public int allCitiesReduction = 1;
+	}
+
+	// Culture flipping's chance (see CultureFlip): ((foreign citizens +
+	// their tiles) × local culture × mood × culture ratio − garrison) ÷
+	// (divisor × distance ratio).
+	public class CultureFlipRules {
+		public double divisor = 2000;
+		// Their capital's distance over ours, held between these.
+		public double minDistanceRatio = .25;
+		public double maxDistanceRatio = 4;
+		// When their culture in the city beats its owner's.
+		public double localCultureFactor = 2;
+		public double celebratingFactor = .5;
+		public double disorderFactor = 2;
+	}
+
+	// Trait bonuses Civ3 builds in (Civilopedia, CivWiki; checked against
+	// the user's Civ3 saves, see Tile_Yield).
+	public class TraitBonusRules {
+		// Agricultural: food on the city tile (which despotism takes back
+		// unless the city has fresh water or is past town size) and on
+		// irrigated desert.
+		public int agriculturalCityFood = 1;
+		public int agriculturalIrrigatedDesertFood = 1;
+		// Commercial: commerce on the tile of a city and of a metropolis.
+		public int commercialCityCommerce = 2;
+		public int commercialMetropolisCommerce = 3;
+		// Seafaring: commerce on a coastal city's tile, and ship moves.
+		public int seafaringCoastalCityCommerce = 1;
+		public int seafaringShipMoves = 1;
+		// Industrious: shields on a metropolis's tile.
+		public int industriousMetropolisShields = 1;
 	}
 }

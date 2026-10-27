@@ -98,6 +98,8 @@ public class UpgradeTest : IClassFixture<SaveGameFixture> {
 		MapUnit unit = Spawn();
 
 		Assert.Equal((newType.shieldCost - oldType.shieldCost) * 3 / 2, unit.UpgradeOffer()?.cost);
+		gameData.rules.UpgradeDiscountPercent = 100;
+		Assert.Equal(0, unit.UpgradeOffer()?.cost);
 	}
 
 	[Fact]

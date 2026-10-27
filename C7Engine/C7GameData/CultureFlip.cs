@@ -30,10 +30,6 @@ namespace C7GameData {
 	public static class CultureFlip {
 		private static ILogger log = Log.ForContext(typeof(CultureFlip));
 
-		public const double BaseDivisor = 2000;
-		public const double MinDistanceRatio = .25;
-		public const double MaxDistanceRatio = 4;
-
 		private static City CapitalOf(Player player) {
 			return player.cities.Find(c => c.IsCapital());
 		}
@@ -47,6 +43,7 @@ namespace C7GameData {
 		// The chance, between 0 and 1, that `city` flips to `to` this turn.
 		public static double Chance(GameData gameData, City city, Player to) {
 			Player owner = city.owner;
+			CultureFlipRules rules = gameData.rules.cultureFlip;
 			if (to == owner || to.isBarbarians || to.defeated || !CanFlip(gameData, city)) {
 				return 0;
 			}
@@ -58,18 +55,18 @@ namespace C7GameData {
 			int foreigners = city.residents.Where(r => r.nationality == to.civilization).Sum(r => r.resisting ? 2 : 1);
 			int tiles = city.location.GetTilesWithinRankDistance(gameData.rules.MaxRankOfWorkableTiles)
 				.Count(t => t != city.location && t.OwningPlayer() == to);
-			double localCulture = city.GetCultureFor(to) > city.GetCultureFor(owner) ? 2 : 1;
-			double mood = city.celebrating ? .5 : city.isInCivilDisorder ? 2 : 1;
+			double localCulture = city.GetCultureFor(to) > city.GetCultureFor(owner) ? rules.localCultureFactor : 1;
+			double mood = city.celebrating ? rules.celebratingFactor : city.isInCivilDisorder ? rules.disorderFactor : 1;
 			double cultureRatio = (double)to.TotalCulture() / Math.Max(1, owner.TotalCulture());
 			int garrison = city.location.unitsOnTile.Count(u => u.owner == owner && !u.IsInArmy() && u.CanDefendItself());
 
 			City ourCapital = CapitalOf(owner);
 			double distanceRatio = ourCapital == null
-				? MinDistanceRatio
+				? rules.minDistanceRatio
 				: Math.Clamp((double)city.location.RankDistanceTo(theirCapital.location) / Math.Max(1, city.location.RankDistanceTo(ourCapital.location)),
-					MinDistanceRatio, MaxDistanceRatio);
+					rules.minDistanceRatio, Math.Max(rules.minDistanceRatio, rules.maxDistanceRatio));
 
-			double chance = ((foreigners + tiles) * localCulture * mood * cultureRatio - garrison) / (BaseDivisor * distanceRatio);
+			double chance = ((foreigners + tiles) * localCulture * mood * cultureRatio - garrison) / (rules.divisor * distanceRatio);
 			return Math.Clamp(chance, 0, 1);
 		}
 

@@ -142,5 +142,14 @@ public class ZoneOfControlTest : IClassFixture<SaveGameFixture> {
 		}
 		double sigma = Math.Sqrt(trials * chance * (1 - chance));
 		Assert.InRange(hits, trials * chance - 4 * sigma, trials * chance + 4 * sigma);
+
+		// The rules' factor and damage, which never takes the last hit point.
+		gameData.rules.ZoneOfControlDefenseFactor = 4;
+		Assert.Equal(6.0 / 14.0, ZoneOfControl.HitChance(6, 2), 9);
+		gameData.rules.ZoneOfControlDefenseFactor = 0;
+		gameData.rules.ZoneOfControlDamage = 5;
+		spearman.hitPointsRemaining = 3;
+		Assert.NotEqual(MapUnit.NONE, await ZoneOfControl.Apply(spearman, At(TileDirection.NORTHWEST), At(TileDirection.NORTH)));
+		Assert.Equal(1, spearman.hitPointsRemaining);
 	}
 }

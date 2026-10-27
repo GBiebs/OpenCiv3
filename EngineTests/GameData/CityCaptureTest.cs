@@ -213,6 +213,16 @@ public class CityCaptureTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
+	public async Task TheSlavesPerCitizenAreARule() {
+		gameData.rules.RazedCitizensPerSlave = 1;
+		City target = Found(them, cityTile, 6);
+		FoundElsewhere(them, 1);
+		await Attack();
+		Assert.True(CityInteractions.RazeCity(target, us));
+		Assert.Equal(5, cityTile.unitsOnTile.Count(u => u.unitType.name == gameData.rules.SlaveUnitType));
+	}
+
+	[Fact]
 	public async Task ACityCanOnlyBeRazedOnTheTurnItWasCaptured() {
 		City target = Found(them, cityTile, 3);
 		FoundElsewhere(them, 1);

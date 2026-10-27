@@ -9,7 +9,7 @@ namespace C7GameData {
 	// does pollution work?"). A city's pollution points are its buildings'
 	// pollution values, at most 1 with a Recycling Center, plus one for each
 	// citizen above metropolis size (12), at most 1 with a Mass Transit
-	// System. Each point is a chance each turn that one of the city's tiles
+	// System (Rules.PollutionLeftByReducingBuildings). Each point is a chance each turn that one of the city's tiles
 	// gets polluted. A polluted tile produces nothing until a worker clears
 	// the damage.
 	//
@@ -27,12 +27,16 @@ namespace C7GameData {
 		public static int BuildingPoints(City city) {
 			List<Building> buildings = WorkingBuildings(city).ToList();
 			int points = buildings.Sum(b => Math.Max(0, b.pollution));
-			return buildings.Any(b => b.reducesBuildingPollution) ? Math.Min(points, 1) : points;
+			return buildings.Any(b => b.reducesBuildingPollution) ? Math.Min(points, LeftByReducingBuildings(city)) : points;
 		}
 
 		public static int PopulationPoints(City city, GameData gameData) {
 			int points = Math.Max(0, city.residents.Count - gameData.rules.MaximumLevel2CitySize);
-			return WorkingBuildings(city).Any(b => b.removesPopulationPollution) ? Math.Min(points, 1) : points;
+			return WorkingBuildings(city).Any(b => b.removesPopulationPollution) ? Math.Min(points, LeftByReducingBuildings(city)) : points;
+		}
+
+		private static int LeftByReducingBuildings(City city) {
+			return Math.Max(0, city.owner.rules?.PollutionLeftByReducingBuildings ?? 1);
 		}
 
 		public static int Points(City city, GameData gameData) {

@@ -1510,7 +1510,7 @@ namespace C7GameData {
 		// increased by one"), two from a wonder with Civ3's +2 flag, and one
 		// for a Seafaring civ ("ships move faster"; CivFanatics: +1).
 		public int ShipMovementBonus() {
-			int bonus = civilization?.traits.Contains(Civilization.Trait.Seafaring) == true ? 1 : 0;
+			int bonus = civilization?.traits.Contains(Civilization.Trait.Seafaring) == true ? rules?.traitBonuses.seafaringShipMoves ?? 1 : 0;
 			foreach (City city in cities) {
 				foreach (CityBuilding cb in city.constructed_buildings) {
 					Building b = cb.building;

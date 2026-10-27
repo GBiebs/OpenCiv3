@@ -10,41 +10,46 @@ namespace C7GameData {
 	// table by difficulty for most civs, and for an Expansionist civ the next
 	// easier level's with no barbarians. Outcomes the article's conditions
 	// rule out drop out and the rest share their chance (its spreadsheet
-	// recomputes the table the same way). Messages are Civ3's (script.txt
-	// GOODY_*), $BARBARIAN0 a name from the barbarian civilization's list.
+	// recomputes the table the same way). The tables are rules
+	// (Rules.GoodyHutOdds, ExpansionistGoodyHutOdds). Messages are Civ3's
+	// (script.txt GOODY_*), $BARBARIAN0 a name from the barbarian
+	// civilization's list.
 	public static class GoodyHuts {
 		private static ILogger log = Log.ForContext(typeof(GoodyHuts));
 
 		public enum Outcome { City, Tech, Gold, Settler, Map, Mercenaries, Nothing, Barbarians }
 
-		// Percent by difficulty, Chieftain to Creator (Civ3's Sid), in Outcome order.
-		private static readonly double[][] Chances = [
-			[5, 35, 15, 15, 10, 10, 0, 10],
-			[10, 25, 10, 10, 10, 10, 0, 25],
-			[5, 20, 10, 10, 10, 10, 0, 35],
-			[5, 15, 10, 10, 10, 10, 0, 40],
-			[5, 10, 5, 5, 5, 5, 0, 65],
-			[0, 5, 5, 5, 5, 5, 0, 75],
-			[0, 0, 5, 0, 5, 5, 0, 85],
-			[0, 0, 0, 0, 0, 0, 0, 90],
-		];
-		private static readonly double[][] ExpansionistChances = [
-			[10, 35, 15, 15, 10, 10, 5, 0],
-			[10, 35, 15, 15, 10, 10, 5, 0],
-			[10, 25, 10, 10, 10, 10, 0, 0],
-			[5, 20, 10, 10, 10, 10, 0, 0],
-			[5, 15, 10, 10, 10, 10, 0, 0],
-			[5, 10, 5, 5, 5, 5, 0, 0],
-			[0, 5, 5, 5, 5, 5, 0, 0],
-			[0, 0, 5, 0, 5, 5, 0, 0],
-		];
-
-		private static int DifficultyLevel(GameData gameData) {
+		// The rules' row for the game's difficulty: the one named after it,
+		// else the one at its place among the difficulties (Monarch's if the
+		// difficulty isn't found). Civ3's BIQ calls its hardest level "Sid".
+		public static GoodyHutOdds Odds(GameData gameData, Player player) {
+			List<GoodyHutOdds> table = IsExpansionist(player) ? gameData.rules.ExpansionistGoodyHutOdds : gameData.rules.GoodyHutOdds;
+			if (table == null || table.Count == 0) {
+				return null;
+			}
+			GoodyHutOdds named = table.Find(row => row.difficulty == gameData.gameDifficulty?.Name);
+			if (named != null) {
+				return named;
+			}
 			int index = gameData.difficulties.IndexOf(gameData.gameDifficulty);
 			if (index < 0) {
-				index = gameData.difficulties.FindIndex(d => d.id == gameData.gameDifficulty.id);
+				index = gameData.difficulties.FindIndex(d => d.id == gameData.gameDifficulty?.id);
 			}
-			return Math.Clamp(index < 0 ? 3 : index, 0, Chances.Length - 1);
+			return table[Math.Clamp(index < 0 ? 3 : index, 0, table.Count - 1)];
+		}
+
+		private static double Chance(GoodyHutOdds odds, Outcome outcome) {
+			return outcome switch {
+				Outcome.City => odds.city,
+				Outcome.Tech => odds.tech,
+				Outcome.Gold => odds.gold,
+				Outcome.Settler => odds.settler,
+				Outcome.Map => odds.map,
+				Outcome.Mercenaries => odds.mercenaries,
+				Outcome.Nothing => odds.nothing,
+				Outcome.Barbarians => odds.barbarians,
+				_ => 0,
+			};
 		}
 
 		private static bool IsExpansionist(Player player) {
@@ -54,10 +59,10 @@ namespace C7GameData {
 		// The chance of each outcome for this unit entering this hut, once the
 		// impossible ones are out; they add up to 1 (or nothing is possible).
 		public static Dictionary<Outcome, double> OutcomeChances(GameData gameData, MapUnit unit, Tile tile) {
-			double[] row = (IsExpansionist(unit.owner) ? ExpansionistChances : Chances)[DifficultyLevel(gameData)];
+			GoodyHutOdds odds = Odds(gameData, unit.owner);
 			Dictionary<Outcome, double> chances = Enum.GetValues<Outcome>()
-				.Where(o => row[(int)o] > 0 && IsPossible(o, gameData, unit, tile))
-				.ToDictionary(o => o, o => row[(int)o]);
+				.Where(o => odds != null && Chance(odds, o) > 0 && IsPossible(o, gameData, unit, tile))
+				.ToDictionary(o => o, o => Chance(odds, o));
 			double total = chances.Values.Sum();
 			return chances.ToDictionary(kv => kv.Key, kv => kv.Value / total);
 		}
@@ -181,7 +186,8 @@ namespace C7GameData {
 				case Outcome.Barbarians: {
 						Player barbarians = gameData.players.Find(p => p.isBarbarians);
 						List<Tile> sites = BarbarianSites(tile);
-						UnitPrototype type = GameData.rng.Next(100) < 25 ? gameData.barbarianInfo.advancedBarbarian : gameData.barbarianInfo.basicBarbarian;
+						UnitPrototype type = GameData.rng.Next(100) < rules.GoodyHutAdvancedBarbarianPercent
+							? gameData.barbarianInfo.advancedBarbarian : gameData.barbarianInfo.basicBarbarian;
 						for (int i = 0; i < rules.GoodyHutBarbarians && sites.Count > 0; ++i) {
 							Tile site = sites[GameData.rng.Next(sites.Count)];
 							gameData.SpawnUnit(barbarians, type, site);

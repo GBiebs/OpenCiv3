@@ -160,6 +160,12 @@ public class WarWearinessTest : IClassFixture<SaveGameFixture>, IDisposable {
 			ours.RemoveCitizen(ours.residents.Last());
 		}
 		Assert.Equal(2, Unhappy(ours));
+
+		// The rules' shares and levels.
+		gameData.rules.warWeariness.lowUnhappyPercent = [0, 100];
+		Assert.Equal(11, Unhappy(ours));
+		gameData.rules.warWeariness.pointsPerLevel = 40;
+		Assert.Equal(0, Unhappy(ours));
 	}
 
 	[Fact]
@@ -234,6 +240,13 @@ public class WarWearinessTest : IClassFixture<SaveGameFixture>, IDisposable {
 		// Not in peace.
 		PlayerRelationship.SignPeaceAfterWar(us, them, gameData);
 		Assert.Equal(0, Happy(ours));
+
+		// The rules' numbers.
+		gameData.rules.warWeariness.declaredWarOn = -50;
+		gameData.rules.warWeariness.happyPercent = 50;
+		them.DeclareWarOn(us, gameData.turn);
+		Assert.Equal(-80, Points(us, them));
+		Assert.Equal(6, Happy(ours));
 	}
 
 	[Fact]
@@ -334,6 +347,17 @@ public class WarWearinessTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 		Assert.Equal(CityInteractions.CaptureOutcome.Destroyed, CityInteractions.CaptureCity(town, Spawn(us, "Warrior", site)));
 		Assert.Equal(33, Points(them, us));
+	}
+
+	[Fact]
+	public void TheCostOfLosingACityIsARule() {
+		us.DeclareWarOn(them, gameData.turn);
+		SetPoints(them, us, 0);
+		gameData.rules.warWeariness.cityLost = 40;
+		gameData.rules.warWeariness.townOfSizeOneLost = 5;
+		WarWeariness.OnCityLost(them, us, 2);
+		WarWeariness.OnCityLost(them, us, 1);
+		Assert.Equal(45, Points(them, us));
 	}
 
 	[Fact]

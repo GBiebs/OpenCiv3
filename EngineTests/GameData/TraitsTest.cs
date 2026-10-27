@@ -100,6 +100,12 @@ public class TraitsTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(4, Commerce(capital));
 		capital.location.riverNorth = true;
 		Assert.Equal(5, Commerce(capital));
+
+		// The rules' bonuses.
+		gameData.rules.traitBonuses.commercialMetropolisCommerce = 10;
+		Assert.Equal(13, Commerce(city));
+		gameData.rules.traitBonuses.commercialCityCommerce = 5;
+		Assert.Equal(8, Commerce(capital));
 	}
 
 	// "Each city built along the coast receives a commerce bonus in the
@@ -116,6 +122,8 @@ public class TraitsTest : IClassFixture<SaveGameFixture> {
 
 		Water(capital.location.neighbors[TileDirection.NORTH], fresh: false);
 		Assert.Equal(5, Commerce(capital));
+		gameData.rules.traitBonuses.seafaringCoastalCityCommerce = 2;
+		Assert.Equal(6, Commerce(capital));
 	}
 
 	// "Ships move faster": one move more.
@@ -128,6 +136,8 @@ public class TraitsTest : IClassFixture<SaveGameFixture> {
 		// A new ship starts with all its moves.
 		MapUnit another = gameData.SpawnUnit(us, galley.unitType, city.location);
 		Assert.Equal(galley.unitType.movement + 1, another.movementPoints.remaining);
+		gameData.rules.traitBonuses.seafaringShipMoves = 3;
+		Assert.Equal(galley.unitType.movement + 3, galley.MovementPerTurn());
 	}
 
 	// The city tile makes its terrain's shields, at least one in a town, one

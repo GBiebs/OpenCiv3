@@ -30,13 +30,13 @@ namespace C7GameData {
 			return Math.Max((int)unit.BaseCombatStrength(CombatRole.Attack), unit.CombatType(CombatRole.Attack).bombard);
 		}
 
-		// The chance that a shot of strength `attack` takes a hit point off a
-		// unit with defense `defense`.
+		// The chance that a shot of strength `attack` hits a unit with defense
+		// `defense`: A / (16D + A) with Civ3's rules.
 		public static double HitChance(int attack, int defense) {
 			if (attack <= 0) {
 				return 0;
 			}
-			return attack / (16.0 * Math.Max(defense, 0) + attack);
+			return attack / ((double)EngineStorage.gameData.rules.ZoneOfControlDefenseFactor * Math.Max(defense, 0) + attack);
 		}
 
 		private static bool CanShootAt(MapUnit unit, MapUnit mover) {
@@ -87,7 +87,8 @@ namespace C7GameData {
 			if (GameData.rng.NextDouble() >= HitChance(Strength(interceptor), (int)mover.BaseCombatStrength(CombatRole.Defense))) {
 				return MapUnit.NONE;
 			}
-			mover.hitPointsRemaining -= 1;
+			// Never the last hit point.
+			mover.hitPointsRemaining = Math.Max(1, mover.hitPointsRemaining - Math.Max(1, EngineStorage.gameData.rules.ZoneOfControlDamage));
 			log.Information($"{interceptor} at {interceptor.location} hits {mover} passing from {from} to {to} ({mover.hitPointsRemaining} HP left)");
 			return interceptor;
 		}

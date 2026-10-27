@@ -57,13 +57,13 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 	[Fact]
 	public void GeneratedMapsGetHutsLikeCiv3s() {
 		List<Tile> huts = Huts(gameData);
-		int wanted = gameData.map.tiles.Count(t => t.IsLand()) / MapGenerator.LandTilesPerGoodyHut;
+		int wanted = gameData.map.tiles.Count(t => t.IsLand()) / gameData.rules.LandTilesPerGoodyHut;
 		Assert.True(wanted > 0);
 		Assert.InRange(huts.Count, wanted * 3 / 4, wanted);
 		Assert.All(huts, t => Assert.True(t.IsLand() && t.Resource == Resource.NONE && !t.hasBarbarianCamp
 			&& !gameData.map.startingLocations.Contains(t)));
-		Assert.All(huts, h => Assert.All(huts.Where(o => o != h), o => Assert.True(h.DistanceTo(o) >= MapGenerator.GoodyHutSpacing)));
-		Assert.All(huts, h => Assert.All(gameData.map.barbarianCamps, c => Assert.True(h.DistanceTo(c) >= MapGenerator.GoodyHutSpacing)));
+		Assert.All(huts, h => Assert.All(huts.Where(o => o != h), o => Assert.True(h.DistanceTo(o) >= gameData.rules.GoodyHutSpacing)));
+		Assert.All(huts, h => Assert.All(gameData.map.barbarianCamps, c => Assert.True(h.DistanceTo(c) >= gameData.rules.GoodyHutSpacing)));
 	}
 
 	[Fact]
@@ -90,6 +90,16 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	// The table by difficulty, the outcomes that can't happen left out.
+	// Placing huts on a new map follows the rules.
+	[Fact]
+	public void HutPlacementIsARule() {
+		SaveGame save = fixture.saveGame.Clone();
+		save.Rules.LandTilesPerGoodyHut = 80;
+		save.Rules.GoodyHutSpacing = 6;
+		WorldCharacteristics wc = new(save);
+		Assert.Equal((80, 6), (wc.landTilesPerGoodyHut, wc.goodyHutSpacing));
+	}
+
 	[Fact]
 	public void ChancesFollowCiv3sTable() {
 		(Tile hut, MapUnit warrior) = Hut();
@@ -114,6 +124,15 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 		chances = GoodyHuts.OutcomeChances(gameData, warrior, hut);
 		Assert.DoesNotContain(GoodyHuts.Outcome.Barbarians, chances.Keys);
 		Assert.Equal(5.0 / 5, chances[GoodyHuts.Outcome.Tech] / chances[GoodyHuts.Outcome.Gold], 6);
+
+		// The tables are rules: the row named after the difficulty, else the
+		// one at its place.
+		gameData.rules.ExpansionistGoodyHutOdds = [new() { difficulty = "Deity", gold = 10, map = 30 }, new() { difficulty = "Other", nothing = 1 }];
+		chances = GoodyHuts.OutcomeChances(gameData, warrior, hut);
+		Assert.Equal(0.25, chances[GoodyHuts.Outcome.Gold], 6);
+		Assert.Equal(0.75, chances[GoodyHuts.Outcome.Map], 6);
+		gameData.rules.ExpansionistGoodyHutOdds = [new() { difficulty = "Mine", tech = 1 }, new() { difficulty = "Other", nothing = 1 }];
+		Assert.Equal([GoodyHuts.Outcome.Nothing], GoodyHuts.OutcomeChances(gameData, warrior, hut).Keys);
 	}
 
 	// The article's conditions for each outcome.
@@ -193,7 +212,9 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains(hut.unitsOnTile, u => u.owner == us && u.unitType.actions.Contains(UnitAction.BuildCity));
 
 		Player barbarians = gameData.players.Find(p => p.isBarbarians);
-		Assert.StartsWith("We have disturbed an angry Olmec ", Apply(GoodyHuts.Outcome.Barbarians));
+		// The advanced barbarian type this often (a rule).
+		gameData.rules.GoodyHutAdvancedBarbarianPercent = 100;
+		Assert.Equal($"We have disturbed an angry Olmec {gameData.barbarianInfo.advancedBarbarian.name}.", Apply(GoodyHuts.Outcome.Barbarians));
 		Assert.Equal(gameData.rules.GoodyHutBarbarians, hut.neighbors.Values.Sum(n => n.unitsOnTile.Count(u => u.owner == barbarians)));
 
 		Assert.Equal("This Olmec village is deserted.", Apply(GoodyHuts.Outcome.Nothing));

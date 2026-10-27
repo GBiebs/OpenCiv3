@@ -101,6 +101,28 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(expected - 1 / Divisor(), Chance(), 9);
 	}
 
+	// The formula's numbers are rules.
+	[Fact]
+	public void TheFormulasNumbersAreRules() {
+		border.residents[0].nationality = them.civilization;
+		double expected = Chance();
+		Assert.True(expected > 0);
+		CultureFlipRules rules = gameData.rules.cultureFlip;
+		rules.divisor = 1000;
+		Assert.Equal(2 * expected, Chance(), 9);
+		rules.celebratingFactor = 3;
+		border.celebrating = true;
+		Assert.Equal(6 * expected, Chance(), 9);
+		border.celebrating = false;
+		rules.disorderFactor = 5;
+		border.isInCivilDisorder = true;
+		Assert.Equal(10 * expected, Chance(), 9);
+		border.isInCivilDisorder = false;
+		rules.localCultureFactor = 4;
+		border.perPlayerCulture[them] = 50;
+		Assert.Equal(8 * expected, Chance(), 9);
+	}
+
 	[Fact]
 	public void NothingDrawsACityWithNoTiesToTheOtherCiv() {
 		// No citizens or land of theirs: nothing to multiply.

@@ -63,6 +63,8 @@ public class PollutionTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(1, Pollution.PopulationPoints(city, gameData));
 		// Civ3 leaves this 1 + 1 (a later community patch made it 0).
 		Assert.Equal(2, Pollution.Points(city, gameData));
+		gameData.rules.PollutionLeftByReducingBuildings = 0;
+		Assert.Equal(0, Pollution.Points(city, gameData));
 	}
 
 	[Fact]

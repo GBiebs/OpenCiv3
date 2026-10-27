@@ -103,6 +103,8 @@ public class GoldenAgeTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 		Assert.Equal((plainsBefore.food, plainsBefore.shields + 1, plainsBefore.commerce + 1), Yields(plains));
 		Assert.Equal(grassBefore, Yields(grassland));
+		gameData.rules.GoldenAgeTileBonus = 3;
+		Assert.Equal((plainsBefore.food, plainsBefore.shields + 3, plainsBefore.commerce + 3), Yields(plains));
 	}
 
 	[Fact]

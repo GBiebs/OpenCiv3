@@ -43,7 +43,7 @@ public partial class Tile {
 			// one, before the despotism penalty (so a 2-shield tile gains
 			// nothing under Despotism, as Civ3 players note).
 			if (player.InGoldenAge() && type != YieldType.Food && yield >= 1) {
-				bonus += 1;
+				bonus += EngineStorage.gameData.rules.GoldenAgeTileBonus;
 			}
 
 			// An Agricultural civ's city tile makes a food more, and so does its
@@ -57,17 +57,17 @@ public partial class Tile {
 				if (tile.HasCity()) {
 					agriculturalCity = true;
 				} else if (tile.overlayTerrainType.Key == "desert" && tile.HasIrrigation()) {
-					bonus += 1;
+					bonus += EngineStorage.gameData.rules.traitBonuses.agriculturalIrrigatedDesertFood;
 				}
 			}
 			bool keepsCityFood = agriculturalCity && (tile.BordersRiver() || tile.NeighborsFreshWater()
 				|| tile.cityAtTile.residents.Count > EngineStorage.gameData.rules.MaximumLevel1CitySize);
 			if (agriculturalCity && !keepsCityFood) {
-				bonus += 1;
+				bonus += EngineStorage.gameData.rules.traitBonuses.agriculturalCityFood;
 			}
 			player.government.tileModifier?.Invoke(this);
 			if (keepsCityFood) {
-				bonus += 1;
+				bonus += EngineStorage.gameData.rules.traitBonuses.agriculturalCityFood;
 			}
 			return this;
 		}
@@ -141,7 +141,7 @@ public partial class Tile {
 			} else {
 				yield += 2;
 				if (cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Industrious)) {
-					yield += 1;
+					yield += EngineStorage.gameData.rules.traitBonuses.industriousMetropolisShields;
 				}
 			}
 		}
@@ -185,13 +185,14 @@ public partial class Tile {
 			// more (CivWiki; the cities' +2 matches Civ3's saves). A capital
 			// takes this ordinary sum when it beats its flat 4.
 			bool commercial = cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Commercial);
+			TraitBonusRules traitBonuses = EngineStorage.gameData.rules.traitBonuses;
 			int regularCityYield;
 			if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel1CitySize) {
 				regularCityYield = 1;
 			} else if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel2CitySize) {
-				regularCityYield = commercial ? 4 : 2;
+				regularCityYield = 2 + (commercial ? traitBonuses.commercialCityCommerce : 0);
 			} else {
-				regularCityYield = commercial ? 6 : 3;
+				regularCityYield = 3 + (commercial ? traitBonuses.commercialMetropolisCommerce : 0);
 			}
 			if (borderRiver) {
 				regularCityYield += 1;
@@ -208,9 +209,9 @@ public partial class Tile {
 			// A Seafaring civ's coastal cities, capitals too, make a commerce
 			// more on their tile (Civilopedia "Seafaring"; matches Civ3's saves).
 			if (NeighborsOcean() && cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Seafaring)) {
-				regularCityYield += 1;
+				regularCityYield += traitBonuses.seafaringCoastalCityCommerce;
 				if (capitalCityYield > 0) {
-					capitalCityYield += 1;
+					capitalCityYield += traitBonuses.seafaringCoastalCityCommerce;
 				}
 			}
 

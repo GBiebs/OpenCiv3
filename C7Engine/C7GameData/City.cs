@@ -156,15 +156,16 @@ namespace C7GameData {
 		public int shieldsLostToSwitching;
 
 		// Sets what the city builds. Switching to another category keeps half
-		// the shields (rounded down); switching back the same turn returns
-		// them, and a further switch costs nothing more.
+		// the shields (Rules.ProductionSwitchKeptPercent, rounded down);
+		// switching back the same turn returns them, and a further switch
+		// costs nothing more.
 		public void SetItemBeingProduced(IProducible producible) {
 			if (itemBeingProduced != null && producible != null) {
 				ProductionCategory from = CategoryOf(itemBeingProduced);
 				ProductionCategory to = CategoryOf(producible);
 				if (switchedFromCategory == null && to != from) {
 					switchedFromCategory = from;
-					shieldsLostToSwitching = shieldsStored - shieldsStored / 2;
+					shieldsLostToSwitching = shieldsStored - shieldsStored * Math.Clamp(EngineStorage.gameData.rules.ProductionSwitchKeptPercent, 0, 100) / 100;
 					shieldsStored -= shieldsLostToSwitching;
 				} else if (switchedFromCategory == to) {
 					shieldsStored += shieldsLostToSwitching;

@@ -30,7 +30,7 @@ public partial class MapUnit {
 		}
 		int cost = Math.Max(0, target.shieldCost - unitType.shieldCost) * gameData.rules.UpgradeCost;
 		if (owner.GetActiveWonders().Any(w => w.Item2.building.HasWonderFlag(Save.SaveBuilding.WonderFlag.CheaperUpgrades))) {
-			cost /= 2;
+			cost = cost * (100 - Math.Clamp(gameData.rules.UpgradeDiscountPercent, 0, 100)) / 100;
 		}
 		return (target, cost);
 	}

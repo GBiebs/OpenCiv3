@@ -227,10 +227,11 @@ namespace C7Engine {
 			}
 
 			Tile tile = city.location;
+			int perSlave = gameData.rules.RazedCitizensPerSlave;
 			List<Civilization> slaveNationalities = city.residents
 				.Select(r => r.nationality ?? razer.civilization)
 				.OrderBy(n => n == razer.civilization ? 1 : 0)
-				.Take(city.residents.Count / 2)
+				.Take(perSlave <= 0 ? 0 : city.residents.Count / perSlave)
 				.ToList();
 			List<string> wonders = city.constructed_buildings
 				.Where(cb => cb.building.IsGreatWonder())

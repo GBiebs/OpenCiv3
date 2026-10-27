@@ -118,6 +118,9 @@ public class LeaderTest : IClassFixture<SaveGameFixture> {
 	public async Task TheHeroicEpicRaisesItToOneInTwelve() {
 		MapUnit hero = Elite(us, "Swordsman", from);
 		Assert.Equal((16, 32), (hero.LeaderChanceOneIn(attacking: true), hero.LeaderChanceOneIn(attacking: false)));
+		gameData.rules.DefendingLeaderChanceFactor = 3;
+		Assert.Equal(48, hero.LeaderChanceOneIn(attacking: false));
+		gameData.rules.DefendingLeaderChanceFactor = 2;
 
 		City city = CityInteractions.BuildCity(us.units[0].location, us, "Epic City");
 		city.AddBuilding(gameData.Buildings.Find(b => b.name == "Heroic Epic"), gameData);

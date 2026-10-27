@@ -98,6 +98,17 @@ public class EnslavementTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
+	public async Task TheChanceIsARule() {
+		gameData.rules.EnslaveChanceOneIn = 1;
+		MapUnit javelin = Spawn(us, "Javelin Thrower", from);
+		for (int i = 0; i < 20; i++) {
+			javelin.hitPointsRemaining = 3;
+			Assert.Equal(CombatResult.DefenderKilled, await javelin.Fight(Spawn(them, "Warrior", to)));
+		}
+		Assert.Equal(20, from.unitsOnTile.Count(u => u.unitType.name == "Worker"));
+	}
+
+	[Fact]
 	public async Task TheSlaveJoinsTheWinnersStackKeepsItsNationalityAndCanMove() {
 		MapUnit javelin = Spawn(us, "Javelin Thrower", from);
 

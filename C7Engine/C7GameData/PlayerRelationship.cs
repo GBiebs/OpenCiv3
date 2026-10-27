@@ -122,7 +122,7 @@ public class PlayerRelationship {
 		defenderRelationshipToAggressor.wasSneakAttacked = sneakAttack;
 
 		// The defender's people rally against the aggressor.
-		defenderRelationshipToAggressor.warWearinessPoints += WarWeariness.DeclaredWarOn;
+		defenderRelationshipToAggressor.warWearinessPoints += WarWeariness.RulesFor(defender).declaredWarOn;
 
 		// Set for how many turns the defender will refuse contact from the aggressor
 		defenderRelationshipToAggressor.refuseContactUntilTurn = refuseContactUntilTurn;

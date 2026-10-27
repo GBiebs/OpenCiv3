@@ -19,69 +19,45 @@ namespace C7GameData {
 	// and as the user's Civ3 saves confirm (a quarter of each city's citizens,
 	// specialists included, rounded down, at 31-37 points under a Republic).
 	// Civ3 charges the AI for the human's losses, a known bug; here every civ
-	// is charged for its own, as the article describes for a human.
+	// is charged for its own, as the article describes for a human. The
+	// numbers are rules (Rules.warWeariness); these are Civ3's.
 	public static class WarWeariness {
 		private static ILogger log = Log.ForContext(typeof(WarWeariness));
 
-		public const int PointsPerLevel = 30;
+		private static readonly WarWearinessRules Civ3 = new();
 
-		// The points each event adds (or, if negative, takes away).
-		public const int DeclaredWarOn = -30;
-		public const int UnitsInEnemyLandPerTurn = 1;
-		public const int NoFightingPerTurn = -1;
-		public const int UnitThatCantDefendLost = 1;
-		public const int ImprovementDestroyed = 1;
-		public const int BombardedDownToOneHitPoint = 1;
-		public const int AttackerKilled = 2;
-		public const int UnitAttacked = 2;
-		public const int TownOfSizeOneLost = 16;
-		public const int CityLost = 17;
-
-		// In peace, a twentieth of the points, rounded up, wear away each turn.
-		// Points below zero stay (in the user's Civ3 saves, civs at peace keep
-		// exactly -30 or -60 for many turns).
-		public const int PeaceDecayDivisor = 20;
-
-		// Under a high war weariness government, this level against any enemy
-		// overthrows it.
-		public const int RevoltLevel = 3;
-
-		// The share of each city's citizens made happy below zero points.
-		public const int HappyPercent = 25;
-
-		// A Police Station takes a quarter of the war weariness in its city
-		// away (rounding the rest down), and Universal Suffrage one unhappy
-		// citizen in every city.
-		public const int PoliceStationReductionPercent = 25;
-		public const int AllCitiesReduction = 1;
+		// The war weariness rules `player` plays by (Civ3's for a player made
+		// without rules).
+		public static WarWearinessRules RulesFor(Player player) {
+			return player.rules?.warWeariness ?? Civ3;
+		}
 
 		// The level of a count of points: -1 below zero, 0 up to 30, 1 up to
-		// 60, 2 up to 90, 3 up to 120, and 4 beyond.
-		public static int Level(int points) {
+		// 60, 2 up to 90, 3 up to 120, and 4 beyond (with Civ3's rules: at
+		// most the last level the unhappiness tables have).
+		public static int Level(int points, WarWearinessRules rules = null) {
+			rules ??= Civ3;
 			if (points < 0) {
 				return -1;
 			}
-			return Math.Min(4, Math.Max(0, (points - 1) / PointsPerLevel));
+			int highest = Math.Max(0, Math.Max(rules.lowUnhappyPercent.Count, rules.highUnhappyPercent.Count) - 1);
+			return Math.Min(highest, Math.Max(0, (points - 1) / Math.Max(1, rules.pointsPerLevel)));
 		}
 
 		// The percent of a city's citizens made unhappy at a level of war
 		// weariness, by the government's kind. A high war weariness
 		// government falls at level 3, so it never sees more than 100%.
-		public static int UnhappyPercent(Government.WarWearinessType type, int level) {
-			return type switch {
-				Government.WarWearinessType.Low => level switch {
-					1 => 25,
-					2 or 3 => 50,
-					>= 4 => 100,
-					_ => 0,
-				},
-				Government.WarWearinessType.High => level switch {
-					1 => 50,
-					>= 2 => 100,
-					_ => 0,
-				},
-				_ => 0,
+		public static int UnhappyPercent(Government.WarWearinessType type, int level, WarWearinessRules rules = null) {
+			rules ??= Civ3;
+			List<int> percents = type switch {
+				Government.WarWearinessType.Low => rules.lowUnhappyPercent,
+				Government.WarWearinessType.High => rules.highUnhappyPercent,
+				_ => null,
 			};
+			if (percents == null || percents.Count == 0 || level < 0) {
+				return 0;
+			}
+			return percents[Math.Min(level, percents.Count - 1)];
 		}
 
 		// `player`'s relationships with the civs it's at war with, not counting
@@ -100,23 +76,26 @@ namespace C7GameData {
 		// total is at most the city's size.
 		public static (int unhappy, int happy) CitizensAffected(GameData gameData, City city) {
 			Player owner = city.owner;
+			WarWearinessRules rules = RulesFor(owner);
 			int size = city.residents.Count;
 			int unhappy = 0;
 			int happy = 0;
 			foreach (PlayerRelationship relationship in Wars(gameData, owner)) {
-				int level = Level(relationship.warWearinessPoints);
+				int level = Level(relationship.warWearinessPoints, rules);
 				if (level < 0) {
-					happy += size * HappyPercent / 100;
+					happy += size * rules.happyPercent / 100;
 				} else {
-					unhappy += size * UnhappyPercent(owner.government.warWeariness, level) / 100;
+					unhappy += size * UnhappyPercent(owner.government.warWeariness, level, rules) / 100;
 				}
 			}
 			if (unhappy > 0) {
+				// A Police Station takes a quarter away (rounding the rest
+				// down), Universal Suffrage one citizen in every city.
 				if (city.constructed_buildings.Any(cb => cb.building.reducesWarWeariness && !cb.building.IsObsolete(owner))) {
-					unhappy = unhappy * (100 - PoliceStationReductionPercent) / 100;
+					unhappy = unhappy * (100 - rules.policeStationReductionPercent) / 100;
 				}
 				if (owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.ReducesWarWearinessAllCities))) {
-					unhappy -= AllCitiesReduction;
+					unhappy -= rules.allCitiesReduction;
 				}
 			}
 			return (Math.Clamp(unhappy, 0, size), Math.Min(happy, size));
@@ -132,9 +111,9 @@ namespace C7GameData {
 		// After a battle: the defender's people tire of being attacked, win or
 		// lose, and the attacker's of losing the attacker.
 		public static void OnBattle(MapUnit attacker, MapUnit defender, bool attackerKilled) {
-			AddPoints(defender.owner, attacker.owner, UnitAttacked);
+			AddPoints(defender.owner, attacker.owner, RulesFor(defender.owner).unitAttacked);
 			if (attackerKilled) {
-				AddPoints(attacker.owner, defender.owner, AttackerKilled);
+				AddPoints(attacker.owner, defender.owner, RulesFor(attacker.owner).attackerKilled);
 			}
 		}
 
@@ -142,7 +121,7 @@ namespace C7GameData {
 		// last hit point, or dead.
 		public static void OnBombarded(MapUnit target, Player bombarder) {
 			if (target.hitPointsRemaining <= 1) {
-				AddPoints(target.owner, bombarder, BombardedDownToOneHitPoint);
+				AddPoints(target.owner, bombarder, RulesFor(target.owner).bombardedDownToOneHitPoint);
 			}
 		}
 
@@ -151,19 +130,20 @@ namespace C7GameData {
 		public static void OnImprovementsDestroyed(Tile tile, Player destroyer, int count) {
 			Player landOwner = tile.OwningPlayer();
 			if (landOwner != null && landOwner != destroyer) {
-				AddPoints(landOwner, destroyer, ImprovementDestroyed * count);
+				AddPoints(landOwner, destroyer, RulesFor(landOwner).improvementDestroyed * count);
 			}
 		}
 
 		// After `taker` has captured or destroyed `count` units of `loser`
 		// that couldn't defend themselves.
 		public static void OnUnitsLost(Player loser, Player taker, int count) {
-			AddPoints(loser, taker, UnitThatCantDefendLost * count);
+			AddPoints(loser, taker, RulesFor(loser).unitThatCantDefendLost * count);
 		}
 
 		// After `winner` has taken a city of `loser` that had `size` citizens.
 		public static void OnCityLost(Player loser, Player winner, int size) {
-			AddPoints(loser, winner, size <= 1 ? TownOfSizeOneLost : CityLost);
+			WarWearinessRules rules = RulesFor(loser);
+			AddPoints(loser, winner, size <= 1 ? rules.townOfSizeOneLost : rules.cityLost);
 		}
 
 		// The start of a turn, for every civ against each other, all worked
@@ -172,8 +152,10 @@ namespace C7GameData {
 		// land takes one away, at war or at peace; and at peace a twentieth of
 		// the points, rounded up, wear away. (So a civ that makes peace at 121
 		// points loses 8 the first turn, 7 the next, and is back to level 0
-		// after 19 turns and to 0 after 43, as in the article.) Then a high war
-		// weariness government with level 3 against any enemy falls.
+		// after 19 turns and to 0 after 43, as in the article.) Points below
+		// zero stay (in the user's Civ3 saves, civs at peace keep exactly -30
+		// or -60 for many turns). Then a high war weariness government with
+		// level 3 against any enemy falls.
 		public static void UpdateForNewTurn(GameData gameData) {
 			// Which civs have units in which other civs' land.
 			HashSet<(Player, Player)> inLandOf = new();
@@ -188,6 +170,7 @@ namespace C7GameData {
 				if (player.isBarbarians || player.defeated) {
 					continue;
 				}
+				WarWearinessRules rules = RulesFor(player);
 				foreach (Player other in gameData.players) {
 					if (!PlayerRelationship.TryGetRelationship(player, other, out PlayerRelationship relationship)) {
 						continue;
@@ -197,13 +180,14 @@ namespace C7GameData {
 					bool inTheirLand = inLandOf.Contains((player, other));
 					int change = 0;
 					if (atWar && inTheirLand) {
-						change += UnitsInEnemyLandPerTurn;
+						change += rules.unitsInEnemyLandPerTurn;
 					}
-					if (Level(points) >= 1 && !inTheirLand && !inLandOf.Contains((other, player))) {
-						change += NoFightingPerTurn;
+					if (Level(points, rules) >= 1 && !inTheirLand && !inLandOf.Contains((other, player))) {
+						change += rules.noFightingPerTurn;
 					}
 					if (!atWar && points > 0) {
-						change -= (points + PeaceDecayDivisor - 1) / PeaceDecayDivisor;
+						int divisor = Math.Max(1, rules.peaceDecayDivisor);
+						change -= (points + divisor - 1) / divisor;
 					}
 					relationship.warWearinessPoints = points + change;
 				}
@@ -214,8 +198,9 @@ namespace C7GameData {
 		// Whether war weariness against some enemy is enough to overthrow
 		// `player`'s government.
 		public static bool WouldOverthrowGovernment(GameData gameData, Player player) {
+			WarWearinessRules rules = RulesFor(player);
 			return player.government.warWeariness == Government.WarWearinessType.High
-				&& Wars(gameData, player).Any(relationship => Level(relationship.warWearinessPoints) >= RevoltLevel);
+				&& Wars(gameData, player).Any(relationship => Level(relationship.warWearinessPoints, rules) >= rules.revoltLevel);
 		}
 
 		private static void MaybeOverthrowGovernment(GameData gameData, Player player) {

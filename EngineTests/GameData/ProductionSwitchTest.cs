@@ -57,6 +57,13 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
+	public void TheShareKeptIsARule() {
+		gameData.rules.ProductionSwitchKeptPercent = 75;
+		city.SetItemBeingProduced(Building("Temple"));
+		Assert.Equal(6, city.shieldsStored);
+	}
+
+	[Fact]
 	public void SwitchingBackTheSameTurnReturnsThemAndAThirdCategoryCostsNoMore() {
 		city.SetItemBeingProduced(Building("Temple"));
 		city.SetItemBeingProduced(Building("The Pyramids"));

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using C7Engine;
 using C7GameData.Save;
@@ -49,7 +50,7 @@ public partial class MapUnit {
 		Rules rules = EngineStorage.gameData.rules;
 		bool increasedChance = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.IncreasesLeaderChance));
 		int oneIn = increasedChance ? rules.IncreasedLeaderChanceOneIn : rules.LeaderChanceOneIn;
-		return attacking ? oneIn : oneIn * 2;
+		return attacking ? oneIn : oneIn * Math.Max(1, rules.DefendingLeaderChanceFactor);
 	}
 
 	// Whether this unit can hurry the production of the city it's in: it has
