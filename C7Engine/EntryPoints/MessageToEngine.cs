@@ -214,6 +214,38 @@ namespace C7Engine {
 		}
 	}
 
+	// The player set a city's governor; or every city's, and the default
+	// for cities to come.
+	public class MsgSetGovernor : MessageToEngine {
+		private ID cityID;
+		private CityGovernor governor;
+		private bool allCities;
+
+		public MsgSetGovernor(ID cityID, CityGovernor governor, bool allCities) {
+			this.cityID = cityID;
+			this.governor = governor.Copy();
+			this.allCities = allCities;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			City city = gameData.cities.Find(c => c.id == cityID);
+			if (city == null) {
+				return;
+			}
+			Player owner = city.owner;
+			foreach (City c in allCities ? owner.cities : [city]) {
+				c.governor = governor.Copy();
+				if (c.governor.manageMoods) {
+					c.governor.ManageMoods(c, gameData);
+				}
+			}
+			if (allCities) {
+				owner.defaultGovernor = governor.Copy();
+			}
+		}
+	}
+
 	public class MsgChooseProduction : MessageToEngine {
 		private ID cityID;
 		private string producibleName;

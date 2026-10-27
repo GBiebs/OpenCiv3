@@ -12460,6 +12460,8 @@
       "graceYears": 1000,
       "maxOutbreaks": 3
     },
+    "governorValueRatio": 4,
+    "governorEmphasisFactor": 4,
     "warWeariness": {
       "pointsPerLevel": 30,
       "declaredWarOn": -30,

@@ -94,6 +94,12 @@ namespace C7GameData {
 		public int draftedThatTurn = 0;
 
 		public bool isInCivilDisorder = false;
+
+		// The food a citizen eats each turn.
+		public const int FoodPerCitizen = 2;
+
+		// The governor of a human's city (see CityGovernor).
+		public CityGovernor governor = new();
 		// How many turns running the city has been in civil disorder.
 		public int turnsInDisorder = 0;
 
@@ -458,6 +464,18 @@ namespace C7GameData {
 				return;
 			}
 
+			// A human's city builds the same unit again (Civ3's "always build
+			// previously built unit"; there's no "what next?" question yet),
+			// unless its governor manages production.
+			if (owner.isHuman) {
+				if (!governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
+					return;
+				}
+				if (governor.manageProduction) {
+					SetItemBeingProduced(governor.ChooseProduction(this));
+					return;
+				}
+			}
 			SetItemBeingProduced(ChooseProducible.Choose(this, owner));
 		}
 
@@ -820,7 +838,7 @@ namespace C7GameData {
 
 		public int FoodConsumedPerTurn() {
 			// Resisters eat nothing.
-			return residents.Count(r => !r.resisting) * 2;
+			return residents.Count(r => !r.resisting) * FoodPerCitizen;
 		}
 
 		// Whether some of this city's citizens refuse to work for its owner.

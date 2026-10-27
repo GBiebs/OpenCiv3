@@ -17,8 +17,8 @@ namespace C7Engine {
 			bool inExpansionPhase
 		);
 
-		public static IProducible Choose(City city, Player player) {
-			List<IProducible> options = city.ListProductionOptions(EngineStorage.gameData).ToList();
+		public static IProducible Choose(City city, Player player, Func<IProducible, bool> allowed = null) {
+			List<IProducible> options = city.ListProductionOptions(EngineStorage.gameData).Where(o => allowed == null || allowed(o)).ToList();
 			ProducibleStats stats = CalculateStats(city, options);
 
 			IProducible best = null;

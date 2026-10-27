@@ -18,6 +18,11 @@ namespace C7Engine.AI {
 		// Assigns a citizen, which is alredy part of a city, to a tile, if possible.
 		public static void AssignNewCitizenToTile(GameData gameData, CityResident newResident, bool manageMoods = false) {
 			City city = newResident.city;
+			// A human's city: its governor places the citizen.
+			if (city.owner.isHuman && city.governor != null) {
+				AssignByGovernor(gameData, newResident, manageMoods || city.governor.manageMoods);
+				return;
+			}
 			int foodYield = city.CurrentFoodYield();
 
 			int desiredFoodRate = city.residents.Count * FOOD_PER_CITIZEN + DesiredFoodSurplusPerTurn;
@@ -56,6 +61,23 @@ namespace C7Engine.AI {
 					newResident.tileWorked = Tile.NONE;
 					preferredTile.personWorkingTile = null;
 				}
+			}
+		}
+
+		private static void AssignByGovernor(GameData gameData, CityResident newResident, bool manageMoods) {
+			City city = newResident.city;
+			Tile tile = city.governor.BestTile(city, gameData);
+			if (tile == Tile.NONE) {
+				newResident.citizenType = city.owner.GetKnownSpecialists(gameData)[0];
+			} else {
+				newResident.tileWorked = tile;
+				tile.personWorkingTile = newResident;
+			}
+			log.Debug($"The governor of {city.name} puts a new citizen on {tile}");
+			if (manageMoods) {
+				city.governor.ManageMoods(city, gameData);
+			} else {
+				city.RecalculateCitizenMoods(gameData);
 			}
 		}
 

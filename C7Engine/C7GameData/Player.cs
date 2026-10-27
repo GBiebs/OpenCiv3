@@ -1400,6 +1400,20 @@ namespace C7GameData {
 			return netContentFaces;
 		}
 
+		// The governor settings our new cities get (see CityGovernor).
+		public CityGovernor defaultGovernor = new();
+
+		// A human's governors that manage moods keep their cities out of
+		// disorder before the turn's moods count.
+		public void LetGovernorsManageMoods(GameData gameData) {
+			if (!isHuman) {
+				return;
+			}
+			foreach (City c in cities.Where(c => c.governor.manageMoods)) {
+				c.governor.ManageMoods(c, gameData);
+			}
+		}
+
 		public void RecalculateCitizenMoods(GameData gameData, bool goIntoDisorderIfUnhappy = false) {
 			foreach (City c in cities) {
 				City.Mood cityMood = c.RecalculateCitizenMoods(gameData);

@@ -198,6 +198,10 @@ public partial class Game : Node {
 		}
 	}
 
+	public void ShowGovernor(City city) {
+		popupOverlay.ShowPopup(new GovernorPopup(city), PopupOverlay.PopupCategory.Info);
+	}
+
 	private async Task InitializeGame() {
 		// Ensure we clear out our image caches, as scenarios and games will
 		// use the same filenames but have different content for them.

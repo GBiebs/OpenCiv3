@@ -231,7 +231,10 @@ public partial class RightClickTileMenu : RightClickMenu {
 					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
 				});
 			});
-			// TODO: Contact Governor
+			AddItem("Contact Governor", () => {
+				this.CloseAndDelete();
+				game.ShowGovernor(tile.cityAtTile);
+			});
 			// TODO: Set Rally Point
 			// TODO: Set Continental Rally Point
 			// TODO: Clear Continental Rally Point

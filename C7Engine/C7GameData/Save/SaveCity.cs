@@ -59,6 +59,7 @@ namespace C7GameData.Save {
 		// Celebrating We Love the King Day.
 		public bool celebrating;
 		public int turnsInDisorder;
+		public CityGovernor governor;
 		// This turn's switch of the build to another category, which switching
 		// back undoes (City.SetItemBeingProduced).
 		public City.ProductionCategory? switchedFromCategory;
@@ -89,6 +90,7 @@ namespace C7GameData.Save {
 			draftedThatTurn = city.draftedThatTurn;
 			celebrating = city.celebrating;
 			turnsInDisorder = city.turnsInDisorder;
+			governor = city.governor.IsDefault() ? null : city.governor;
 			switchedFromCategory = city.switchedFromCategory;
 			shieldsLostToSwitching = city.shieldsLostToSwitching;
 			residents = city.residents.ConvertAll(resident => {
@@ -132,6 +134,7 @@ namespace C7GameData.Save {
 				draftedThatTurn = draftedThatTurn,
 				celebrating = celebrating,
 				turnsInDisorder = turnsInDisorder,
+				governor = governor?.Copy() ?? new(),
 				switchedFromCategory = switchedFromCategory,
 				shieldsLostToSwitching = shieldsLostToSwitching,
 				capital = capital,

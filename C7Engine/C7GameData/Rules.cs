@@ -167,6 +167,13 @@ namespace C7GameData {
 		// Plague.
 		public PlagueRules plague = new();
 
+		// How the city governor values a tile (see CityGovernor): a food, a
+		// shield and a commerce are each worth this many of the next, and
+		// emphasis multiplies what's emphasized by the factor (TimBentley's
+		// measurement: 4 and 4).
+		public int GovernorValueRatio = 4;
+		public int GovernorEmphasisFactor = 4;
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 

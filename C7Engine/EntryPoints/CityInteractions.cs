@@ -13,6 +13,7 @@ namespace C7Engine {
 		public static City BuildCity(Tile tileWithNewCity, Player owner, string name) {
 			GameData gameData = EngineStorage.gameData;
 			City newCity = new City(tileWithNewCity, owner, name, gameData.ids.CreateID("city"));
+			newCity.governor = owner.defaultGovernor.Copy();
 			if (owner.cities.Count == 0) {
 				newCity.capital = true;
 				newCity.AddBuilding(gameData.Buildings.Find(x => x.isCenterOfEmpire), gameData);
@@ -191,6 +192,7 @@ namespace C7Engine {
 			oldOwner.cities.Remove(city);
 			newOwner.cities.Add(city);
 			city.owner = newOwner;
+			city.governor = newOwner.defaultGovernor.Copy();
 			city.capital = false;
 			city.perPlayerCulture.TryAdd(newOwner, 0);
 			city.isInCivilDisorder = false;

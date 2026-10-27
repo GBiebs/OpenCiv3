@@ -85,6 +85,8 @@ namespace C7GameData.Save {
 		// Whether the player is mobilized for war, and has signed a peace
 		// treaty since, which lets it return to normalcy.
 		public bool mobilized;
+		// The governor settings new cities get.
+		public CityGovernor defaultGovernor;
 		public bool signedPeaceSinceMobilizing;
 
 		// Used when importing from .biq, to make it easier to distinguish barbarians from other players.
@@ -120,6 +122,7 @@ namespace C7GameData.Save {
 				goldenAgeTurnsLeft = goldenAgeTurnsLeft,
 				hadGoldenAge = hadGoldenAge,
 				mobilized = mobilized,
+				defaultGovernor = defaultGovernor?.Copy() ?? new(),
 				signedPeaceSinceMobilizing = signedPeaceSinceMobilizing,
 				government = governments.Find(x => x.id == governmentId),
 				rules = rules,
@@ -193,6 +196,7 @@ namespace C7GameData.Save {
 			goldenAgeTurnsLeft = player.goldenAgeTurnsLeft;
 			hadGoldenAge = player.hadGoldenAge;
 			mobilized = player.mobilized;
+			defaultGovernor = player.defaultGovernor.IsDefault() ? null : player.defaultGovernor;
 			signedPeaceSinceMobilizing = player.signedPeaceSinceMobilizing;
 			governmentId = player.government.id;
 
