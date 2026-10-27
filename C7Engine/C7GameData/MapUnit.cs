@@ -306,7 +306,8 @@ namespace C7GameData {
 		public IEnumerable<StrengthBonus> ListStrengthBonusesVersus(MapUnit opponent, CombatRole role, TileDirection? attackDirection) {
 			GameData gD = EngineStorage.gameData;
 
-			if (opponent != null && opponent.owner.isBarbarians
+			// (The map asks about MapUnit.NONE, which has no owner.)
+			if (opponent?.owner?.isBarbarians == true
 				&& owner.OwnsBuilding(b => b.HasWonderFlag(Save.SaveBuilding.WonderFlag.DoubleCombatVsBarbarians))) {
 				yield return GreatWallBonus;
 			}

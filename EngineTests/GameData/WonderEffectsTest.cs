@@ -113,6 +113,9 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.All(roles, r => Assert.Equal(before[r] + spearman.BaseCombatStrength(r), spearman.StrengthVersus(barbarian, r, null), 6));
 		Assert.All(roles, r => Assert.Equal(before[r], spearman.StrengthVersus(foreigner, r, null), 6));
 		Assert.Equal(theirs, barbarian.StrengthVersus(spearman, CombatRole.Attack, null), 6);
+		// The map picks a stack's top unit against no unit at all when none is
+		// selected (UnitLayer), an opponent without an owner.
+		Assert.Equal(before[CombatRole.Defense], spearman.StrengthVersus(MapUnit.NONE, CombatRole.Defense, null), 6);
 
 		MakeObsolete("The Great Wall");
 		Assert.All(roles, r => Assert.Equal(before[r], spearman.StrengthVersus(barbarian, r, null), 6));
