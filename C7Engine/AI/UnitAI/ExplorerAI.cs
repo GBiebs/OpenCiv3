@@ -16,7 +16,17 @@ namespace C7Engine {
 			data = d;
 		}
 
+		// How far an explorer goes out of its way for a goody hut it knows of.
+		public const int GoodyHutSearchDistance = 10;
+
 		public static ExplorerAIData? MaybeMakeAiData(MapUnit unit, Player player) {
+			// A goody hut nearby comes first.
+			if (unit.IsLandUnit() && PickNearestGoodyHut(unit, player) is ExplorerAIData hut) {
+				log.Information($"Set AI for unit {unit.id} at {unit.location} to visit the goody hut at {hut.destination}");
+				player.tileKnowledge.aiExplorationTargets.Add(hut.destination);
+				return hut;
+			}
+
 			HashSet<Tile> borderTiles = player.tileKnowledge.borderTiles;
 
 			IEnumerable<Tile> candidates = borderTiles.Where(x => (x.IsLand() && unit.IsLandUnit()) || (!x.IsLand() && !unit.IsLandUnit()));
@@ -38,6 +48,15 @@ namespace C7Engine {
 		UnitAI.MoveResult UnitAI.PlayTurnImpl(Player player, MapUnit unit) {
 			if (data == null) {
 				return UnitAI.Result.Error;
+			}
+
+			// A hut is known all along: done once it's found (by us or anyone).
+			if (data.goodyHut) {
+				if (!data.destination.hasGoodyHut || unit.location == data.destination) {
+					player.tileKnowledge.aiExplorationTargets.Remove(data.destination);
+					return UnitAI.Result.Done;
+				}
+				return this.TryToMoveAlongPath(unit, ref data.pathToDestination);
 			}
 
 			if (player.tileKnowledge.isTileKnown(data.destination)) {
@@ -124,6 +143,22 @@ namespace C7Engine {
 			}
 
 			return explorationScores;
+		}
+
+		private static ExplorerAIData? PickNearestGoodyHut(MapUnit unit, Player player) {
+			PathingAlgorithm algorithm = PathingAlgorithmChooser.GetAlgorithm(unit);
+			IEnumerable<Tile> huts = player.tileKnowledge.knownTiles
+				.Where(t => t.hasGoodyHut && t.unitsOnTile.Count == 0 && unit.location.DistanceTo(t) <= GoodyHutSearchDistance
+					&& !player.tileKnowledge.aiExplorationTargets.Contains(t))
+				.OrderBy(t => unit.location.DistanceTo(t));
+			foreach (Tile hut in huts) {
+				TilePath path = algorithm.PathFrom(unit.location, hut, unit);
+				if ((path?.PathLength() ?? -1) == -1) {
+					continue;
+				}
+				return new ExplorerAIData { destination = hut, pathToDestination = path, goodyHut = true };
+			}
+			return null;
 		}
 
 		private static ExplorerAIData? PickBestTileToExplore(MapUnit unit, Dictionary<Tile, float> explorationScores) {
