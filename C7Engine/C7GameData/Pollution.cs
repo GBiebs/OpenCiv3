@@ -64,6 +64,33 @@ namespace C7GameData {
 			return gameData.terrainImprovements.Find(i => i.key == Tile.TileOverlays.POLLUTION);
 		}
 
+		// A building that can melt down (the Nuclear Plant) in a city that has
+		// stayed in civil disorder for a whole turn (CivFanatics, "Everything
+		// You Wanted to Know About Power Plants": never on the turn the
+		// disorder starts; Rules.MeltdownChancePercent) melts down: half the
+		// citizens die, rounded down, and the eight tiles around are
+		// polluted; units, buildings and the tiles' improvements are spared.
+		public static void CheckMeltdowns(GameData gameData, Player player) {
+			TerrainImprovement pollution = PollutionOverlay(gameData);
+			foreach (City city in player.cities) {
+				if (city.turnsInDisorder < gameData.rules.MeltdownTurnsInDisorder) {
+					continue;
+				}
+				Building plant = WorkingBuildings(city).FirstOrDefault(b => b.canMeltdown);
+				if (plant == null || GameData.rng.Next(100) >= gameData.rules.MeltdownChancePercent) {
+					continue;
+				}
+				city.RemoveCitizens(city.residents.Count / 2);
+				foreach (Tile tile in city.location.neighbors.Values) {
+					if (pollution != null && tile.IsLand() && tile.overlays.CanAdd(tile, pollution)) {
+						tile.overlays.Add(pollution);
+					}
+				}
+				log.Information($"The {plant.name} in {city.name} melts down; size {city.residents.Count} left");
+				new MsgMeltdown(player.id, city, plant.name).send();
+			}
+		}
+
 		// Once a turn, after production: each of the player's cities may
 		// pollute one of its tiles.
 		public static void UpdateForNewTurn(GameData gameData, Player player) {

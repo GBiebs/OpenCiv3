@@ -2,6 +2,7 @@ namespace C7Engine {
 	using C7GameData;
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
 
 	public interface IMessageToUI {
 		public void send();
@@ -209,6 +210,118 @@ namespace C7Engine {
 			this.outcome = outcome;
 			this.text = text;
 			this.tile = tile;
+		}
+	}
+
+	// A nuclear plant melted down (script.txt MELTDOWN).
+	public class MsgMeltdown : MessageToUI {
+		public ID playerId;
+		public City city;
+		public string building;
+
+		public MsgMeltdown(ID playerId, City city, string building) {
+			this.playerId = playerId;
+			this.city = city;
+			this.building = building;
+		}
+
+		public string Text() {
+			return $"The {building} in {city.name} has malfunctioned! Thousands are dead, and pollution has crippled production!";
+		}
+	}
+
+	// Disease killed a citizen of `city`, or killed `unit`, on `terrain`
+	// (script.txt VERBOSE_DISEASE_TERRAIN, UNITJUNGLEDISEASE).
+	public class MsgDisease : MessageToUI {
+		public ID playerId;
+		public City city;
+		public MapUnit unit;
+		public Tile tile;
+		public string terrain;
+
+		public MsgDisease(ID playerId, City city, MapUnit unit, string terrain) {
+			this.playerId = playerId;
+			this.city = city;
+			this.unit = unit;
+			this.tile = city?.location ?? unit?.location;
+			this.terrain = terrain;
+		}
+
+		public string Text() {
+			return city != null
+				? $"The citizens of {city.name} are dying of disease. Our wise men think that conditions in the surrounding {terrain} may be unhealthy."
+				: $"Our {unit.unitType.name} has died of disease from the {terrain.ToLower()}!";
+		}
+	}
+
+	// A volcano the player knows smokes or erupts, or its lava struck the
+	// player's units or city (script.txt VLC_*).
+	public class MsgVolcano : MessageToUI {
+		public enum Event { Active, Erupted, KilledUnits, TorchedCity }
+
+		public ID playerId;
+		public Tile tile;
+		public Event what;
+		public string city;
+
+		public MsgVolcano(ID playerId, Tile tile, Event what, string city = null) {
+			this.playerId = playerId;
+			this.tile = tile;
+			this.what = what;
+			this.city = city;
+		}
+
+		public string Text() {
+			return what switch {
+				Event.Active => "Volcano is now active!",
+				Event.Erupted => "Volcano has erupted!",
+				Event.KilledUnits => "Our units were burned to a crisp by a lava flow!",
+				_ => $"{city} is torched by the volcanic eruption!",
+			};
+		}
+	}
+
+	// Global warming changed a tile's terrain (script.txt GLOBALWARMING,
+	// GLOBALWARMING_FOREST_JUNGLE). Sent once for every player: the UI
+	// redraws the tile, and tells the players who know it.
+	public class MsgGlobalWarming : MessageToUI {
+		public Tile tile;
+		public string from;
+		public string to;
+		public bool vegetationLost;
+		public List<ID> knownBy;
+
+		public MsgGlobalWarming(Tile tile, string from, string to, bool vegetationLost, List<ID> knownBy) {
+			this.tile = tile;
+			this.from = from;
+			this.to = to;
+			this.vegetationLost = vegetationLost;
+			this.knownBy = knownBy;
+		}
+
+		public string Text() {
+			return vegetationLost ? $"Global Warming has destroyed {from}!" : $"Global Warming has turned {from} into {to}!";
+		}
+	}
+
+	// The plague struck one of the player's cities, killing a citizen and
+	// these units (script.txt SUMMARY_PLAGUE, PLAGUE_KILL).
+	public class MsgPlague : MessageToUI {
+		public ID playerId;
+		public City city;
+		public string plague;
+		public List<string> unitsKilled;
+
+		public MsgPlague(ID playerId, City city, string plague, List<string> unitsKilled) {
+			this.playerId = playerId;
+			this.city = city;
+			this.plague = plague;
+			this.unitsKilled = unitsKilled;
+		}
+
+		public string Text() {
+			return string.Join(" ", new[] { $"Horrors! {plague} strikes {city.name}!" }
+				.Concat(unitsKilled.Select(u => $"{u} has been killed by {plague}!")));
 		}
 	}
 

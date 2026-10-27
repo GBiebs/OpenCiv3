@@ -45,6 +45,7 @@ namespace C7GameData.Save {
 			}
 
 			overlays.AddRange(tile.overlays.GetImprovements().Select(i => i.key));
+			volcanoEruptsOnTurn = tile.volcanoEruptsOnTurn >= 0 ? tile.volcanoEruptsOnTurn : null;
 		}
 
 		// TODO: if this is slow, features can be read from JSON and then hashed so the Contains check is faster
@@ -59,6 +60,7 @@ namespace C7GameData.Save {
 				overlayTerrainType = terrainTypes.Find(tt => tt.Key == overlayTerrain),
 				hasBarbarianCamp = features.Contains("barbarianCamp"),
 				hasGoodyHut = features.Contains("goodyHut"),
+				volcanoEruptsOnTurn = volcanoEruptsOnTurn ?? -1,
 				hasHadForestCleared = features.Contains("hasHadForestCleared"),
 				// TODO: load working tile
 				ResourceKey = resource is null ? Resource.NONE.Key : resource,
@@ -81,6 +83,8 @@ namespace C7GameData.Save {
 			return tile;
 		}
 		public Civ3ExtraInfo extraInfo;
+		// A smoking volcano's eruption turn.
+		public int? volcanoEruptsOnTurn;
 
 		public ID id;
 		public int X;

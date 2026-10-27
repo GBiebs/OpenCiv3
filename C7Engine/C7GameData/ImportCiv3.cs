@@ -2316,6 +2316,21 @@ namespace C7GameData {
 			if (hasScenarioSettings) {
 				save.Rules.AllowCulturalConversions = game.AllowCulturalConversions;
 			}
+			// Disasters: how often volcanoes erupt, and a scenario's plague
+			// (off in the stock rules).
+			if (game.EruptionPeriod > 0) {
+				save.Rules.VolcanoEruptionPeriod = game.EruptionPeriod;
+			}
+			save.Rules.plague = new PlagueRules {
+				enabled = game.PermitPlagues != 0,
+				name = string.IsNullOrWhiteSpace(game.PlagueName) ? "Plague" : game.PlagueName,
+				earliestStartYear = game.PlagueEarliestStart,
+				chancePercent = game.PlagueVartiation,
+				durationYears = game.PlagueDuration,
+				strength = game.PlagueStrength,
+				graceYears = game.PlagueGracePeriod,
+				maxOutbreaks = game.PlagueMaxOccurance,
+			};
 			if (rule.BattleCreatedUnit >= 0) {
 				save.Rules.BattleCreatedUnitType = theBiq.Prto[rule.BattleCreatedUnit].Name;
 			}

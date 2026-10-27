@@ -64,10 +64,14 @@ namespace C7Engine {
 				// network was worked out.
 				gameData.InvalidateCachedTradeNetwork();
 				WarWeariness.UpdateForNewTurn(gameData);
+				Volcanoes.UpdateForNewTurn(gameData);
+				GlobalWarming.UpdateForNewTurn(gameData);
+				Plague.UpdateForNewTurn(gameData);
 				foreach (Player player in gameData.players) {
 					player.MaybeSpawnBonusUnits(gameData);
 					player.DecrementCityUnhappinessPenalties(gameData);
 					player.RecalculateCitizenMoods(gameData, goIntoDisorderIfUnhappy: true);
+					Pollution.CheckMeltdowns(gameData, player);
 					player.UpdateCelebrations(gameData);
 					CultureFlip.CheckFlips(gameData, player);
 					player.DoCorruptionCalculations(gameData);
@@ -85,6 +89,7 @@ namespace C7Engine {
 					log.Information($"\n*** City growth/production for turn {gameData.turn}, player {player} ***");
 					player.HandleCityUpdates(gameData);
 					Pollution.UpdateForNewTurn(gameData, player);
+					Disease.UpdateForNewTurn(gameData, player);
 					player.CountDownGoldenAge();
 					player.CountDownAgeOfScience();
 

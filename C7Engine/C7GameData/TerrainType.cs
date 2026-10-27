@@ -44,6 +44,21 @@ namespace C7GameData {
 		}
 		public Civ3FoliageAction allowedFoliageAction = Civ3FoliageAction.None;
 
+		// Disease (see Disease): whether this terrain causes it, whether a
+		// technology that disables diseases (Sanitation) ends it here, and
+		// its strength (Civ3's TERR values: flood plain, jungle and marsh
+		// cause it, only flood plain's is cured).
+		public bool causesDisease { get; set; }
+		public bool diseaseCuredByTech { get; set; }
+		public int diseaseStrength { get; set; }
+
+		// What global warming turns this terrain into (see GlobalWarming):
+		// another terrain's key, BaseTerrainResult for the tile's base
+		// terrain (forest and jungle disappear), or nothing (Civ3's TERR
+		// "pollution effect").
+		public string globalWarmingResult { get; set; } = "";
+		public const string BaseTerrainResult = "base";
+
 		//some stuff about graphics would probably make sense, too
 
 		public bool isHilly() {
@@ -93,6 +108,15 @@ namespace C7GameData {
 					amount = civ3Terrain.DefenseBonus / 100.0
 				},
 				allowedFoliageAction = LoadFoliageAction(civ3Terrain),
+				// TERR's flags: 4 causes disease, 8 a technology cures it.
+				causesDisease = (civ3Terrain.TerrainFlags & 4) != 0,
+				diseaseCuredByTech = (civ3Terrain.TerrainFlags & 8) != 0,
+				diseaseStrength = civ3Terrain.DiseaseStrength,
+				globalWarmingResult = civ3Terrain.PollutionEffect switch {
+					14 => BaseTerrainResult,
+					int i when civTerrainKeyLookup.TryGetValue(i, out string key) => key,
+					_ => "",
+				},
 			};
 
 			// Civ3's only unit-specific terrain restriction. It is not absolute:

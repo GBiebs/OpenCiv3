@@ -861,6 +861,13 @@ public partial class Game {
 		));
 	}
 
+	// A disaster: the Domestic Advisor brings the bad news.
+	private void EmitBadNewsSignal(string text) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Domestic Advisor", text, Advisor.Domestic, Mood.Sad, 400)
+		));
+	}
+
 	private void EmitTechsFromWonderSignal(MsgTechsFromWonder msg) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(

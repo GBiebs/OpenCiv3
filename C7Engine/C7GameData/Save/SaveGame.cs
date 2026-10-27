@@ -63,6 +63,7 @@ namespace C7GameData.Save {
 				Buildings = data.Buildings.ConvertAll(building => building.ToSaveBuilding()),
 				Inflows = data.Inflows.ConvertAll(inflow => new SaveInflow(inflow)),
 				GreatWondersBuilt = data.GreatWondersBuilt,
+				Plague = data.plague,
 				BarbarianInfo = data.barbarianInfo,
 				Units = data.mapUnits.ConvertAll(unit => new SaveUnit(unit)),
 				UnitPrototypes = data.unitPrototypes.ConvertAll(proto => new SaveUnitPrototype(proto)),
@@ -259,6 +260,7 @@ namespace C7GameData.Save {
 				victoryConditions = VictoryConditions,
 				history = History,
 				GreatWondersBuilt = GreatWondersBuilt,
+				plague = Plague ?? new(),
 				Codex = Codex,
 			};
 
@@ -517,6 +519,7 @@ namespace C7GameData.Save {
 		public List<SaveBuilding> Buildings = [];
 		public List<SaveInflow> Inflows = [];
 		public HashSet<string> GreatWondersBuilt = new();
+		public PlagueState Plague = new();
 		public List<SavePlayer> Players = new List<SavePlayer>();
 		public List<SaveCity> Cities = new List<SaveCity>();
 		public BarbarianInfo BarbarianInfo = new BarbarianInfo();

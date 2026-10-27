@@ -132,6 +132,41 @@ namespace C7GameData {
 		public int ZoneOfControlDefenseFactor = 16;
 		public int ZoneOfControlDamage = 1;
 
+		// Nuclear meltdowns (see Pollution.CheckMeltdowns): the chance, in
+		// percent, each turn that a building that can melt down (the Nuclear
+		// Plant) does in a city in civil disorder at least this many turns
+		// running (CivFanatics measured 10-15%, never on the turn the disorder
+		// starts; Civ3's manual says 50%).
+		public int MeltdownChancePercent = 12;
+		public int MeltdownTurnsInDisorder = 2;
+
+		// Disease (see Disease): the chance, in percent of the terrain's
+		// disease strength (Civ3's TERR value, 50), each turn for each citizen
+		// working an unhealthy tile that the city loses a citizen, and for a
+		// fortified military unit out on one that it dies. Not documented.
+		public int CityDiseaseChancePerStrength = 10;
+		public int UnitDiseaseChancePerStrength = 2;
+
+		// Volcanoes (see Volcanoes): each erupts on average once in this many
+		// years (Civ3's GAME "eruption period"; 0 for never), most of the time
+		// after smoking for up to this many turns; lava hits each tile around
+		// it with this chance. The warning and hit chances aren't documented.
+		public int VolcanoEruptionPeriod = 5000;
+		public int VolcanoWarningPercent = 80;
+		public int VolcanoWarningTurns = 3;
+		public int VolcanoTileHitPercent = 50;
+
+		// Global warming (see GlobalWarming): each polluted land tile beyond
+		// this many per thousand land tiles is this chance, in percent, a turn
+		// that warming changes this many tiles. Not documented.
+		public int GlobalWarmingThresholdPerThousandLandTiles = 20;
+		public int GlobalWarmingChancePerExcessTile = 1;
+		public int GlobalWarmingTilesChanged = 1;
+
+		// Plague (Civ3's GAME plague settings; off in the standard rules). See
+		// Plague.
+		public PlagueRules plague = new();
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 
@@ -223,6 +258,21 @@ namespace C7GameData {
 			[0, 5, 5, 5, 5, 5, 0, 0],
 			[0, 0, 5, 0, 5, 5, 0, 0],
 		]);
+	}
+
+	// A scenario's plague (see Plague): Civ3's GAME settings, the years as
+	// calendar years.
+	public class PlagueRules {
+		public bool enabled = false;
+		public string name = "Plague";
+		public int earliestStartYear = -700;
+		// The chance, in percent, each turn that an outbreak starts (Civ3's
+		// "variation").
+		public int chancePercent = 5;
+		public int durationYears = 100;
+		public int strength = 80;
+		public int graceYears = 1000;
+		public int maxOutbreaks = 3;
 	}
 
 	// War weariness points and what they do (see WarWeariness; CivFanatics,

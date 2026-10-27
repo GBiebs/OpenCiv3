@@ -150,6 +150,20 @@ public static class TextureLoader {
 		return texture;
 	}
 
+	// Forgets the cached textures of `obj`, whose texture-affecting
+	// properties have changed (a tile's terrain, by global warming).
+	public static void Forget(object obj) {
+		List<(string, object)> keys = [];
+		foreach ((string configKey, object o) key in objectMappingCache.Keys) {
+			if (key.o == obj) {
+				keys.Add(key);
+			}
+		}
+		foreach ((string, object) key in keys) {
+			objectMappingCache.Remove(key);
+		}
+	}
+
 	// Allows to load the texture directly by its file path, bypassing the Lua config.
 	// Supports both PCX and PNG textures
 	public static ImageTexture LoadByPath(string path) {

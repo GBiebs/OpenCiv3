@@ -499,6 +499,34 @@ public partial class Game : Node {
 				if (mGH.playerId == controller.id)
 					EmitGoodyHutSignal(mGH);
 				break;
+			case MsgMeltdown mMd:
+				if (mMd.playerId == controller.id)
+					EmitBadNewsSignal(mMd.Text());
+				break;
+			case MsgDisease mDis:
+				if (mDis.playerId == controller.id) {
+					if (mDis.city != null) {
+						EmitBadNewsSignal(mDis.Text());
+					} else {
+						TemporaryPopup.Show(this, mDis.Text(), mapView.screenLocationOfTile(mDis.tile, true));
+					}
+				}
+				break;
+			case MsgVolcano mVol:
+				if (mVol.playerId == controller.id)
+					TemporaryPopup.Show(this, mVol.Text(), mapView.screenLocationOfTile(mVol.tile, true));
+				break;
+			case MsgGlobalWarming mGW:
+				foreach (Tile shown in TerrainTextureFiles.TilesShowing(mGW.tile)) {
+					TextureLoader.Forget(shown);
+				}
+				if (mGW.knownBy.Contains(controller.id))
+					TemporaryPopup.Show(this, mGW.Text(), mapView.screenLocationOfTile(mGW.tile, true));
+				break;
+			case MsgPlague mPlg:
+				if (mPlg.playerId == controller.id)
+					EmitBadNewsSignal(mPlg.Text());
+				break;
 			case MsgPollution mPol:
 				if (mPol.playerId == controller.id) {
 					TemporaryPopup.Show(this, mPol.Text(), mapView.screenLocationOfTile(mPol.city.location, true));

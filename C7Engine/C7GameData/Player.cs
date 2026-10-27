@@ -1404,6 +1404,9 @@ namespace C7GameData {
 			foreach (City c in cities) {
 				City.Mood cityMood = c.RecalculateCitizenMoods(gameData);
 				c.isInCivilDisorder = cityMood == City.Mood.Unhappy && goIntoDisorderIfUnhappy;
+				if (goIntoDisorderIfUnhappy) {
+					c.turnsInDisorder = c.isInCivilDisorder ? c.turnsInDisorder + 1 : 0;
+				}
 			}
 		}
 

@@ -27,92 +27,110 @@ namespace C7Engine {
 		// Assigns the texture file and index to all the tiles in the provided map.
 		public static void AssignTextureDetails(Random rand, List<TerrainType> terrainTypes, GameMap m) {
 			foreach (Tile t in m.tiles) {
-				t.ExtraInfo = new();
+				AssignTextureDetails(rand, terrainTypes, t);
+			}
+		}
 
-				Dictionary<string, int> terrainCounts = new();
-				foreach (TerrainType tt in terrainTypes) {
-					terrainCounts.Add(tt.Key, 0);
+		// The tiles whose textures depend on `t`'s terrain: itself and the
+		// three below it, which look at their N, NW and NE neighbors.
+		public static IEnumerable<Tile> TilesShowing(Tile t) {
+			yield return t;
+			foreach (TileDirection dir in new[] { TileDirection.SOUTH, TileDirection.SOUTHWEST, TileDirection.SOUTHEAST }) {
+				if (t.neighbors.TryGetValue(dir, out Tile below) && below != Tile.NONE) {
+					yield return below;
 				}
+			}
+		}
 
-				// Count the terrain types of ourself and our neighbors. Flood
-				// plains use the desert graphics, so they count as desert here.
-				string[] neighbors = {
-					GetNeighborTerrain(t, TileDirection.NORTH),
-					GetNeighborTerrain(t, TileDirection.NORTHWEST),
-					GetNeighborTerrain(t, TileDirection.NORTHEAST),
-					TextureTerrainKey(t),
-				};
-				foreach (string s in neighbors) {
-					terrainCounts[s] += 1;
+		// Assigns the texture file and index to one tile, from its terrain and
+		// its N, NW and NE neighbors'. Throws for a mix of terrains Civ3 has no
+		// texture for (tundra next to desert or plains).
+		public static void AssignTextureDetails(Random rand, List<TerrainType> terrainTypes, Tile t) {
+			t.ExtraInfo = new();
+
+			Dictionary<string, int> terrainCounts = new();
+			foreach (TerrainType tt in terrainTypes) {
+				terrainCounts.Add(tt.Key, 0);
+			}
+
+			// Count the terrain types of ourself and our neighbors. Flood
+			// plains use the desert graphics, so they count as desert here.
+			string[] neighbors = {
+				GetNeighborTerrain(t, TileDirection.NORTH),
+				GetNeighborTerrain(t, TileDirection.NORTHWEST),
+				GetNeighborTerrain(t, TileDirection.NORTHEAST),
+				TextureTerrainKey(t),
+			};
+			foreach (string s in neighbors) {
+				terrainCounts[s] += 1;
+			}
+
+			// Count the land and water neighbors.
+			int waterNeighbors = terrainCounts["ocean"] + terrainCounts["sea"] + terrainCounts["coast"];
+			int uniqueNeighbors = 0;
+			foreach (var (key, value) in terrainCounts) {
+				if (value > 0) {
+					++uniqueNeighbors;
 				}
+			}
 
-				// Count the land and water neighbors.
-				int waterNeighbors = terrainCounts["ocean"] + terrainCounts["sea"] + terrainCounts["coast"];
-				int uniqueNeighbors = 0;
-				foreach (var (key, value) in terrainCounts) {
-					if (value > 0) {
-						++uniqueNeighbors;
-					}
-				}
-
-				if (waterNeighbors == 4) {
-					if (terrainCounts["ocean"] == 4) {
-						// All ocean, so use the ocean file with a random texture.
-						t.ExtraInfo.BaseTerrainFileID = (int)TextureFile.wOOO;
-						t.ExtraInfo.BaseTerrainImageID = rand.Next(81);
-					} else if (terrainCounts["sea"] == 4) {
-						// All sea, so use the ocean file with a random texture.
-						t.ExtraInfo.BaseTerrainFileID = (int)TextureFile.wSSS;
-						t.ExtraInfo.BaseTerrainImageID = rand.Next(81);
-					} else {
-						SetExtraInfo(t, neighbors, TextureFile.wCSO);
-					}
-				} else if (terrainCounts["tundra"] > 0) {
-					// Fun fact - tundra can only border grassland and coast, so
-					// this is sufficient for all tundra cases.
-					SetExtraInfo(t, neighbors, TextureFile.xtgc);
-				} else if (uniqueNeighbors >= 3) {
-					// 3 distinct types (must be combinations of D, P, G, C)
-					bool hasCoast = terrainCounts["coast"] > 0;
-					bool hasDesert = terrainCounts["desert"] > 0;
-					bool hasPlains = terrainCounts["plains"] > 0;
-					bool hasGrass = terrainCounts["grassland"] > 0;
-
-					if (!hasCoast) { // D/G/P only
-						SetExtraInfo(t, neighbors, TextureFile.xdgp);
-					} else if (!hasGrass) { // D/P/C
-						SetExtraInfo(t, neighbors, TextureFile.xdpc);
-					} else if (!hasDesert) { // P/G/C
-						SetExtraInfo(t, neighbors, TextureFile.xpgc);
-					} else { // D/G/C (Plains must be absent)
-						SetExtraInfo(t, neighbors, TextureFile.xdgc);
-					}
-				} else if (uniqueNeighbors == 2) {
-					// 2 distinct types (D/P, D/G, P/G, D/C, P/C, G/C)
-					bool hasDesert = terrainCounts["desert"] > 0;
-					bool hasPlains = terrainCounts["plains"] > 0;
-					bool hasGrass = terrainCounts["grassland"] > 0;
-					bool hasCoast = terrainCounts["coast"] > 0;
-
-					if (hasGrass && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xpgc);
-					else if (hasPlains && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xpgc);
-					else if (hasDesert && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xdpc);
-					else if (hasGrass && hasPlains) SetExtraInfo(t, neighbors, TextureFile.xpgc);
-					else if (hasGrass && hasDesert) SetExtraInfo(t, neighbors, TextureFile.xdgc);
-					else if (hasPlains && hasDesert) SetExtraInfo(t, neighbors, TextureFile.xdpc);
-					else {
-						throw new Exception($"Unexpected possibility: {hasDesert} {hasPlains} {hasGrass} {hasCoast} {string.Join(",", terrainCounts)}");
-					}
-				} else if (uniqueNeighbors == 1) {
-					if (terrainCounts["grassland"] > 0) SetExtraInfo(t, neighbors, TextureFile.xdgc);
-					else if (terrainCounts["plains"] > 0) SetExtraInfo(t, neighbors, TextureFile.xpgc);
-					else if (terrainCounts["desert"] > 0) SetExtraInfo(t, neighbors, TextureFile.xdgp);
-					else {
-						throw new Exception($"Unexpected possibility: {string.Join(",", terrainCounts)}");
-					}
+			if (waterNeighbors == 4) {
+				if (terrainCounts["ocean"] == 4) {
+					// All ocean, so use the ocean file with a random texture.
+					t.ExtraInfo.BaseTerrainFileID = (int)TextureFile.wOOO;
+					t.ExtraInfo.BaseTerrainImageID = rand.Next(81);
+				} else if (terrainCounts["sea"] == 4) {
+					// All sea, so use the ocean file with a random texture.
+					t.ExtraInfo.BaseTerrainFileID = (int)TextureFile.wSSS;
+					t.ExtraInfo.BaseTerrainImageID = rand.Next(81);
 				} else {
-					throw new Exception($"Weird number of unique neighbors: {uniqueNeighbors}");
+					SetExtraInfo(t, neighbors, TextureFile.wCSO);
 				}
+			} else if (terrainCounts["tundra"] > 0) {
+				// Fun fact - tundra can only border grassland and coast, so
+				// this is sufficient for all tundra cases.
+				SetExtraInfo(t, neighbors, TextureFile.xtgc);
+			} else if (uniqueNeighbors >= 3) {
+				// 3 distinct types (must be combinations of D, P, G, C)
+				bool hasCoast = terrainCounts["coast"] > 0;
+				bool hasDesert = terrainCounts["desert"] > 0;
+				bool hasPlains = terrainCounts["plains"] > 0;
+				bool hasGrass = terrainCounts["grassland"] > 0;
+
+				if (!hasCoast) { // D/G/P only
+					SetExtraInfo(t, neighbors, TextureFile.xdgp);
+				} else if (!hasGrass) { // D/P/C
+					SetExtraInfo(t, neighbors, TextureFile.xdpc);
+				} else if (!hasDesert) { // P/G/C
+					SetExtraInfo(t, neighbors, TextureFile.xpgc);
+				} else { // D/G/C (Plains must be absent)
+					SetExtraInfo(t, neighbors, TextureFile.xdgc);
+				}
+			} else if (uniqueNeighbors == 2) {
+				// 2 distinct types (D/P, D/G, P/G, D/C, P/C, G/C)
+				bool hasDesert = terrainCounts["desert"] > 0;
+				bool hasPlains = terrainCounts["plains"] > 0;
+				bool hasGrass = terrainCounts["grassland"] > 0;
+				bool hasCoast = terrainCounts["coast"] > 0;
+
+				if (hasGrass && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xpgc);
+				else if (hasPlains && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xpgc);
+				else if (hasDesert && hasCoast) SetExtraInfo(t, neighbors, TextureFile.xdpc);
+				else if (hasGrass && hasPlains) SetExtraInfo(t, neighbors, TextureFile.xpgc);
+				else if (hasGrass && hasDesert) SetExtraInfo(t, neighbors, TextureFile.xdgc);
+				else if (hasPlains && hasDesert) SetExtraInfo(t, neighbors, TextureFile.xdpc);
+				else {
+					throw new Exception($"Unexpected possibility: {hasDesert} {hasPlains} {hasGrass} {hasCoast} {string.Join(",", terrainCounts)}");
+				}
+			} else if (uniqueNeighbors == 1) {
+				if (terrainCounts["grassland"] > 0) SetExtraInfo(t, neighbors, TextureFile.xdgc);
+				else if (terrainCounts["plains"] > 0) SetExtraInfo(t, neighbors, TextureFile.xpgc);
+				else if (terrainCounts["desert"] > 0) SetExtraInfo(t, neighbors, TextureFile.xdgp);
+				else {
+					throw new Exception($"Unexpected possibility: {string.Join(",", terrainCounts)}");
+				}
+			} else {
+				throw new Exception($"Weird number of unique neighbors: {uniqueNeighbors}");
 			}
 		}
 

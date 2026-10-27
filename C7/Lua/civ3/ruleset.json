@@ -24,6 +24,7 @@
     },
     {
       "key": "plains",
+      "globalWarmingResult": "desert",
       "displayName": "Plains",
       "baseFoodProduction": 1,
       "baseShieldProduction": 1,
@@ -47,6 +48,7 @@
     },
     {
       "key": "grassland",
+      "globalWarmingResult": "plains",
       "displayName": "Grassland",
       "baseFoodProduction": 2,
       "baseShieldProduction": 0,
@@ -90,6 +92,9 @@
     },
     {
       "key": "flood plain",
+      "causesDisease": true,
+      "diseaseCuredByTech": true,
+      "diseaseStrength": 50,
       "displayName": "Flood Plain",
       "baseFoodProduction": 3,
       "baseShieldProduction": 0,
@@ -164,6 +169,7 @@
     },
     {
       "key": "forest",
+      "globalWarmingResult": "base",
       "displayName": "Forest",
       "baseFoodProduction": 1,
       "baseShieldProduction": 2,
@@ -194,6 +200,9 @@
     },
     {
       "key": "jungle",
+      "globalWarmingResult": "base",
+      "causesDisease": true,
+      "diseaseStrength": 50,
       "displayName": "Jungle",
       "baseFoodProduction": 1,
       "baseShieldProduction": 0,
@@ -227,6 +236,9 @@
     },
     {
       "key": "marsh",
+      "globalWarmingResult": "coast",
+      "causesDisease": true,
+      "diseaseStrength": 50,
       "displayName": "Marsh",
       "baseFoodProduction": 1,
       "baseShieldProduction": 0,
@@ -12427,6 +12439,27 @@
     "razedCitizensPerSlave": 2,
     "zoneOfControlDefenseFactor": 16,
     "zoneOfControlDamage": 1,
+    "meltdownChancePercent": 12,
+    "meltdownTurnsInDisorder": 2,
+    "cityDiseaseChancePerStrength": 10,
+    "unitDiseaseChancePerStrength": 2,
+    "volcanoEruptionPeriod": 5000,
+    "volcanoWarningPercent": 80,
+    "volcanoWarningTurns": 3,
+    "volcanoTileHitPercent": 50,
+    "globalWarmingThresholdPerThousandLandTiles": 20,
+    "globalWarmingChancePerExcessTile": 1,
+    "globalWarmingTilesChanged": 1,
+    "plague": {
+      "enabled": false,
+      "name": "Plague",
+      "earliestStartYear": -700,
+      "chancePercent": 5,
+      "durationYears": 100,
+      "strength": 80,
+      "graceYears": 1000,
+      "maxOutbreaks": 3
+    },
     "warWeariness": {
       "pointsPerLevel": 30,
       "declaredWarOn": -30,

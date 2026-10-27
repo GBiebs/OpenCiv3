@@ -94,6 +94,8 @@ namespace C7GameData {
 		public int draftedThatTurn = 0;
 
 		public bool isInCivilDisorder = false;
+		// How many turns running the city has been in civil disorder.
+		public int turnsInDisorder = 0;
 
 		// The turn this city was last captured, or -1, and who from. Its new
 		// owner may raze it only on that turn, as Civ3 offers right after the
