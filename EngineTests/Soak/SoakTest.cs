@@ -256,7 +256,10 @@ public class SoakTest {
 			+ $"{gameData.cities.Count(c => c.celebrating)} cities celebrating, {revolutions} revolutions, "
 			+ $"{gameData.players.Count(p => p.hadGoldenAge)} golden ages, "
 			+ $"{messages.OfType<MsgCityFlipped>().Count()} culture flips, "
-			+ $"{messages.OfType<MsgPollution>().Count()} times pollution struck ({gameData.map.tiles.Count(t => t.HasPollution())} tiles polluted now); governments: "
+			+ $"{messages.OfType<MsgPollution>().Count()} times pollution struck ({gameData.map.tiles.Count(t => t.HasPollution())} tiles polluted now), "
+			+ $"{messages.OfType<MsgGoodyHut>().Count()} goody huts found ("
+			+ string.Join(" ", messages.OfType<MsgGoodyHut>().GroupBy(m => m.outcome).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"))
+			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left); governments: "
 			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
 				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
