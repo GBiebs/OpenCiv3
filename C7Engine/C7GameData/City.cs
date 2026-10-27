@@ -478,12 +478,18 @@ namespace C7GameData {
 			}
 
 			if (CanGrowPopulationByOne(gameData)) {
-				CityResident newResident = new CityResident();
-				newResident.nationality = owner.civilization;
-				newResident.city = this;
-				newResident.citizenType = gameData.citizenTypes.Find(x => x.IsDefaultCitizen);
-				AddCitizen(newResident);
-				C7Engine.AI.CityTileAssignmentAI.AssignNewCitizenToTile(gameData, newResident);
+				// With Longevity, "a population increase of two instead of one",
+				// as far as the size limit allows.
+				int newCitizens = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.CityGrowthPlusTwoCitizens)) ? 2 : 1;
+				for (int i = 0; i < newCitizens && CanGrowPopulationByOne(gameData); ++i) {
+					CityResident newResident = new() {
+						nationality = owner.civilization,
+						city = this,
+						citizenType = gameData.citizenTypes.Find(x => x.IsDefaultCitizen),
+					};
+					AddCitizen(newResident);
+					C7Engine.AI.CityTileAssignmentAI.AssignNewCitizenToTile(gameData, newResident);
+				}
 
 				if (hasGranary) {
 					foodStored /= 2;

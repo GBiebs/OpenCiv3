@@ -126,4 +126,33 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture> {
 		CityInteractions.BuildCity(site, us, "Trading").AddBuilding(Building("Smith's Trading Company"), gameData);
 		Assert.Equal(upkeep - tradeUpkeep, city.MaintenanceCostsRaw());
 	}
+
+	// A full food box: overfilled, since it's capped at full after the turn's
+	// food (which may be short) goes in.
+	private void GrowOnce() {
+		city.foodStored = city.FoodNeededToGrow() + 1000;
+		city.HandleCityGrowth(gameData);
+	}
+
+	// "All cities get a population increase of two instead of one when the
+	// Food Storage box is full", up to the size limit.
+	[Fact]
+	public void LongevityGrowsCitiesByTwo() {
+		GrowOnce();
+		Assert.Equal(2, city.residents.Count);
+
+		Tile site = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity()
+			&& gameData.cities.All(c => c.location.DistanceTo(t) > 3));
+		CityInteractions.BuildCity(site, us, "Old Age").AddBuilding(Building("Longevity"), gameData);
+		GrowOnce();
+		Assert.Equal(4, city.residents.Count);
+
+		int limit = city.SizeLimit(gameData);
+		CitizenType laborer = gameData.citizenTypes.Find(c => c.IsDefaultCitizen);
+		while (city.residents.Count < limit - 1) {
+			city.AddCitizen(new CityResident { city = city, nationality = us.civilization, citizenType = laborer });
+		}
+		GrowOnce();
+		Assert.Equal(limit, city.residents.Count);
+	}
 }
