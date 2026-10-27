@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using C7Engine;
 using C7GameData;
+using C7GameData.Save;
 using EngineTests.Utils;
+using QueryCiv3;
 using Xunit;
 
 namespace EngineTests.GameData;
@@ -119,6 +122,31 @@ public class PollutionTest : IClassFixture<SaveGameFixture>, IDisposable {
 		ClearDamage.OnComplete(us, tile);
 		Assert.False(tile.HasPollution());
 		Assert.False(ClearDamage.MeetsRequirements(us, tile));
+	}
+
+	// The Worker has the job, so it's offered (and the AI's workers, which
+	// choose among what the unit can do, take it).
+	[Fact]
+	public void AWorkerOnAPollutedTileCanClearIt() {
+		Tile tile = Pollution.TilesAtRisk(city, gameData).First();
+		MapUnit worker = gameData.SpawnUnit(us, gameData.unitPrototypes.Find(u => u.name == "Worker"), tile);
+		Assert.DoesNotContain(ClearDamage, worker.GetAvailableTerraforms());
+		tile.overlays.Add(gameData.terrainImprovements.Find(i => i.key == Tile.TileOverlays.POLLUTION));
+		Assert.Contains(ClearDamage, worker.GetAvailableTerraforms());
+	}
+
+	// Civ3's units with the "clean pollution" ability get it from the BIQ.
+	[SkippableFact]
+	public void Civ3sWorkersCanClearDamage() {
+		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), "No Civ3 install found.");
+		// A random-map Civ3 game with the stock rules (the save tests download it).
+		string file = Path.Combine(PathUtils.getDataPath("saves"), "12345.SAV");
+		Skip.If(!File.Exists(file), "The sample save isn't downloaded.");
+		SaveGame save = ImportCiv3.ImportSav(file, PathUtils.defaultBicPath,
+			_ => PathUtils.defaultPediaIconsPath, _ => PathUtils.defaultCivilopediaTextPath);
+		ID clearDamage = save.TerraForms.Find(t => t.Name == "Clear Damage").Id;
+		List<string> cleaners = save.UnitPrototypes.Where(u => u.terraformActions.Contains(clearDamage)).Select(u => u.name).ToList();
+		Assert.Equal(["Worker"], cleaners);
 	}
 
 	[Fact]

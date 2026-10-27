@@ -1440,6 +1440,9 @@ namespace C7GameData {
 			if (prto.ClearForest) yield return TerraformKey.ClearForest;
 			if (prto.BuildBarricade) yield return TerraformKey.BuildBarricade;
 			if (prto.BuildFortress) yield return TerraformKey.BuildFortress;
+			// Civ3's "clean pollution". (Plant Forest has no effect yet, so
+			// it's left out.)
+			if (prto.ClearPollution) yield return TerraformKey.ClearDamage;
 		}
 
 		private static bool IsUnproducible(PRTO prto) {
