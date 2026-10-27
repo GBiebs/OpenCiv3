@@ -258,4 +258,34 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains(tech.id, owner.knownTechs);
 		Assert.Contains(EngineStorage.messagesToUI.OfType<MsgTechsFromWonder>(), m => m.playerId == owner.id);
 	}
+
+	private void Finish(City where, string name) {
+		where.SetItemBeingProduced(Building(name));
+		where.SetStoredShields(where.owner.ShieldCost(where.itemBeingProduced));
+		where.HandleCityProduction(gameData);
+		Assert.Contains(where.constructed_buildings, cb => cb.building.name == name);
+	}
+
+	// "Grants two Civilization Advances as soon as completed": the computer
+	// takes them at once, a human chooses.
+	[Fact]
+	public void TheTheoryOfEvolutionGivesTwoAdvances() {
+		int known = us.knownTechs.Count;
+		Finish(city, "Theory of Evolution");
+		Assert.Equal(known + 2, us.knownTechs.Count);
+		Assert.Equal(0, us.freeTechsRemaining);
+
+		Player human = gameData.players.First(p => !p.isBarbarians && p != us);
+		human.isHuman = true;
+		Tile site = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity()
+			&& gameData.cities.All(c => c.location.DistanceTo(t) > 3));
+		City theirs = CityInteractions.BuildCity(site, human, "Galapagos");
+		gameData.GreatWondersBuilt.Remove("Theory of Evolution");
+		Finish(theirs, "Theory of Evolution");
+		Assert.Equal(2, human.freeTechsRemaining);
+
+		// Other buildings give none.
+		Finish(city, "Temple");
+		Assert.Equal(known + 2, us.knownTechs.Count);
+	}
 }

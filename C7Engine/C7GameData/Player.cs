@@ -1088,6 +1088,15 @@ namespace C7GameData {
 			return true;
 		}
 
+		// Free advances to choose: the AI takes them at once, a human picks
+		// them from the science advisor.
+		public void GrantFreeTechs(GameData gameData, int count) {
+			freeTechsRemaining += count;
+			if (!isHuman) {
+				PlayerAI.MaybePickTechToResearch(this, gameData.techs);
+			}
+		}
+
 		private void CompleteResearchingTech(GameData gameData, Tech tech) {
 			GrantTech(gameData, tech);
 

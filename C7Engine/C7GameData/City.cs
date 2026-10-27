@@ -419,6 +419,12 @@ namespace C7GameData {
 			} else if (producedItem is Building building) {
 				AddBuilding(building, gameData);
 
+				// The Theory of Evolution "grants two Civilization Advances as
+				// soon as completed".
+				if (building.HasWonderFlag(SaveBuilding.WonderFlag.TwoFreeAdvances)) {
+					owner.GrantFreeTechs(gameData, 2);
+				}
+
 				// If we completed a great wonder, mark it as completed so no
 				// other civ can build it. If any other cities are building the
 				// wonder then change production to the most expensive option,
