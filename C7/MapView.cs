@@ -462,15 +462,23 @@ public partial class GridLayer : LooseLayer {
 
 public partial class BuildingLayer : LooseLayer {
 	private ImageTexture barbCamp;
+	private ImageTexture[] goodyHuts;
 
 	public BuildingLayer() {
 		barbCamp = TextureLoader.Load("terrain.barbarian_camp");
+		goodyHuts = Enumerable.Range(1, 8).Select(i => TextureLoader.Load($"terrain.goody_hut.v{i}")).ToArray();
 	}
 
 	public override void drawObject(LooseView looseView, GameData gameData, Tile tile, Vector2 tileCenter) {
 		if (tile.hasBarbarianCamp) {
 			Rect2 screenRect = new(tileCenter - 0.5f * barbCamp.GetSize(), barbCamp.GetSize());
 			looseView.DrawTextureRect(barbCamp, screenRect, tile: false);
+		}
+		if (tile.hasGoodyHut) {
+			// Each village keeps its own drawing.
+			ImageTexture hut = goodyHuts[(tile.XCoordinate * 7 + tile.YCoordinate * 13) % goodyHuts.Length];
+			Rect2 screenRect = new(tileCenter - 0.5f * hut.GetSize(), hut.GetSize());
+			looseView.DrawTextureRect(hut, screenRect, tile: false);
 		}
 	}
 }

@@ -71,6 +71,16 @@ terrain.barbarian_camp = {
   shadows = false,
 }
 
+-- Goody huts: eight village drawings, v1 to v8, in a 3x3 sheet of 128x64.
+terrain.goody_hut = {}
+for i = 0, 7 do
+  terrain.goody_hut["v" .. (i + 1)] = {
+    path = TERRAIN .. "goodyhuts.pcx",
+    crop_region = { (i % 3) * 128, math.floor(i / 3) * 64, 128, 64 },
+    shadows = false,
+  }
+end
+
 terrain.marsh = {
   large = {
     path = TERRAIN .. "marsh.pcx",

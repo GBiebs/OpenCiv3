@@ -135,7 +135,8 @@ namespace C7Engine {
 			// Previously step 10
 			AddBarbarianCamps(wc, gameMap);
 
-			// TODO: Goody huts, barbarian camps.
+			// Step 12: Add goody huts, after the camps so they keep clear of them.
+			AddGoodyHuts(wc, gameMap);
 
 			// Last step: Assign the terrain file and image ids to each tile so
 			// we know which texture to use when displaying them.
@@ -1350,6 +1351,34 @@ namespace C7Engine {
 			}
 
 			return result;
+		}
+
+		// Civ3's maps at the start of the game (the user's turn-0 saves) have a
+		// goody hut per 48-69 land tiles, on any land terrain but never on a
+		// resource, never closer than 4 tiles to another, and some as near as
+		// one tile to a starting unit.
+		public const int LandTilesPerGoodyHut = 55;
+		public const int GoodyHutSpacing = 4;
+
+		private static void AddGoodyHuts(WorldCharacteristics wc, GameMap m) {
+			Random rand = new(wc.mapSeed + 0x600d);
+			List<int> tileIndicies = Enumerable.Range(0, m.tiles.Count).ToList();
+			rand.Shuffle<int>(CollectionsMarshal.AsSpan(tileIndicies));
+
+			int wanted = m.tiles.Count(t => t.IsLand()) / LandTilesPerGoodyHut;
+			List<Tile> huts = [];
+			for (int i = 0; i < tileIndicies.Count && huts.Count < wanted; ++i) {
+				Tile t = m.tiles[tileIndicies[i]];
+				if (!t.IsLand() || t == Tile.NONE || t.overlayTerrainType.Key == "volcano"
+					|| (t.Resource != null && t.Resource != Resource.NONE) || t.hasBarbarianCamp
+					|| m.startingLocations.Contains(t)
+					|| huts.Any(h => h.DistanceTo(t) < GoodyHutSpacing)
+					|| m.barbarianCamps.Any(c => c.DistanceTo(t) < GoodyHutSpacing)) {
+					continue;
+				}
+				t.hasGoodyHut = true;
+				huts.Add(t);
+			}
 		}
 
 		private static void AddBarbarianCamps(WorldCharacteristics wc, GameMap m) {
