@@ -259,6 +259,11 @@ public class SoakTest {
 			+ $"{gameData.players.Count(p => p.hadGoldenAge)} golden ages, "
 			+ $"{messages.OfType<MsgCityFlipped>().Count()} culture flips, "
 			+ $"{messages.OfType<MsgPollution>().Count()} times pollution struck ({gameData.map.tiles.Count(t => t.HasPollution())} tiles polluted now), "
+			+ $"{messages.OfType<MsgMeltdown>().Count()} meltdowns, "
+			+ $"{messages.OfType<MsgDisease>().Count(m => m.city != null)} citizens and {messages.OfType<MsgDisease>().Count(m => m.unit != null)} units dead of disease, "
+			+ $"{messages.OfType<MsgVolcano>().Where(m => m.what == MsgVolcano.Event.Erupted).Select(m => m.tile).Distinct().Count()} volcanoes erupted, "
+			+ $"{messages.OfType<MsgGlobalWarming>().Count()} tiles changed by global warming, "
+			+ $"{messages.OfType<MsgPlague>().Count()} plague strikes, "
 			+ $"{messages.OfType<MsgGoodyHut>().Count()} goody huts found ("
 			+ string.Join(" ", messages.OfType<MsgGoodyHut>().GroupBy(m => m.outcome).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"))
 			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left); governments: "
