@@ -187,6 +187,21 @@ public class PeaceTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	[Fact]
+	public void AnAllyMakesNoSeparatePeaceUnlessLosing() {
+		Player ally = gameData.players.First(p => !p.isHuman && !p.isBarbarians && p != us && p != them);
+		ally.EnsureRelationshipExists(us);
+		PlayerRelationship.RegisterMultiTurnDeal(us, ally, new MultiTurnDeal(DealType.Alliance, DealSubType.MilitaryAlliance,
+			DealDetails.Exchange, 0, null, 20, gameData.turn, them.id));
+		gameData.turn = 10 + PeaceAI.MinimumWarTurns;
+		Assert.Null(PeaceAI.PeaceValue(gameData, us, them));
+		Ours.warWearinessPoints = PeaceAI.WearyLevel * WarWeariness.RulesFor(us).pointsPerLevel + 1;
+		Assert.Null(PeaceAI.PeaceValue(gameData, us, them));
+		Ours.warLosses = 100;
+		us.gold = 1000;
+		Assert.Equal(100, PeaceAI.PeaceValue(gameData, us, them));
+	}
+
+	[Fact]
 	public void TwoAIsInAnEvenWarMakePeace() {
 		gameData.turn = 10 + PeaceAI.MinimumWarTurns - 1;
 		PeaceAI.OfferPeace(us, gameData).Wait();
