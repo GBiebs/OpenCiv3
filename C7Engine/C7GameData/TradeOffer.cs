@@ -10,6 +10,9 @@ namespace C7GameData {
 
 		public int? gold = null;
 		public List<Tech> techs = new();
+		// Agreements both sign (they're on both sides' offers). See
+		// Agreements.
+		public List<Agreement> agreements = new();
 
 		// Calculate how much this trade offer is worth for a given player. This
 		// has to be per-player because tech costs vary based on how many civs
@@ -26,15 +29,21 @@ namespace C7GameData {
 			return result;
 		}
 
-		// Nothing given (peace aside).
+		// Nothing given.
 		public bool IsEmpty() {
-			return !partOfPeaceTreaty && (gold ?? 0) == 0 && techs.Count == 0;
+			return !partOfPeaceTreaty && (gold ?? 0) == 0 && techs.Count == 0 && agreements.Count == 0;
+		}
+
+		// Gives only gold and advances.
+		public bool OnlyGoods() {
+			return !partOfPeaceTreaty && agreements.Count == 0;
 		}
 
 		public void Clear() {
 			partOfPeaceTreaty = false;
 			gold = null;
 			techs.Clear();
+			agreements.Clear();
 		}
 
 		public string ToString() {
@@ -47,6 +56,9 @@ namespace C7GameData {
 			}
 			foreach (Tech t in techs) {
 				pieces.Add(t.Name);
+			}
+			foreach (Agreement a in agreements) {
+				pieces.Add(a.against == null ? $"{a.type}" : $"{a.type} vs {a.against}");
 			}
 			return string.Join(",", pieces);
 		}

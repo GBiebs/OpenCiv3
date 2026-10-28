@@ -52,8 +52,9 @@ public class PlayerRelationship {
 	public int? lastTradeTurn = null;
 
 	// p2's reputation with p1: the deals p2 broke with p1 (Civ3's LEAD_LEAD
-	// "cancelled deal").
+	// "cancelled deal"), and the alliances (see Agreements).
 	public int brokenDeals = 0;
+	public int brokenAlliances = 0;
 
 	// The war p1 is fighting with p2: the turn it began (null if it began
 	// before records were kept), and the shields' worth p1 has destroyed or
@@ -62,8 +63,10 @@ public class PlayerRelationship {
 	public int warGains = 0;
 	public int warLosses = 0;
 
-	// The turn p1 last offered p2 peace (the AI doesn't ask every turn).
+	// The turns p1 last offered p2 peace, and an agreement (the AI doesn't
+	// ask every turn).
 	public int? lastPeaceOfferTurn = null;
+	public int? lastAgreementOfferTurn = null;
 
 	public bool declaredWarWithActiveRightOfPassage = false;
 
@@ -189,6 +192,7 @@ public class PlayerRelationship {
 		left.playerRelationships[right.id].refuseContactUntilTurn = -1;
 		right.playerRelationships[left.id].refuseContactUntilTurn = -1;
 		WarRecord.OnPeace(left, right);
+		Agreements.OnPeace(gameData, left, right);
 
 		// With the war over, both rethink their plans.
 		left.turnsUntilPriorityReevaluation = 0;
@@ -260,8 +264,9 @@ public class PlayerRelationship {
 					.Where(mtd => mtd != null
 							  && mtd.dealSubType != DealSubType.Peace
 							  && mtd.TurnsRemaining(currentTurn) <= 0)
-					.Where(mtd => mtd.dealSubType != DealSubType.MutualProtectionPact
-								   && !EngineStorage.gameData.AreInLockedPeace(player, other))
+					// A locked alliance's pact lasts.
+					.Where(mtd => !(mtd.dealSubType == DealSubType.MutualProtectionPact
+								   && EngineStorage.gameData.AreInLockedPeace(player, other)))
 					.ToList();
 
 				foreach (MultiTurnDeal deadDeal in deadDeals) {

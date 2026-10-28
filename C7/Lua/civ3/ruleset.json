@@ -12541,6 +12541,8 @@
       "brokeRightOfPassageWithUnitsInsideWithFriend": 2,
       "razedOurCity": 12,
       "razedFriendsCity": 1,
+      "brokeAlliance": 12,
+      "brokeAllianceWithFriend": 2,
       "tookOurFlippedCity": 1,
       "refusedOurFlippedCity": -1
     },

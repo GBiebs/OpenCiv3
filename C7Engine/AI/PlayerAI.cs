@@ -39,6 +39,7 @@ namespace C7Engine {
 			GovernmentAI.ManageGovernment(player, gameData);
 
 			await PeaceAI.OfferPeace(player, gameData);
+			await AgreementAI.ProposeAgreements(player, gameData);
 
 			// Roughly every 4 turns, see if there are trades to be made.
 			if (GameData.rng.Next(100) < 25) {

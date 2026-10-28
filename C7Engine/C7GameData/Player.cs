@@ -480,6 +480,9 @@ namespace C7GameData {
 			// Whenever war is declared, re-evaluate priorities.
 			turnsUntilPriorityReevaluation = 0;
 			other.turnsUntilPriorityReevaluation = 0;
+
+			// The defender's pact partners come to its aid.
+			Agreements.OnWarDeclared(EngineStorage.gameData, this, other);
 		}
 
 		private bool IsASneakAttackOn(Player other) {
@@ -654,8 +657,21 @@ namespace C7GameData {
 					return false;
 				}
 				theirGoldValue += peace;
+			} else if (Agreements.Embargoed(this, other)) {
+				// We've agreed not to trade with them, or they with us.
+				return false;
+			}
+			if (!AgreementsIn(theirOffer, ourOffer).All(a => AgreementAI.WouldSign(gameData, this, other, a))) {
+				return false;
 			}
 			return theirGoldValue >= ourGoldValue;
+		}
+
+		// The agreements in a deal (each is on both sides' offers).
+		public static List<Agreement> AgreementsIn(TradeOffer one, TradeOffer other) {
+			List<Agreement> result = new(one.agreements);
+			result.AddRange(other.agreements.Where(a => !result.Any(b => b.SameAs(a))));
+			return result;
 		}
 
 		public void ExecuteDeal(GameData gameData, Player other, TradeOffer theirOffer, TradeOffer ourOffer) {
@@ -677,6 +693,9 @@ namespace C7GameData {
 
 			other.AcquireTechs(gameData, ourOffer.techs);
 			this.AcquireTechs(gameData, theirOffer.techs);
+			foreach (Agreement agreement in AgreementsIn(theirOffer, ourOffer)) {
+				Agreements.Sign(gameData, this, other, agreement);
+			}
 			Attitude.OnDeal(gameData, this, other, ourOffer, theirOffer);
 		}
 

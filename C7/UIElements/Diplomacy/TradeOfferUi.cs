@@ -10,12 +10,14 @@ public partial class TradeOfferUi : Tree {
 	TreeItem peaceTreaty;
 	TreeItem lumpSumGold;
 	List<TreeItem> techs = new();
+	Dictionary<TreeItem, Agreement> agreementItems = new();
 	TradeOffer currentOffer;
 	List<Tech> tradeableTechs;
 	int playerGold;
 
 	public TradeOfferUi(Theme fontTheme, List<Tech> tradeableTechs, int playerGold,
 						TradeOffer currentOffer, bool requiresPeaceTreaty,
+						List<(Agreement agreement, string text)> agreements,
 						HorizontalAlignment alignment) {
 		this.currentOffer = currentOffer;
 		this.tradeableTechs = tradeableTechs;
@@ -37,6 +39,13 @@ public partial class TradeOfferUi : Tree {
 		// Add tree items for all the possible things that could be traded - we
 		// determine whether they're visible based on the current offer in
 		// RefreshUiForOffer.
+		foreach ((Agreement agreement, string text) in agreements) {
+			TreeItem item = this.CreateItem(root);
+			item.SetTextAlignment(0, alignment);
+			item.SetText(0, text);
+			agreementItems[item] = agreement;
+		}
+
 		lumpSumGold = this.CreateItem(root);
 		lumpSumGold.SetTextAlignment(0, alignment);
 
@@ -62,6 +71,12 @@ public partial class TradeOfferUi : Tree {
 			}
 			if (ti == lumpSumGold && mouseButtonIndex != 2) {
 				currentOffer.gold = null;
+			}
+
+			// An agreement comes off both sides of the table.
+			if (agreementItems.TryGetValue(ti, out Agreement agreement)) {
+				currentOffer.agreements.RemoveAll(a => a.SameAs(agreement));
+				other.currentOffer.agreements.RemoveAll(a => a.SameAs(agreement));
 			}
 
 			// Allow right clicking the gold amount to change it.
@@ -122,6 +137,10 @@ public partial class TradeOfferUi : Tree {
 
 		if (peaceTreaty != null) {
 			peaceTreaty.Visible = currentOffer.partOfPeaceTreaty;
+		}
+
+		foreach ((TreeItem ti, Agreement agreement) in agreementItems) {
+			ti.Visible = currentOffer.agreements.Any(a => a.SameAs(agreement));
 		}
 	}
 }

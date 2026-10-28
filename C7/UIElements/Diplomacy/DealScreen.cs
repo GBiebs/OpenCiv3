@@ -3,6 +3,7 @@ using C7Engine.AI;
 using C7GameData;
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using static C7GameData.PlayerRelationship;
 
 // At a high level the deal screen has 4 parts; 2 "TradingTree"s per player, and
@@ -84,9 +85,14 @@ public partial class DealScreen : TextureRect {
 				return humanPlayer.knownTechs.Contains(x.id) && !opponentPlayer.knownTechs.Contains(x.id);
 			});
 
+			// The agreements we could sign, and any the opponent proposes.
+			List<Agreement> possible = Agreements.Available(gD, humanPlayer, opponentPlayer);
+			possible.AddRange(Player.AgreementsIn(humanOffer, opponentOffer).Where(a => !possible.Any(p => p.SameAs(a))));
+			List<(Agreement, string)> agreements = possible.Select(a => (a, a.Describe(gD))).ToList();
+
 			// Left hand side UI components.
 			opponentTree = new TradingTree(fontTheme, opponentPlayer.gold, techsOpponentCanTrade, opponentOffer,
-				playersAtWar);
+				playersAtWar, agreements);
 			AddChild(opponentTree);
 			opponentTree.Position = new Vector2(45, 220);
 
@@ -97,12 +103,12 @@ public partial class DealScreen : TextureRect {
 			AddChild(weWant);
 
 			opponentOfferUi = new(fontTheme, techsOpponentCanTrade, opponentPlayer.gold, opponentOffer, playersAtWar,
-				HorizontalAlignment.Left);
+				agreements, HorizontalAlignment.Left);
 			AddChild(opponentOfferUi);
 			opponentOfferUi.Position = new Vector2(314, 453);
 
 			// Right hand side UI components.
-			humanTree = new TradingTree(fontTheme, humanPlayer.gold, techsHumanCanTrade, humanOffer, playersAtWar);
+			humanTree = new TradingTree(fontTheme, humanPlayer.gold, techsHumanCanTrade, humanOffer, playersAtWar, agreements);
 			AddChild(humanTree);
 			humanTree.Position = new Vector2(789, 220);
 
@@ -113,7 +119,7 @@ public partial class DealScreen : TextureRect {
 			AddChild(weOffer);
 
 			humanOfferUi = new(fontTheme, techsHumanCanTrade, humanPlayer.gold, humanOffer, playersAtWar,
-				HorizontalAlignment.Right);
+				agreements, HorizontalAlignment.Right);
 			AddChild(humanOfferUi);
 			humanOfferUi.Position = new Vector2(527, 453);
 
@@ -160,9 +166,11 @@ public partial class DealScreen : TextureRect {
 
 			// And the text from the opponent, if they reject a deal.
 			opponentResponse = new();
-			// An offer of peace from the AI comes with its terms.
+			// An offer of peace or an agreement from the AI comes with its terms.
 			opponentResponse.Text = opponentOffer.partOfPeaceTreaty
 				? "\"This war is pointless for both of us. Will you accept these terms?\""
+				: opponentOffer.agreements.Count > 0
+				? $"\"Will you agree to this {opponentOffer.agreements[0].Describe(gD)}?\""
 				: "\"Let's get down to business...\"";
 			opponentResponse.SetPosition(new Vector2(512 - 205, 345));
 			opponentResponse.Theme = fontTheme;
@@ -185,6 +193,10 @@ public partial class DealScreen : TextureRect {
 				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId);
 			} else if (humanOffer.partOfPeaceTreaty && PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) is null) {
 				opponentResponse.Text = "\"Not likely! This war shall go on.\"";
+			} else if (!humanOffer.partOfPeaceTreaty && Agreements.Embargoed(opponentPlayer, humanPlayer)) {
+				opponentResponse.Text = "\"We have agreed not to trade with you.\"";
+			} else if (Player.AgreementsIn(humanOffer, opponentOffer).Any(a => !AgreementAI.WouldSign(gD, opponentPlayer, humanPlayer, a))) {
+				opponentResponse.Text = "\"We cannot agree to that at this time.\"";
 			} else {
 				opponentResponse.Text = "\"That is not enough.\"";
 			}

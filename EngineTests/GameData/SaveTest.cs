@@ -143,6 +143,14 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgVictory mV:
 						continue;
+					case MsgPeaceTreatySigned mPTS:
+						continue;
+					case MsgEmbassyEstablished mEE:
+						continue;
+					// An AI's offer to the human: turned down.
+					case MsgShowTradeOffer mSTO:
+						new MsgDiplomacyCompleted().send();
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

@@ -13,6 +13,10 @@ public partial class TradingTree : Tree {
 	List<TreeItem> techItems = new();
 	TreeItem diplomacyHeader;
 	TreeItem peaceTreaty;
+	TreeItem allianceHeader;
+	TreeItem embargoHeader;
+	// The agreements on offer, by their item.
+	Dictionary<TreeItem, Agreement> agreementItems = new();
 
 	List<Tech> tradeableTechs;
 	TradeOffer currentOffer;
@@ -21,7 +25,8 @@ public partial class TradingTree : Tree {
 	public TradingTree(Theme fontTheme,
 						int playerGold,
 						List<Tech> tradeableTechs,
-						TradeOffer currentOffer, bool requiresPeaceTreaty) {
+						TradeOffer currentOffer, bool requiresPeaceTreaty,
+						List<(Agreement agreement, string text)> agreements) {
 		this.tradeableTechs = tradeableTechs;
 		this.currentOffer = currentOffer;
 		this.playerGold = playerGold;
@@ -33,16 +38,22 @@ public partial class TradingTree : Tree {
 		// Match the size of the texture used in the deal screen.
 		this.Size = new Vector2(190, 400);
 
-		if (requiresPeaceTreaty) {
+		// Civ3's headings.
+		List<(Agreement agreement, string text)> treaties = agreements
+			.Where(a => a.agreement.type is DealSubType.RightOfPassage or DealSubType.MutualProtectionPact).ToList();
+		if (requiresPeaceTreaty || treaties.Count > 0) {
 			diplomacyHeader = this.CreateItem(root);
 			diplomacyHeader.SetText(0, "Diplomatic Agreements");
-			diplomacyHeader.Collapsed = false;
+			diplomacyHeader.Collapsed = !requiresPeaceTreaty;
 
-			peaceTreaty = this.CreateItem(diplomacyHeader);
-			peaceTreaty.SetText(0, "Peace Treaty");
-
-			// TODO: right of passage, mutual protection pacts, ect.
+			if (requiresPeaceTreaty) {
+				peaceTreaty = this.CreateItem(diplomacyHeader);
+				peaceTreaty.SetText(0, "Peace Treaty");
+			}
+			AddAgreements(diplomacyHeader, treaties);
 		}
+		allianceHeader = AddAgreementHeader(root, "Military Alliances", agreements, DealSubType.MilitaryAlliance);
+		embargoHeader = AddAgreementHeader(root, "Trade Embargos", agreements, DealSubType.TradeEmbargo);
 
 		// Gold
 		{
@@ -71,6 +82,26 @@ public partial class TradingTree : Tree {
 		RefreshUiForOffer();
 	}
 
+	private TreeItem AddAgreementHeader(TreeItem root, string text, List<(Agreement agreement, string text)> agreements, DealSubType type) {
+		List<(Agreement agreement, string text)> ofType = agreements.Where(a => a.agreement.type == type).ToList();
+		if (ofType.Count == 0) {
+			return null;
+		}
+		TreeItem header = this.CreateItem(root);
+		header.SetText(0, text);
+		header.Collapsed = true;
+		AddAgreements(header, ofType);
+		return header;
+	}
+
+	private void AddAgreements(TreeItem header, List<(Agreement agreement, string text)> agreements) {
+		foreach ((Agreement agreement, string text) in agreements) {
+			TreeItem item = this.CreateItem(header);
+			item.SetText(0, text);
+			agreementItems[item] = agreement;
+		}
+	}
+
 	public void HandleClicks(TradingTree other, Action offerUpdated) {
 		this.ItemSelected += () => {
 			TreeItem ti = this.GetSelected();
@@ -88,6 +119,21 @@ public partial class TradingTree : Tree {
 			}
 			if (ti == diplomacyHeader && other.diplomacyHeader != null) {
 				other.diplomacyHeader.Collapsed = diplomacyHeader.Collapsed;
+			}
+			if (ti == allianceHeader && other.allianceHeader != null) {
+				other.allianceHeader.Collapsed = allianceHeader.Collapsed;
+			}
+			if (ti == embargoHeader && other.embargoHeader != null) {
+				other.embargoHeader.Collapsed = embargoHeader.Collapsed;
+			}
+
+			// An agreement goes on both sides of the table.
+			if (agreementItems.TryGetValue(ti, out Agreement agreement)) {
+				foreach (TradeOffer offer in new[] { currentOffer, other.currentOffer }) {
+					if (!offer.agreements.Any(a => a.SameAs(agreement))) {
+						offer.agreements.Add(agreement);
+					}
+				}
 			}
 
 			// Handle techs being clicked on.
@@ -154,6 +200,10 @@ public partial class TradingTree : Tree {
 
 			foreach (TreeItem ti in techItems) {
 				ti.Visible = !currentOffer.techs.Any(x => x.Name == ti.GetText(0));
+			}
+
+			foreach ((TreeItem ti, Agreement agreement) in agreementItems) {
+				ti.Visible = !currentOffer.agreements.Any(a => a.SameAs(agreement));
 			}
 
 			if (peaceTreaty != null) {

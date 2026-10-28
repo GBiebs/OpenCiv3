@@ -350,6 +350,10 @@ namespace C7GameData {
 		public int brokeRightOfPassageWithUnitsInsideWithFriend = 2;
 		public int razedOurCity = 12;
 		public int razedFriendsCity = 1;
+		// Made peace with the civ we were allied against, before the
+		// alliance ended.
+		public int brokeAlliance = 12;
+		public int brokeAllianceWithFriend = 2;
 		// One of our cities flipped to them and they took it, or refused it.
 		public int tookOurFlippedCity = 1;
 		public int refusedOurFlippedCity = -1;
