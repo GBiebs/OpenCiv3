@@ -1,4 +1,5 @@
 using C7Engine;
+using C7Engine.AI;
 using C7GameData;
 using Godot;
 using System.Collections.Generic;
@@ -159,7 +160,10 @@ public partial class DealScreen : TextureRect {
 
 			// And the text from the opponent, if they reject a deal.
 			opponentResponse = new();
-			opponentResponse.Text = "\"Let's get down to business...\"";
+			// An offer of peace from the AI comes with its terms.
+			opponentResponse.Text = opponentOffer.partOfPeaceTreaty
+				? "\"This war is pointless for both of us. Will you accept these terms?\""
+				: "\"Let's get down to business...\"";
 			opponentResponse.SetPosition(new Vector2(512 - 205, 345));
 			opponentResponse.Theme = fontTheme;
 			AddChild(opponentResponse);
@@ -179,6 +183,10 @@ public partial class DealScreen : TextureRect {
 				opponentPlayer.ExecuteDeal(gD, humanPlayer, humanOffer, opponentOffer);
 
 				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId);
+			} else if (humanOffer.partOfPeaceTreaty && PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) is null) {
+				opponentResponse.Text = "\"Not likely! This war shall go on.\"";
+			} else {
+				opponentResponse.Text = "\"That is not enough.\"";
 			}
 		});
 	}
@@ -192,6 +200,14 @@ public partial class DealScreen : TextureRect {
 			int ourGoldValue = humanOffer.GoldEquivalentFor(gD, opponentPlayer);
 			opponentResponse.Text =
 				$"\"I value my offer at {theirGoldValue} gold and I value your offer at {ourGoldValue} gold\"";
+			// At war, peace is what matters.
+			if (humanOffer.partOfPeaceTreaty && AtWar(humanPlayer, opponentPlayer)) {
+				opponentResponse.Text = PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) switch {
+					null => "\"Not likely! This war shall go on.\"",
+					< 0 and int price => $"\"Give us {-price} gold's worth and we'll call it a tie.\"",
+					_ => "\"This war is pointless for both of us. Let us end it.\"",
+				};
+			}
 		});
 	}
 }

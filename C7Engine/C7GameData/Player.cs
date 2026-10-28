@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using C7Engine.AI;
 using C7Engine.AI.StrategicAI;
 using C7Engine;
 using C7GameData.Save;
@@ -645,9 +646,15 @@ namespace C7GameData {
 
 		public bool WouldAcceptDealFrom(GameData gameData, Player other, TradeOffer theirOffer, TradeOffer ourOffer) {
 			// TODO: consider any factors like trade reputations here and culture groups
-			// TODO: figure out when peace is acceptable
 			int theirGoldValue = theirOffer.GoldEquivalentFor(gameData, this);
 			int ourGoldValue = ourOffer.GoldEquivalentFor(gameData, this);
+			// Peace is worth what the war makes it worth (see PeaceAI).
+			if (theirOffer.partOfPeaceTreaty && AtWar(this, other)) {
+				if (PeaceAI.PeaceValue(gameData, this, other) is not int peace) {
+					return false;
+				}
+				theirGoldValue += peace;
+			}
 			return theirGoldValue >= ourGoldValue;
 		}
 

@@ -55,6 +55,16 @@ public class PlayerRelationship {
 	// "cancelled deal").
 	public int brokenDeals = 0;
 
+	// The war p1 is fighting with p2: the turn it began (null if it began
+	// before records were kept), and the shields' worth p1 has destroyed or
+	// taken from p2 and lost to p2. See WarRecord.
+	public int? warStartTurn = null;
+	public int warGains = 0;
+	public int warLosses = 0;
+
+	// The turn p1 last offered p2 peace (the AI doesn't ask every turn).
+	public int? lastPeaceOfferTurn = null;
+
 	public bool declaredWarWithActiveRightOfPassage = false;
 
 	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness
@@ -155,6 +165,7 @@ public class PlayerRelationship {
 		// Finally clear all multi-turn deals, including Peace, which is how we actually declare war
 		aggressorRelationshipToDefender.multiTurnDeals = new List<MultiTurnDeal>();
 		defenderRelationshipToAggressor.multiTurnDeals = new List<MultiTurnDeal>();
+		WarRecord.OnWarStarted(aggressor, defender, currentTurn);
 
 		log.Information($"{aggressor} declared war on {defender}{(sneakAttack ? $" in a sneak attack" : "")}!" +
 						$" Defender is refusing contact for at least up to turn {refuseContactUntilTurn}" +
@@ -177,6 +188,11 @@ public class PlayerRelationship {
 
 		left.playerRelationships[right.id].refuseContactUntilTurn = -1;
 		right.playerRelationships[left.id].refuseContactUntilTurn = -1;
+		WarRecord.OnPeace(left, right);
+
+		// With the war over, both rethink their plans.
+		left.turnsUntilPriorityReevaluation = 0;
+		right.turnsUntilPriorityReevaluation = 0;
 
 		// A mobilized civ may return to normalcy once it has signed a peace.
 		left.signedPeaceSinceMobilizing |= left.mobilized;
@@ -184,6 +200,7 @@ public class PlayerRelationship {
 
 		gameData.InvalidateCachedTradeNetwork();
 		log.Information($"{left} signed a peace treaty with {right}");
+		new MsgPeaceTreatySigned(left, right).send();
 	}
 
 	public static void RegisterMultiTurnDeal(Player left, Player right, MultiTurnDeal mtd) {

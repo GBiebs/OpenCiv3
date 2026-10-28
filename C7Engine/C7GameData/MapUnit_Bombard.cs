@@ -190,6 +190,7 @@ namespace C7GameData {
 				await tile.AnimateAsync(tile.IsWater() ? AnimatedEffect.WaterMiss : AnimatedEffect.Miss);
 
 			if (target.hitPointsRemaining <= 0) {
+				WarRecord.OnUnitLost(target, owner);
 				RollToPromote(target);
 				await target.animateAsync(AnimatedAction.DEATH, AnimationEnding.Pause);
 				target.RemoveFromPlay();

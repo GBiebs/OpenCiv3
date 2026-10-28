@@ -511,6 +511,12 @@ public partial class Game : Node {
 				if (mEE.playerId == controller.id)
 					EmitForeignAdvisorSignal(mEE.Text(), Mood.Happy);
 				break;
+			case MsgPeaceTreatySigned mPTS:
+				// News of other civs' peace, if we know them both.
+				if (mPTS.a != controller && mPTS.b != controller
+					&& controller.playerRelationships.ContainsKey(mPTS.a.id) && controller.playerRelationships.ContainsKey(mPTS.b.id))
+					EmitForeignAdvisorSignal(mPTS.Text(), Mood.Happy);
+				break;
 			case MsgDisease mDis:
 				if (mDis.playerId == controller.id) {
 					if (mDis.city != null) {

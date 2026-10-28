@@ -100,6 +100,7 @@ public partial class MapUnit {
 			List<string> captured = new();
 			List<string> destroyed = new();
 			foreach (MapUnit enemy in byOwner) {
+				WarRecord.OnUnitLost(enemy, owner);
 				// Barbarians have no use for captives.
 				if (enemy.IsCapturable() && unitType.canCapture && !owner.isBarbarians) {
 					captured.Add(enemy.name);

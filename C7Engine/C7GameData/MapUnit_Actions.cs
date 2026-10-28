@@ -420,6 +420,7 @@ public partial class MapUnit {
 
 		if ((result == CombatResult.AttackerKilled) || (result == CombatResult.DefenderKilled)) {
 			var (dead, alive) = (result == CombatResult.AttackerKilled) ? (attacker, defender) : (defender, attacker);
+			WarRecord.OnUnitLost(dead, alive.owner);
 			// Before promoting, so a unit only just made elite doesn't also roll.
 			alive.MaybeProduceLeader(dead, attacking: alive == attacker);
 			if (alive.IsArmy()) {

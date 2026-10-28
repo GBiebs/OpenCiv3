@@ -232,6 +232,21 @@ namespace C7Engine {
 		}
 	}
 
+	// Two civs at war made peace.
+	public class MsgPeaceTreatySigned : MessageToUI {
+		public Player a;
+		public Player b;
+
+		public MsgPeaceTreatySigned(Player a, Player b) {
+			this.a = a;
+			this.b = b;
+		}
+
+		public string Text() {
+			return $"The {a.civilization.noun} and the {b.civilization.noun} have signed a peace treaty.";
+		}
+	}
+
 	// A nuclear plant melted down (script.txt MELTDOWN).
 	public class MsgMeltdown : MessageToUI {
 		public ID playerId;
