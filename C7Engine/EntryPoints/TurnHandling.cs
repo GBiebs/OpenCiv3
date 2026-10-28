@@ -133,6 +133,11 @@ namespace C7Engine {
 					continue;
 				}
 
+				// The United Nations' owner may call an election before its turn.
+				if (!player.isBarbarians && !player.defeated) {
+					await UnitedNations.MaybeCallElection(gameData, player);
+				}
+
 				if (player.isBarbarians) {
 					await BarbarianAI.PlayTurn(player, gameData);
 				} else if (!player.isHuman && !player.defeated) {

@@ -537,6 +537,17 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgElectionOffer mEO:
+				if (mEO.playerId == controller.id)
+					EmitElectionOfferSignal();
+				break;
+			case MsgVoteRequest mVR:
+				if (mVR.voterId == controller.id)
+					EmitVoteRequestSignal(mVR);
+				break;
+			case MsgElectionResults mER:
+				EmitElectionResultsSignal(mER);
+				break;
 			case MsgPeaceTreatySigned mPTS:
 				// News of other civs' peace, if we know them both.
 				if (mPTS.a != controller && mPTS.b != controller

@@ -64,6 +64,7 @@ namespace C7GameData.Save {
 				Inflows = data.Inflows.ConvertAll(inflow => new SaveInflow(inflow)),
 				GreatWondersBuilt = data.GreatWondersBuilt,
 				Plague = data.plague,
+				UnitedNations = data.unitedNations,
 				BarbarianInfo = data.barbarianInfo,
 				Units = data.mapUnits.ConvertAll(unit => new SaveUnit(unit)),
 				UnitPrototypes = data.unitPrototypes.ConvertAll(proto => new SaveUnitPrototype(proto)),
@@ -205,6 +206,10 @@ namespace C7GameData.Save {
 				data.victories.Add(CulturalVictory.FromRules(data));
 			}
 
+			if (conditions.AllowDiplomaticVictory) {
+				data.victories.Add(new DiplomaticVictory());
+			}
+
 			// There is no "score victory", but we can treat score as if it were, so
 			// we can render the current score alongside the state of other conditions
 			data.victories.Add(new ScoreVictory());
@@ -263,6 +268,7 @@ namespace C7GameData.Save {
 				history = History,
 				GreatWondersBuilt = GreatWondersBuilt,
 				plague = Plague ?? new(),
+				unitedNations = UnitedNations ?? new(),
 				Codex = Codex,
 			};
 
@@ -522,6 +528,7 @@ namespace C7GameData.Save {
 		public List<SaveInflow> Inflows = [];
 		public HashSet<string> GreatWondersBuilt = new();
 		public PlagueState Plague = new();
+		public UnitedNationsState UnitedNations = new();
 		public List<SavePlayer> Players = new List<SavePlayer>();
 		public List<SaveCity> Cities = new List<SaveCity>();
 		public BarbarianInfo BarbarianInfo = new BarbarianInfo();

@@ -890,6 +890,48 @@ public partial class Game {
 		));
 	}
 
+	// The United Nations (Civ3's DIPLOVICTORYVOTEOPTION, DIPLOVICTORYVOTE,
+	// DIPLOVICTORYVOTERESULTS and NODIPLOVICTORY).
+	private void EmitElectionOfferSignal() {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"United Nations Vote",
+				"Would you like to hold elections for UN Secretary-General?",
+				Advisor.Foreign,
+				Mood.Happy,
+				"Yes.",
+				"No.",
+				yesAction: () => new MsgCallElection(true).send(),
+				noAction: () => new MsgCallElection(false).send()
+			)
+		));
+	}
+
+	private void EmitVoteRequestSignal(MsgVoteRequest msg) {
+		List<ButtonAction> options = msg.candidates
+			.Select(c => new ButtonAction() {
+				message = $"{c.civilization.leader} of the {c.civilization.noun}",
+				action = () => new MsgVote(c.id).send(),
+			})
+			.Append(new ButtonAction() { message = "We abstain.", action = () => new MsgVote(null).send() })
+			.ToList();
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "Vote for the UN Secretary-General...", "Whom do we vote for?", options, Advisor.Foreign, Mood.Happy)
+		));
+	}
+
+	private void EmitElectionResultsSignal(MsgElectionResults msg) {
+		string results = string.Join("\n", msg.votes.Select(v => $"{v.voter.civilization.noun}: {(v.candidate == null ? "abstained" : v.candidate.civilization.noun)}"));
+		string outcome = msg.winner == null
+			? "Election was inconclusive; no majority was found."
+			: $"{msg.winner.civilization.leader} of the {msg.winner.civilization.noun} is elected UN Secretary-General!";
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Voting Results...", $"{results}\n\n{outcome}", Advisor.Foreign,
+				msg.winner == controller ? Mood.Happy : Mood.Sad, 400)
+		));
+	}
+
 	// An AI demands tribute (Civ3's AIDEMANDTRIBUTE and the answers
 	// USERWILLGIVETRIBUTE, USERWILLNOTGIVETRIBUTE).
 	private void EmitTributeDemandedSignal(MsgTributeDemanded msg) {

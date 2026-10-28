@@ -507,6 +507,14 @@ namespace C7GameData {
 		public int cultureCivPoints = 100000;
 		public List<int> cultureCivMapSizePercent = [60, 80, 100, 130, 160];
 		public int cultureCivLead = 2;
+
+		// The United Nations: its owner may call an election every this many
+		// turns (CivFanatics' Civ3 FAQ: 11); a civ with this percent of the
+		// world's land or people is a candidate too, up to this many
+		// candidates (Civilopedia). Not in Civ3's BIQ.
+		public int electionEveryTurns = 11;
+		public int candidatePercent = 25;
+		public int maxCandidates = 3;
 	}
 
 	// Trait bonuses Civ3 builds in (Civilopedia, CivWiki; checked against

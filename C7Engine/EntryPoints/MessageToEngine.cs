@@ -266,6 +266,30 @@ namespace C7Engine {
 		}
 	}
 
+	// Whether the human, owning the United Nations, calls an election
+	// (MsgElectionOffer). UnitedNations waits for it.
+	public class MsgCallElection : MessageToEngine {
+		public readonly bool call;
+
+		public MsgCallElection(bool call) {
+			this.call = call;
+		}
+
+		public override void process() { }
+	}
+
+	// The human's vote in a United Nations election (MsgVoteRequest): a
+	// candidate, or null to abstain. UnitedNations waits for it.
+	public class MsgVote : MessageToEngine {
+		public readonly ID candidateId;
+
+		public MsgVote(ID candidateId) {
+			this.candidateId = candidateId;
+		}
+
+		public override void process() { }
+	}
+
 	// The human's answer to an AI's demand for tribute (MsgTributeDemanded).
 	public class MsgTributeAnswer : MessageToEngine {
 		private ID demanderId;

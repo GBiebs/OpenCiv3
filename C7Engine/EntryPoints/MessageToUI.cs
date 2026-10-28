@@ -232,6 +232,42 @@ namespace C7Engine {
 		}
 	}
 
+	// The human owns the United Nations and may call an election (Civ3's
+	// DIPLOVICTORYVOTEOPTION); the answer comes back as MsgCallElection.
+	public class MsgElectionOffer : MessageToUI {
+		public ID playerId;
+
+		public MsgElectionOffer(ID playerId) {
+			this.playerId = playerId;
+		}
+	}
+
+	// The human votes in a United Nations election (DIPLOVICTORYVOTE); the
+	// vote comes back as MsgVote.
+	public class MsgVoteRequest : MessageToUI {
+		public ID voterId;
+		public List<Player> candidates;
+
+		public MsgVoteRequest(ID voterId, List<Player> candidates) {
+			this.voterId = voterId;
+			this.candidates = candidates;
+		}
+	}
+
+	// How each civ voted (a null candidate: abstained) and who won, if
+	// anyone (DIPLOVICTORYVOTERESULTS, NODIPLOVICTORY).
+	public class MsgElectionResults : MessageToUI {
+		public List<Player> candidates;
+		public List<(Player voter, Player candidate)> votes;
+		public Player winner;
+
+		public MsgElectionResults(List<Player> candidates, List<(Player voter, Player candidate)> votes, Player winner) {
+			this.candidates = candidates;
+			this.votes = votes;
+			this.winner = winner;
+		}
+	}
+
 	// An AI demands tribute of the human (see TributeAI); the answer comes
 	// back as MsgTributeAnswer.
 	public class MsgTributeDemanded : MessageToUI {

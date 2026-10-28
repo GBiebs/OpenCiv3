@@ -156,6 +156,15 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 					case MsgTributeDemanded mTD:
 						new MsgTributeAnswer(mTD.demander.id, mTD.victim.id, mTD.demand, pay: false).send();
 						continue;
+					// The United Nations: no election called, abstaining.
+					case MsgElectionOffer mEO:
+						new MsgCallElection(false).send();
+						continue;
+					case MsgVoteRequest mVR:
+						new MsgVote(null).send();
+						continue;
+					case MsgElectionResults mER:
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

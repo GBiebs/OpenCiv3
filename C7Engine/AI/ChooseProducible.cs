@@ -9,6 +9,10 @@ namespace C7Engine {
 	public class ChooseProducible {
 		private static ILogger log = Log.ForContext<ChooseProducible>();
 
+		// What a building that leads to victory (the United Nations) adds to
+		// its score.
+		internal const float VictoryBuildingBoost = 30;
+
 		record struct ProducibleStats(
 			float bestAttack,
 			float bestDefense,
@@ -195,6 +199,12 @@ namespace C7Engine {
 			return score;
 		}
 
+		// For tests: a building's score in this city, without the randomness.
+		internal static float ScoreBuilding(City city, Player player, Building building) {
+			List<IProducible> options = city.ListProductionOptions(EngineStorage.gameData).ToList();
+			return ScoreBuilding(CalculateStats(city, options), city, player, building);
+		}
+
 		private static float ScoreBuilding(ProducibleStats stats, City city, Player player, Building building) {
 			bool atWar = IsInAnyWar(player, EngineStorage.gameData.players);
 
@@ -300,6 +310,12 @@ namespace C7Engine {
 			// Penalize buildings if economy is weak
 			if (HasWeakEconomy(player)) {
 				score -= 10 * building.maintenanceCost;
+			}
+
+			// Go for a building that can win the game.
+			if (building.HasWonderFlag(C7GameData.Save.SaveBuilding.WonderFlag.AllowDiplomaticVictory)
+				&& EngineStorage.gameData.victoryConditions?.AllowDiplomaticVictory == true) {
+				score += VictoryBuildingBoost;
 			}
 
 			return score;

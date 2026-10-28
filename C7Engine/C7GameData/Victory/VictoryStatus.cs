@@ -14,4 +14,7 @@ public class VictoryStatus {
 	public int CityCulture { get; set; }
 	public int Culture { get; set; }
 	public int RivalCulture { get; set; }
+	// The United Nations: who has it, and whether the player was elected.
+	public Player UnitedNationsOwner { get; set; }
+	public bool ElectedSecretaryGeneral { get; set; }
 }

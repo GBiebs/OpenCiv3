@@ -30,6 +30,7 @@ namespace C7GameData {
 		// The names of all great wonders that have been built.
 		public HashSet<string> GreatWondersBuilt = new();
 		public PlagueState plague = new();
+		public UnitedNationsState unitedNations = new();
 
 		public List<City> cities = new List<City>();
 

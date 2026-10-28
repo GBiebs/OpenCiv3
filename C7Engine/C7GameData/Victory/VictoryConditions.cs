@@ -28,6 +28,7 @@ public class VictoryConditions {
 		new(nameof(AllowDominationVictory), "Allow Domination Victory", false, vc => vc.AllowDominationVictory, (vc, on) => vc.AllowDominationVictory = on),
 		new(nameof(AllowConquestVictory), "Allow Conquest Victory", false, vc => vc.AllowConquestVictory, (vc, on) => vc.AllowConquestVictory = on),
 		new(nameof(AllowCulturalVictory), "Allow Cultural Victory", true, vc => vc.AllowCulturalVictory, (vc, on) => vc.AllowCulturalVictory = on),
+		new(nameof(AllowDiplomaticVictory), "Allow Diplomatic Victory", true, vc => vc.AllowDiplomaticVictory, (vc, on) => vc.AllowDiplomaticVictory = on),
 	];
 
 	public static VictoryConditions FromSettings() {
