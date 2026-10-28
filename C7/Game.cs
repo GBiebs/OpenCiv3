@@ -516,8 +516,14 @@ public partial class Game : Node {
 					EmitForeignAdvisorSignal(mEE.Text(), Mood.Happy);
 				break;
 			case MsgEspionageResult mER:
-				if (mER.playerId == controller.id)
+				if (mER.playerId != controller.id)
+					break;
+				// An investigation opens the city's screen, as in Civ3.
+				if (mER.result.city != null) {
+					ShowCityScreenForCity(gameData, mER.result.city);
+				} else {
 					EmitForeignAdvisorSignal(mER.result.text, mER.result.outcome == Espionage.Outcome.Succeeded ? Mood.Happy : Mood.Sad);
+				}
 				break;
 			case MsgSpyCaught mSC:
 				if (mSC.victimId == controller.id)

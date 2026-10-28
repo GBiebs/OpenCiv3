@@ -48,6 +48,8 @@ namespace C7GameData {
 		public class Result {
 			public Outcome outcome;
 			public string text;
+			// An investigated city, to show on the city screen.
+			public City city;
 		}
 
 		public static bool HasIntelligenceAgency(Player player) {
@@ -206,7 +208,7 @@ namespace C7GameData {
 					Embassies.Open(us, them);
 					return new Result { outcome = Outcome.Succeeded, text = $"We have established an embassy with the {theirs}." };
 				case EspionageMission.InvestigateCity:
-					return new Result { outcome = Outcome.Succeeded, text = Describe(gameData, city) };
+					return new Result { outcome = Outcome.Succeeded, text = Describe(gameData, city), city = city };
 				case EspionageMission.PlantSpy:
 					if (rng.Next(100) < SuccessPercent(gameData, us, mission.key, bySpy, risk)) {
 						relationship.hasSpy = true;

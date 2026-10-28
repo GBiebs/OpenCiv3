@@ -145,6 +145,8 @@ public class EspionageTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Espionage.Result result = Attempt(EspionageMission.InvestigateCity, new Rolls(99), city: theirCity);
 		Assert.Equal(Espionage.Outcome.Succeeded, result.outcome);
 		Assert.Contains(theirCity.name, result.text);
+		// Shown on the city screen.
+		Assert.Equal(theirCity, result.city);
 		Assert.Equal(10000 - cost, us.gold);
 	}
 

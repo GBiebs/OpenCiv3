@@ -82,6 +82,10 @@ public partial class CityScreen : Control {
 
 	private Dictionary<string, ImageTexture> effectIcons = new();
 
+	// Another civ's city (an investigation, see Espionage): shown, but
+	// nothing can be changed.
+	private bool readOnly = false;
+
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready() {
 		background.Texture = TextureLoader.Load("city_screen.background");
@@ -206,6 +210,9 @@ public partial class CityScreen : Control {
 						if (productionMenu != null) {
 							productionMenu.Visible = false;
 						}
+						if (readOnly) {
+							return;
+						}
 
 						Tile tile = mapView.tileOnScreenAt(gameData.map, eventMouseButton.Position);
 						if (tile != null) {
@@ -307,6 +314,10 @@ public partial class CityScreen : Control {
 	}
 
 	private void OnShowCityScreenLocked(GameData gameData, ParameterWrapper<City> city) {
+		readOnly = city.Value.owner.id != EngineStorage.uiControllerID;
+		productionButton.Disabled = readOnly;
+		previousCity.Visible = !readOnly;
+		nextCity.Visible = !readOnly;
 		this.Show();
 		mapView.centerCameraOnTile(city.Value.location.neighbors[TileDirection.SOUTH]);
 		tileAssignmentLayer.city = city.Value;
@@ -387,7 +398,7 @@ public partial class CityScreen : Control {
 	// The button is disabled, with the reason as its tooltip, when the city
 	// can't draft.
 	private void RenderDraftButton(GameData gameData, City city) {
-		string reason = city.WhyCannotDraft(gameData);
+		string reason = readOnly ? "Not our city" : city.WhyCannotDraft(gameData);
 		draftButton.Disabled = reason != null;
 		draftButton.TooltipText = reason ?? $"Draft a citizen into a conscript {city.DraftableUnit(gameData).name}";
 	}
@@ -403,7 +414,8 @@ public partial class CityScreen : Control {
 				Text = building.building.name,
 				Flat = true,
 				Alignment = HorizontalAlignment.Left,
-				TooltipText = "Click to sell",
+				TooltipText = readOnly ? "" : "Click to sell",
+				Disabled = readOnly,
 			};
 			Building b = building.building;
 			button.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).send();
@@ -830,6 +842,7 @@ public partial class CityScreen : Control {
 			TextureButton tb = new();
 			tb.TextureNormal = PopHead.GetTexture(cr, eraNum);
 			tb.SetPosition(new Vector2(xPos, POP_HEAD_OFFSET_Y));
+			tb.Disabled = readOnly;
 
 			List<CitizenType> specialistTypes = null;
 			EngineStorage.ReadGameData((GameData gameData) => { specialistTypes = city.owner.GetKnownSpecialists(gameData); });
@@ -898,6 +911,7 @@ public partial class CityScreen : Control {
 	private int AddDefaultCitizen(CityResident cr, int xPos, int eraNum) {
 		TextureButton tb = new();
 		tb.TextureNormal = PopHead.GetTexture(cr, eraNum);
+		tb.Disabled = readOnly;
 		tb.SetPosition(new Vector2(xPos, POP_HEAD_OFFSET_Y));
 		background.AddChild(tb);
 		popHeads.Add(tb);
