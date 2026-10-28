@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using C7Engine;
+using C7Engine.AI;
 using C7GameData;
 using C7GameData.Save;
 using EngineTests.Utils;
@@ -128,6 +130,77 @@ public class MobilizationTest : IClassFixture<SaveGameFixture> {
 		Assert.True(us.SetMobilized(false, gameData));
 		Assert.False(us.mobilized);
 		Assert.True(CanBuild(Building("Temple")));
+	}
+
+	// ---------------------------------------------------------------- the AI
+
+	private void Strengthen(Player player, int warriors) {
+		for (int i = 0; i < warriors; i++) {
+			gameData.SpawnUnit(player, Unit("Warrior"), player.units[0].location);
+		}
+	}
+
+	[Fact]
+	public void TheAIMobilizesForAWarItIsntWinning() {
+		Learn("Nationalism");
+		us.DeclareWarOn(them, gameData.turn);
+		Assert.Equal(PeaceAI.Standing.Even, PeaceAI.StandingIn(us, them));
+
+		gameData.turn += MobilizationAI.MobilizeAfterWarTurns - 1;
+		MobilizationAI.Manage(us, gameData);
+		Assert.False(us.mobilized);
+
+		gameData.turn++;
+		MobilizationAI.Manage(us, gameData);
+		Assert.True(us.mobilized);
+	}
+
+	[Fact]
+	public async Task AnAITurnMobilizes() {
+		Learn("Nationalism");
+		us.DeclareWarOn(them, gameData.turn);
+		gameData.turn += MobilizationAI.MobilizeAfterWarTurns;
+		await PlayerAI.PlayTurn(us, gameData);
+		Assert.True(us.mobilized);
+	}
+
+	[Fact]
+	public void NotForAWarItsWinning() {
+		Learn("Nationalism");
+		us.DeclareWarOn(them, gameData.turn);
+		Strengthen(us, 3 * them.units.Count + 10);
+		Assert.Equal(PeaceAI.Standing.Winning, PeaceAI.StandingIn(us, them));
+		gameData.turn += MobilizationAI.MobilizeAfterWarTurns;
+		MobilizationAI.Manage(us, gameData);
+		Assert.False(us.mobilized);
+
+		// Nor without Nationalism.
+		Strengthen(them, 10 * us.units.Count);
+		us.knownTechs.Remove(gameData.techs.Find(t => t.Name == "Nationalism").id);
+		MobilizationAI.Manage(us, gameData);
+		Assert.False(us.mobilized);
+	}
+
+	[Fact]
+	public void TheAIReturnsToNormalcyWhenAtWarWithNoOne() {
+		Learn("Nationalism");
+		Player third = gameData.players.First(p => !p.isHuman && !p.isBarbarians && p != us && p != them);
+		us.DeclareWarOn(them, gameData.turn);
+		us.DeclareWarOn(third, gameData.turn);
+		gameData.turn += MobilizationAI.MobilizeAfterWarTurns;
+		MobilizationAI.Manage(us, gameData);
+		Assert.True(us.mobilized);
+
+		// Still at war with one of them.
+		PlayerRelationship.SignPeaceAfterWar(us, them, gameData);
+		MobilizationAI.Manage(us, gameData);
+		Assert.True(us.mobilized);
+
+		// The barbarians don't count.
+		PlayerRelationship.SignPeaceAfterWar(us, third, gameData);
+		Assert.False(us.IsAtPeaceWith(gameData.players.Find(p => p.isBarbarians)));
+		MobilizationAI.Manage(us, gameData);
+		Assert.False(us.mobilized);
 	}
 
 	[Fact]

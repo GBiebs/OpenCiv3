@@ -39,6 +39,7 @@ namespace C7Engine {
 			GovernmentAI.ManageGovernment(player, gameData);
 
 			await PeaceAI.OfferPeace(player, gameData);
+			MobilizationAI.Manage(player, gameData);
 			await AgreementAI.ProposeAgreements(player, gameData);
 			await TributeAI.MakeDemands(player, gameData);
 			BorderWarnings.Check(gameData, player);

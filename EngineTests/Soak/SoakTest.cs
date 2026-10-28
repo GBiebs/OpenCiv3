@@ -215,6 +215,9 @@ public class SoakTest {
 		// Revolutions: turns on which a civ fell into anarchy.
 		int revolutions = 0;
 		HashSet<Player> inAnarchy = new();
+		// Mobilizations: turns on which a civ went on a war footing.
+		int mobilizations = 0;
+		HashSet<Player> onWarFooting = new();
 		try {
 			TurnHandling.OnBeginTurn();
 			TurnHandling.InitTurnData();
@@ -229,6 +232,11 @@ public class SoakTest {
 						++revolutions;
 					} else if (!p.government.transitionType) {
 						inAnarchy.Remove(p);
+					}
+					if (p.mobilized && onWarFooting.Add(p)) {
+						++mobilizations;
+					} else if (!p.mobilized) {
+						onWarFooting.Remove(p);
 					}
 				}
 
@@ -274,6 +282,7 @@ public class SoakTest {
 			+ $"{messages.OfType<MsgWarDeclarationNotification>().Count()} wars declared, "
 			+ $"{messages.OfType<MsgPeaceTreatySigned>().Count()} peace treaties, "
 			+ $"{relationships.Count(r => r.AtWar()) / 2} wars now, "
+			+ $"{mobilizations} mobilizations ({gameData.players.Count(p => p.mobilized)} mobilized now), "
 			+ $"{relationships.Count(r => r.hasEmbassy) / 2} embassies, "
 			+ $"agreements now: {relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealSubType == DealSubType.RightOfPassage)) / 2} passage "
 			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealSubType == DealSubType.MutualProtectionPact)) / 2} pacts "
