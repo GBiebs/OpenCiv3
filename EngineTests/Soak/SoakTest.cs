@@ -75,7 +75,14 @@ public class SoakTest {
 			difficulty = difficulty,
 			worldCharacteristics = wc,
 			opponents = Enumerable.Repeat(new SelectedOpponent() { isRandom = true }, worldSize.numberOfCivs - 1).ToList(),
-			victoryConditions = new VictoryConditions()
+			// Civ3's standard victories, so a game can be won.
+			victoryConditions = new VictoryConditions {
+				AllowDominationVictory = true,
+				AllowConquestVictory = true,
+				AllowCulturalVictory = true,
+				AllowDiplomaticVictory = true,
+				AllowSpaceRaceVictory = true,
+			}
 		};
 		gameSetup.Populate(save);
 		return save;
@@ -278,7 +285,12 @@ public class SoakTest {
 			+ $"{messages.OfType<MsgPlague>().Count()} plague strikes, "
 			+ $"{messages.OfType<MsgGoodyHut>().Count()} goody huts found ("
 			+ string.Join(" ", messages.OfType<MsgGoodyHut>().GroupBy(m => m.outcome).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"))
-			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left); governments: "
+			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left), "
+			+ $"culture up to {gameData.cities.Select(c => c.GetCulture()).DefaultIfEmpty(0).Max()} in a city and "
+			+ $"{gameData.players.Where(p => !p.isBarbarians).Select(p => p.TotalCulture()).DefaultIfEmpty(0).Max()} in a civ, "
+			+ $"United Nations {(UnitedNations.Seat(gameData)?.owner.civilization.name ?? "not built")}, "
+			+ $"{messages.OfType<MsgElectionResults>().Count()} elections, "
+			+ $"{messages.OfType<MsgSpaceshipPart>().Count()} spaceship parts built; governments: "
 			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
 				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
