@@ -76,6 +76,16 @@ public class PlayerRelationship {
 	public int borderWarning = 0;
 	public int borderAnger = 0;
 
+	// Espionage (see Espionage): p1 has a spy planted with p2; p1's last
+	// attempt to plant one failed (it can't try again until this clears);
+	// and the attitude points p1 holds against p2 for a while for its failed
+	// spy missions.
+	public bool hasSpy = false;
+	public bool spyPlantFailed = false;
+	public int spyAnger = 0;
+	// The turn p1's AI last sent a mission against p2.
+	public int? lastEspionageTurn = null;
+
 	public bool declaredWarWithActiveRightOfPassage = false;
 
 	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness

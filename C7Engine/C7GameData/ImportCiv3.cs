@@ -2234,7 +2234,13 @@ namespace C7GameData {
 				// for a civ with this government capturing citizens of the other.
 				for (int j = 0; j < theBiq.Govt.Length; ++j) {
 					g.resistanceModifiers[theBiq.Govt[j].Name] = theBiq.GovtGovt[i, j].ResistanceModifier;
+					// GOVT_GOVT[spying civ, target civ].
+					g.briberyModifiers[theBiq.Govt[j].Name] = theBiq.GovtGovt[i, j].BriberyModifier;
 				}
+				// Immune to a mission by its place in Civ3's list.
+				g.immuneTo = govt.ImmuneTo >= 0 && govt.ImmuneTo < EspionageMission.Keys.Count ? EspionageMission.Keys[govt.ImmuneTo] : null;
+				g.diplomatsAre = govt.DiplomatsAre;
+				g.spiesAre = govt.SpiesAre;
 
 				save.Governments.Add(g);
 			}

@@ -53,6 +53,7 @@ namespace C7GameData.Save {
 		// The turn the owner last sold a building here, if ever.
 		public int? buildingSoldOnTurn;
 		public int turnsOfUnhappinessDueToDrafting;
+		public int confusedCitizens;
 		// The turn citizens were last drafted here, if ever, and how many.
 		public int? draftTurn;
 		public int draftedThatTurn;
@@ -86,6 +87,7 @@ namespace C7GameData.Save {
 			turnsOfUnhappinessDueToPopRushing = city.turnsOfUnhappinessDueToPopRushing;
 			buildingSoldOnTurn = city.buildingSoldOnTurn >= 0 ? city.buildingSoldOnTurn : null;
 			turnsOfUnhappinessDueToDrafting = city.turnsOfUnhappinessDueToDrafting;
+			confusedCitizens = city.confusedCitizens;
 			draftTurn = city.draftTurn >= 0 ? city.draftTurn : null;
 			draftedThatTurn = city.draftedThatTurn;
 			celebrating = city.celebrating;
@@ -130,6 +132,7 @@ namespace C7GameData.Save {
 				turnsOfUnhappinessDueToPopRushing = turnsOfUnhappinessDueToPopRushing,
 				buildingSoldOnTurn = buildingSoldOnTurn ?? -1,
 				turnsOfUnhappinessDueToDrafting = turnsOfUnhappinessDueToDrafting,
+				confusedCitizens = confusedCitizens,
 				draftTurn = draftTurn ?? -1,
 				draftedThatTurn = draftedThatTurn,
 				celebrating = celebrating,

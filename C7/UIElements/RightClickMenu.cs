@@ -102,6 +102,25 @@ public partial class RightClickMenu : VBoxContainer {
 		item.Disabled = game.controller.gold < cost;
 	}
 
+	// Another civ's city: diplomatic and spy missions, if we can try any.
+	protected void AddEspionageItem(Tile tile) {
+		City city = tile.cityAtTile;
+		if (city == null || city.owner == game.controller || city.owner.isBarbarians) {
+			return;
+		}
+		bool any = false;
+		EngineStorage.ReadGameData((GameData gameData) => {
+			any = gameData.rules.EspionageMissions.Any(m => m.key != EspionageMission.Embassy
+				&& Espionage.CanAttempt(game.controller, city.owner, m, out _));
+		});
+		if (any) {
+			AddItem("Espionage...", () => {
+				CloseAndDelete();
+				game.ShowEspionage(city);
+			});
+		}
+	}
+
 	protected void AddTreeSeparator() {
 		var background = new ColorRect();
 		background.Color = Color.Color8(255, 247, 222, 255);
@@ -301,6 +320,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 				AddItem($"Contact {nonPlayerUnits[0].owner.civilization.name}", contactCiv);
 		}
 		AddEmbassyItem(tile);
+		AddEspionageItem(tile);
 	}
 
 	private static void ApplyAltItemOverrides(Button menuItem) {
@@ -409,6 +429,7 @@ public partial class RightClickCityMenu : RightClickMenu {
 			});
 		}
 		AddEmbassyItem(tile);
+		AddEspionageItem(tile);
 	}
 }
 

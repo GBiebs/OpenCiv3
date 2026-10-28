@@ -214,6 +214,37 @@ namespace C7Engine {
 		}
 	}
 
+	// The player tries a diplomatic or spy mission (see Espionage).
+	public class MsgEspionageMission : MessageToEngine {
+		private ID playerId;
+		private ID targetId;
+		private ID cityId;
+		private string mission;
+		private Espionage.Risk risk;
+
+		public MsgEspionageMission(ID playerId, ID targetId, ID cityId, string mission, Espionage.Risk risk) {
+			this.playerId = playerId;
+			this.targetId = targetId;
+			this.cityId = cityId;
+			this.mission = mission;
+			this.risk = risk;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			Player us = gameData.GetPlayer(playerId);
+			Player them = gameData.GetPlayer(targetId);
+			City city = cityId == null ? null : gameData.cities.Find(c => c.id == cityId);
+			if (us == null || them == null) {
+				return;
+			}
+			Espionage.Result result = Espionage.Attempt(gameData, us, them, mission, city, risk, GameData.rng);
+			if (result != null) {
+				new MsgEspionageResult(us.id, result).send();
+			}
+		}
+	}
+
 	// The player sends home its troops in another civ's land (see
 	// BorderWarnings).
 	public class MsgSendTroopsHome : MessageToEngine {

@@ -89,6 +89,10 @@ namespace C7GameData {
 		// penalty, and makes one more citizen unhappy while it lasts.
 		public int turnsOfUnhappinessDueToDrafting = 0;
 
+		// Citizens confused by another civ's propaganda: one unhappy face
+		// each, one fewer each turn. See Espionage.
+		public int confusedCitizens = 0;
+
 		// The turn citizens were last drafted here, and how many that turn.
 		public int draftTurn = -1;
 		public int draftedThatTurn = 0;
@@ -1441,6 +1445,9 @@ namespace C7GameData {
 			// Citizens whose civ we're at war with resent our aggression
 			// against their home country: one unhappy face each.
 			contentToHappyMoves -= CitizensOfEnemyNationality(gameData);
+
+			// And those confused by propaganda.
+			contentToHappyMoves -= confusedCitizens;
 
 			// Building happiness/unhappiness, which only affects the unhappy to
 			// content transition, nothing with happy faces.

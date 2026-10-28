@@ -65,6 +65,7 @@ namespace C7Engine {
 				gameData.InvalidateCachedTradeNetwork();
 				WarWeariness.UpdateForNewTurn(gameData);
 				Attitude.UpdateForNewTurn(gameData);
+				Espionage.UpdateForNewTurn(gameData);
 				Volcanoes.UpdateForNewTurn(gameData);
 				GlobalWarming.UpdateForNewTurn(gameData);
 				Plague.UpdateForNewTurn(gameData);

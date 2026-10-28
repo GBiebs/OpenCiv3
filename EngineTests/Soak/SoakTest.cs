@@ -268,6 +268,7 @@ public class SoakTest {
 			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealSubType == DealSubType.TradeEmbargo)) / 2} embargoes, "
 			+ $"{relationships.Sum(r => r.brokenAlliances)} alliances broken, "
 			+ $"{relationships.Count(r => r.lastTributeDemandTurn != null)} civs that demanded tribute of another, "
+			+ $"{relationships.Count(r => r.hasSpy)} spies planted now, {relationships.Count(r => r.lastEspionageTurn != null)} civs that spied on another, "
 			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealDetails == DealDetails.Outbound && d.dealSubType is DealSubType.ResourcePerTurn or DealSubType.LuxuryPerTurn))} resource deals now, "
 			+ $"{messages.OfType<MsgPollution>().Count()} times pollution struck ({gameData.map.tiles.Count(t => t.HasPollution())} tiles polluted now), "
 			+ $"{messages.OfType<MsgMeltdown>().Count()} meltdowns, "

@@ -178,5 +178,11 @@ public class EmbassyImportTest : RemoteSaveLoader {
 		// And its leaders' aggression (RACE), for their attitudes.
 		Assert.Equal(2, game.Civilizations.Find(c => c.noun == "Germans").aggressionLevel);
 		Assert.Equal(-2, game.Civilizations.Find(c => c.noun == "French").aggressionLevel);
+
+		// And its governments' spies (GOVT, GOVT_GOVT).
+		Assert.Equal(2, game.Governments.Find(g => g.name == "Communism").spiesAre);
+		Assert.Equal(EspionageMission.Propaganda, game.Governments.Find(g => g.name == "Democracy").immuneTo);
+		Assert.Null(game.Governments.Find(g => g.name == "Monarchy").immuneTo);
+		Assert.Equal(-30, game.Governments.Find(g => g.name == "Despotism").briberyModifiers["Democracy"]);
 	}
 }

@@ -12551,7 +12551,24 @@
       "paidUsTribute": -1,
       "calledOurBluff": 1,
       "askedToLeave": 1,
-      "orderedToLeave": 4
+      "orderedToLeave": 4,
+      "failedEspionage": 1,
+      "failedEspionageForAWhile": 3,
+      "spyAngerFadeTurns": 5
+    },
+    "espionage": {
+      "plantSpyPercent": [ 20, 50, 60, 75 ],
+      "plantFailedClearsOneIn": 3,
+      "embassyGetAwayPercent": [ 40, 55, 65 ],
+      "spyGetAwayPercent": [ [ 50, 65, 75 ], [ 60, 75, 85 ], [ 70, 85, 95 ], [ 80, 95, 99 ] ],
+      "successPercent": 80,
+      "riskCostPercent": [ 100, 150, 200 ],
+      "propagandaSpyBonus": [ -10, 0, 10, 20 ],
+      "propagandaPerUnit": 5,
+      "propagandaResistantBuilding": 20,
+      "propagandaCapital": 40,
+      "propagandaOwnNationality": 20,
+      "propagandaFlipPercent": 75
     },
     "dealValues": {
       "mapTilesPerGold": 4,
@@ -14119,7 +14136,19 @@
         "Democracy": 5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 0,
+        "Despotism": 0,
+        "Monarchy": 0,
+        "Communism": 0,
+        "Republic": 0,
+        "Democracy": 0,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 1
     },
     {
       "hasTilePenalty": true,
@@ -14150,7 +14179,19 @@
         "Democracy": 5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 15,
+        "Despotism": 0,
+        "Monarchy": -10,
+        "Communism": -15,
+        "Republic": -20,
+        "Democracy": -30,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 1
     },
     {
       "hasTilePenalty": false,
@@ -14182,7 +14223,19 @@
         "Democracy": 5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 20,
+        "Despotism": 15,
+        "Monarchy": 0,
+        "Communism": -5,
+        "Republic": -10,
+        "Democracy": -25,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 1
     },
     {
       "hasTilePenalty": false,
@@ -14214,7 +14267,19 @@
         "Democracy": 5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 25,
+        "Despotism": 20,
+        "Monarchy": 5,
+        "Communism": 0,
+        "Republic": -10,
+        "Democracy": -20,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 2
     },
     {
       "hasTilePenalty": false,
@@ -14246,7 +14311,19 @@
         "Democracy": 5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 30,
+        "Despotism": 25,
+        "Monarchy": 10,
+        "Communism": 8,
+        "Republic": 0,
+        "Democracy": -5,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 1
     },
     {
       "hasTilePenalty": false,
@@ -14278,7 +14355,20 @@
         "Democracy": 0,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 35,
+        "Despotism": 30,
+        "Monarchy": 20,
+        "Communism": 10,
+        "Republic": 5,
+        "Democracy": 0,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "immuneTo": "propaganda",
+      "diplomatsAre": 1,
+      "spiesAre": 1
     },
     {
       "hasTilePenalty": false,
@@ -14310,7 +14400,19 @@
         "Democracy": -5,
         "Fascism": 0,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 0,
+        "Despotism": 0,
+        "Monarchy": -5,
+        "Communism": -20,
+        "Republic": -10,
+        "Democracy": -10,
+        "Fascism": 0,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 2
     },
     {
       "hasTilePenalty": false,
@@ -14342,7 +14444,19 @@
         "Democracy": 0,
         "Fascism": 5,
         "Feudalism": 0
-      }
+      },
+      "briberyModifiers": {
+        "Anarchy": 20,
+        "Despotism": 15,
+        "Monarchy": 0,
+        "Communism": -10,
+        "Republic": -10,
+        "Democracy": -20,
+        "Fascism": -25,
+        "Feudalism": 0
+      },
+      "diplomatsAre": 1,
+      "spiesAre": 1
     }
   ],
   "cultureOpinions": [

@@ -131,7 +131,8 @@ namespace C7GameData {
 			if (subject.CalculateMilitaryStrength() > observer.CalculateMilitaryStrength()) {
 				good = (int)Math.Floor(good * rules.powerLeadGoodPercent / 100.0);
 			}
-			return Math.Min(rules.maximum, good + passage + bad + relationship.attitudePenalty + relationship.borderAnger);
+			return Math.Min(rules.maximum, good + passage + bad + relationship.attitudePenalty + relationship.borderAnger
+				+ relationship.spyAnger);
 		}
 
 		private static int AggressionOffset(GameData gameData) {
@@ -229,12 +230,17 @@ namespace C7GameData {
 			}
 		}
 
-		// Each turn, gifts are forgotten a little.
+		// Each turn, gifts are forgotten a little, and every so many turns a
+		// point of anger at failed spy missions.
 		public static void UpdateForNewTurn(GameData gameData) {
-			int forgotten = gameData.rules.attitude.giftGoldForgottenPerTurn;
+			AttitudeRules rules = gameData.rules.attitude;
+			bool spyAngerFades = rules.spyAngerFadeTurns > 0 && gameData.turn % rules.spyAngerFadeTurns == 0;
 			foreach (Player player in gameData.players) {
 				foreach (PlayerRelationship relationship in player.playerRelationships.Values) {
-					relationship.giftGold = Math.Max(0, relationship.giftGold - forgotten);
+					relationship.giftGold = Math.Max(0, relationship.giftGold - rules.giftGoldForgottenPerTurn);
+					if (spyAngerFades) {
+						relationship.spyAnger = Math.Max(0, relationship.spyAnger - 1);
+					}
 				}
 			}
 		}

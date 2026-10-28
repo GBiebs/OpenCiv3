@@ -202,6 +202,10 @@ public partial class Game : Node {
 		popupOverlay.ShowPopup(new GovernorPopup(city), PopupOverlay.PopupCategory.Info);
 	}
 
+	public void ShowEspionage(City city) {
+		popupOverlay.ShowPopup(new EspionagePopup(city, controller), PopupOverlay.PopupCategory.Info);
+	}
+
 	private async Task InitializeGame() {
 		// Ensure we clear out our image caches, as scenarios and games will
 		// use the same filenames but have different content for them.
@@ -510,6 +514,14 @@ public partial class Game : Node {
 			case MsgEmbassyEstablished mEE:
 				if (mEE.playerId == controller.id)
 					EmitForeignAdvisorSignal(mEE.Text(), Mood.Happy);
+				break;
+			case MsgEspionageResult mER:
+				if (mER.playerId == controller.id)
+					EmitForeignAdvisorSignal(mER.result.text, mER.result.outcome == Espionage.Outcome.Succeeded ? Mood.Happy : Mood.Sad);
+				break;
+			case MsgSpyCaught mSC:
+				if (mSC.victimId == controller.id)
+					EmitForeignAdvisorSignal(mSC.Text(), Mood.Happy);
 				break;
 			case MsgBorderWarning mBW:
 				if (mBW.intruder == controller)

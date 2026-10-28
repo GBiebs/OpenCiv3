@@ -90,6 +90,17 @@ namespace C7GameData {
 		// against "higher" ones).
 		public Dictionary<string, int> resistanceModifiers = new();
 
+		// Espionage (see Espionage): added to the chance that this civ's
+		// propaganda persuades each citizen of a civ with the other government
+		// (Civ3's GOVT_GOVT bribery modifiers), the mission it's immune to (by
+		// key, like Democracy to propaganda), and how experienced its
+		// diplomats and spies are (0 conscript, 1 regular, 2 veteran, 3
+		// elite).
+		public Dictionary<string, int> briberyModifiers = new();
+		public string immuneTo;
+		public int diplomatsAre = 1;
+		public int spiesAre = 1;
+
 		public bool allUnitsFree;
 		public int freeUnitsPerTown;
 		public int freeUnitsPerCity;

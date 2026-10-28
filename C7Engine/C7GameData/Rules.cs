@@ -188,6 +188,9 @@ namespace C7GameData {
 		// What goods in a deal are worth. See TradeOffer.
 		public DealValueRules dealValues = new();
 
+		// Spies and their missions. See Espionage.
+		public EspionageRules espionage = new();
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 
@@ -373,6 +376,42 @@ namespace C7GameData {
 		// and after we ordered them home.
 		public int askedToLeave = 1;
 		public int orderedToLeave = 4;
+		// They failed a spy mission against us: for good, and for a while
+		// (a point fades every so many turns).
+		public int failedEspionage = 1;
+		public int failedEspionageForAWhile = 3;
+		public int spyAngerFadeTurns = 5;
+	}
+
+	// Spies and their missions (see Espionage; CivFanatics' "A Study of
+	// Espionage Missions"). Not in Civ3's BIQ.
+	public class EspionageRules {
+		// The percent chance that planting a spy works, by the spies'
+		// experience (conscript, regular, veteran, elite); and a failure
+		// flags the civ, which can't try again until the flag clears, one
+		// chance in so many each turn.
+		public List<int> plantSpyPercent = [20, 50, 60, 75];
+		public int plantFailedClearsOneIn = 3;
+		// The percent chance of getting away, by risk (immediate, carefully,
+		// safely), through an embassy and by the spy's experience (conscript
+		// and elite not measured); a mission that gets away works this percent
+		// of the time. The safer ways cost this percent of the price.
+		public List<int> embassyGetAwayPercent = [40, 55, 65];
+		public List<List<int>> spyGetAwayPercent = [[50, 65, 75], [60, 75, 85], [70, 85, 95], [80, 95, 99]];
+		public int successPercent = 80;
+		public List<int> riskCostPercent = [100, 150, 200];
+		// Propaganda persuades each citizen with the culture level's chance
+		// and the governments' modifier, plus this for the spy's experience,
+		// less this for each unit in the city, for a building resistant to
+		// propaganda (the Courthouse) and for the capital, plus this for our
+		// own nationals; the city defects when this percent of its people
+		// are persuaded.
+		public List<int> propagandaSpyBonus = [-10, 0, 10, 20];
+		public int propagandaPerUnit = 5;
+		public int propagandaResistantBuilding = 20;
+		public int propagandaCapital = 40;
+		public int propagandaOwnNationality = 20;
+		public int propagandaFlipPercent = 75;
 	}
 
 	// What goods in a deal are worth, in gold (see TradeOffer). Civ3's values

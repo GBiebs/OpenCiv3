@@ -42,6 +42,7 @@ namespace C7Engine {
 			await AgreementAI.ProposeAgreements(player, gameData);
 			await TributeAI.MakeDemands(player, gameData);
 			BorderWarnings.Check(gameData, player);
+			EspionageAI.Act(player, gameData);
 
 			// Roughly every 4 turns, see if there are trades to be made.
 			if (GameData.rng.Next(100) < 25) {

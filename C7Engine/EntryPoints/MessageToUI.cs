@@ -262,6 +262,34 @@ namespace C7Engine {
 		}
 	}
 
+	// The result of one of our spy missions (see Espionage).
+	public class MsgEspionageResult : MessageToUI {
+		public ID playerId;
+		public Espionage.Result result;
+
+		public MsgEspionageResult(ID playerId, Espionage.Result result) {
+			this.playerId = playerId;
+			this.result = result;
+		}
+	}
+
+	// We caught another civ's agent on a mission against us.
+	public class MsgSpyCaught : MessageToUI {
+		public ID victimId;
+		public Player spymaster;
+		public string mission;
+
+		public MsgSpyCaught(ID victimId, Player spymaster, string mission) {
+			this.victimId = victimId;
+			this.spymaster = spymaster;
+			this.mission = mission;
+		}
+
+		public string Text() {
+			return $"We have caught a {spymaster.civilization.adjective} spy ({mission})!";
+		}
+	}
+
 	// Two civs at war made peace.
 	public class MsgPeaceTreatySigned : MessageToUI {
 		public Player a;
