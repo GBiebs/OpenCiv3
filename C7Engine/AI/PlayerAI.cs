@@ -44,6 +44,7 @@ namespace C7Engine {
 			// Roughly every 4 turns, see if there are trades to be made.
 			if (GameData.rng.Next(100) < 25) {
 				await AttemptTrading(player);
+				TradeAI.SwapGoods(player, gameData);
 			}
 
 			BuildEmbassies(player, gameData);
@@ -438,11 +439,11 @@ namespace C7Engine {
 
 				TradeOffer weGive = new();
 				Func<int> CalculateWeGiveValue = () => {
-					return Math.Max(weGive.GoldEquivalentFor(gD, them), weGive.GoldEquivalentFor(gD, us));
+					return Math.Max(weGive.GoldEquivalentFor(gD, them, us), weGive.GoldEquivalentFor(gD, us, us));
 				};
 				TradeOffer weWant = new();
 				Func<int> CalculateWeWantValue = () => {
-					return Math.Min(weWant.GoldEquivalentFor(gD, them), weWant.GoldEquivalentFor(gD, us));
+					return Math.Min(weWant.GoldEquivalentFor(gD, them, them), weWant.GoldEquivalentFor(gD, us, them));
 				};
 
 				// Figure out the value of what we have available to trade.

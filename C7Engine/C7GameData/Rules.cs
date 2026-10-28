@@ -185,6 +185,9 @@ namespace C7GameData {
 		// How civs feel about each other. See Attitude.
 		public AttitudeRules attitude = new();
 
+		// What goods in a deal are worth. See TradeOffer.
+		public DealValueRules dealValues = new();
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 
@@ -357,6 +360,27 @@ namespace C7GameData {
 		// One of our cities flipped to them and they took it, or refused it.
 		public int tookOurFlippedCity = 1;
 		public int refusedOurFlippedCity = -1;
+		// They sold us one of their workers.
+		public int soldUsWorkers = 1;
+	}
+
+	// What goods in a deal are worth, in gold (see TradeOffer). Civ3's values
+	// aren't documented. Not in Civ3's BIQ.
+	public class DealValueRules {
+		// A tile of a map that's new to the receiver is worth a gold in so
+		// many.
+		public int mapTilesPerGold = 4;
+		// Meeting a civ.
+		public int contactGold = 50;
+		// A resource the receiver lacks, for the deal's duration; giving away
+		// one of several costs this percent of it.
+		public int strategicResourceGold = 200;
+		public int luxuryResourceGold = 150;
+		public int spareResourcePercent = 10;
+		// A city or a worker is worth its shields (a city's citizens and
+		// buildings) at the rules' shield value in gold; giving away a city
+		// costs this many times that.
+		public int cityGiveFactor = 3;
 	}
 
 	// War weariness points and what they do (see WarWeariness; CivFanatics,

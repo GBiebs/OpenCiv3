@@ -12544,7 +12544,16 @@
       "brokeAlliance": 12,
       "brokeAllianceWithFriend": 2,
       "tookOurFlippedCity": 1,
-      "refusedOurFlippedCity": -1
+      "refusedOurFlippedCity": -1,
+      "soldUsWorkers": 1
+    },
+    "dealValues": {
+      "mapTilesPerGold": 4,
+      "contactGold": 50,
+      "strategicResourceGold": 200,
+      "luxuryResourceGold": 150,
+      "spareResourcePercent": 10,
+      "cityGiveFactor": 3
     },
     "warWeariness": {
       "pointsPerLevel": 30,

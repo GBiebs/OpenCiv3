@@ -384,6 +384,18 @@ namespace C7GameData {
 		// type, experience and hit points, loses its orders and can't move again
 		// this turn. Workers keep their nationality (captured workers are
 		// slaves); other units take their new owner's.
+		// Moves `unit`, and anything it carries, straight to `tile`.
+		internal void TeleportUnit(MapUnit unit, Tile tile) {
+			List<MapUnit> moving = [unit, .. unit.location.unitsOnTile.Where(u => u.IsLoadedIn(unit))];
+			moving.AddRange(moving.Skip(1).SelectMany(u => u.Passengers()).ToList());
+			foreach (MapUnit u in moving) {
+				u.location.unitsOnTile.Remove(u);
+				tile.unitsOnTile.Add(u);
+				u.location = tile;
+			}
+			unit.path = TilePath.NONE;
+		}
+
 		internal void TransferUnit(MapUnit unit, Player newOwner) {
 			Player oldOwner = unit.owner;
 			if (unit.currentAI != null) {

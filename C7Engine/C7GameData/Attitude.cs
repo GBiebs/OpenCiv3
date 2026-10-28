@@ -223,9 +223,9 @@ namespace C7GameData {
 			aToB.lastTradeTurn = gameData.turn;
 			bToA.lastTradeTurn = gameData.turn;
 			if (bGives.IsEmpty() && !aGives.IsEmpty()) {
-				bToA.giftGold += aGives.GoldEquivalentFor(gameData, b);
+				bToA.giftGold += aGives.GoldEquivalentFor(gameData, b, a);
 			} else if (aGives.IsEmpty() && !bGives.IsEmpty()) {
-				aToB.giftGold += bGives.GoldEquivalentFor(gameData, a);
+				aToB.giftGold += bGives.GoldEquivalentFor(gameData, a, b);
 			}
 		}
 

@@ -17,6 +17,10 @@ public partial class TradingTree : Tree {
 	TreeItem embargoHeader;
 	// The agreements on offer, by their item.
 	Dictionary<TreeItem, Agreement> agreementItems = new();
+	// The other goods on offer, by their item, and their headings.
+	Dictionary<TreeItem, DealGood> goodItems = new();
+	List<TreeItem> goodHeaders = new();
+	TreeItem perTurn;
 
 	List<Tech> tradeableTechs;
 	TradeOffer currentOffer;
@@ -26,7 +30,8 @@ public partial class TradingTree : Tree {
 						int playerGold,
 						List<Tech> tradeableTechs,
 						TradeOffer currentOffer, bool requiresPeaceTreaty,
-						List<(Agreement agreement, string text)> agreements) {
+						List<(Agreement agreement, string text)> agreements,
+						List<DealGood> goods) {
 		this.tradeableTechs = tradeableTechs;
 		this.currentOffer = currentOffer;
 		this.playerGold = playerGold;
@@ -54,6 +59,7 @@ public partial class TradingTree : Tree {
 		}
 		allianceHeader = AddAgreementHeader(root, "Military Alliances", agreements, DealSubType.MilitaryAlliance);
 		embargoHeader = AddAgreementHeader(root, "Trade Embargos", agreements, DealSubType.TradeEmbargo);
+		AddGoods(root, goods, DealGood.HeadingsBeforeGold);
 
 		// Gold
 		{
@@ -61,7 +67,8 @@ public partial class TradingTree : Tree {
 			goldHeader.SetText(0, $"Gold ({playerGold} in treasury)");
 			goldHeader.Collapsed = true;
 
-			// TODO: per-turn gold
+			perTurn = this.CreateItem(goldHeader);
+			perTurn.SetText(0, "Per Turn");
 
 			lumpSum = this.CreateItem(goldHeader);
 			lumpSum.SetText(0, "Lump sum");
@@ -78,6 +85,7 @@ public partial class TradingTree : Tree {
 				techItems.Add(child);
 			}
 		}
+		AddGoods(root, goods, DealGood.HeadingsAfterTechnology);
 
 		RefreshUiForOffer();
 	}
@@ -92,6 +100,24 @@ public partial class TradingTree : Tree {
 		header.Collapsed = true;
 		AddAgreements(header, ofType);
 		return header;
+	}
+
+	private void AddGoods(TreeItem root, List<DealGood> goods, string[] headings) {
+		foreach (string heading in headings) {
+			List<DealGood> under = goods.Where(g => g.heading == heading).ToList();
+			if (under.Count == 0) {
+				continue;
+			}
+			TreeItem header = this.CreateItem(root);
+			header.SetText(0, heading);
+			header.Collapsed = true;
+			goodHeaders.Add(header);
+			foreach (DealGood good in under) {
+				TreeItem item = this.CreateItem(header);
+				item.SetText(0, good.text);
+				goodItems[item] = good;
+			}
+		}
 	}
 
 	private void AddAgreements(TreeItem header, List<(Agreement agreement, string text)> agreements) {
@@ -125,6 +151,33 @@ public partial class TradingTree : Tree {
 			}
 			if (ti == embargoHeader && other.embargoHeader != null) {
 				other.embargoHeader.Collapsed = embargoHeader.Collapsed;
+			}
+
+			// Headings fold together on both sides.
+			int heading = goodHeaders.IndexOf(ti);
+			if (heading >= 0) {
+				TreeItem otherHeader = other.goodHeaders.Find(h => h.GetText(0) == ti.GetText(0));
+				if (otherHeader != null) {
+					otherHeader.Collapsed = ti.Collapsed;
+				}
+			}
+			if (goodItems.TryGetValue(ti, out DealGood good) && !good.isIn(currentOffer)) {
+				good.add(currentOffer);
+			}
+
+			// Gold each turn, for the deal's 20 turns.
+			if (ti == perTurn) {
+				var handlePerTurn = (string input) => {
+					if (!int.TryParse(input, out int amount) || amount <= 0) {
+						return;
+					}
+					currentOffer.goldPerTurn = amount;
+					offerUpdated();
+					RefreshUiForOffer();
+				};
+				GetParent<DealScreen>().GetParent<Diplomacy>().popupOverlay
+					.ShowPopup(new TextDialog("Gold each turn...", "Gold: ", "0", BoxContainer.AlignmentMode.Center, handlePerTurn),
+						PopupOverlay.PopupCategory.Advisor);
 			}
 
 			// An agreement goes on both sides of the table.
@@ -186,6 +239,9 @@ public partial class TradingTree : Tree {
 		if (needsPeaceTreaty) {
 			goldHeader.Visible = false;
 			peaceTreaty.Visible = true;
+			foreach (TreeItem header in goodHeaders) {
+				header.Visible = false;
+			}
 
 			if (techHeader != null) {
 				techHeader.Visible = false;
@@ -193,6 +249,13 @@ public partial class TradingTree : Tree {
 		} else {
 			goldHeader.Visible = true;
 			lumpSum.Visible = !currentOffer.gold.HasValue;
+			perTurn.Visible = !currentOffer.goldPerTurn.HasValue;
+			foreach (TreeItem header in goodHeaders) {
+				header.Visible = true;
+			}
+			foreach ((TreeItem ti, DealGood good) in goodItems) {
+				ti.Visible = !good.isIn(currentOffer);
+			}
 
 			if (techHeader != null) {
 				techHeader.Visible = true;

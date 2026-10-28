@@ -51,6 +51,53 @@ namespace C7Engine.Pathing {
 			foreach (Player p in gameData.players) {
 				ComputeTradeNetwork(p);
 			}
+			ApplyResourceDeals(gameData);
+		}
+
+		// Resources traded between civs (see Trading): while the two capitals
+		// trade, a road joining them or harbors in both capitals' networks,
+		// one of the giver's moves from its capital's network to the
+		// receiver's (a civ that trades away its only one goes without).
+		private void ApplyResourceDeals(GameData gameData) {
+			foreach (Player giver in gameData.players) {
+				City giverCapital = giver.cities.Find(c => c.IsCapital());
+				if (giverCapital == null) {
+					continue;
+				}
+				foreach ((ID id, PlayerRelationship relationship) in giver.playerRelationships) {
+					Player receiver = gameData.GetPlayer(id);
+					City receiverCapital = receiver?.cities.Find(c => c.IsCapital());
+					if (receiverCapital == null || !segments.ContainsKey(receiver)) {
+						continue;
+					}
+					foreach (MultiTurnDeal deal in relationship.multiTurnDeals.Where(d => d.dealDetails == DealDetails.Outbound
+						&& d.dealSubType is DealSubType.ResourcePerTurn or DealSubType.LuxuryPerTurn)) {
+						Resource resource = gameData.Resources.Find(r => r.Key == deal.resourcePerTurn);
+						TradeNetworkSegment from = segments[giver][giverCapital];
+						TradeNetworkSegment to = segments[receiver][receiverCapital];
+						if (resource == null || from.resourceCounts.GetValueOrDefault(resource) <= 0
+							|| !CapitalsTrade(giver, giverCapital, receiver, receiverCapital)) {
+							continue;
+						}
+						from.resourceCounts[resource]--;
+						if (from.resourceCounts[resource] == 0) {
+							from.resourceCounts.Remove(resource);
+						}
+						to.resourceCounts[resource] = to.resourceCounts.GetValueOrDefault(resource) + 1;
+					}
+				}
+			}
+		}
+
+		private bool CapitalsTrade(Player a, City aCapital, Player b, City bCapital) {
+			TradeNetworkSegment ours = segments[a][aCapital];
+			TradeNetworkSegment theirs = segments[b][bCapital];
+			if (ours.tiles.Contains(bCapital.location) || theirs.tiles.Contains(aCapital.location)) {
+				return true;
+			}
+			bool HarborOn(Player p, TradeNetworkSegment segment) =>
+				p.cities.Any(c => segments[p][c] == segment && HasWorking(c, building => building.allowsWaterTrade));
+			return HarborOn(a, ours) && HarborOn(b, theirs);
 		}
 
 		private void ComputeTradeNetwork(Player player) {

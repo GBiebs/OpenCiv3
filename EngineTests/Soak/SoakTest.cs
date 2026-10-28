@@ -267,6 +267,7 @@ public class SoakTest {
 			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealSubType == DealSubType.MilitaryAlliance)) / 2} alliances "
 			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealSubType == DealSubType.TradeEmbargo)) / 2} embargoes, "
 			+ $"{relationships.Sum(r => r.brokenAlliances)} alliances broken, "
+			+ $"{relationships.Sum(r => r.multiTurnDeals.Count(d => d.dealDetails == DealDetails.Outbound && d.dealSubType is DealSubType.ResourcePerTurn or DealSubType.LuxuryPerTurn))} resource deals now, "
 			+ $"{messages.OfType<MsgPollution>().Count()} times pollution struck ({gameData.map.tiles.Count(t => t.HasPollution())} tiles polluted now), "
 			+ $"{messages.OfType<MsgMeltdown>().Count()} meltdowns, "
 			+ $"{messages.OfType<MsgDisease>().Count(m => m.city != null)} citizens and {messages.OfType<MsgDisease>().Count(m => m.unit != null)} units dead of disease, "

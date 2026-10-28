@@ -228,7 +228,7 @@ public class PlayerRelationship {
 		// add the deal for the other player
 		right.playerRelationships[left.id].multiTurnDeals.Add(new MultiTurnDeal(mtd.dealType, mtd.dealSubType,
 			mtd.dealDetails == DealDetails.Inbound ? DealDetails.Outbound : DealDetails.Inbound,
-			mtd.goldPerTurn, mtd.resourcePerTurn, mtd.dealDuration, mtd.goldPerTurn, mtd.againstPlayer));
+			mtd.goldPerTurn, mtd.resourcePerTurn, mtd.dealDuration, mtd.turnStartDeal, mtd.againstPlayer));
 	}
 
 	private static void RegisterTwoWayDeal(Player left, Player right, MultiTurnDeal mtd) {
@@ -273,7 +273,11 @@ public class PlayerRelationship {
 					// TODO: Add a popup to notify if an AI/Human deal expires
 					// TODO: Add renegotiate logic (plus preferences option Always Renegotiate Deals)
 					log.Information($"Cancelling multi turn deal: {player} -- {other}");
-					UnRegisterMultiTurnDeal(relationship, deadDeal);
+					// For both: a human's side of a deal with the AI ends too.
+					EndDeal(player, other, deadDeal);
+				}
+				if (deadDeals.Count > 0) {
+					EngineStorage.gameData?.InvalidateCachedTradeNetwork();
 				}
 			}
 		}
@@ -281,6 +285,15 @@ public class PlayerRelationship {
 
 	private static void UnRegisterMultiTurnDeal(PlayerRelationship relationship, MultiTurnDeal mtd) {
 		relationship.multiTurnDeals.Remove(mtd);
+	}
+
+	// Ends a deal for both sides.
+	private static void EndDeal(Player player, Player other, MultiTurnDeal mtd) {
+		MultiTurnDeal counterpart = MultiTurnDeal.GetCounterpartDeal(player, other, mtd);
+		UnRegisterMultiTurnDeal(player.playerRelationships[other.id], mtd);
+		if (counterpart != null) {
+			UnRegisterMultiTurnDeal(other.playerRelationships[player.id], counterpart);
+		}
 	}
 }
 

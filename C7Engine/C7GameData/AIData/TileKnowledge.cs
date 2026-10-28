@@ -181,6 +181,22 @@ namespace C7GameData {
 		 * Returns a copy of the list of known tiles.
 		 * This prevents external modifications.
 		 **/
+		// Learns of these tiles (from a map).
+		public void Learn(IEnumerable<Tile> tiles) {
+			foreach (Tile t in tiles) {
+				if (!knownTiles.Add(t)) {
+					continue;
+				}
+				borderTiles.Remove(t);
+				foreach (Tile border in t.neighbors.Values) {
+					if (border != Tile.NONE && !knownTiles.Contains(border)) {
+						borderTiles.Add(border);
+					}
+				}
+			}
+			RecomputeActiveTiles();
+		}
+
 		public List<Tile> AllKnownTiles() {
 			List<Tile> list = new List<Tile>();
 			foreach (Tile t in knownTiles) {

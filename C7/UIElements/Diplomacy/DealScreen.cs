@@ -89,10 +89,12 @@ public partial class DealScreen : TextureRect {
 			List<Agreement> possible = Agreements.Available(gD, humanPlayer, opponentPlayer);
 			possible.AddRange(Player.AgreementsIn(humanOffer, opponentOffer).Where(a => !possible.Any(p => p.SameAs(a))));
 			List<(Agreement, string)> agreements = possible.Select(a => (a, a.Describe(gD))).ToList();
+			List<DealGood> opponentGoods = DealGood.Of(gD, opponentPlayer, humanPlayer);
+			List<DealGood> humanGoods = DealGood.Of(gD, humanPlayer, opponentPlayer);
 
 			// Left hand side UI components.
 			opponentTree = new TradingTree(fontTheme, opponentPlayer.gold, techsOpponentCanTrade, opponentOffer,
-				playersAtWar, agreements);
+				playersAtWar, agreements, opponentGoods);
 			AddChild(opponentTree);
 			opponentTree.Position = new Vector2(45, 220);
 
@@ -103,12 +105,12 @@ public partial class DealScreen : TextureRect {
 			AddChild(weWant);
 
 			opponentOfferUi = new(fontTheme, techsOpponentCanTrade, opponentPlayer.gold, opponentOffer, playersAtWar,
-				agreements, HorizontalAlignment.Left);
+				agreements, opponentGoods, HorizontalAlignment.Left);
 			AddChild(opponentOfferUi);
 			opponentOfferUi.Position = new Vector2(314, 453);
 
 			// Right hand side UI components.
-			humanTree = new TradingTree(fontTheme, humanPlayer.gold, techsHumanCanTrade, humanOffer, playersAtWar, agreements);
+			humanTree = new TradingTree(fontTheme, humanPlayer.gold, techsHumanCanTrade, humanOffer, playersAtWar, agreements, humanGoods);
 			AddChild(humanTree);
 			humanTree.Position = new Vector2(789, 220);
 
@@ -119,7 +121,7 @@ public partial class DealScreen : TextureRect {
 			AddChild(weOffer);
 
 			humanOfferUi = new(fontTheme, techsHumanCanTrade, humanPlayer.gold, humanOffer, playersAtWar,
-				agreements, HorizontalAlignment.Right);
+				agreements, humanGoods, HorizontalAlignment.Right);
 			AddChild(humanOfferUi);
 			humanOfferUi.Position = new Vector2(527, 453);
 
@@ -208,8 +210,8 @@ public partial class DealScreen : TextureRect {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 
-			int theirGoldValue = opponentOffer.GoldEquivalentFor(gD, opponentPlayer);
-			int ourGoldValue = humanOffer.GoldEquivalentFor(gD, opponentPlayer);
+			int theirGoldValue = opponentOffer.GoldEquivalentFor(gD, opponentPlayer, opponentPlayer);
+			int ourGoldValue = humanOffer.GoldEquivalentFor(gD, opponentPlayer, humanPlayer);
 			opponentResponse.Text =
 				$"\"I value my offer at {theirGoldValue} gold and I value your offer at {ourGoldValue} gold\"";
 			// At war, peace is what matters.

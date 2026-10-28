@@ -11,6 +11,8 @@ public partial class TradeOfferUi : Tree {
 	TreeItem lumpSumGold;
 	List<TreeItem> techs = new();
 	Dictionary<TreeItem, Agreement> agreementItems = new();
+	Dictionary<TreeItem, DealGood> goodItems = new();
+	TreeItem goldPerTurn;
 	TradeOffer currentOffer;
 	List<Tech> tradeableTechs;
 	int playerGold;
@@ -18,6 +20,7 @@ public partial class TradeOfferUi : Tree {
 	public TradeOfferUi(Theme fontTheme, List<Tech> tradeableTechs, int playerGold,
 						TradeOffer currentOffer, bool requiresPeaceTreaty,
 						List<(Agreement agreement, string text)> agreements,
+						List<DealGood> goods,
 						HorizontalAlignment alignment) {
 		this.currentOffer = currentOffer;
 		this.tradeableTechs = tradeableTechs;
@@ -46,6 +49,16 @@ public partial class TradeOfferUi : Tree {
 			agreementItems[item] = agreement;
 		}
 
+		foreach (DealGood good in goods) {
+			TreeItem item = this.CreateItem(root);
+			item.SetTextAlignment(0, alignment);
+			item.SetText(0, good.text);
+			goodItems[item] = good;
+		}
+
+		goldPerTurn = this.CreateItem(root);
+		goldPerTurn.SetTextAlignment(0, alignment);
+
 		lumpSumGold = this.CreateItem(root);
 		lumpSumGold.SetTextAlignment(0, alignment);
 
@@ -71,6 +84,13 @@ public partial class TradeOfferUi : Tree {
 			}
 			if (ti == lumpSumGold && mouseButtonIndex != 2) {
 				currentOffer.gold = null;
+			}
+
+			if (goodItems.TryGetValue(ti, out DealGood good)) {
+				good.remove(currentOffer);
+			}
+			if (ti == goldPerTurn) {
+				currentOffer.goldPerTurn = null;
 			}
 
 			// An agreement comes off both sides of the table.
@@ -141,6 +161,14 @@ public partial class TradeOfferUi : Tree {
 
 		foreach ((TreeItem ti, Agreement agreement) in agreementItems) {
 			ti.Visible = currentOffer.agreements.Any(a => a.SameAs(agreement));
+		}
+
+		foreach ((TreeItem ti, DealGood good) in goodItems) {
+			ti.Visible = good.isIn(currentOffer);
+		}
+		goldPerTurn.Visible = currentOffer.goldPerTurn.HasValue;
+		if (currentOffer.goldPerTurn.HasValue) {
+			goldPerTurn.SetText(0, $"{currentOffer.goldPerTurn.Value} gold per turn");
 		}
 	}
 }

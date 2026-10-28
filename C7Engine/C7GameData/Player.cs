@@ -649,8 +649,8 @@ namespace C7GameData {
 
 		public bool WouldAcceptDealFrom(GameData gameData, Player other, TradeOffer theirOffer, TradeOffer ourOffer) {
 			// TODO: consider any factors like trade reputations here and culture groups
-			int theirGoldValue = theirOffer.GoldEquivalentFor(gameData, this);
-			int ourGoldValue = ourOffer.GoldEquivalentFor(gameData, this);
+			int theirGoldValue = theirOffer.GoldEquivalentFor(gameData, this, other);
+			int ourGoldValue = ourOffer.GoldEquivalentFor(gameData, this, this);
 			// Peace is worth what the war makes it worth (see PeaceAI).
 			if (theirOffer.partOfPeaceTreaty && AtWar(this, other)) {
 				if (PeaceAI.PeaceValue(gameData, this, other) is not int peace) {
@@ -676,8 +676,8 @@ namespace C7GameData {
 
 		public void ExecuteDeal(GameData gameData, Player other, TradeOffer theirOffer, TradeOffer ourOffer) {
 			log.Information($"Executing trade between {this} and {other}");
-			log.Information($"  {this} gives {ourOffer.ToString()}, worth {ourOffer.GoldEquivalentFor(gameData, other)} gold");
-			log.Information($"  {other} gives {theirOffer.ToString()}, worth {theirOffer.GoldEquivalentFor(gameData, this)} gold)");
+			log.Information($"  {this} gives {ourOffer.ToString()}, worth {ourOffer.GoldEquivalentFor(gameData, other, this)} gold");
+			log.Information($"  {other} gives {theirOffer.ToString()}, worth {theirOffer.GoldEquivalentFor(gameData, this, other)} gold)");
 			if (theirOffer.partOfPeaceTreaty) {
 				SignPeaceAfterWar(this, other, gameData);
 			}
@@ -693,6 +693,8 @@ namespace C7GameData {
 
 			other.AcquireTechs(gameData, ourOffer.techs);
 			this.AcquireTechs(gameData, theirOffer.techs);
+			Trading.Give(gameData, this, other, ourOffer);
+			Trading.Give(gameData, other, this, theirOffer);
 			foreach (Agreement agreement in AgreementsIn(theirOffer, ourOffer)) {
 				Agreements.Sign(gameData, this, other, agreement);
 			}
