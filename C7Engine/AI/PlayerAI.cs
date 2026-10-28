@@ -184,13 +184,15 @@ namespace C7Engine {
 				}
 			}
 
-			// Aircraft fly their missions (see AirAI).
+			// Aircraft fly their missions (see AirAI); nukes may be fired.
 			await AirAI.Act(player, EngineStorage.gameData);
+			NuclearAI.Act(player, EngineStorage.gameData);
 
 			// Do things with units. Copy into an array first to avoid collection-was-modified exception
 			foreach (MapUnit unit in player.units.ToArray()) {
-				// Units in an army only act with it; aircraft have flown.
-				if (unit.IsInArmy() || unit.IsAirUnit()) {
+				// Units in an army only act with it; aircraft have flown, and
+				// nukes stay put.
+				if (unit.IsInArmy() || unit.IsAirUnit() || Nuclear.IsNuke(unit.unitType)) {
 					continue;
 				}
 

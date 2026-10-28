@@ -539,6 +539,13 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgNuclearAttack mNA:
+				// News for everyone who knows the attacker.
+				if (mNA.attacker == controller || controller.playerRelationships.ContainsKey(mNA.attacker.id))
+					EmitMilitaryAdvisorSignal(mNA.outcome == Nuclear.Outcome.ShotDown
+						? $"A {mNA.attacker.civilization.adjective} nuclear missile was shot down by a missile defense!"
+						: $"The {mNA.attacker.civilization.noun} have launched a nuclear attack! {mNA.unitsKilled} units and {mNA.citizensKilled} citizens were lost.");
+				break;
 			case MsgAirMission mAM:
 				if (mAM.playerId == controller.id && mAM.target != null && mAM.outcome is Air.Outcome.Intercepted or Air.Outcome.ShotDown)
 					TemporaryPopup.Show(this, mAM.outcome == Air.Outcome.ShotDown

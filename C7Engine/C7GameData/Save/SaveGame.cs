@@ -65,6 +65,7 @@ namespace C7GameData.Save {
 				GreatWondersBuilt = data.GreatWondersBuilt,
 				Plague = data.plague,
 				UnitedNations = data.unitedNations,
+				NukesUsed = data.nukesUsed,
 				BarbarianInfo = data.barbarianInfo,
 				Units = data.mapUnits.ConvertAll(unit => new SaveUnit(unit)),
 				UnitPrototypes = data.unitPrototypes.ConvertAll(proto => new SaveUnitPrototype(proto)),
@@ -288,6 +289,7 @@ namespace C7GameData.Save {
 				GreatWondersBuilt = GreatWondersBuilt,
 				plague = Plague ?? new(),
 				unitedNations = UnitedNations ?? new(),
+				nukesUsed = NukesUsed,
 				Codex = Codex,
 			};
 
@@ -548,6 +550,7 @@ namespace C7GameData.Save {
 		public HashSet<string> GreatWondersBuilt = new();
 		public PlagueState Plague = new();
 		public UnitedNationsState UnitedNations = new();
+		public int NukesUsed;
 		public List<SavePlayer> Players = new List<SavePlayer>();
 		public List<SaveCity> Cities = new List<SaveCity>();
 		public BarbarianInfo BarbarianInfo = new BarbarianInfo();

@@ -396,6 +396,10 @@ namespace C7GameData {
 
 		/// Whether a given city can produce this unit, given available resources.
 		public bool CanProduce(City city, HashSet<Resource> accessibleResources) {
+			// Nuclear weapons need someone's Manhattan Project (see Nuclear).
+			if (Nuclear.IsNuke(this) && !Nuclear.Allowed(EngineStorage.gameData)) {
+				return false;
+			}
 			// Armies are built only where a building allows it (the Military
 			// Academy), while we have the cities to support another.
 			if (isArmy) {

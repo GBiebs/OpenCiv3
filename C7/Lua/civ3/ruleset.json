@@ -3082,6 +3082,9 @@
         "Maya"
       ],
       "unproducible": false,
+      "flags": [
+        "nuclearWeapon"
+      ],
       "categories": [
         "Land"
       ],
@@ -3160,7 +3163,9 @@
       ],
       "unproducible": false,
       "flags": [
-        "immobile"
+        "immobile",
+        "nuclearWeapon",
+        "icbm"
       ],
       "categories": [
         "Land"
@@ -13123,6 +13128,8 @@
       "brokeRightOfPassageWithUnitsInsideWithFriend": 2,
       "razedOurCity": 12,
       "razedFriendsCity": 1,
+      "nukedUs": 15,
+      "usedNukes": 6,
       "brokeAlliance": 12,
       "brokeAllianceWithFriend": 2,
       "tookOurFlippedCity": 1,
@@ -13223,6 +13230,12 @@
     "naval": {
       "sinkPercent": 50,
       "seafaringSinkPercent": 25
+    },
+    "nuclear": {
+      "missileDefensePercent": 75,
+      "populationKilledPercent": 50,
+      "buildingDestroyedPercent": 50,
+      "falloutPercent": 50
     },
     "air": {
       "interceptPercent": 50,

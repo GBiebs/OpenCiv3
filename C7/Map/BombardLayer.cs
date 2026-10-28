@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using C7GameData;
 using Godot;
 
@@ -41,12 +40,11 @@ public partial class BombardLayer : LooseLayer {
 		var unit = bombardInfo.bombardingUnit;
 		var range = unit.unitType.bombardRange;
 		var reachableTiles = GetTileSquare(tile, range);
-		var targetTiles = reachableTiles.Where(t => unit.CanBombardTile(t));
-		var bombardTiles = targetTiles.ToHashSet();
 
 		// Choose one of two cursors depending on mouse tile hover
+		// (CanBombardTile checks the range; an ICBM reaches anywhere).
 		if (bombardInfo.mouseTile != null) {
-			var bombardable = bombardTiles.Contains(bombardInfo.mouseTile);
+			bool bombardable = unit.CanBombardTile(bombardInfo.mouseTile);
 			if (bombardable) {
 				DrawBombardCursor();
 				drawTargetBombardTile(looseView, TileCenter(bombardInfo.mouseTile));

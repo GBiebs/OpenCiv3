@@ -212,6 +212,9 @@ namespace C7GameData {
 		// Air missions, interception and anti-aircraft fire. See Air.
 		public AirRules air = new();
 
+		// Nuclear weapons. See Nuclear.
+		public NuclearRules nuclear = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -368,6 +371,10 @@ namespace C7GameData {
 		public int brokeRightOfPassageWithUnitsInsideWithFriend = 2;
 		public int razedOurCity = 12;
 		public int razedFriendsCity = 1;
+		// Nuked us, or anyone ("a tremendous negative effect upon world
+		// opinion", Civilopedia; not in the attitude study).
+		public int nukedUs = 15;
+		public int usedNukes = 6;
 		// Made peace with the civ we were allied against, before the
 		// alliance ended.
 		public int brokeAlliance = 12;
@@ -519,6 +526,19 @@ namespace C7GameData {
 		// Re-basing reaches this many times the operational range
 		// (Civilopedia: "up to Six times").
 		public int rebaseRangeFactor = 6;
+	}
+
+	// Nuclear strikes (see Nuclear). Civ3 documents none of these.
+	public class NuclearRules {
+		// A missile defense (the Strategic Missile Defense) shoots down this
+		// percent of the nukes aimed at its owner's cities (players: 3/4).
+		public int missileDefensePercent = 75;
+		// The target city loses this percent of its people; each of its
+		// buildings (not wonders) is destroyed with this chance; each land
+		// tile of the blast gets fallout with this chance.
+		public int populationKilledPercent = 50;
+		public int buildingDestroyedPercent = 50;
+		public int falloutPercent = 50;
 	}
 
 	// Naval rules not in Civ3's BIQ.

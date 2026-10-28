@@ -180,6 +180,8 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgUnitMoved mUM:
 						continue;
+					case MsgNuclearAttack mNA:
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

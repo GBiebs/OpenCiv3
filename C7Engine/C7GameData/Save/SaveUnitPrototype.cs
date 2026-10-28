@@ -48,6 +48,9 @@ namespace C7GameData.Save {
 			CruiseMissile,
 			// Hard to intercept (Stealth Fighter and Bomber).
 			Stealth,
+			// A nuclear weapon (see Nuclear); an ICBM strikes anywhere.
+			NuclearWeapon,
+			ICBM,
 		}
 
 		public string name { get; set; }

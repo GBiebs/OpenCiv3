@@ -31,6 +31,8 @@ namespace C7GameData {
 		public HashSet<string> GreatWondersBuilt = new();
 		public PlagueState plague = new();
 		public UnitedNationsState unitedNations = new();
+		// Nuclear weapons fired so far (see Nuclear).
+		public int nukesUsed;
 
 		public List<City> cities = new List<City>();
 

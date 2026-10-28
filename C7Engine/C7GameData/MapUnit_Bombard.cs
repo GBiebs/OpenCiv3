@@ -38,6 +38,12 @@ namespace C7GameData {
 		public bool CanBombardTile(Tile tile, out BombardTarget bombardTarget) {
 			bombardTarget = BombardTarget.None;
 
+			// A nuclear weapon strikes instead (see Nuclear).
+			if (Nuclear.IsNuke(unitType)) {
+				bombardTarget = tile.HasCity() ? BombardTarget.City : BombardTarget.Unit;
+				return Nuclear.CanStrike(this, tile);
+			}
+
 			// Aircraft bomb within their operational range (see Air).
 			int range = IsAirUnit() ? this.unitType.operationalRange : this.unitType.bombardRange;
 			if (this.location.DistanceTo(tile) > range)
@@ -104,6 +110,11 @@ namespace C7GameData {
 
 		public async Task Bombard(Tile tile) {
 			// Could check canBombardTile(..) again, but no need really
+
+			if (Nuclear.IsNuke(unitType)) {
+				Nuclear.Strike(EngineStorage.gameData, this, tile);
+				return;
+			}
 
 			MapUnit target = tile.FindTopDefenderForBombard(this);
 

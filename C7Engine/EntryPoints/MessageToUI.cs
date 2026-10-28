@@ -246,6 +246,23 @@ namespace C7Engine {
 		}
 	}
 
+	// `attacker` fired a nuke at `target` (see Nuclear).
+	public class MsgNuclearAttack : MessageToUI {
+		public Player attacker;
+		public Tile target;
+		public Nuclear.Outcome outcome;
+		public int unitsKilled;
+		public int citizensKilled;
+
+		public MsgNuclearAttack(Player attacker, Tile target, Nuclear.Outcome outcome, int unitsKilled, int citizensKilled) {
+			this.attacker = attacker;
+			this.target = target;
+			this.outcome = outcome;
+			this.unitsKilled = unitsKilled;
+			this.citizensKilled = citizensKilled;
+		}
+	}
+
 	// A player's air unit flew a mission (see Air), with this outcome.
 	public class MsgAirMission : MessageToUI {
 		public ID playerId;

@@ -190,6 +190,16 @@ namespace C7GameData {
 			}
 		}
 
+		// `attacker` fired a nuclear weapon at `victims`: they remember it,
+		// and so does every other civ that knows the attacker.
+		public static void OnNuclearAttack(GameData gameData, Player attacker, List<Player> victims) {
+			AttitudeRules rules = gameData.rules.attitude;
+			foreach (Player other in gameData.players.Where(p => p != attacker && !p.isBarbarians && !p.defeated
+				&& PlayerRelationship.TryGetRelationship(p, attacker, out _))) {
+				Remember(other, attacker, victims.Contains(other) ? rules.nukedUs : rules.usedNukes);
+			}
+		}
+
 		// `razer` razed a city it took from `victim`.
 		public static void OnCityRazed(GameData gameData, Player razer, Player victim) {
 			if (victim == null) {

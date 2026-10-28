@@ -123,7 +123,9 @@ namespace C7GameData {
 		}
 
 		public bool CanBeActive() {
-			return !this.IsBusy() && this.movementPoints.canMove && !IsInArmy() && !(unitType.immobile && !IsAirUnit());
+			// An immobile land unit waits, unless it fires from where it
+			// stands (an ICBM).
+			return !this.IsBusy() && this.movementPoints.canMove && !IsInArmy() && !(unitType.immobile && !IsAirUnit() && !HasBombardAbility());
 		}
 
 		public bool IsCaptive() {

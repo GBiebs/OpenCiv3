@@ -905,6 +905,12 @@ public partial class Game {
 		));
 	}
 
+	private void EmitMilitaryAdvisorSignal(string text) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Military Advisor", text, Advisor.Military, Mood.Surprised, 400)
+		));
+	}
+
 	private void EmitScienceAdvisorSignal(string text, Mood mood) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(controller.id, "Science Advisor", text, Advisor.Science, mood, 400)
