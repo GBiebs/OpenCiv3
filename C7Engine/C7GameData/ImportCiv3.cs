@@ -470,6 +470,11 @@ namespace C7GameData {
 				CaptureTheFlag = game.CaptureTheFlag, // 'Capture the Unit', 'Capture the Princess'
 				ReverseCaptureTheFlag = game.ReverseCaptureTheFlag,
 			};
+			// The game limits chosen when the game was set up.
+			if (game.DominationTerrain > 0) save.Rules.victory.dominationTerrainPercent = game.DominationTerrain;
+			if (game.DominationPopulation > 0) save.Rules.victory.dominationPopulationPercent = game.DominationPopulation;
+			if (game.OneCityCultureWin > 0) save.Rules.victory.cultureCityPoints = game.OneCityCultureWin;
+			if (game.AllCitiesCultureWin > 0) save.Rules.victory.cultureCivPoints = game.AllCitiesCultureWin;
 
 			if (game.Winner > -1) {
 				// TODO: load winner
@@ -2336,6 +2341,11 @@ namespace C7GameData {
 			if (hasScenarioSettings) {
 				save.Rules.AllowCulturalConversions = game.AllowCulturalConversions;
 			}
+			// The game limits the victory conditions use.
+			if (game.DominationTerrain > 0) save.Rules.victory.dominationTerrainPercent = game.DominationTerrain;
+			if (game.DominationPopulation > 0) save.Rules.victory.dominationPopulationPercent = game.DominationPopulation;
+			if (game.OneCityCultureWin > 0) save.Rules.victory.cultureCityPoints = game.OneCityCultureWin;
+			if (game.AllCitiesCultureWin > 0) save.Rules.victory.cultureCivPoints = game.AllCitiesCultureWin;
 			// Disasters: how often volcanoes erupt, and a scenario's plague
 			// (off in the stock rules).
 			if (game.EruptionPeriod > 0) {

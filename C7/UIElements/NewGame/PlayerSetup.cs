@@ -115,17 +115,12 @@ public partial class PlayerSetup : Control {
 		rulesContainer.Columns = 2;
 		rulesContainer.AddThemeConstantOverride("v_separation", 0);
 
-		// TODO: Add Civ3Checkbox in rulesContainer for each victory condition, wire up to victoryConditions
-
-		var dominationVictory = new Civ3Checkbox() { Text = "Allow Domination Victory" };
-		dominationVictory.SetPressed(victoryConditions.AllowDominationVictory);
-		dominationVictory.Toggled += (state) => { victoryConditions.AllowDominationVictory = state; };
-		rulesContainer.AddChild(dominationVictory);
-
-		var conquestVictory = new Civ3Checkbox() { Text = "Allow Conquest Victory" };
-		conquestVictory.SetPressed(victoryConditions.AllowConquestVictory);
-		conquestVictory.Toggled += (state) => { victoryConditions.AllowConquestVictory = state; };
-		rulesContainer.AddChild(conquestVictory);
+		foreach (VictoryConditions.Option option in VictoryConditions.Options) {
+			var checkbox = new Civ3Checkbox() { Text = option.label };
+			checkbox.SetPressed(option.get(victoryConditions));
+			checkbox.Toggled += (state) => { option.set(victoryConditions, state); };
+			rulesContainer.AddChild(checkbox);
+		}
 	}
 
 	private void BackToMainMenu() {
@@ -343,8 +338,9 @@ public partial class PlayerSetup : Control {
 	}
 
 	private void PersistVictoryConditions(VictoryConditions vcs) {
-		C7Settings.SetValue(C7Settings.Rules.SectionName, C7Settings.Rules.AllowDominationVictory, vcs.AllowDominationVictory.ToString());
-		C7Settings.SetValue(C7Settings.Rules.SectionName, C7Settings.Rules.AllowConquestVictory, vcs.AllowConquestVictory.ToString());
+		foreach (VictoryConditions.Option option in VictoryConditions.Options) {
+			C7Settings.SetValue(C7Settings.Rules.SectionName, option.key, option.get(vcs).ToString());
+		}
 	}
 
 	private void StartGame() {

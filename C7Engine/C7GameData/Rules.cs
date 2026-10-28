@@ -200,6 +200,9 @@ namespace C7GameData {
 		// The civilization traits' bonuses that aren't in Civ3's BIQ.
 		public TraitBonusRules traitBonuses = new();
 
+		// What each victory condition takes. See the classes in Victory/.
+		public VictoryRules victory = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -486,6 +489,24 @@ namespace C7GameData {
 		public double localCultureFactor = 2;
 		public double celebratingFactor = .5;
 		public double disorderFactor = 2;
+	}
+
+	// The victory conditions' limits: Civ3's GAME "game limits" where the
+	// BIQ has them (Conquests' values), the Civilopedia's otherwise.
+	public class VictoryRules {
+		// Domination: this percent of the world's land within our borders
+		// and of its people in our cities.
+		public int dominationTerrainPercent = 66;
+		public int dominationPopulationPercent = 66;
+
+		// Culture: a city with this many culture points, or a civ with this
+		// many, scaled by the map size (Civilopedia "Victory Conditions":
+		// 60,000 on a Tiny map to 160,000 on a Huge one; not in the BIQ),
+		// and this many times the culture of every other civ.
+		public int cultureCityPoints = 20000;
+		public int cultureCivPoints = 100000;
+		public List<int> cultureCivMapSizePercent = [60, 80, 100, 130, 160];
+		public int cultureCivLead = 2;
 	}
 
 	// Trait bonuses Civ3 builds in (Civilopedia, CivWiki; checked against

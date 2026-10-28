@@ -9,4 +9,9 @@ public class VictoryStatus {
 	public float DominationArea { get; set; }
 	public float DominationPopulation { get; set; }
 	public float Score { get; set; }
+	// Culture: the player's best city, the whole civ, and the most of any
+	// other civ.
+	public int CityCulture { get; set; }
+	public int Culture { get; set; }
+	public int RivalCulture { get; set; }
 }

@@ -193,14 +193,16 @@ namespace C7GameData.Save {
 			// NOTE: Order matters
 
 			if (conditions.AllowDominationVictory) {
-				var dominationAreaLimit = 66f; // TODO: ruleset, dom area victory condition
-				var dominationPopulationLimit = 66f; // TODO: ruleset, dom pop victory condition
-				data.victories.Add(new DominationVictory(dominationAreaLimit, dominationPopulationLimit));
+				data.victories.Add(new DominationVictory(data.rules.victory.dominationTerrainPercent, data.rules.victory.dominationPopulationPercent));
 			}
 
 			if (conditions.AllowConquestVictory) { // TODO: implement conquest victory
 												   // TODO: ruleset, Conquest victory condition
 				data.victories.Add(new ConquestVictory(rivalsAliveLimit: 0));
+			}
+
+			if (conditions.AllowCulturalVictory) {
+				data.victories.Add(CulturalVictory.FromRules(data));
 			}
 
 			// There is no "score victory", but we can treat score as if it were, so

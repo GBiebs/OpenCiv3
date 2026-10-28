@@ -12615,6 +12615,14 @@
       "seafaringShipMoves": 1,
       "industriousMetropolisShields": 1
     },
+    "victory": {
+      "dominationTerrainPercent": 66,
+      "dominationPopulationPercent": 66,
+      "cultureCityPoints": 20000,
+      "cultureCivPoints": 100000,
+      "cultureCivMapSizePercent": [ 60, 80, 100, 130, 160 ],
+      "cultureCivLead": 2
+    },
     "ageBonus": {
       "enabled": true,
       "yearsToDouble": 1000,
