@@ -25,7 +25,15 @@ namespace C7GameData {
 		Upgrade,
 		BuildArmy,
 		HurryProduction,
-		StartAgeOfScience
+		StartAgeOfScience,
+		// Air missions (see Air), and moving by air.
+		Bombing,
+		Recon,
+		AirSuperiority,
+		Rebase,
+		PrecisionStrike,
+		Airdrop,
+		Airlift,
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {
@@ -75,6 +83,10 @@ namespace C7GameData {
 		public int movement { get; set; }
 		public int capacity { get; set; }
 		public int hpBonus { get; set; }
+		// How far an air unit flies its missions (and a paratrooper drops),
+		// and the anti-aircraft strength a unit shoots with (see Air).
+		public int operationalRange { get; set; }
+		public int airDefense { get; set; }
 		public HashSet<Civilization> producibleBy { get; set; } = [];
 		public List<UnitPrototype> upgradesTo = [];
 		// What a unit this one defeats may become, or null (see MapUnit.MaybeEnslave).
@@ -254,6 +266,9 @@ namespace C7GameData {
 		public bool submarine => flags.Contains(SaveUnitPrototype.Flag.Submarine);
 		public bool canSeeSubmarines => flags.Contains(SaveUnitPrototype.Flag.CanSeeSubmarines);
 		public bool stealthAttack => flags.Contains(SaveUnitPrototype.Flag.StealthAttack);
+		// Air (see Air).
+		public bool cruiseMissile => flags.Contains(SaveUnitPrototype.Flag.CruiseMissile);
+		public bool stealth => flags.Contains(SaveUnitPrototype.Flag.Stealth);
 		// The unit types (by name) its stealth attack may pick.
 		public HashSet<string> stealthTargets = [];
 
@@ -291,6 +306,7 @@ namespace C7GameData {
 				= (proto.name, proto.art, proto.shieldCost, proto.populationCost);
 
 			civilopediaEntry = proto.civilopediaEntry;
+			(operationalRange, airDefense) = (proto.operationalRange, proto.airDefense);
 
 			(attack, defense, bombard, bombardRange, rateOfFire)
 				= (proto.attack, proto.defense, proto.bombard, proto.bombardRange, proto.rateOfFire);

@@ -209,6 +209,9 @@ namespace C7GameData {
 		// Ships, submarines and coastal defenses. See Naval.
 		public NavalRules naval = new();
 
+		// Air missions, interception and anti-aircraft fire. See Air.
+		public AirRules air = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -495,6 +498,27 @@ namespace C7GameData {
 		public double localCultureFactor = 2;
 		public double celebratingFactor = .5;
 		public double disorderFactor = 2;
+	}
+
+	// Air units (see Air): Civ3's RULE interception chances; the rest isn't
+	// in the BIQ.
+	public class AirRules {
+		// The chance, in percent, that a unit on air superiority duty
+		// intercepts an enemy mission within half its operational range
+		// (Civilopedia, Civ3 manual), and a stealth one (RULE: 50 and 5).
+		public int interceptPercent = 50;
+		public int stealthInterceptPercent = 5;
+		// Anti-aircraft fire: the strongest air defense at the target (a
+		// unit's, or a city's air power: the SAM Missile Battery's 8) shoots
+		// once, downing the aircraft with this many percent per point
+		// (players measured SAMs at about 40%), and a stealth one with a
+		// tenth of that (as interception).
+		public int antiAirPercentPerPoint = 5;
+		// A recon mission reveals the tiles this far around its target.
+		public int reconRadius = 2;
+		// Re-basing reaches this many times the operational range
+		// (Civilopedia: "up to Six times").
+		public int rebaseRangeFactor = 6;
 	}
 
 	// Naval rules not in Civ3's BIQ.

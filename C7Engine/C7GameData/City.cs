@@ -111,6 +111,8 @@ namespace C7GameData {
 		// owner may raze it only on that turn, as Civ3 offers right after the
 		// capture. Not saved.
 		public int capturedOnTurn = -1;
+		// The last turn the city's airport sent a unit (see Air.Airlift).
+		public int lastAirliftTurn = -1;
 		public Player capturedFrom;
 
 		// The turn this city last flipped to its owner by culture, or -1, and

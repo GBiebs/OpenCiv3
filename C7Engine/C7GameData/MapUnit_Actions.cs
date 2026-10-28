@@ -104,6 +104,7 @@ public partial class MapUnit {
 
 	public void Wake() {
 		isFortified = false;
+		airSuperiority = false;
 	}
 
 	public void Automate() {

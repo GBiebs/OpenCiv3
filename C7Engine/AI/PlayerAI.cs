@@ -184,10 +184,13 @@ namespace C7Engine {
 				}
 			}
 
+			// Aircraft fly their missions (see AirAI).
+			await AirAI.Act(player, EngineStorage.gameData);
+
 			// Do things with units. Copy into an array first to avoid collection-was-modified exception
 			foreach (MapUnit unit in player.units.ToArray()) {
-				// Units in an army only act with it.
-				if (unit.IsInArmy()) {
+				// Units in an army only act with it; aircraft have flown.
+				if (unit.IsInArmy() || unit.IsAirUnit()) {
 					continue;
 				}
 

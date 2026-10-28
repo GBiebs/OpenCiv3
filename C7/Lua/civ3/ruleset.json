@@ -989,7 +989,8 @@
         "explore",
         "automate",
         "load",
-        "joinCity"
+        "joinCity",
+        "airlift"
       ],
       "terraformActions": [
         "Terraform-4",
@@ -1197,7 +1198,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "requiredResources": [
         "Rubber"
@@ -1232,6 +1234,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 8,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -1277,7 +1280,9 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airdrop",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -1364,7 +1369,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -1443,7 +1449,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -1520,7 +1527,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -1598,7 +1606,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -1684,7 +1693,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -1770,7 +1780,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -1851,7 +1862,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -1934,7 +1946,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -2014,7 +2027,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Saltpeter"
@@ -2095,7 +2109,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -2179,7 +2194,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -2255,7 +2271,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -2340,7 +2357,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Rubber"
@@ -2423,7 +2441,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -2505,7 +2524,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -2587,7 +2607,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -2983,7 +3004,8 @@
       "unproducible": false,
       "flags": [
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "cruiseMissile"
       ],
       "categories": [
         "Land"
@@ -3653,6 +3675,7 @@
       "movement": 7,
       "capacity": 4,
       "hpBonus": 0,
+      "airDefense": 1,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -3831,6 +3854,7 @@
       "movement": 8,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 1,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -3909,6 +3933,7 @@
       "movement": 5,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 2,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -3987,6 +4012,7 @@
       "movement": 7,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 3,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4169,6 +4195,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 6,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4220,7 +4247,11 @@
         "fortify",
         "disband",
         "load",
-        "upgrade"
+        "upgrade",
+        "bombing",
+        "recon",
+        "airSuperiority",
+        "rebase"
       ],
       "requiredResources": [
         "Oil"
@@ -4251,6 +4282,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 10,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4298,7 +4330,9 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "bombing",
+        "rebase"
       ],
       "requiredResources": [
         "Oil"
@@ -4329,6 +4363,7 @@
       "movement": 1,
       "capacity": 3,
       "hpBonus": 0,
+      "operationalRange": 6,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4375,7 +4410,10 @@
         "wait",
         "fortify",
         "disband",
-        "unload"
+        "unload",
+        "recon",
+        "rebase",
+        "airdrop"
       ],
       "requiredResources": [
         "Oil",
@@ -4407,6 +4445,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 9,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4453,7 +4492,11 @@
         "fortify",
         "disband",
         "load",
-        "upgrade"
+        "upgrade",
+        "bombing",
+        "recon",
+        "airSuperiority",
+        "rebase"
       ],
       "requiredResources": [
         "Oil",
@@ -4485,6 +4528,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 12,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4523,7 +4567,8 @@
         "lethalLandBombardment",
         "lethalSeaBombardment",
         "immobile",
-        "stealthAttack"
+        "stealthAttack",
+        "stealth"
       ],
       "stealthTargets": [
         "AEGIS Cruiser",
@@ -4627,7 +4672,11 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "bombing",
+        "recon",
+        "rebase",
+        "precisionStrike"
       ],
       "requiredResources": [
         "Oil",
@@ -4659,6 +4708,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 16,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -4697,7 +4747,8 @@
         "lethalLandBombardment",
         "lethalSeaBombardment",
         "immobile",
-        "stealthAttack"
+        "stealthAttack",
+        "stealth"
       ],
       "stealthTargets": [
         "AEGIS Cruiser",
@@ -4800,7 +4851,10 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "bombing",
+        "rebase",
+        "precisionStrike"
       ],
       "requiredResources": [
         "Oil",
@@ -5030,7 +5084,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -5081,7 +5136,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -5132,7 +5188,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -5183,7 +5240,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -5234,7 +5292,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -5288,7 +5347,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -5347,7 +5407,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -5397,7 +5458,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -5452,7 +5514,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -5506,7 +5569,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Saltpeter"
@@ -5560,7 +5624,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -5614,7 +5679,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -5661,7 +5727,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -5718,7 +5785,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -5807,6 +5875,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 9,
       "producibleBy": [
         "America"
       ],
@@ -5919,7 +5988,12 @@
         "wait",
         "fortify",
         "disband",
-        "load"
+        "load",
+        "bombing",
+        "recon",
+        "airSuperiority",
+        "rebase",
+        "precisionStrike"
       ],
       "requiredResources": [
         "Oil",
@@ -6050,7 +6124,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -6102,7 +6177,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -6157,7 +6233,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -6206,7 +6283,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -6262,7 +6340,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -6316,7 +6395,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses",
@@ -6371,7 +6451,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -6508,7 +6589,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -6592,7 +6674,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -7639,7 +7722,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -7695,7 +7779,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Horses"
@@ -7915,7 +8000,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "requiredResources": [
         "Iron"
@@ -8209,7 +8295,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -8261,7 +8348,8 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -8346,6 +8434,7 @@
       "movement": 6,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 1,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -8439,7 +8528,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "terraformActions": [
         "Terraform-3"
@@ -8484,7 +8574,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -8596,6 +8687,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "operationalRange": 6,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -8645,7 +8737,9 @@
         "explore",
         "load",
         "pillage",
-        "upgrade"
+        "upgrade",
+        "airdrop",
+        "airlift"
       ],
       "requiredResources": [
         "Oil",
@@ -8726,7 +8820,8 @@
         "goto",
         "explore",
         "load",
-        "pillage"
+        "pillage",
+        "airlift"
       ],
       "flags": [
         "canCapture",
@@ -8758,6 +8853,7 @@
       "movement": 1,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 2,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -8806,7 +8902,8 @@
         "goto",
         "explore",
         "load",
-        "upgrade"
+        "upgrade",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -8837,6 +8934,7 @@
       "movement": 2,
       "capacity": 0,
       "hpBonus": 0,
+      "airDefense": 4,
       "producibleBy": [
         "Rome",
         "Egypt",
@@ -8881,7 +8979,8 @@
         "disband",
         "goto",
         "explore",
-        "load"
+        "load",
+        "airlift"
       ],
       "flags": [
         "canCapture"
@@ -13124,6 +13223,13 @@
     "naval": {
       "sinkPercent": 50,
       "seafaringSinkPercent": 25
+    },
+    "air": {
+      "interceptPercent": 50,
+      "stealthInterceptPercent": 5,
+      "antiAirPercentPerPoint": 5,
+      "reconRadius": 2,
+      "rebaseRangeFactor": 6
     },
     "ageBonus": {
       "enabled": true,

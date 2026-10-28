@@ -156,6 +156,8 @@ public partial class Game : Node {
 	public GotoInfo gotoInfo = null;
 
 	public BombardInfo bombardInfo = null;
+	// An air order waiting for its target tile (see Air).
+	private (MapUnit unit, string action)? airTarget = null;
 
 	public TileInfo tileInfo = null;
 
@@ -536,6 +538,12 @@ public partial class Game : Node {
 			case MsgTributeDemanded mTD:
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
+				break;
+			case MsgAirMission mAM:
+				if (mAM.playerId == controller.id && mAM.target != null && mAM.outcome is Air.Outcome.Intercepted or Air.Outcome.ShotDown)
+					TemporaryPopup.Show(this, mAM.outcome == Air.Outcome.ShotDown
+						? $"Our {mAM.plane} was shot down!"
+						: $"Our {mAM.plane} was intercepted!", mapView.screenLocationOfTile(mAM.target, true));
 				break;
 			case MsgChooseStealthTarget mCST:
 				if (mCST.playerId == controller.id)
@@ -932,6 +940,12 @@ public partial class Game : Node {
 		if (gotoInfo != null) {
 			this.ResolveMovement(gotoInfo);
 			this.SetGotoMode(false);
+		} else if (airTarget is (MapUnit airUnit, string airAction)) {
+			airTarget = null;
+			Tile tile = PositionToTile(eventMouseButton.Position);
+			if (tile != null) {
+				SendAirOrder(airUnit, airAction, tile);
+			}
 		} else if (bombardInfo != null) {
 			Tile tile = PositionToTile(eventMouseButton.Position);
 			if (bombardInfo.bombardingUnit.CanBombardTile(tile, out var bombardTarget)) {
@@ -1436,6 +1450,14 @@ public partial class Game : Node {
 			});
 		}
 
+		if (currentAction == C7Action.UnitAirSuperiority) {
+			new MsgFlyMission(CurrentlySelectedUnit.id, Air.Mission.AirSuperiority, null).send();
+		}
+		if (currentAction is C7Action.UnitBombing or C7Action.UnitRecon or C7Action.UnitPrecisionStrike or C7Action.UnitRebase
+			or C7Action.UnitAirdrop or C7Action.UnitAirlift) {
+			airTarget = (CurrentlySelectedUnit, currentAction);
+		}
+
 		if (currentAction == C7Action.UnitBombard) {
 			if (CurrentlySelectedUnit.HasBombardAbility()) {
 				EngineStorage.ReadGameData((GameData gameData) => {
@@ -1635,6 +1657,28 @@ public partial class Game : Node {
 		});
 
 		return result;
+	}
+
+	// Sends the air order picked with its target, if it can be flown there.
+	private void SendAirOrder(MapUnit unit, string action, Tile tile) {
+		EngineStorage.ReadGameData((GameData gameData) => {
+			if (action == C7Action.UnitAirdrop || action == C7Action.UnitAirlift) {
+				bool airlift = action == C7Action.UnitAirlift;
+				if (airlift ? Air.CanAirlift(gameData, unit, tile) : Air.CanAirdrop(unit, tile)) {
+					new MsgAirMove(unit.id, airlift, tile).send();
+				}
+				return;
+			}
+			Air.Mission mission = action switch {
+				C7Action.UnitBombing => Air.Mission.Bombing,
+				C7Action.UnitRecon => Air.Mission.Recon,
+				C7Action.UnitPrecisionStrike => Air.Mission.PrecisionStrike,
+				_ => Air.Mission.Rebase,
+			};
+			if (Air.CanFly(unit, mission, tile)) {
+				new MsgFlyMission(unit.id, mission, tile).send();
+			}
+		});
 	}
 
 	private void HandleBombardClick(BombardInfo info, Tile tile) {

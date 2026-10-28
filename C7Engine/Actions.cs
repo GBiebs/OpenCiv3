@@ -75,6 +75,13 @@ public static class C7Action {
 	public const string UnitHurryProduction = "unit_hurry_production";
 	public const string UnitBuildArmy = "unit_build_army";
 	public const string UnitStartAgeOfScience = "unit_start_age_of_science";
+	public const string UnitBombing = "unit_bombing";
+	public const string UnitRecon = "unit_recon";
+	public const string UnitAirSuperiority = "unit_air_superiority";
+	public const string UnitRebase = "unit_rebase";
+	public const string UnitPrecisionStrike = "unit_precision_strike";
+	public const string UnitAirdrop = "unit_airdrop";
+	public const string UnitAirlift = "unit_airlift";
 
 	private static readonly Dictionary<string, UnitAction> toUnitAction = new() {
 		[UnitBuildCity] = UnitAction.BuildCity,
@@ -93,7 +100,14 @@ public static class C7Action {
 		[UnitUpgrade] = UnitAction.Upgrade,
 		[UnitHurryProduction] = UnitAction.HurryProduction,
 		[UnitBuildArmy] = UnitAction.BuildArmy,
-		[UnitStartAgeOfScience] = UnitAction.StartAgeOfScience
+		[UnitStartAgeOfScience] = UnitAction.StartAgeOfScience,
+		[UnitBombing] = UnitAction.Bombing,
+		[UnitRecon] = UnitAction.Recon,
+		[UnitAirSuperiority] = UnitAction.AirSuperiority,
+		[UnitRebase] = UnitAction.Rebase,
+		[UnitPrecisionStrike] = UnitAction.PrecisionStrike,
+		[UnitAirdrop] = UnitAction.Airdrop,
+		[UnitAirlift] = UnitAction.Airlift,
 	};
 
 	private static readonly Dictionary<string, string> toTooltip = new() {
@@ -128,7 +142,15 @@ public static class C7Action {
 		[UnitUpgrade] = "Upgrade",
 		[UnitHurryProduction] = "Hurry Production",
 		[UnitBuildArmy] = "Build Army",
-		[UnitStartAgeOfScience] = "Increase Scientific Output"
+		[UnitStartAgeOfScience] = "Increase Scientific Output",
+		// Civ3's labels.txt UNIT_ACTIONS.
+		[UnitBombing] = "Bombing Mission: Choose a target",
+		[UnitRecon] = "Recon Mission: Pick a recon zone",
+		[UnitAirSuperiority] = "Air Superiority Mission: Control the skies",
+		[UnitRebase] = "Re-base Mission: Choose a new base",
+		[UnitPrecisionStrike] = "Precision Strike: Pick an enemy city",
+		[UnitAirdrop] = "Airdrop: Select a landing zone",
+		[UnitAirlift] = "Airlift: Choose new airbase",
 	};
 
 	public static UnitAction? ToUnitAction(string action) {

@@ -246,6 +246,23 @@ namespace C7Engine {
 		}
 	}
 
+	// A player's air unit flew a mission (see Air), with this outcome.
+	public class MsgAirMission : MessageToUI {
+		public ID playerId;
+		public string plane;
+		public Air.Mission mission;
+		public Tile target;
+		public Air.Outcome outcome;
+
+		public MsgAirMission(ID playerId, string plane, Air.Mission mission, Tile target, Air.Outcome outcome) {
+			this.playerId = playerId;
+			this.plane = plane;
+			this.mission = mission;
+			this.target = target;
+			this.outcome = outcome;
+		}
+	}
+
 	// A ship of the player's sank at sea, with this many units aboard (see
 	// Naval).
 	public class MsgShipSank : MessageToUI {

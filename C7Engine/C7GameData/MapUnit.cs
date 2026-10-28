@@ -50,6 +50,10 @@ namespace C7GameData {
 		}
 		public bool isFortified { get; set; }
 
+		// An air unit on air superiority duty: it intercepts enemy missions
+		// until it's given another order (see Air).
+		public bool airSuperiority { get; set; }
+
 		public bool isAutomated { get; set; }
 
 		//sentry, etc. will come later.  For now, let's just have a couple things so we can cycle through units that aren't fortified.
@@ -94,7 +98,7 @@ namespace C7GameData {
 		}
 
 		public bool IsBusy() {
-			return isFortified || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
+			return isFortified || airSuperiority || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
 		}
 
 		public bool IsLandUnit() {
@@ -811,6 +815,19 @@ namespace C7GameData {
 
 			if (canBuildCity()) {
 				result.Add(UnitAction.BuildCity);
+			}
+			// Air missions, airdrops and airlifts (see Air).
+			foreach (Air.Mission mission in Enum.GetValues<Air.Mission>()) {
+				if (Air.CanFly(this, mission)) {
+					result.Add(Air.ActionFor(mission));
+				}
+			}
+			if (unitType.actions.Contains(UnitAction.Airdrop) && movementPoints.canMove && location.cityAtTile?.owner == owner) {
+				result.Add(UnitAction.Airdrop);
+			}
+			if (unitType.actions.Contains(UnitAction.Airlift) && movementPoints.canMove && Air.HasAirport(location.cityAtTile)
+				&& location.cityAtTile.owner == owner) {
+				result.Add(UnitAction.Airlift);
 			}
 			if (canExplore()) {
 				result.Add(UnitAction.Explore);

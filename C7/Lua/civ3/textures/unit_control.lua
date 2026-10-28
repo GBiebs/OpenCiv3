@@ -57,6 +57,13 @@ local unit_control = {
   unit_build_outpost = make_entry(3, 4),
   unit_build_barricade = make_entry(4, 4),
   unit_join_city = make_entry(0, 4),
+  unit_airlift = make_entry(1, 1),
+  unit_airdrop = make_entry(4, 1),
+  unit_bombing = make_entry(5, 4),
+  unit_recon = make_entry(6, 4),
+  unit_air_superiority = make_entry(7, 4),
+  unit_rebase = make_entry(0, 5),
+  unit_precision_strike = make_entry(1, 5),
 
   movement_indicators = {
     path = INTERFACE .. "MovementLED.PCX",

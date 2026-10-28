@@ -101,6 +101,53 @@ namespace C7Engine {
 		}
 	}
 
+	// The human's air unit flies a mission (see Air).
+	public class MsgFlyMission : MessageToEngine {
+		private readonly ID unitId;
+		private readonly Air.Mission mission;
+		private readonly int tileX;
+		private readonly int tileY;
+
+		public MsgFlyMission(ID unitId, Air.Mission mission, Tile target) {
+			this.unitId = unitId;
+			this.mission = mission;
+			(tileX, tileY) = target == null ? (-1, -1) : (target.XCoordinate, target.YCoordinate);
+		}
+
+		public override async void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetUnit(unitId) is MapUnit plane) {
+				await Air.Fly(gameData, plane, mission, tileX < 0 ? null : gameData.map.tileAt(tileX, tileY));
+			}
+		}
+	}
+
+	// The human's unit airdrops, or airlifts, to a tile (see Air).
+	public class MsgAirMove : MessageToEngine {
+		private readonly ID unitId;
+		private readonly bool airlift;
+		private readonly int tileX;
+		private readonly int tileY;
+
+		public MsgAirMove(ID unitId, bool airlift, Tile target) {
+			this.unitId = unitId;
+			this.airlift = airlift;
+			(tileX, tileY) = (target.XCoordinate, target.YCoordinate);
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetUnit(unitId) is MapUnit unit) {
+				Tile target = gameData.map.tileAt(tileX, tileY);
+				if (airlift) {
+					Air.Airlift(gameData, unit, target);
+				} else {
+					Air.Airdrop(gameData, unit, target);
+				}
+			}
+		}
+	}
+
 	public class MsgLoadToTransport : MessageToEngine {
 		private ID unitID;
 		private ID transportUnitId;

@@ -1444,6 +1444,13 @@ namespace C7GameData {
 			if (prto.UpgradeUnit) yield return UnitAction.Upgrade;
 			if (prto.BuildArmy) yield return UnitAction.BuildArmy;
 			if (prto.FinishImprovements) yield return UnitAction.HurryProduction;
+			if (prto.Bombing) yield return UnitAction.Bombing;
+			if (prto.Recon) yield return UnitAction.Recon;
+			if (prto.Intercept) yield return UnitAction.AirSuperiority;
+			if (prto.Rebase) yield return UnitAction.Rebase;
+			if (prto.PrecisionBombing) yield return UnitAction.PrecisionStrike;
+			if (prto.Airdrop) yield return UnitAction.Airdrop;
+			if (prto.Airlift) yield return UnitAction.Airlift;
 		}
 
 		private static IEnumerable<TerraformKey> GetUnitTerraforms(PRTO prto) {
@@ -1511,6 +1518,8 @@ namespace C7GameData {
 				prototype.bombard = prto.BombardStrength;
 				prototype.bombardRange = prto.BombardRange;
 				prototype.rateOfFire = prto.RateOfFire;
+				prototype.operationalRange = prto.OperationalRange;
+				prototype.airDefense = prto.AirDefense;
 
 				if (prto.TurnToAttack) prototype.flags.Add(SaveUnitPrototype.Flag.RotateBeforeAttack);
 
@@ -1536,6 +1545,8 @@ namespace C7GameData {
 				if (prto.Submarine) prototype.flags.Add(SaveUnitPrototype.Flag.Submarine);
 				if (prto.CanSeeSubmarines) prototype.flags.Add(SaveUnitPrototype.Flag.CanSeeSubmarines);
 				if (prto.StealthAttack) prototype.flags.Add(SaveUnitPrototype.Flag.StealthAttack);
+				if (prto.CruiseMissile) prototype.flags.Add(SaveUnitPrototype.Flag.CruiseMissile);
+				if (prto.Stealth) prototype.flags.Add(SaveUnitPrototype.Flag.Stealth);
 				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
@@ -2408,6 +2419,8 @@ namespace C7GameData {
 				save.Rules.ArmyUnitType = theBiq.Prto[rule.BuildArmyUnit].Name;
 			}
 			save.Rules.CitiesNeededToSupportAnArmy = rule.CitiesNeededToSupportAnArmy;
+			save.Rules.air.interceptPercent = rule.ChanceToInterceptEnemyAirMissions;
+			save.Rules.air.stealthInterceptPercent = rule.ChanceToInterceptEnemyStealthMissions;
 			if (rule.Scout >= 0) {
 				save.Rules.ScoutUnitType = theBiq.Prto[rule.Scout].Name;
 			}

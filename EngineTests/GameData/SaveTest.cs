@@ -176,6 +176,10 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgShipSank mSS:
 						continue;
+					case MsgAirMission mAM:
+						continue;
+					case MsgUnitMoved mUM:
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

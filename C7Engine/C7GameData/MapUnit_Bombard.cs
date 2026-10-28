@@ -8,6 +8,10 @@ namespace C7GameData {
 	public partial class MapUnit {
 		private List<AnimatedEffect> hitList = [AnimatedEffect.Hit, AnimatedEffect.Hit2, AnimatedEffect.Hit3, AnimatedEffect.Hit5];
 
+		// A building's defense against bombardment (anecdotal: "buildings (if
+		// I remember correctly) have a defense value of 16").
+		internal const int BombardBuildingDefense = 16;
+
 		public enum BombardTarget {
 			None,
 			City,
@@ -34,7 +38,9 @@ namespace C7GameData {
 		public bool CanBombardTile(Tile tile, out BombardTarget bombardTarget) {
 			bombardTarget = BombardTarget.None;
 
-			if (this.location.DistanceTo(tile) > this.unitType.bombardRange)
+			// Aircraft bomb within their operational range (see Air).
+			int range = IsAirUnit() ? this.unitType.operationalRange : this.unitType.bombardRange;
+			if (this.location.DistanceTo(tile) > range)
 				return false;
 
 			if (this.unitType.bombard == 0)
@@ -121,6 +127,11 @@ namespace C7GameData {
 				await BombardCity(tile);
 			else
 				await BombardTileImprovements(tile);
+
+			// A missile "never returns to its base" (Civilopedia "Combat").
+			if (unitType.cruiseMissile) {
+				RemoveFromPlay();
+			}
 		}
 
 		private async Task BombardCityWalls(Tile tile) {
@@ -208,7 +219,7 @@ namespace C7GameData {
 			// Anecdotal: It seems population is killed off more quickly than buildings.
 			// TODO: Make configurable
 
-			const int buildingDefence = 16;
+			const int buildingDefence = BombardBuildingDefense;
 			const int populationDefence = 12;
 			const float buildingOrPopulationOdds = 0.5f;
 

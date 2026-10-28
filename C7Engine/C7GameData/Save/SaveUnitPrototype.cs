@@ -44,6 +44,10 @@ namespace C7GameData.Save {
 			CanSeeSubmarines,
 			// Picks its target in a stack (from its stealth targets).
 			StealthAttack,
+			// Spent by its attack (the Cruise Missile).
+			CruiseMissile,
+			// Hard to intercept (Stealth Fighter and Bomber).
+			Stealth,
 		}
 
 		public string name { get; set; }
@@ -60,6 +64,8 @@ namespace C7GameData.Save {
 		public int movement { get; set; }
 		public int capacity { get; set; }
 		public int hpBonus { get; set; }
+		public int operationalRange { get; set; }
+		public int airDefense { get; set; }
 
 		public HashSet<string> producibleBy = [];
 
@@ -97,6 +103,7 @@ namespace C7GameData.Save {
 			 proto.capacity, proto.hpBonus);
 
 			civilopediaEntry = proto.civilopediaEntry;
+			(operationalRange, airDefense) = (proto.operationalRange, proto.airDefense);
 
 			if (proto.requiredTech != null)
 				requiredTech = proto.requiredTech.id;

@@ -49,7 +49,7 @@ namespace C7GameData.Save {
 				path = unit.path.path.ToList().ConvertAll(tile => new TileLocation(tile));
 			}
 			hitPointsRemaining = unit.hitPointsRemaining;
-			action = unit.isFortified ? "fortified" : "";
+			action = unit.isFortified ? "fortified" : unit.airSuperiority ? "airSuperiority" : "";
 			isAutomated = unit.isAutomated;
 			hasProducedLeader = unit.hasProducedLeader;
 			scientificLeader = unit.scientificLeader;
@@ -75,6 +75,7 @@ namespace C7GameData.Save {
 				hitPointsRemaining = hitPointsRemaining,
 				movementPoints = new MovementPoints(),
 				isFortified = action == "fortified",
+				airSuperiority = action == "airSuperiority",
 				isAutomated = isAutomated,
 				hasProducedLeader = hasProducedLeader,
 				scientificLeader = scientificLeader,
