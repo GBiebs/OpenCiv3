@@ -451,6 +451,7 @@ namespace C7GameData {
 				if (building.greatWonderProperties != null) {
 					gameData.GreatWondersBuilt.Add(building.name);
 					owner.MaybeStartGoldenAgeFromWonders(gameData);
+					VictoryPoints.OnGreatWonderBuilt(gameData, owner, building);
 
 					foreach (Player p in gameData.players) {
 						if (p == this.owner) {

@@ -70,6 +70,9 @@ public partial class MapUnit {
 			}
 		}
 
+		// A princess we carry home is delivered there.
+		Princess.OnCarried(EngineStorage.gameData, this);
+
 		// Check to see if we've discovered a new civ.
 		//
 		// TODO: this should really be based on interactions with our "visible"
@@ -279,18 +282,16 @@ public partial class MapUnit {
 			throw new System.Exception("Failed to remove unit from tile it's supposed to be on");
 
 		// Move transported units, too, and the units in them (an army's
-		// members on a ship).
-		if (CanTransport()) {
-			var transported = location.unitsOnTile
-					.Where(u => u.IsLoadedIn(this)).ToList();
-			transported.AddRange(transported.SelectMany(u => u.Passengers()).ToList());
+		// members on a ship), and a princess its captor carries.
+		var transported = location.unitsOnTile
+				.Where(u => u.IsLoadedIn(this)).ToList();
+		transported.AddRange(transported.SelectMany(u => u.Passengers()).ToList());
 
-			foreach (var tu in transported) {
-				if (!location.unitsOnTile.Remove(tu))
-					throw new System.Exception("Failed to remove unit from tile during transport move");
-				newLoc.unitsOnTile.Add(tu);
-				tu.location = newLoc;
-			}
+		foreach (var tu in transported) {
+			if (!location.unitsOnTile.Remove(tu))
+				throw new System.Exception("Failed to remove unit from tile during transport move");
+			newLoc.unitsOnTile.Add(tu);
+			tu.location = newLoc;
 		}
 
 		TryBoardingTransportOnTile(newLoc);
@@ -432,6 +433,8 @@ public partial class MapUnit {
 			dead.RemoveFromPlay();
 			alive.MaybeEnslave(dead);
 			alive.MaybeStartGoldenAge(dead);
+			VictoryPoints.OnUnitKilled(EngineStorage.gameData, dead, alive.owner);
+			Elimination.AfterUnitKilled(EngineStorage.gameData, dead, alive.owner);
 		}
 
 		WarWeariness.OnBattle(attacker, defender, attackerKilled: result == CombatResult.AttackerKilled);

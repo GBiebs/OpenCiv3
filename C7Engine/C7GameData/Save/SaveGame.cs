@@ -214,6 +214,14 @@ namespace C7GameData.Save {
 				data.victories.Add(new SpaceRaceVictory());
 			}
 
+			if (conditions.VictoryLocations) {
+				data.victories.Add(new VictoryPointsVictory(data.rules.victory.victoryPointLimit));
+			}
+
+			if (conditions.AllowWonderVictory) {
+				data.victories.Add(new WonderVictory());
+			}
+
 			// There is no "score victory", but we can treat score as if it were, so
 			// we can render the current score alongside the state of other conditions
 			data.victories.Add(new ScoreVictory());
@@ -224,6 +232,13 @@ namespace C7GameData.Save {
 		}
 
 		private void OnGameCreation() {
+			// A new game of one of Conquests' game types: kings, princesses
+			// and victory locations at the start.
+			if (EngineStorage.gameData.turn == 0) {
+				Elimination.PlaceKings(EngineStorage.gameData);
+				Princess.Place(EngineStorage.gameData);
+				VictoryPoints.MarkStartingLocations(EngineStorage.gameData);
+			}
 			foreach (Player p in EngineStorage.gameData.players) {
 				// Backfill citizen assignments for scenarios that don't specify
 				// them.

@@ -119,7 +119,7 @@ namespace C7GameData {
 		}
 
 		public bool CanBeActive() {
-			return !this.IsBusy() && this.movementPoints.canMove && !IsInArmy();
+			return !this.IsBusy() && this.movementPoints.canMove && !IsInArmy() && !(unitType.immobile && !IsAirUnit());
 		}
 
 		public bool IsCaptive() {
@@ -474,6 +474,10 @@ namespace C7GameData {
 			// TODO: Perhaps this is not sufficient, but it is for now,
 			// since otherwise we can move air units on land and sea
 			if (this.IsAirUnit())
+				return Intent.Disabled;
+
+			// A princess doesn't move herself (her captor carries her).
+			if (this.unitType.immobile)
 				return Intent.Disabled;
 
 			if (unitOwner.isHuman && !unitOwner.HasExploredTile(tile))

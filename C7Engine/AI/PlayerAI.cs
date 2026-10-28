@@ -203,6 +203,11 @@ namespace C7Engine {
 				// It may fail due to conditions having changed since that goal was assigned; in that case it will
 				// get a new task to try to complete.
 				//
+				// A unit that has just captured a princess takes her home.
+				if (CarriesPrincess(unit) && unit.currentAI is not DefenderAI) {
+					unit.currentAI = null;
+				}
+
 				// Cap our attempts at 2 to avoid getting stuck in bad situations.
 				for (int attempt = 0; attempt < 2; ++attempt) {
 					if (unit.currentAI == null) {
@@ -296,9 +301,26 @@ namespace C7Engine {
 			return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(army, player));
 		}
 
+		private static bool CarriesPrincess(MapUnit unit) {
+			return unit.Passengers().Any(p => Princess.Is(EngineStorage.gameData, p));
+		}
+
 		public static UnitAI GetAIForUnit(MapUnit unit, Player player) {
 			//figure out an AI behavior
 			//TODO: Use strategies, not names
+
+			// Conquests' game types: a unit that can't move stays where it is
+			// (a princess); a king keeps safe in the capital, and a unit with
+			// a captured princess takes her there.
+			if (unit.unitType.immobile) {
+				return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(unit, player));
+			}
+			if ((unit.unitType.isKing || CarriesPrincess(unit)) && player.cities.Find(c => c.capital) is City capital
+				&& (unit.location == capital.location ? DefenderAI.MakeAiDataForDefendInPlace(unit, player) : DefenderAI.MakeAiDataForDefendCity(unit, capital))
+					is DefenderAIData toCapital) {
+				return new DefenderAI(toCapital);
+			}
+
 			if (unit.unitType.isLeader) {
 				return new LeaderAI();
 			} else if (unit.IsArmy()) {

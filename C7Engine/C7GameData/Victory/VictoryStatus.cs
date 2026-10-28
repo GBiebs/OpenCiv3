@@ -21,4 +21,8 @@ public class VictoryStatus {
 	public int SpaceshipParts { get; set; }
 	public int SpaceshipPartsNeeded { get; set; }
 	public bool SpaceshipLaunched { get; set; }
+	// Conquests' game types: victory points, and the great wonders.
+	public int VictoryPoints { get; set; }
+	public int GreatWondersBuilt { get; set; }
+	public int GreatWonders { get; set; }
 }

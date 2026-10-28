@@ -186,6 +186,11 @@ namespace C7GameData {
 		public Dictionary<int, int> spaceshipParts = new();
 		public bool spaceshipLaunched;
 
+		// Conquests' game types: our victory points (see VictoryPoints), and
+		// how many of our cities enemies took (see Elimination).
+		public int victoryPoints;
+		public int citiesLostToEnemies;
+
 		// Civ3's golden age (Civilopedia "Golden Age"), once a game: how many
 		// more turn ends it lasts, counting the current turn's, and whether we
 		// have had it.
@@ -1225,6 +1230,7 @@ namespace C7GameData {
 			}
 
 			knownTechs.Add(tech.id);
+			VictoryPoints.OnAdvance(gameData, this, tech);
 			// It may open sea or ocean trade.
 			gameData.InvalidateCachedTradeNetwork();
 			// trigger callback for techs that enable improvements to redraw map

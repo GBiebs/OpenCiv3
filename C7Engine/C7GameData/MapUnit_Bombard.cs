@@ -194,6 +194,8 @@ namespace C7GameData {
 				RollToPromote(target);
 				await target.animateAsync(AnimatedAction.DEATH, AnimationEnding.Pause);
 				target.RemoveFromPlay();
+				VictoryPoints.OnUnitKilled(EngineStorage.gameData, target, owner);
+				Elimination.AfterUnitKilled(EngineStorage.gameData, target, owner);
 				// Target destroyed, skip remaining fire -- TODO: Re-target?
 			}
 

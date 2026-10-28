@@ -78,6 +78,8 @@ namespace C7GameData.Save {
 		public int ageOfScienceTurnsLeft;
 		public Dictionary<int, int> spaceshipParts = new();
 		public bool spaceshipLaunched;
+		public int victoryPoints;
+		public int citiesLostToEnemies;
 
 		// The turn ends left in the player's golden age, and whether it has had
 		// one.
@@ -123,6 +125,8 @@ namespace C7GameData.Save {
 				ageOfScienceTurnsLeft = ageOfScienceTurnsLeft,
 				spaceshipParts = new(spaceshipParts ?? new()),
 				spaceshipLaunched = spaceshipLaunched,
+				victoryPoints = victoryPoints,
+				citiesLostToEnemies = citiesLostToEnemies,
 				goldenAgeTurnsLeft = goldenAgeTurnsLeft,
 				hadGoldenAge = hadGoldenAge,
 				mobilized = mobilized,
@@ -199,6 +203,8 @@ namespace C7GameData.Save {
 			ageOfScienceTurnsLeft = player.ageOfScienceTurnsLeft;
 			spaceshipParts = new(player.spaceshipParts);
 			spaceshipLaunched = player.spaceshipLaunched;
+			victoryPoints = player.victoryPoints;
+			citiesLostToEnemies = player.citiesLostToEnemies;
 			goldenAgeTurnsLeft = player.goldenAgeTurnsLeft;
 			hadGoldenAge = player.hadGoldenAge;
 			mobilized = player.mobilized;

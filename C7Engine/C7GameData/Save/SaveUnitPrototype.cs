@@ -24,6 +24,12 @@ namespace C7GameData.Save {
 			// Its victories over another civ start its own civ's golden age
 			// (Civ3's unique units, PRTO "starts golden age").
 			StartsGoldenAge,
+			// A king: in a regicide game, losing it (or all of them) loses the
+			// game (see Regicide).
+			King,
+			// Doesn't move by itself: the Princess (carried by its captor, see
+			// Princess) and Civ3's aircraft and missiles.
+			Immobile,
 		}
 
 		public string name { get; set; }

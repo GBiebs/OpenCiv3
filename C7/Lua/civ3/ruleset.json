@@ -3136,6 +3136,9 @@
         "Maya"
       ],
       "unproducible": false,
+      "flags": [
+        "immobile"
+      ],
       "categories": [
         "Land"
       ],
@@ -4149,7 +4152,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -4227,7 +4231,8 @@
       "unproducible": false,
       "flags": [
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -4303,7 +4308,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "canCarryFootUnitsOnly"
+        "canCarryFootUnitsOnly",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -4379,7 +4385,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -4458,7 +4465,8 @@
       "unproducible": false,
       "flags": [
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -4536,7 +4544,8 @@
       "unproducible": false,
       "flags": [
         "lethalLandBombardment",
-        "lethalSeaBombardment"
+        "lethalSeaBombardment",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -5560,7 +5569,8 @@
       "flags": [
         "lethalLandBombardment",
         "lethalSeaBombardment",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "immobile"
       ],
       "categories": [
         "Air"
@@ -6273,6 +6283,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "immobile"
+      ],
       "categories": [
         "Land"
       ],
@@ -6307,6 +6320,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6344,6 +6360,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6381,6 +6400,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6418,6 +6440,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6455,6 +6480,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6492,6 +6520,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6529,6 +6560,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6566,6 +6600,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6603,6 +6640,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6640,6 +6680,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6677,6 +6720,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6714,6 +6760,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6751,6 +6800,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6788,6 +6840,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6825,6 +6880,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6862,6 +6920,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6899,6 +6960,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6936,6 +7000,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -6973,6 +7040,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7010,6 +7080,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7047,6 +7120,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7084,6 +7160,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7121,6 +7200,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7158,6 +7240,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7300,6 +7385,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7337,6 +7425,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7374,6 +7465,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7516,6 +7610,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7633,6 +7730,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7670,6 +7770,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -7707,6 +7810,9 @@
       "capacity": 0,
       "hpBonus": 0,
       "unproducible": true,
+      "flags": [
+        "king"
+      ],
       "categories": [
         "Land"
       ],
@@ -10223,6 +10329,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Communism",
       "aggressionLevel": 1,
+      "kingUnitType": "Caesar",
       "primaryColorIndex": 1,
       "secondaryColorIndex": 1,
       "leaderGender": "male",
@@ -10310,6 +10417,7 @@
       "favoriteGovernment": "Despotism",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 0,
+      "kingUnitType": "Cleopatra",
       "primaryColorIndex": 3,
       "secondaryColorIndex": 3,
       "leaderGender": "female",
@@ -10380,6 +10488,7 @@
       "favoriteGovernment": "Democracy",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 0,
+      "kingUnitType": "Alexander",
       "primaryColorIndex": 10,
       "secondaryColorIndex": 10,
       "leaderGender": "male",
@@ -10452,6 +10561,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 0,
+      "kingUnitType": "Hammurabi",
       "primaryColorIndex": 1,
       "secondaryColorIndex": 13,
       "leaderGender": "male",
@@ -10520,6 +10630,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Communism",
       "aggressionLevel": 2,
+      "kingUnitType": "Bismarck",
       "primaryColorIndex": 6,
       "secondaryColorIndex": 6,
       "leaderGender": "male",
@@ -10581,6 +10692,7 @@
       "favoriteGovernment": "Communism",
       "shunnedGovernment": "Democracy",
       "aggressionLevel": 1,
+      "kingUnitType": "Catherine",
       "primaryColorIndex": 9,
       "secondaryColorIndex": 9,
       "leaderGender": "female",
@@ -10661,6 +10773,7 @@
       "favoriteGovernment": "Communism",
       "shunnedGovernment": "Feudalism",
       "aggressionLevel": -1,
+      "kingUnitType": "Mao",
       "primaryColorIndex": 5,
       "secondaryColorIndex": 15,
       "leaderGender": "male",
@@ -10718,6 +10831,7 @@
       "favoriteGovernment": "Democracy",
       "shunnedGovernment": "Communism",
       "aggressionLevel": 0,
+      "kingUnitType": "Lincoln",
       "primaryColorIndex": 5,
       "secondaryColorIndex": 5,
       "leaderGender": "male",
@@ -10802,6 +10916,7 @@
       "favoriteGovernment": "Feudalism",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 1,
+      "kingUnitType": "Tokugawa",
       "primaryColorIndex": 4,
       "secondaryColorIndex": 11,
       "leaderGender": "male",
@@ -10864,6 +10979,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Fascism",
       "aggressionLevel": -2,
+      "kingUnitType": "Joan d'Arc",
       "primaryColorIndex": 7,
       "secondaryColorIndex": 7,
       "leaderGender": "female",
@@ -10923,6 +11039,7 @@
       "favoriteGovernment": "Democracy",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": -2,
+      "kingUnitType": "Gandhi",
       "primaryColorIndex": 8,
       "secondaryColorIndex": 12,
       "leaderGender": "male",
@@ -10984,6 +11101,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 1,
+      "kingUnitType": "Xerxes",
       "primaryColorIndex": 10,
       "secondaryColorIndex": 14,
       "leaderGender": "male",
@@ -11052,6 +11170,7 @@
       "favoriteGovernment": "Despotism",
       "shunnedGovernment": "Monarchy",
       "aggressionLevel": 1,
+      "kingUnitType": "Montezuma",
       "primaryColorIndex": 4,
       "secondaryColorIndex": 4,
       "leaderGender": "male",
@@ -11131,6 +11250,7 @@
       "favoriteGovernment": "Despotism",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 2,
+      "kingUnitType": "Shaka",
       "primaryColorIndex": 3,
       "secondaryColorIndex": 16,
       "leaderGender": "male",
@@ -11184,6 +11304,7 @@
       "favoriteGovernment": "Communism",
       "shunnedGovernment": "Monarchy",
       "aggressionLevel": -1,
+      "kingUnitType": "Hiawatha",
       "primaryColorIndex": 8,
       "secondaryColorIndex": 8,
       "leaderGender": "male",
@@ -11251,6 +11372,7 @@
       "favoriteGovernment": "Democracy",
       "shunnedGovernment": "Fascism",
       "aggressionLevel": 0,
+      "kingUnitType": "Elizabeth",
       "primaryColorIndex": 2,
       "secondaryColorIndex": 2,
       "leaderGender": "female",
@@ -11322,6 +11444,7 @@
       "favoriteGovernment": "Despotism",
       "shunnedGovernment": "Democracy",
       "aggressionLevel": 2,
+      "kingUnitType": "Temujin",
       "primaryColorIndex": 3,
       "secondaryColorIndex": 26,
       "leaderGender": "male",
@@ -11391,6 +11514,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 0,
+      "kingUnitType": "Isabella",
       "primaryColorIndex": 5,
       "secondaryColorIndex": 20,
       "leaderGender": "female",
@@ -11461,6 +11585,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 1,
+      "kingUnitType": "Ragnar",
       "primaryColorIndex": 8,
       "secondaryColorIndex": 31,
       "leaderGender": "male",
@@ -11535,6 +11660,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 0,
+      "kingUnitType": "Osman",
       "primaryColorIndex": 2,
       "secondaryColorIndex": 18,
       "leaderGender": "male",
@@ -11606,6 +11732,7 @@
       "favoriteGovernment": "Despotism",
       "shunnedGovernment": "Feudalism",
       "aggressionLevel": 1,
+      "kingUnitType": "Brennus",
       "primaryColorIndex": 4,
       "secondaryColorIndex": 25,
       "leaderGender": "male",
@@ -11675,6 +11802,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 1,
+      "kingUnitType": "Abu",
       "primaryColorIndex": 7,
       "secondaryColorIndex": 30,
       "leaderGender": "male",
@@ -11741,6 +11869,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Communism",
       "aggressionLevel": -1,
+      "kingUnitType": "Hannibal",
       "primaryColorIndex": 9,
       "secondaryColorIndex": 11,
       "leaderGender": "male",
@@ -11809,6 +11938,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Republic",
       "aggressionLevel": -1,
+      "kingUnitType": "Wang Kon",
       "primaryColorIndex": 6,
       "secondaryColorIndex": 19,
       "leaderGender": "male",
@@ -11878,6 +12008,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Republic",
       "aggressionLevel": -1,
+      "kingUnitType": "Gilgamesh",
       "primaryColorIndex": 5,
       "secondaryColorIndex": 20,
       "leaderGender": "male",
@@ -11943,6 +12074,7 @@
       "favoriteGovernment": "Fascism",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 1,
+      "kingUnitType": "Mursilis",
       "primaryColorIndex": 14,
       "secondaryColorIndex": 27,
       "leaderGender": "male",
@@ -12007,6 +12139,7 @@
       "favoriteGovernment": "Monarchy",
       "shunnedGovernment": "Despotism",
       "aggressionLevel": 0,
+      "kingUnitType": "William of Orange",
       "primaryColorIndex": 2,
       "secondaryColorIndex": 18,
       "leaderGender": "male",
@@ -12071,6 +12204,7 @@
       "favoriteGovernment": "Democracy",
       "shunnedGovernment": "Fascism",
       "aggressionLevel": 0,
+      "kingUnitType": "Henry",
       "primaryColorIndex": 8,
       "secondaryColorIndex": 17,
       "leaderGender": "male",
@@ -12148,6 +12282,7 @@
       "favoriteGovernment": "Republic",
       "shunnedGovernment": "Feudalism",
       "aggressionLevel": 0,
+      "kingUnitType": "Theodora",
       "primaryColorIndex": 11,
       "secondaryColorIndex": 1,
       "leaderGender": "female",
@@ -12213,6 +12348,7 @@
       "favoriteGovernment": "Communism",
       "shunnedGovernment": "Republic",
       "aggressionLevel": 0,
+      "kingUnitType": "Pachacuti",
       "primaryColorIndex": 7,
       "secondaryColorIndex": 8,
       "leaderGender": "male",
@@ -12279,6 +12415,7 @@
       "favoriteGovernment": "Feudalism",
       "shunnedGovernment": "Democracy",
       "aggressionLevel": 0,
+      "kingUnitType": "Smoke-Jaguar",
       "primaryColorIndex": 6,
       "secondaryColorIndex": 5,
       "leaderGender": "male",
@@ -12411,6 +12548,7 @@
     "goldenAgeDuration": 20,
     "allowCulturalConversions": true,
     "battleCreatedUnitType": "Leader",
+    "flagUnitType": "Princess",
     "leaderChanceOneIn": 16,
     "increasedLeaderChanceOneIn": 12,
     "armyUnitType": "Army",
@@ -12625,7 +12763,18 @@
       "electionEveryTurns": 11,
       "candidatePercent": 25,
       "maxCandidates": 3,
-      "spaceshipParts": [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+      "spaceshipParts": [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ],
+      "victoryPointLimit": 50000,
+      "wonderPointsMultiple": 10,
+      "unitKillPointsMultiple": 5,
+      "advancePointsMultiple": 5,
+      "cityConquestPointsMultiple": 100,
+      "victoryLocationPoints": 25,
+      "princessPoints": 1000,
+      "princessGold": 0,
+      "respawnPrincess": true,
+      "cityEliminationCount": 1,
+      "massRegicideKings": 7
     },
     "ageBonus": {
       "enabled": true,

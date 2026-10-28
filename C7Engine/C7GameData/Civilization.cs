@@ -52,6 +52,10 @@ namespace C7GameData {
 		// How aggressive the AI leader is (Civ3's RACE aggression level, -2 to
 		// 2). See Attitude.
 		public int aggressionLevel;
+
+		// The unit the civ's king is (Civ3's RACE "king unit", e.g. Caesar), for
+		// regicide games. See Regicide.
+		public string kingUnitType;
 		public int primaryColorIndex;
 		public int secondaryColorIndex;
 		public Gender leaderGender;

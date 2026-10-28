@@ -40,6 +40,9 @@ namespace C7GameData.Save {
 			if (tile.hasGoodyHut) {
 				features.Add("goodyHut");
 			}
+			if (tile.victoryLocation) {
+				features.Add("victoryLocation");
+			}
 			if (tile.hasHadForestCleared) {
 				features.Add("hasHadForestCleared");
 			}
@@ -60,6 +63,7 @@ namespace C7GameData.Save {
 				overlayTerrainType = terrainTypes.Find(tt => tt.Key == overlayTerrain),
 				hasBarbarianCamp = features.Contains("barbarianCamp"),
 				hasGoodyHut = features.Contains("goodyHut"),
+				victoryLocation = features.Contains("victoryLocation"),
 				volcanoEruptsOnTurn = volcanoEruptsOnTurn ?? -1,
 				hasHadForestCleared = features.Contains("hasHadForestCleared"),
 				// TODO: load working tile

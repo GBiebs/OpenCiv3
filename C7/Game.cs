@@ -537,6 +537,12 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgPrincessDelivered mPD:
+				if (mPD.captor == controller)
+					EmitForeignAdvisorSignal($"We have brought the {mPD.princess.adjective} princess to {mPD.capital.name}!", Mood.Happy);
+				else if (mPD.princess == controller.civilization)
+					EmitForeignAdvisorSignal($"The {mPD.captor.civilization.noun} have taken our princess to {mPD.capital.name}!", Mood.Sad);
+				break;
 			case MsgSpaceshipPart mSP:
 				// News of other civs' spaceships, if we know them.
 				if (mSP.owner != controller && controller.playerRelationships.ContainsKey(mSP.owner.id))

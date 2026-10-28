@@ -130,6 +130,7 @@ namespace C7Engine {
 			if (city.capital) {
 				Spaceship.OnCapitalCaptured(loser, winner);
 			}
+			VictoryPoints.OnCityConquered(gameData, winner, city.residents.Count);
 
 			int gold = CaptureGold(city, winner);
 			loser.gold -= gold;
@@ -141,6 +142,7 @@ namespace C7Engine {
 					log.Information($"{winner} takes {city.name}, a size 1 city with no culture, and it's destroyed ({gold} gold taken)");
 					DestroyCity(city);
 					new MsgCityRazed(city, winner.id, loser.id, gold, [], 0, destroyedOnCapture: true).send();
+					Elimination.OnCityLost(gameData, loser, winner);
 					return CaptureOutcome.Destroyed;
 				}
 			} else {
@@ -179,6 +181,7 @@ namespace C7Engine {
 			log.Information($"{winner} captures {city.name} from {loser}: {gold} gold taken, {resisters} resisters, buildings lost: {string.Join(", ", lost)}; wonders taken: {string.Join(", ", wonders)}");
 
 			gameData.CheckForCivDestructionAndNotifyUi(loser);
+			Elimination.OnCityLost(gameData, loser, winner);
 
 			if (!winner.isHuman && AiRazesCapturedCity(city, winner)) {
 				RazeCity(city, winner, gold);

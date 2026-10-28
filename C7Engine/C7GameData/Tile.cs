@@ -85,6 +85,10 @@ namespace C7GameData {
 		// (GoodyHuts).
 		public bool hasGoodyHut = false;
 
+		// A victory location: holding it scores victory points each turn (see
+		// VictoryPoints).
+		public bool victoryLocation = false;
+
 		// A smoking volcano erupts on this turn (see Volcanoes); -1 if quiet.
 		public int volcanoEruptsOnTurn = -1;
 

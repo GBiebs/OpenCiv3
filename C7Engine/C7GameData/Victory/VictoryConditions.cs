@@ -30,6 +30,13 @@ public class VictoryConditions {
 		new(nameof(AllowCulturalVictory), "Allow Cultural Victory", true, vc => vc.AllowCulturalVictory, (vc, on) => vc.AllowCulturalVictory = on),
 		new(nameof(AllowDiplomaticVictory), "Allow Diplomatic Victory", true, vc => vc.AllowDiplomaticVictory, (vc, on) => vc.AllowDiplomaticVictory = on),
 		new(nameof(AllowSpaceRaceVictory), "Allow Space Race Victory", true, vc => vc.AllowSpaceRaceVictory, (vc, on) => vc.AllowSpaceRaceVictory = on),
+		// Conquests' game types, off unless chosen.
+		new(nameof(Regicide), "Regicide", false, vc => vc.Regicide, (vc, on) => vc.Regicide = on),
+		new(nameof(MassRegicide), "Mass Regicide", false, vc => vc.MassRegicide, (vc, on) => vc.MassRegicide = on),
+		new(nameof(CityElimination), "Elimination", false, vc => vc.CityElimination, (vc, on) => vc.CityElimination = on),
+		new(nameof(VictoryLocations), "Victory Point Scoring", false, vc => vc.VictoryLocations, (vc, on) => vc.VictoryLocations = on),
+		new(nameof(CaptureTheFlag), "Capture the Princess", false, vc => vc.CaptureTheFlag, (vc, on) => vc.CaptureTheFlag = on),
+		new(nameof(AllowWonderVictory), "Wonder Victory", false, vc => vc.AllowWonderVictory, (vc, on) => vc.AllowWonderVictory = on),
 	];
 
 	public static VictoryConditions FromSettings() {

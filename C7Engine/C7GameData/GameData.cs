@@ -406,7 +406,9 @@ namespace C7GameData {
 			oldOwner.units.Remove(unit);
 			unit.owner = newOwner;
 			newOwner.units.Add(unit);
-			if (!unit.unitType.isWorker) {
+			// Workers keep their nationality (they are slaves), and a princess
+			// hers (she goes home).
+			if (!unit.unitType.isWorker && !Princess.Is(this, unit)) {
 				unit.nationality = newOwner.civilization;
 			}
 			unit.isFortified = false;

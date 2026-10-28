@@ -37,6 +37,9 @@ namespace C7GameData {
 		// The unit elite units can produce by winning battles (Civ3's
 		// "battle-created unit": the military great leader).
 		public string BattleCreatedUnitType = "Leader";
+		// The unit Conquests' capture the princess plays with (RULE "flag unit
+		// type"). See Princess.
+		public string FlagUnitType = "Princess";
 		// The chance, in percent, that a civ first to discover an advance gets
 		// a scientific great leader, and with the Scientific trait; and the
 		// Age of Science such a leader can start (Civilopedia "Leaders", "Age
@@ -519,6 +522,27 @@ namespace C7GameData {
 		// The space race: how many of each spaceship part (BLDG spaceship
 		// part index) the ship needs (Civ3's RULE section).
 		public List<int> spaceshipParts = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+
+		// Conquests' game types (GAME "game limits"). Victory points: the
+		// limit that wins; a great wonder, a unit killed (half for a
+		// barbarian) and a conquered city earn its shield cost ÷ 10, its shield
+		// cost ÷ 10 and its citizens times these; an advance its editor cost
+		// times this; holding a victory location this many a turn; bringing a
+		// princess home this many and this much gold (and she reappears).
+		public int victoryPointLimit = 50000;
+		public int wonderPointsMultiple = 10;
+		public int unitKillPointsMultiple = 5;
+		public int advancePointsMultiple = 5;
+		public int cityConquestPointsMultiple = 100;
+		public int victoryLocationPoints = 25;
+		public int princessPoints = 1000;
+		public int princessGold = 0;
+		public bool respawnPrincess = true;
+		// Elimination: losing this many cities to enemies loses the game.
+		public int cityEliminationCount = 1;
+		// Mass regicide: kings each civ starts with (CivFanatics' Civ3 FAQ;
+		// not in the BIQ).
+		public int massRegicideKings = 7;
 	}
 
 	// Trait bonuses Civ3 builds in (Civilopedia, CivWiki; checked against

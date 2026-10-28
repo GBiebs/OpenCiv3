@@ -66,6 +66,7 @@ namespace C7Engine {
 				WarWeariness.UpdateForNewTurn(gameData);
 				Attitude.UpdateForNewTurn(gameData);
 				Espionage.UpdateForNewTurn(gameData);
+				VictoryPoints.UpdateForNewTurn(gameData);
 				Volcanoes.UpdateForNewTurn(gameData);
 				GlobalWarming.UpdateForNewTurn(gameData);
 				Plague.UpdateForNewTurn(gameData);
@@ -185,8 +186,13 @@ namespace C7Engine {
 			if (winners.Count == 1) {
 				DeclareVictory(winners[0].Item1, winners[0].Item2, gameData);
 			} else if (winners.Count > 1) {
+				// The best score wins, or the most victory points in a game
+				// that scores them.
 				var topScoring = winners.OrderByDescending(pv => {
 					var player = pv.Item1;
+					if (VictoryPoints.Scoring(gameData)) {
+						return player.victoryPoints;
+					}
 					HistTurnRecord lastTurn = gameData.history[player.id.ToString()].LastOrDefault();
 					return lastTurn?.Score ?? 0;
 				}).First();

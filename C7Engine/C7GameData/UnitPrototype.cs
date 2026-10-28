@@ -220,6 +220,30 @@ namespace C7GameData {
 			}
 		}
 
+		// A king, for regicide games (see Regicide).
+		public bool isKing {
+			get => flags.Contains(SaveUnitPrototype.Flag.King);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.King);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.King);
+				}
+			}
+		}
+
+		// Doesn't move by itself (the Princess, aircraft, missiles).
+		public bool immobile {
+			get => flags.Contains(SaveUnitPrototype.Flag.Immobile);
+			set {
+				if (value) {
+					flags.Add(SaveUnitPrototype.Flag.Immobile);
+				} else {
+					flags.Remove(SaveUnitPrototype.Flag.Immobile);
+				}
+			}
+		}
+
 		// An army, which other units load into (see MapUnit_Army.cs).
 		public bool isArmy {
 			get => flags.Contains(SaveUnitPrototype.Flag.Army);

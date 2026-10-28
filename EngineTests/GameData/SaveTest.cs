@@ -165,6 +165,15 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgElectionResults mER:
 						continue;
+					case MsgSpaceshipPart mSP:
+						continue;
+					case MsgSpaceshipComplete mSC:
+						new MsgLaunchSpaceship(mSC.playerId).send();
+						continue;
+					case MsgSpaceshipLost mSL:
+						continue;
+					case MsgPrincessDelivered mPD:
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

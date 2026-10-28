@@ -232,6 +232,20 @@ namespace C7Engine {
 		}
 	}
 
+	// `captor` brought the princess of the `princess` civ to its capital
+	// (see Princess).
+	public class MsgPrincessDelivered : MessageToUI {
+		public Player captor;
+		public Civilization princess;
+		public City capital;
+
+		public MsgPrincessDelivered(Player captor, Civilization princess, City capital) {
+			this.captor = captor;
+			this.princess = princess;
+			this.capital = capital;
+		}
+	}
+
 	// A civ added a part to its spaceship (Civ3's SUMMARY_THEIR_SPACESHIP_PART
 	// for other civs).
 	public class MsgSpaceshipPart : MessageToUI {

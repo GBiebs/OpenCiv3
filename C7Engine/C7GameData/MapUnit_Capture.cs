@@ -101,13 +101,20 @@ public partial class MapUnit {
 			List<string> destroyed = new();
 			foreach (MapUnit enemy in byOwner) {
 				WarRecord.OnUnitLost(enemy, owner);
-				// Barbarians have no use for captives.
-				if (enemy.IsCapturable() && unitType.canCapture && !owner.isBarbarians) {
+				// Barbarians have no use for captives. Any land unit takes a
+				// princess, and carries her.
+				if (Princess.Is(gameData, enemy) && Princess.On(gameData) && !owner.isBarbarians && IsLandUnit()) {
+					captured.Add(enemy.name);
+					gameData.CaptureUnit(enemy, owner);
+					Princess.OnCaptured(enemy, this);
+				} else if (enemy.IsCapturable() && unitType.canCapture && !owner.isBarbarians) {
 					captured.Add(enemy.name);
 					gameData.CaptureUnit(enemy, owner);
 				} else {
 					destroyed.Add(enemy.name);
 					enemy.RemoveFromPlay();
+					VictoryPoints.OnUnitKilled(gameData, enemy, owner);
+					Elimination.AfterUnitKilled(gameData, enemy, owner);
 				}
 			}
 			WarWeariness.OnUnitsLost(byOwner.Key, owner, captured.Count + destroyed.Count);

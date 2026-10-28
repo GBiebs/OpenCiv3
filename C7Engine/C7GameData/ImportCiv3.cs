@@ -210,6 +210,14 @@ namespace C7GameData {
 				i++;
 			}
 
+			// Victory locations.
+			foreach (QueryCiv3.Sav.VLOC location in savData.Vloc ?? []) {
+				SaveTile tile = save.Map.tiles.Find(t => t.X == location.XCoordinate && t.Y == location.YCoordinate);
+				if (tile != null && !tile.features.Contains("victoryLocation")) {
+					tile.features.Add("victoryLocation");
+				}
+			}
+
 			// make barbarians unpickable
 			save.Players.Where(p => p.isBarbarian).ToList().ForEach(p => p.canBePicked = false);
 
@@ -470,11 +478,9 @@ namespace C7GameData {
 				CaptureTheFlag = game.CaptureTheFlag, // 'Capture the Unit', 'Capture the Princess'
 				ReverseCaptureTheFlag = game.ReverseCaptureTheFlag,
 			};
-			// The game limits chosen when the game was set up.
-			if (game.DominationTerrain > 0) save.Rules.victory.dominationTerrainPercent = game.DominationTerrain;
-			if (game.DominationPopulation > 0) save.Rules.victory.dominationPopulationPercent = game.DominationPopulation;
-			if (game.OneCityCultureWin > 0) save.Rules.victory.cultureCityPoints = game.OneCityCultureWin;
-			if (game.AllCitiesCultureWin > 0) save.Rules.victory.cultureCivPoints = game.AllCitiesCultureWin;
+			// The game limits chosen when the game was set up come with the
+			// rules the save embeds (its GAME section has the same), see
+			// ImportRules.
 
 			if (game.Winner > -1) {
 				// TODO: load winner
@@ -550,6 +556,7 @@ namespace C7GameData {
 					favoriteGovernment = GovernmentName(race.FavoriteGovernment),
 					shunnedGovernment = GovernmentName(race.ShunnedGovernment),
 					aggressionLevel = race.AggressionLevel,
+					kingUnitType = race.UnitTypeForKing >= 0 && race.UnitTypeForKing < theBiq.Prto.Length ? theBiq.Prto[race.UnitTypeForKing].Name : null,
 					leaderGender = race.LeaderGender == 0 ? Gender.Male : Gender.Female,
 					primaryColorIndex = race.DefaultColor,
 					secondaryColorIndex = race.UniqueColor,
@@ -1518,6 +1525,8 @@ namespace C7GameData {
 				if (prto.Leader) prototype.flags.Add(SaveUnitPrototype.Flag.Leader);
 				if (prto.Army) prototype.flags.Add(SaveUnitPrototype.Flag.Army);
 				if (prto.Blitz) prototype.flags.Add(SaveUnitPrototype.Flag.Blitz);
+				if (prto.King) prototype.flags.Add(SaveUnitPrototype.Flag.King);
+				if (prto.Immobile) prototype.flags.Add(SaveUnitPrototype.Flag.Immobile);
 				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
@@ -2346,6 +2355,20 @@ namespace C7GameData {
 			if (game.DominationPopulation > 0) save.Rules.victory.dominationPopulationPercent = game.DominationPopulation;
 			if (game.OneCityCultureWin > 0) save.Rules.victory.cultureCityPoints = game.OneCityCultureWin;
 			if (game.AllCitiesCultureWin > 0) save.Rules.victory.cultureCivPoints = game.AllCitiesCultureWin;
+			// Conquests' game limits for victory points and elimination.
+			VictoryRules v = save.Rules.victory;
+			if (game.VictoryPointLimit > 0) v.victoryPointLimit = game.VictoryPointLimit;
+			if (game.CityEliminationCount > 0) v.cityEliminationCount = game.CityEliminationCount;
+			if (game.WonderCost >= 0) v.wonderPointsMultiple = game.WonderCost;
+			if (game.DefeatingOpposingUnitCost >= 0) v.unitKillPointsMultiple = game.DefeatingOpposingUnitCost;
+			if (game.AdvancementCost >= 0) v.advancePointsMultiple = game.AdvancementCost;
+			if (game.CityConquestPopulation >= 0) v.cityConquestPointsMultiple = game.CityConquestPopulation;
+			if (game.VictoryPointScoring >= 0) v.victoryLocationPoints = game.VictoryPointScoring;
+			if (game.CapturingSpecialUnit >= 0) v.princessPoints = game.CapturingSpecialUnit;
+			save.Rules.victory.princessGold = game.GoldForCapture;
+			save.Rules.victory.respawnPrincess = game.RespawnFlagUnits != 0;
+			// Most scenarios have none.
+			save.Rules.FlagUnitType = rule.FlagUnitType >= 0 && rule.FlagUnitType < theBiq.Prto.Length ? theBiq.Prto[rule.FlagUnitType].Name : null;
 			// How many of each part the spaceship needs.
 			if (theBiq.RuleSpaceship?.Length > 0) {
 				save.Rules.victory.spaceshipParts = theBiq.RuleSpaceship[0].ToList();
