@@ -30,8 +30,18 @@ namespace C7GameData {
 		}
 
 
+		// More steps than any move takes, even along railroads: a plan that
+		// keeps asking to move without moving stops here instead of freezing
+		// the game.
+		const int MaxStepsPerTurn = 1000;
+
 		public async Task<Result> PlayTurn(Player player, MapUnit unit) {
+			int steps = 0;
 			while (unit.movementPoints.canMove && !unit.isFortified) {
+				if (++steps > MaxStepsPerTurn) {
+					Serilog.Log.Warning($"{unit} gave up its turn: its plan made {MaxStepsPerTurn} steps without ending ({SummarizePlan()})");
+					return Result.Error;
+				}
 				MoveResult result = PlayTurnImpl(player, unit);
 				if (result == Result.Error || result == Result.Done) {
 					return result.Result;
