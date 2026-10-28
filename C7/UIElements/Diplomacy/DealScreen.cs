@@ -73,7 +73,7 @@ public partial class DealScreen : TextureRect {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 			bool playersAtWar = AtWar(humanPlayer, opponentPlayer);
-			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, fontTheme);
+			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, humanPlayer, fontTheme);
 
 			// Figure out which technologies can be traded by each player, if any.
 			List<Tech> techsOpponentCanTrade = gD.techs.FindAll(x => {

@@ -174,5 +174,9 @@ public class EmbassyImportTest : RemoteSaveLoader {
 		// Civ3's mission costs come from its rules.
 		Assert.Equal(20, game.Rules.Mission(EspionageMission.Embassy).baseCost);
 		Assert.Equal(EspionageMission.Keys, game.Rules.EspionageMissions.Select(m => m.key));
+
+		// And its leaders' aggression (RACE), for their attitudes.
+		Assert.Equal(2, game.Civilizations.Find(c => c.noun == "Germans").aggressionLevel);
+		Assert.Equal(-2, game.Civilizations.Find(c => c.noun == "French").aggressionLevel);
 	}
 }

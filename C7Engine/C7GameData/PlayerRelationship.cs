@@ -44,6 +44,17 @@ public class PlayerRelationship {
 	// See Embassies.
 	public bool hasEmbassy = false;
 
+	// What p1 holds against p2 for good (war declarations, broken treaties,
+	// razed cities...), in attitude points; the gold worth of p2's gifts p1
+	// still remembers; and the turn they last traded. See Attitude.
+	public int attitudePenalty = 0;
+	public int giftGold = 0;
+	public int? lastTradeTurn = null;
+
+	// p2's reputation with p1: the deals p2 broke with p1 (Civ3's LEAD_LEAD
+	// "cancelled deal").
+	public int brokenDeals = 0;
+
 	public bool declaredWarWithActiveRightOfPassage = false;
 
 	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness
@@ -124,6 +135,9 @@ public class PlayerRelationship {
 
 		// update whether the defender was sneak attacked
 		defenderRelationshipToAggressor.wasSneakAttacked = sneakAttack;
+
+		// The defender (and its friends) won't forget it.
+		Attitude.OnWarDeclared(EngineStorage.gameData, aggressor, defender, unitsInside: sneakAttack);
 
 		// The defender's people rally against the aggressor.
 		defenderRelationshipToAggressor.warWearinessPoints += WarWeariness.RulesFor(defender).declaredWarOn;

@@ -26,6 +26,11 @@ namespace C7GameData {
 			return result;
 		}
 
+		// Nothing given (peace aside).
+		public bool IsEmpty() {
+			return !partOfPeaceTreaty && (gold ?? 0) == 0 && techs.Count == 0;
+		}
+
 		public void Clear() {
 			partOfPeaceTreaty = false;
 			gold = null;

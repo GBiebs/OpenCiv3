@@ -670,6 +670,7 @@ namespace C7GameData {
 
 			other.AcquireTechs(gameData, ourOffer.techs);
 			this.AcquireTechs(gameData, theirOffer.techs);
+			Attitude.OnDeal(gameData, this, other, ourOffer, theirOffer);
 		}
 
 		public int EstimateTurnsToResearch(GameData gameData, Tech tech) {

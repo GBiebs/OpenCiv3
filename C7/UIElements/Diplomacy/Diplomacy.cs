@@ -62,7 +62,8 @@ public partial class Diplomacy : CenterContainer {
 		this.Show();
 	}
 
-	public void AddLeaderHeadAndLabel(TextureRect node, Player player, Theme fontTheme) {
+	// The leader of `player`, with how they feel about `towards`.
+	public void AddLeaderHeadAndLabel(TextureRect node, Player player, Player towards, Theme fontTheme) {
 		ColorRect headBackground = new();
 		headBackground.Color = Colors.Black;
 		headBackground.Size = new Vector2(200, 240);
@@ -75,7 +76,7 @@ public partial class Diplomacy : CenterContainer {
 		leaderHead.SetPosition(new Vector2(512 - (115 * 1.7f) / 2, 59 + 120 - (115 * 1.7f) / 2));
 		node.AddChild(leaderHead);
 
-		string civNameText = $"{player.civilization.name} (Cautious)";
+		string civNameText = $"{player.civilization.name} ({Attitude.Of(EngineStorage.gameData, player, towards)})";
 		Label civName = new();
 		civName.SetPosition(new Vector2(0, 330));
 		node.AddChild(civName);

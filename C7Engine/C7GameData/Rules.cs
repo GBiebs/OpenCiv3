@@ -182,6 +182,9 @@ namespace C7GameData {
 			return EspionageMissions.Find(m => m.key == key);
 		}
 
+		// How civs feel about each other. See Attitude.
+		public AttitudeRules attitude = new();
+
 		// War weariness. See WarWeariness.
 		public WarWearinessRules warWeariness = new();
 
@@ -288,6 +291,68 @@ namespace C7GameData {
 		public int strength = 80;
 		public int graceYears = 1000;
 		public int maxOutbreaks = 3;
+	}
+
+	// How a civ feels about another (see Attitude; CivFanatics' "AI Attitude
+	// Study", measured in Civ3's debug mode). Points add up to a score; good
+	// things are negative. Not in Civ3's BIQ.
+	public class AttitudeRules {
+		// The score's upper end for each level, and its highest.
+		public int graciousAtMost = -11;
+		public int politeAtMost = -1;
+		public int cautiousAtMost = 0;
+		public int annoyedAtMost = 10;
+		public int maximum = 100;
+
+		// The civ's aggression (RACE, -2 to 2) plus this, by difficulty
+		// (easiest first; the study's Chieftain-Warlord 0, Regent-Monarch 1,
+		// Emperor-Deity 2), held between the two limits.
+		public List<int> aggressionOffsetByDifficulty = [0, 0, 1, 1, 2, 2, 2, 2];
+		public int aggressionMinimum = -1;
+		public int aggressionMaximum = 3;
+
+		// While they last.
+		public int sameCultureGroup = -1;
+		public int sameGovernment = -1;
+		// Both in our favorite government; them in our shunned one, us not.
+		public int favoriteGovernment = -5;
+		public int shunnedGovernment = 4;
+		// A trade in the last so many turns, or a per-turn deal running.
+		public int recentTrade = -1;
+		public int recentTradeTurns = 20;
+		// We have more culture than them (they lose this much), or they more
+		// than us (they gain it).
+		public int cultureLead = 1;
+		public int embassy = -2;
+		public int rightOfPassage = -5;
+		public int mutualProtection = -10;
+		public int commonEnemy = -3;
+		public int alliance = -2;
+		public int resourceTrade = -5;
+		public int tradeEmbargoAgainstUs = 10;
+		// Gifts: a point for each so much gold they're worth, up to a
+		// maximum; forgotten at so much gold a turn.
+		public int goldPerGiftPoint = 10;
+		public int maximumGiftPoints = 10;
+		public int giftGoldForgottenPerTurn = 10;
+		// While they have more military power than us, the good points count
+		// this percent (rounded away from zero); right of passage in full.
+		public int powerLeadGoodPercent = 50;
+
+		// For good: on us, and on others at peace with the victim.
+		public int declaredWarOnUs = 4;
+		public int declaredWarOnFriend = 1;
+		public int brokePeaceTreaty = 4;
+		public int brokePeaceTreatyWithFriend = 1;
+		public int brokeRightOfPassage = 4;
+		public int brokeRightOfPassageWithFriend = 1;
+		public int brokeRightOfPassageWithUnitsInside = 6;
+		public int brokeRightOfPassageWithUnitsInsideWithFriend = 2;
+		public int razedOurCity = 12;
+		public int razedFriendsCity = 1;
+		// One of our cities flipped to them and they took it, or refused it.
+		public int tookOurFlippedCity = 1;
+		public int refusedOurFlippedCity = -1;
 	}
 
 	// War weariness points and what they do (see WarWeariness; CivFanatics,

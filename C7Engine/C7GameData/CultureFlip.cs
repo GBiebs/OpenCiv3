@@ -101,6 +101,7 @@ namespace C7GameData {
 			CityInteractions.ChangeOwner(gameData, city, to);
 			city.flippedOnTurn = gameData.turn;
 			city.flippedFrom = from;
+			Attitude.OnCityFlipped(gameData, from, to);
 			// Its people chose to join: those of the new owner's nationality
 			// stop resisting.
 			foreach (CityResident resident in city.residents.Where(r => r.nationality == to.civilization)) {
@@ -127,6 +128,7 @@ namespace C7GameData {
 			Player refuser = city.owner;
 			CityInteractions.ChangeOwner(gameData, city, from);
 			city.flippedFrom = null;
+			Attitude.OnFlipRefused(gameData, from, refuser);
 			foreach (CityResident resident in city.residents.Where(r => !r.resisting)) {
 				CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
 			}

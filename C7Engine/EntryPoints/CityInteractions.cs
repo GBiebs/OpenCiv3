@@ -241,6 +241,7 @@ namespace C7Engine {
 				.ToList();
 
 			DestroyCity(city);
+			Attitude.OnCityRazed(gameData, razer, city.capturedFrom);
 
 			UnitPrototype slave = gameData.unitPrototypes.Find(u => u.name == gameData.rules.SlaveUnitType);
 			if (slave != null) {

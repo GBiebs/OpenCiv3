@@ -29,13 +29,11 @@ public partial class TalkScreen : TextureRect {
 
 		this.Texture = TextureLoader.Load("diplomacy.offer");
 
-		string civNameText = "";
 		string leaderName = "";
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
-			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, fontTheme);
-			civNameText = $"{opponentPlayer.civilization.name} (Cautious)";
+			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, humanPlayer, fontTheme);
 			leaderName = opponentPlayer.civilization.leader;
 
 			// What our embassy tells us.

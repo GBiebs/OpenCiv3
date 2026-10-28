@@ -48,6 +48,10 @@ namespace C7GameData {
 		// dislikes (Civ3's RACE favorite and shunned governments), if any.
 		public string favoriteGovernment;
 		public string shunnedGovernment;
+
+		// How aggressive the AI leader is (Civ3's RACE aggression level, -2 to
+		// 2). See Attitude.
+		public int aggressionLevel;
 		public int primaryColorIndex;
 		public int secondaryColorIndex;
 		public Gender leaderGender;

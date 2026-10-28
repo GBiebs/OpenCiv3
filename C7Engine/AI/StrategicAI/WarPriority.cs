@@ -81,7 +81,8 @@ namespace C7GameData.AIData {
 			this.calculatedWeight = 1000;
 		}
 
-		private static Player PickPlayerToFight(Player player) {
+		internal static Player PickPlayerToFight(Player player) {
+			GameData gameData = EngineStorage.gameData;
 			Dictionary<Player, float> scoredOpponents = new();
 			Dictionary<Player, int> borderTileCount = CountSharedBorderTiles(player);
 
@@ -99,6 +100,18 @@ namespace C7GameData.AIData {
 				if (player == p) {
 					continue;
 				}
+
+				// Only a civ we've met, that's still in the game, isn't in a
+				// locked peace with us and whose peace treaty with us has run
+				// its term (breaking one costs us with everyone).
+				if (p.defeated || p.cities.Count == 0 || !PlayerRelationship.TryGetRelationship(player, p, out PlayerRelationship relationship)
+					|| gameData.AreInLockedPeace(player, p)
+					|| relationship.multiTurnDeals.Any(d => d.dealSubType == DealSubType.Peace && d.TurnsRemaining(gameData.turn) > 0)) {
+					continue;
+				}
+
+				// Civs we dislike first.
+				score += Attitude.Score(gameData, player, p);
 
 				// Players we share a longer border with are more likely to be
 				// our enemy.

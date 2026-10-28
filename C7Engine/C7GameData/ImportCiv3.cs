@@ -544,6 +544,7 @@ namespace C7GameData {
 					leaderTitle = race.LeaderTitle,
 					favoriteGovernment = GovernmentName(race.FavoriteGovernment),
 					shunnedGovernment = GovernmentName(race.ShunnedGovernment),
+					aggressionLevel = race.AggressionLevel,
 					leaderGender = race.LeaderGender == 0 ? Gender.Male : Gender.Female,
 					primaryColorIndex = race.DefaultColor,
 					secondaryColorIndex = race.UniqueColor,
@@ -748,6 +749,7 @@ namespace C7GameData {
 									save.TurnNumber + refuseContactForTurns[j] : -1,
 							warWearinessPoints = warWearinessPoints[j],
 							hasEmbassy = embassies[j],
+							brokenDeals = relationship.CancelledDeal,
 						});
 					}
 				}
