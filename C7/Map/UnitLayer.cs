@@ -262,13 +262,15 @@ public partial class UnitLayer : LooseLayer {
 			drawEffectAnimFrame(looseView, tileEffect, progress, tileCenter);
 		}
 
-		if (tile.unitsOnTile.Count == 0) {
+		// Enemy submarines we can't see aren't drawn (see Naval).
+		List<MapUnit> units = tile.unitsOnTile.Where(u => Naval.IsVisibleTo(u, looseView.mapView.game.controller)).ToList();
+		if (units.Count == 0) {
 			return;
 		}
 
 		var white = Color.Color8(255, 255, 255);
 
-		MapUnit unit = selectUnitToDisplay(looseView, tile, tile.unitsOnTile);
+		MapUnit unit = selectUnitToDisplay(looseView, tile, units);
 		MapUnit.Appearance appearance = looseView.mapView.game.animationController.animTracker.getUnitAppearance(unit);
 		Vector2 animOffset = new Vector2(appearance.offsetX, appearance.offsetY) * MapView.cellSize;
 
@@ -335,8 +337,8 @@ public partial class UnitLayer : LooseLayer {
 		float lineMarginFromBar = 3 / cameraZoom;
 
 		// Draw lines to show that there are more units on this tile
-		if (tile.unitsOnTile.Count > 1) {
-			int lineCount = tile.unitsOnTile.Count;
+		if (units.Count > 1) {
+			int lineCount = units.Count;
 			// TODO: Make configurable to taste, with cap of 8?
 			if (lineCount > 8)
 				lineCount = 8;

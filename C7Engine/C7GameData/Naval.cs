@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using C7Engine;
 using C7GameData.Save;
@@ -35,6 +36,64 @@ namespace C7GameData {
 		public static int SinkPercent(Player player) {
 			NavalRules rules = player.rules?.naval ?? new NavalRules();
 			return player.civilization?.traits.Contains(Civilization.Trait.Seafaring) == true ? rules.seafaringSinkPercent : rules.sinkPercent;
+		}
+
+		// Amphibious attacks (Civilopedia: Marines "can unload from a sea
+		// transport into any coastal land square, including enemy cities and
+		// enemy-occupied squares"): other land units can't fight, or enter a
+		// foreign city, straight from a ship.
+		public static bool MayAttackFrom(MapUnit unit, Tile from) {
+			return unit.unitType.amphibious || !(unit.Container() is MapUnit ship && ship.IsWaterUnit() && from.IsWater());
+		}
+
+		// The Privateer "carries no nationality markings, allowing them to
+		// attack and be attacked without revealing the nationality": a unit
+		// with hidden nationality fights any foreign ship at sea without war,
+		// and any unit may attack a stack of them (Civilopedia).
+		public static bool FightsWithoutWar(MapUnit attacker, Tile tile) {
+			List<MapUnit> foreign = tile.unitsOnTile.Where(u => u.owner != attacker.owner).ToList();
+			if (foreign.Count == 0 || attacker.owner.isBarbarians) {
+				return false;
+			}
+			if (attacker.unitType.hiddenNationality && tile.IsWater() && !tile.HasCity()) {
+				return foreign.All(u => u.IsWaterUnit());
+			}
+			return foreign.All(u => u.unitType.hiddenNationality);
+		}
+
+		// Submarines "can operate invisibly to enemy units ... However, other
+		// submarines and AEGIS Cruisers and Destroyers can see them plainly"
+		// (Civilopedia): a submarine is seen by its owner and by the viewer's
+		// units that can see submarines, within their sight (2 tiles with
+		// radar, else 1).
+		public static bool IsVisibleTo(MapUnit unit, Player viewer) {
+			if (!unit.unitType.submarine || unit.owner == viewer || viewer == null) {
+				return true;
+			}
+			int radar = viewer.rules?.RadarTileVisibility ?? 2;
+			return viewer.units.Any(u => u.unitType.canSeeSubmarines && u.location != Tile.NONE
+				&& u.location.DistanceTo(unit.location) <= (u.unitType.hasRadar ? radar : 1));
+		}
+
+		// The units in a stack a stealth attacker may pick (Civilopedia
+		// "Stealth Attack": "a selection box appears listing the target
+		// units"): the enemies there of its stealth target types.
+		public static List<MapUnit> StealthTargets(MapUnit attacker, Tile tile) {
+			if (!attacker.unitType.stealthAttack) {
+				return [];
+			}
+			return tile.unitsOnTile
+				.Where(u => u.owner != attacker.owner && !u.IsInArmy() && u.CanDefendAgainst(attacker) && u.CanDefendItself()
+					&& attacker.unitType.stealthTargets.Contains(u.unitType.name))
+				.ToList();
+		}
+
+		// The AI's pick: the target it's likeliest to beat, the dearest first.
+		public static MapUnit PickStealthTarget(MapUnit attacker, List<MapUnit> targets) {
+			return targets
+				.OrderByDescending(t => C7Engine.AI.CombatOdds.AttackerWinChance(attacker, t))
+				.ThenByDescending(t => t.unitType.shieldCost)
+				.First();
 		}
 
 		// At the end of `player`'s turn: each of its ships in danger may sink.

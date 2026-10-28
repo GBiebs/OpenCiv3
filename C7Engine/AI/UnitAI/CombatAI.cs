@@ -171,7 +171,7 @@ namespace C7Engine.AI.UnitAI {
 
 		private static float ScoreTile(Tile t, MapUnit unit, Player player, HashSet<ID> enemyIds) {
 			bool hasEnemyCity = t.cityAtTile != null && enemyIds.Contains(t.cityAtTile.owner.id);
-			bool hasEnemyUnits = t.unitsOnTile.Count > 0 && enemyIds.Contains(t.unitsOnTile[0].owner.id);
+			bool hasEnemyUnits = t.unitsOnTile.Any(u => enemyIds.Contains(u.owner.id) && Naval.IsVisibleTo(u, player));
 			float score = 0;
 
 			// Ignore tiles without units or cities.

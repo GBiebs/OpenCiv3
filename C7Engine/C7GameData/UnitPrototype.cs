@@ -248,6 +248,15 @@ namespace C7GameData {
 		public bool sinksInSea => flags.Contains(SaveUnitPrototype.Flag.SinksInSea);
 		public bool sinksInOcean => flags.Contains(SaveUnitPrototype.Flag.SinksInOcean);
 
+		// Naval combat (see Naval).
+		public bool amphibious => flags.Contains(SaveUnitPrototype.Flag.Amphibious);
+		public bool hiddenNationality => flags.Contains(SaveUnitPrototype.Flag.HiddenNationality);
+		public bool submarine => flags.Contains(SaveUnitPrototype.Flag.Submarine);
+		public bool canSeeSubmarines => flags.Contains(SaveUnitPrototype.Flag.CanSeeSubmarines);
+		public bool stealthAttack => flags.Contains(SaveUnitPrototype.Flag.StealthAttack);
+		// The unit types (by name) its stealth attack may pick.
+		public HashSet<string> stealthTargets = [];
+
 		// An army, which other units load into (see MapUnit_Army.cs).
 		public bool isArmy {
 			get => flags.Contains(SaveUnitPrototype.Flag.Army);
@@ -293,6 +302,7 @@ namespace C7GameData {
 			actions = proto.actions;
 			attributes = new HashSet<string>(proto.attributes);
 			flags = new HashSet<SaveUnitPrototype.Flag>(proto.flags);
+			stealthTargets = proto.stealthTargets?.ToHashSet() ?? [];
 
 			terraformActions = proto.terraformActions.Select(id => terraforms.First(t => t.Id == id)).ToHashSet();
 		}

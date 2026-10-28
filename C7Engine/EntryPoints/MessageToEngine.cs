@@ -266,6 +266,18 @@ namespace C7Engine {
 		}
 	}
 
+	// The target the human's stealth attacker picked (MsgChooseStealthTarget),
+	// or null to call the attack off. MapUnit.Move waits for it.
+	public class MsgStealthTarget : MessageToEngine {
+		public readonly ID targetId;
+
+		public MsgStealthTarget(ID targetId) {
+			this.targetId = targetId;
+		}
+
+		public override void process() { }
+	}
+
 	// The human launches their complete spaceship, winning the game.
 	public class MsgLaunchSpaceship : MessageToEngine {
 		private readonly ID playerId;

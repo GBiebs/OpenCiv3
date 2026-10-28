@@ -538,15 +538,23 @@ namespace C7GameData {
 			// TODO: add check for when we want to pillage something
 
 			if (isCombatUnit) {
+				// Only amphibious units fight, or take a city, straight from a
+				// ship (see Naval).
+				if ((hasHostileUnits || hasHostileCity || hasForeignUnits || hasForeignCity) && !Naval.MayAttackFrom(this, location)) {
+					return Intent.Disabled;
+				}
+				// A privateer fights foreign ships, and anyone fights
+				// privateers, without war (see Naval).
+				bool fightsWithoutWar = hasForeignUnits && !hasHostileUnits && Naval.FightsWithoutWar(this, tile);
 				// Without blitz, a unit fights one battle a turn (Civ3); taking
 				// units or a city that can't defend themselves isn't a battle.
-				if (hasHostileUnits && !CanAttackThisTurn()) {
+				if ((hasHostileUnits || fightsWithoutWar) && !CanAttackThisTurn()) {
 					MapUnit defender = tile.FindTopDefender(this);
 					if (defender != NONE && defender.CanDefendItself()) {
 						return Intent.NoticeAttacked;
 					}
 				}
-				if (hasHostileUnits || hasHostileCity) {
+				if (hasHostileUnits || hasHostileCity || fightsWithoutWar) {
 					return Intent.Fight;
 				}
 				if (hasForeignUnits) {

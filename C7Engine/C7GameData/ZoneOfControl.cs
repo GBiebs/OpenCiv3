@@ -70,6 +70,38 @@ namespace C7GameData {
 			return best;
 		}
 
+		// A Coastal Fortress "automatically bombards passing enemy ships"
+		// (Civilopedia): an enemy city with a building with naval power takes
+		// the same kind of shot, with that strength, at a ship passing through
+		// the water around it. The strongest such city, or null.
+		public static City CoastalFortress(MapUnit mover, Tile from, Tile to) {
+			if (!mover.IsWaterUnit() || mover.hitPointsRemaining <= 1) {
+				return null;
+			}
+			return from.neighbors.Values
+				.Where(t => Tile.IsTileValid(t) && t != to && t.HasCity() && PassesThrough(from, to, t))
+				.Select(t => t.cityAtTile)
+				.Where(c => c.owner != mover.owner && !c.owner.IsAtPeaceWith(mover.owner) && NavalPower(c) > 0)
+				.OrderByDescending(NavalPower)
+				.FirstOrDefault();
+		}
+
+		public static int NavalPower(City city) {
+			return city.constructed_buildings.Select(cb => cb.building.navalPower).DefaultIfEmpty(0).Max();
+		}
+
+		// Resolves a coastal fortress's shot at `mover` going from `from` to
+		// `to`. Returns the city that hit it, or null.
+		public static City ApplyCoastalFortress(MapUnit mover, Tile from, Tile to) {
+			City fortress = CoastalFortress(mover, from, to);
+			if (fortress == null || GameData.rng.NextDouble() >= HitChance(NavalPower(fortress), (int)mover.BaseCombatStrength(CombatRole.Defense))) {
+				return null;
+			}
+			mover.hitPointsRemaining = Math.Max(1, mover.hitPointsRemaining - Math.Max(1, EngineStorage.gameData.rules.ZoneOfControlDamage));
+			log.Information($"{fortress.name}'s coastal fortress hits {mover} passing from {from} to {to} ({mover.hitPointsRemaining} HP left)");
+			return fortress;
+		}
+
 		// Resolves the zone of control for `mover` going from `from` to `to`.
 		// Returns the unit that hit it (it has lost a hit point), or
 		// MapUnit.NONE.

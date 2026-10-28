@@ -1480,7 +1480,9 @@ namespace C7GameData {
 
 		private void ImportUnitPrototypes() {
 			PRTO[] Prto = biq.Prto ?? defaultBiq.Prto;
-			foreach (PRTO prto in Prto) {
+			int[][] stealthTargets = biq.Prto is null ? defaultBiq.PrtoPrto : biq.PrtoPrto;
+			for (int index = 0; index < Prto.Length; index++) {
+				PRTO prto = Prto[index];
 				SaveUnitPrototype prototype = new();
 				if (prto.Type == PRTO.TYPE_SEA) {
 					prototype.categories.Add("Sea");
@@ -1529,9 +1531,18 @@ namespace C7GameData {
 				if (prto.Immobile) prototype.flags.Add(SaveUnitPrototype.Flag.Immobile);
 				if (prto.SinkInSea) prototype.flags.Add(SaveUnitPrototype.Flag.SinksInSea);
 				if (prto.SinkInOcean) prototype.flags.Add(SaveUnitPrototype.Flag.SinksInOcean);
+				if (prto.Amphibious) prototype.flags.Add(SaveUnitPrototype.Flag.Amphibious);
+				if (prto.HiddenNationality) prototype.flags.Add(SaveUnitPrototype.Flag.HiddenNationality);
+				if (prto.Submarine) prototype.flags.Add(SaveUnitPrototype.Flag.Submarine);
+				if (prto.CanSeeSubmarines) prototype.flags.Add(SaveUnitPrototype.Flag.CanSeeSubmarines);
+				if (prto.StealthAttack) prototype.flags.Add(SaveUnitPrototype.Flag.StealthAttack);
 				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;
+
+				if (stealthTargets?[index]?.Length > 0) {
+					prototype.stealthTargets = stealthTargets[index].Where(t => t >= 0 && t < Prto.Length).Select(t => Prto[t].Name).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+				}
 
 				prototype.actions.UnionWith(GetUnitActions(prto));
 				prototype.terraformActions.UnionWith(GetUnitTerraforms(prto).Select(tfKey => terraformIdByCiv3Key[tfKey]));

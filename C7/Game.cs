@@ -537,6 +537,10 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgChooseStealthTarget mCST:
+				if (mCST.playerId == controller.id)
+					EmitChooseStealthTargetSignal(mCST);
+				break;
 			case MsgShipSank mSS:
 				// Civ3's SHIPSUNK.
 				if (mSS.playerId == controller.id)

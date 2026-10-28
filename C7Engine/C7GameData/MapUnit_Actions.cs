@@ -233,7 +233,21 @@ public partial class MapUnit {
 		// Enemies that can't defend themselves don't fight: we walk in and
 		// capture or destroy them (OnEnterTile).
 		MapUnit defender = newLoc.FindTopDefender(this);
-		bool enemyThere = defender != MapUnit.NONE && !owner.IsAtPeaceWith(defender.owner);
+		bool enemyThere = defender != MapUnit.NONE && (!owner.IsAtPeaceWith(defender.owner) || Naval.FightsWithoutWar(this, newLoc));
+		// A stealth attacker picks its target in the stack (a human is asked).
+		List<MapUnit> stealthTargets = enemyThere ? Naval.StealthTargets(this, newLoc) : [];
+		if (stealthTargets.Count > 1) {
+			if (owner.isHuman) {
+				new MsgChooseStealthTarget(owner.id, this, stealthTargets).send();
+				MsgStealthTarget choice = await EngineStorage.WaitForMessageToEngine<MsgStealthTarget>();
+				if (stealthTargets.Find(t => t.id == choice.targetId) is not MapUnit chosen) {
+					return false;
+				}
+				defender = chosen;
+			} else {
+				defender = Naval.PickStealthTarget(this, stealthTargets);
+			}
+		}
 		if (enemyThere && CombatType(CombatRole.Attack).attack <= 0) {
 			return true;
 		}
@@ -274,8 +288,10 @@ public partial class MapUnit {
 		facingDirection = dir;
 		float movementCost = TilePath.GetMovementCost(this.owner, location, dir, newLoc);
 
-		// Enemy units with a zone of control may take a shot as we pass.
+		// Enemy units with a zone of control may take a shot as we pass, and
+		// enemy coastal fortresses at ships.
 		await ZoneOfControl.Apply(this, location, newLoc);
+		ZoneOfControl.ApplyCoastalFortress(this, location, newLoc);
 
 		// Leave old tile
 		if (!location.unitsOnTile.Remove(this))

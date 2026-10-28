@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -33,6 +34,16 @@ namespace C7GameData.Save {
 			// May sink ending its turn in sea, or in ocean (see Naval).
 			SinksInSea,
 			SinksInOcean,
+			// Attacks straight from a ship (Marines; see Naval).
+			Amphibious,
+			// Shows no flag: attacks, and is attacked, without war (the
+			// Privateer).
+			HiddenNationality,
+			// Unseen by enemies but those that can see submarines.
+			Submarine,
+			CanSeeSubmarines,
+			// Picks its target in a stack (from its stealth targets).
+			StealthAttack,
 		}
 
 		public string name { get; set; }
@@ -72,6 +83,10 @@ namespace C7GameData.Save {
 
 		public HashSet<ID> terraformActions = [];
 
+		// The unit types a stealth attack may pick (Civ3's PRTO stealth
+		// targets), if any.
+		public List<string> stealthTargets;
+
 		public SaveUnitPrototype() { }
 
 		public SaveUnitPrototype(UnitPrototype proto) {
@@ -95,6 +110,7 @@ namespace C7GameData.Save {
 			actions = proto.actions;
 			attributes = new HashSet<string>(proto.attributes);
 			flags = new HashSet<Flag>(proto.flags);
+			stealthTargets = proto.stealthTargets.Count > 0 ? proto.stealthTargets.OrderBy(x => x, StringComparer.Ordinal).ToList() : null;
 
 			requiredResources = proto.requiredResources.Select(r => r.Key).ToHashSet();
 			terraformActions = proto.terraformActions.Select(r => r.Id).ToHashSet();

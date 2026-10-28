@@ -232,6 +232,20 @@ namespace C7Engine {
 		}
 	}
 
+	// The human's stealth attacker picks its target in a stack (Civilopedia
+	// "Stealth Attack"); the answer comes back as MsgStealthTarget.
+	public class MsgChooseStealthTarget : MessageToUI {
+		public ID playerId;
+		public MapUnit attacker;
+		public List<MapUnit> targets;
+
+		public MsgChooseStealthTarget(ID playerId, MapUnit attacker, List<MapUnit> targets) {
+			this.playerId = playerId;
+			this.attacker = attacker;
+			this.targets = targets;
+		}
+	}
+
 	// A ship of the player's sank at sea, with this many units aboard (see
 	// Naval).
 	public class MsgShipSank : MessageToUI {

@@ -890,6 +890,21 @@ public partial class Game {
 		));
 	}
 
+	// Civilopedia "Stealth Attack": "a selection box appears listing the
+	// target units".
+	private void EmitChooseStealthTargetSignal(MsgChooseStealthTarget msg) {
+		List<ButtonAction> options = msg.targets
+			.Select(t => new ButtonAction() {
+				message = $"{t.owner.civilization.adjective} {t.unitType.name} ({t.unitType.attack}.{t.unitType.defense}, {t.hitPointsRemaining} HP)",
+				action = () => new MsgStealthTarget(t.id).send(),
+			})
+			.Append(new ButtonAction() { message = "Call off the attack.", action = () => new MsgStealthTarget(null).send() })
+			.ToList();
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "Stealth Attack", $"Which unit should our {msg.attacker.unitType.name} attack?", options, Advisor.Military, Mood.Happy)
+		));
+	}
+
 	private void EmitScienceAdvisorSignal(string text, Mood mood) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(controller.id, "Science Advisor", text, Advisor.Science, mood, 400)
