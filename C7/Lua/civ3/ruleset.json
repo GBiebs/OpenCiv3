@@ -12624,7 +12624,8 @@
       "cultureCivLead": 2,
       "electionEveryTurns": 11,
       "candidatePercent": 25,
-      "maxCandidates": 3
+      "maxCandidates": 3,
+      "spaceshipParts": [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
     },
     "ageBonus": {
       "enabled": true,

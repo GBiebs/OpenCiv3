@@ -115,7 +115,8 @@ namespace C7Engine {
 		// - the palace, small wonders and buildings that make culture are lost,
 		//   other buildings may be, and great wonders change hands;
 		// - the city's culture was its old owner's, so its borders shrink;
-		// - if it was the loser's capital, the palace moves.
+		// - if it was the loser's capital, the palace moves and its spaceship
+		//   is lost.
 		// A human conqueror is then asked whether to keep or raze it
 		// (MsgCityCaptured, answered with MsgRazeCity); the AI decides here.
 		public static CaptureOutcome CaptureCity(City city, MapUnit conqueror) {
@@ -125,6 +126,10 @@ namespace C7Engine {
 
 			WarWeariness.OnCityLost(loser, winner, city.residents.Count);
 			WarRecord.OnCityTaken(gameData, city, winner);
+			// The loser's spaceship is kept at its capital.
+			if (city.capital) {
+				Spaceship.OnCapitalCaptured(loser, winner);
+			}
 
 			int gold = CaptureGold(city, winner);
 			loser.gold -= gold;

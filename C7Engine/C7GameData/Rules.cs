@@ -515,6 +515,10 @@ namespace C7GameData {
 		public int electionEveryTurns = 11;
 		public int candidatePercent = 25;
 		public int maxCandidates = 3;
+
+		// The space race: how many of each spaceship part (BLDG spaceship
+		// part index) the ship needs (Civ3's RULE section).
+		public List<int> spaceshipParts = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 	}
 
 	// Trait bonuses Civ3 builds in (Civilopedia, CivWiki; checked against

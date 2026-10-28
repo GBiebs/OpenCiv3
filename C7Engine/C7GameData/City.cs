@@ -429,6 +429,8 @@ namespace C7GameData {
 			log.Debug($"Produced {producedItem} in {this}");
 			if (producedItem is UnitPrototype prototype) {
 				AddUnit(prototype, gameData);
+			} else if (producedItem is Building part && part.spaceshipPart != null) {
+				Spaceship.AddPart(gameData, this, part);
 			} else if (producedItem is Building building) {
 				AddBuilding(building, gameData);
 

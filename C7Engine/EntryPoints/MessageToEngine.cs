@@ -266,6 +266,22 @@ namespace C7Engine {
 		}
 	}
 
+	// The human launches their complete spaceship, winning the game.
+	public class MsgLaunchSpaceship : MessageToEngine {
+		private readonly ID playerId;
+
+		public MsgLaunchSpaceship(ID playerId) {
+			this.playerId = playerId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(playerId) is Player player) {
+				Spaceship.Launch(gameData, player);
+			}
+		}
+	}
+
 	// Whether the human, owning the United Nations, calls an election
 	// (MsgElectionOffer). UnitedNations waits for it.
 	public class MsgCallElection : MessageToEngine {

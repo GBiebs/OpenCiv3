@@ -17,4 +17,8 @@ public class VictoryStatus {
 	// The United Nations: who has it, and whether the player was elected.
 	public Player UnitedNationsOwner { get; set; }
 	public bool ElectedSecretaryGeneral { get; set; }
+	// The spaceship: parts built and needed, and whether it was launched.
+	public int SpaceshipParts { get; set; }
+	public int SpaceshipPartsNeeded { get; set; }
+	public bool SpaceshipLaunched { get; set; }
 }

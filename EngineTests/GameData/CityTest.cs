@@ -187,7 +187,8 @@ public class CityTest : MapBase {
 		Building wonder = MakeSmallWonder();
 		Building part = MakeSpaceshipPart(0);
 		other.constructed_buildings.Add(new CityBuilding { building = wonder });
-		other.constructed_buildings.Add(new CityBuilding { building = part });
+		// A finished part is in the player's spaceship.
+		player.spaceshipParts[0] = 1;
 
 		Assert.False(wonder.CanProduce(city, NoResources()));
 		Assert.False(part.CanProduce(city, NoResources()));

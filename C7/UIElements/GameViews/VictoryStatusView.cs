@@ -13,6 +13,8 @@ public partial class VictoryStatusView : Control {
 	[Export] public GridContainer grid;
 
 	private TextureButton _close;
+	// Launches the player's complete spaceship (see Spaceship).
+	private Button _launch;
 
 	private const float LabelColumnWidth = 185f;
 	private const float ValueColumnWidth = 40f;
@@ -37,6 +39,20 @@ public partial class VictoryStatusView : Control {
 		_close.Pressed += () => { this.GetParent<GameViews>().Hide(); };
 
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "VICTORY STATUS");
+
+		_launch = new Button() {
+			Text = "Launch the spaceship!",
+			OffsetLeft = 40,
+			OffsetTop = 700,
+			OffsetRight = 240,
+			OffsetBottom = 730,
+			Visible = false,
+		};
+		_launch.Pressed += () => {
+			new MsgLaunchSpaceship(EngineStorage.uiControllerID).send();
+			this.GetParent<GameViews>().Hide();
+		};
+		background.AddChild(_launch);
 	}
 
 	private void ConfigureGrid() {
@@ -68,6 +84,8 @@ public partial class VictoryStatusView : Control {
 		foreach (IVictory vc in gameData.victories) {
 			ProcessVictoryCondition(vc, gameData, player, rivals);
 		}
+
+		_launch.Visible = Spaceship.CanLaunch(gameData, player);
 	}
 
 	private void ProcessVictoryCondition(IVictory dv, GameData gameData, Player player, List<Player> rivals) {

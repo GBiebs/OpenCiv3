@@ -2346,6 +2346,10 @@ namespace C7GameData {
 			if (game.DominationPopulation > 0) save.Rules.victory.dominationPopulationPercent = game.DominationPopulation;
 			if (game.OneCityCultureWin > 0) save.Rules.victory.cultureCityPoints = game.OneCityCultureWin;
 			if (game.AllCitiesCultureWin > 0) save.Rules.victory.cultureCivPoints = game.AllCitiesCultureWin;
+			// How many of each part the spaceship needs.
+			if (theBiq.RuleSpaceship?.Length > 0) {
+				save.Rules.victory.spaceshipParts = theBiq.RuleSpaceship[0].ToList();
+			}
 			// Disasters: how often volcanoes erupt, and a scenario's plague
 			// (off in the stock rules).
 			if (game.EruptionPeriod > 0) {

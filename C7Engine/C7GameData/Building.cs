@@ -43,10 +43,10 @@ namespace C7GameData {
 		public Government? requiredGovernment;
 
 		// The spaceship part index of this building, if it is a spaceship part.
-		// The restrictions on building one (once per player, not while another
-		// city builds it, and needing a building that allows spaceship parts)
-		// are implemented in CanProduce.
-		// TODO: Wire up to victory conditions when applicable.
+		// The restrictions on building one (as many as the ship needs, counting
+		// the ones other cities build, and needing a building that allows
+		// spaceship parts) are implemented in CanProduce; a finished part goes
+		// into the player's spaceship, not the city (see Spaceship).
 		public int? spaceshipPart;
 
 		// The number of armies the player must have to build this. Implemented
@@ -328,14 +328,20 @@ namespace C7GameData {
 				}
 			}
 
-			if (isSmallWonder || spaceshipPart != null) {
-				// We can only have one of each small wonder or spaceship part,
-				// and we can't build one if another one of our cities is building
-				// it. This city building it is fine, so that it stays a valid
-				// choice while it is in production.
+			if (isSmallWonder) {
+				// We can only have one of each small wonder, and we can't build
+				// one if another one of our cities is building it. This city
+				// building it is fine, so that it stays a valid choice while it
+				// is in production.
 				if (city.owner.OwnsBuilding(this) || city.owner.IsProducing(this, excludedCity: city)) {
 					return false;
 				}
+			}
+
+			// A spaceship part goes into the ship, which needs so many of each
+			// (counting the ones our other cities are building).
+			if (spaceshipPart != null && !Spaceship.NeedsMore(city, this)) {
+				return false;
 			}
 
 			// Spaceship parts can only be built once we have built the small

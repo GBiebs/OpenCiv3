@@ -232,6 +232,40 @@ namespace C7Engine {
 		}
 	}
 
+	// A civ added a part to its spaceship (Civ3's SUMMARY_THEIR_SPACESHIP_PART
+	// for other civs).
+	public class MsgSpaceshipPart : MessageToUI {
+		public Player owner;
+		public Building part;
+
+		public MsgSpaceshipPart(Player owner, Building part) {
+			this.owner = owner;
+			this.part = part;
+		}
+	}
+
+	// The human's spaceship is complete and can be launched (answered with
+	// MsgLaunchSpaceship, or later from the victory status screen).
+	public class MsgSpaceshipComplete : MessageToUI {
+		public ID playerId;
+
+		public MsgSpaceshipComplete(ID playerId) {
+			this.playerId = playerId;
+		}
+	}
+
+	// `captor` took `loser`'s capital and destroyed its spaceship (Civ3's
+	// LOSTSPACESHIP, DESTROYEDSPACESHIP).
+	public class MsgSpaceshipLost : MessageToUI {
+		public Player loser;
+		public Player captor;
+
+		public MsgSpaceshipLost(Player loser, Player captor) {
+			this.loser = loser;
+			this.captor = captor;
+		}
+	}
+
 	// The human owns the United Nations and may call an election (Civ3's
 	// DIPLOVICTORYVOTEOPTION); the answer comes back as MsgCallElection.
 	public class MsgElectionOffer : MessageToUI {

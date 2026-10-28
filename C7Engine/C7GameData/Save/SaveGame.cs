@@ -210,6 +210,10 @@ namespace C7GameData.Save {
 				data.victories.Add(new DiplomaticVictory());
 			}
 
+			if (conditions.AllowSpaceRaceVictory) {
+				data.victories.Add(new SpaceRaceVictory());
+			}
+
 			// There is no "score victory", but we can treat score as if it were, so
 			// we can render the current score alongside the state of other conditions
 			data.victories.Add(new ScoreVictory());

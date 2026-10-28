@@ -181,6 +181,11 @@ namespace C7GameData {
 		// city is more productive).
 		public int ageOfScienceTurnsLeft;
 
+		// Our spaceship: how many of each part (Building.spaceshipPart) we
+		// have built, and whether we launched it. See Spaceship.
+		public Dictionary<int, int> spaceshipParts = new();
+		public bool spaceshipLaunched;
+
 		// Civ3's golden age (Civilopedia "Golden Age"), once a game: how many
 		// more turn ends it lasts, counting the current turn's, and whether we
 		// have had it.

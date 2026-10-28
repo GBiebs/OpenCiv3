@@ -537,6 +537,21 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgSpaceshipPart mSP:
+				// News of other civs' spaceships, if we know them.
+				if (mSP.owner != controller && controller.playerRelationships.ContainsKey(mSP.owner.id))
+					EmitScienceAdvisorSignal($"The {mSP.owner.civilization.noun} have added {mSP.part.name} to their ship.", Mood.Surprised);
+				break;
+			case MsgSpaceshipComplete mSC:
+				if (mSC.playerId == controller.id)
+					EmitSpaceshipCompleteSignal();
+				break;
+			case MsgSpaceshipLost mSL:
+				if (mSL.loser == controller)
+					EmitScienceAdvisorSignal($"The {mSL.captor.civilization.noun} have destroyed our spaceship!", Mood.Angry);
+				else if (mSL.captor == controller)
+					EmitScienceAdvisorSignal($"We have destroyed the {mSL.loser.civilization.adjective} spaceship!", Mood.Happy);
+				break;
 			case MsgElectionOffer mEO:
 				if (mEO.playerId == controller.id)
 					EmitElectionOfferSignal();

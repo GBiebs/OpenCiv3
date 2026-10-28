@@ -890,6 +890,30 @@ public partial class Game {
 		));
 	}
 
+	private void EmitScienceAdvisorSignal(string text, Mood mood) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Science Advisor", text, Advisor.Science, mood, 400)
+		));
+	}
+
+	// Our spaceship is complete: launch it now (and win), or later from the
+	// victory status screen.
+	private void EmitSpaceshipCompleteSignal() {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Science Advisor",
+				"Our spaceship is complete! Shall we launch it for Alpha Centauri?",
+				Advisor.Science,
+				Mood.Happy,
+				"Launch the spaceship!",
+				"Not yet.",
+				yesAction: () => new MsgLaunchSpaceship(controller.id).send(),
+				noAction: () => { }
+			)
+		));
+	}
+
 	// The United Nations (Civ3's DIPLOVICTORYVOTEOPTION, DIPLOVICTORYVOTE,
 	// DIPLOVICTORYVOTERESULTS and NODIPLOVICTORY).
 	private void EmitElectionOfferSignal() {

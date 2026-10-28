@@ -9,8 +9,8 @@ namespace C7Engine {
 	public class ChooseProducible {
 		private static ILogger log = Log.ForContext<ChooseProducible>();
 
-		// What a building that leads to victory (the United Nations) adds to
-		// its score.
+		// What a building that leads to victory (the United Nations, the
+		// spaceship) adds to its score.
 		internal const float VictoryBuildingBoost = 30;
 
 		record struct ProducibleStats(
@@ -312,9 +312,17 @@ namespace C7Engine {
 				score -= 10 * building.maintenanceCost;
 			}
 
-			// Go for a building that can win the game.
-			if (building.HasWonderFlag(C7GameData.Save.SaveBuilding.WonderFlag.AllowDiplomaticVictory)
-				&& EngineStorage.gameData.victoryConditions?.AllowDiplomaticVictory == true) {
+			// Go for a building that can win the game: the United Nations, the
+			// Apollo Program and the spaceship's parts; the spaceship is no use
+			// without the space race.
+			VictoryConditions victory = EngineStorage.gameData.victoryConditions;
+			if (building.HasWonderFlag(C7GameData.Save.SaveBuilding.WonderFlag.AllowDiplomaticVictory) && victory?.AllowDiplomaticVictory == true) {
+				score += VictoryBuildingBoost;
+			}
+			if (building.spaceshipPart != null || building.HasWonderFlag(C7GameData.Save.SaveBuilding.WonderFlag.BuildSpaceshipParts)) {
+				if (victory?.AllowSpaceRaceVictory != true) {
+					return int.MinValue;
+				}
 				score += VictoryBuildingBoost;
 			}
 
