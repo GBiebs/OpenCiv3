@@ -91,6 +91,15 @@ public class NuclearTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.True(icbm.unitType.immobile);
 		Assert.True(icbm.CanBeActive());
 		Assert.True(Spawn(us, "Tactical Nuke", home.location).CanBeActive());
+
+		// The player is asked for its orders.
+		Player human = gameData.players.Find(p => p.isHuman);
+		foreach (MapUnit u in human.units) {
+			u.movementPoints.onConsumeAll();
+		}
+		MapUnit ours = Spawn(human, "ICBM", human.units[0].location);
+		UnitInteractions.ClearWaitQueue();
+		Assert.Equal(ours, UnitInteractions.getNextSelectedUnit());
 	}
 
 	[Fact]

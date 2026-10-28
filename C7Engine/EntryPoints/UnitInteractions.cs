@@ -25,6 +25,11 @@ namespace C7Engine {
 						continue;
 					}
 
+					// Nor is a unit that takes no orders (a princess).
+					if (!unit.CanBeActive()) {
+						continue;
+					}
+
 					if (!waitQueue.Contains(unit)) {
 						return unit;
 					}

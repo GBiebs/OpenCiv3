@@ -325,6 +325,15 @@ public class GameTypesTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(princess.CanBeActive());
 		Assert.False(princess.CanEnter(princess.location.neighbors.Values.First(t => t.IsLand()), out _));
 
+		// The player isn't asked for her orders.
+		Player human = gameData.players.Find(p => p.isHuman);
+		Assert.Contains(human.units, u => Princess.Is(gameData, u));
+		foreach (MapUnit u in human.units.Where(u => !Princess.Is(gameData, u))) {
+			u.movementPoints.onConsumeAll();
+		}
+		UnitInteractions.ClearWaitQueue();
+		Assert.Equal(MapUnit.NONE, UnitInteractions.getNextSelectedUnit());
+
 		NewGame(new VictoryConditions());
 		Assert.DoesNotContain(them.units, u => Princess.Is(gameData, u));
 	}
