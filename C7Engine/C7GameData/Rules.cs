@@ -369,6 +369,10 @@ namespace C7GameData {
 		public int demandedTributeWhileFriendly = 1;
 		public int paidUsTribute = -1;
 		public int calledOurBluff = 1;
+		// While their troops stay in our land after we asked them to leave,
+		// and after we ordered them home.
+		public int askedToLeave = 1;
+		public int orderedToLeave = 4;
 	}
 
 	// What goods in a deal are worth, in gold (see TradeOffer). Civ3's values

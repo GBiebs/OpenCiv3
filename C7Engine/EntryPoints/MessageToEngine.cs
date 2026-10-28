@@ -214,6 +214,27 @@ namespace C7Engine {
 		}
 	}
 
+	// The player sends home its troops in another civ's land (see
+	// BorderWarnings).
+	public class MsgSendTroopsHome : MessageToEngine {
+		private ID playerId;
+		private ID ownerId;
+
+		public MsgSendTroopsHome(ID playerId, ID ownerId) {
+			this.playerId = playerId;
+			this.ownerId = ownerId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			Player player = gameData.GetPlayer(playerId);
+			Player owner = gameData.GetPlayer(ownerId);
+			if (player != null && owner != null) {
+				BorderWarnings.SendHome(gameData, BorderWarnings.Intruders(gameData, owner, player));
+			}
+		}
+	}
+
 	// The human's answer to an AI's demand for tribute (MsgTributeDemanded).
 	public class MsgTributeAnswer : MessageToEngine {
 		private ID demanderId;

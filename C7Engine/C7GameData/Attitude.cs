@@ -131,7 +131,7 @@ namespace C7GameData {
 			if (subject.CalculateMilitaryStrength() > observer.CalculateMilitaryStrength()) {
 				good = (int)Math.Floor(good * rules.powerLeadGoodPercent / 100.0);
 			}
-			return Math.Min(rules.maximum, good + passage + bad + relationship.attitudePenalty);
+			return Math.Min(rules.maximum, good + passage + bad + relationship.attitudePenalty + relationship.borderAnger);
 		}
 
 		private static int AggressionOffset(GameData gameData) {

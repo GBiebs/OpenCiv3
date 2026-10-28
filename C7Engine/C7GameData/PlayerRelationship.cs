@@ -70,6 +70,12 @@ public class PlayerRelationship {
 	// The turn p1 last demanded tribute of p2.
 	public int? lastTributeDemandTurn = null;
 
+	// p2's troops in p1's land: 0 none, 1 asked to leave, 2 ordered home;
+	// and the attitude points p1 holds against p2 while they stay. See
+	// BorderWarnings.
+	public int borderWarning = 0;
+	public int borderAnger = 0;
+
 	public bool declaredWarWithActiveRightOfPassage = false;
 
 	// p1.playerRelationships[p2].warWearinessPoints is p1's war weariness

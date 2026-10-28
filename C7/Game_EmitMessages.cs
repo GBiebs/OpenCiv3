@@ -868,6 +868,28 @@ public partial class Game {
 		));
 	}
 
+	// An AI asks our troops to leave its land, or orders them home (Civ3's
+	// AIBORDERWARNING, AIBORDERWAR, and the answers USERWILLRETREAT,
+	// USERWILLRETURNHOME, USERWAR).
+	private void EmitBorderWarningSignal(MsgBorderWarning msg) {
+		string civ = msg.owner.civilization.noun;
+		string text = msg.order
+			? $"{msg.owner.civilization.leader} of the {civ}: \"Your troops near {msg.city?.name} are in our territory. Send them home immediately, or know that you will be held responsible for the conflict!\""
+			: $"{msg.owner.civilization.leader} of the {civ}: \"Your troops seem to be within our territory near {msg.city?.name}. It is certainly a mistake on your generals' part, and we humbly request that you correct it.\"";
+		List<ButtonAction> options = new();
+		if (!msg.order) {
+			options.Add(new ButtonAction() { message = "Our troops will leave soon.", action = () => { } });
+		}
+		options.Add(new ButtonAction() { message = "We will send our troops home.", action = () => new MsgSendTroopsHome(msg.intruder.id, msg.owner.id).send() });
+		options.Add(new ButtonAction() {
+			message = "This means war!",
+			action = () => new MsgDiplomacyWarDeclarationConfirmation(controller.id, msg.owner.id, () => { }).send(),
+		});
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "Foreign Advisor", text, options, Advisor.Foreign, Mood.Sad, hSize: 450)
+		));
+	}
+
 	// An AI demands tribute (Civ3's AIDEMANDTRIBUTE and the answers
 	// USERWILLGIVETRIBUTE, USERWILLNOTGIVETRIBUTE).
 	private void EmitTributeDemandedSignal(MsgTributeDemanded msg) {

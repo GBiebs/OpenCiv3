@@ -511,6 +511,10 @@ public partial class Game : Node {
 				if (mEE.playerId == controller.id)
 					EmitForeignAdvisorSignal(mEE.Text(), Mood.Happy);
 				break;
+			case MsgBorderWarning mBW:
+				if (mBW.intruder == controller)
+					EmitBorderWarningSignal(mBW);
+				break;
 			case MsgTributeDemanded mTD:
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);

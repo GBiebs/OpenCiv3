@@ -12549,7 +12549,9 @@
       "demandedTribute": 2,
       "demandedTributeWhileFriendly": 1,
       "paidUsTribute": -1,
-      "calledOurBluff": 1
+      "calledOurBluff": 1,
+      "askedToLeave": 1,
+      "orderedToLeave": 4
     },
     "dealValues": {
       "mapTilesPerGold": 4,

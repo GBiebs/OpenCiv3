@@ -246,6 +246,22 @@ namespace C7Engine {
 		}
 	}
 
+	// An AI asks (or orders) the human's troops out of its land near `city`
+	// (see BorderWarnings).
+	public class MsgBorderWarning : MessageToUI {
+		public Player owner;
+		public Player intruder;
+		public City city;
+		public bool order;
+
+		public MsgBorderWarning(Player owner, Player intruder, City city, bool order) {
+			this.owner = owner;
+			this.intruder = intruder;
+			this.city = city;
+			this.order = order;
+		}
+	}
+
 	// Two civs at war made peace.
 	public class MsgPeaceTreatySigned : MessageToUI {
 		public Player a;

@@ -147,6 +147,8 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgEmbassyEstablished mEE:
 						continue;
+					case MsgBorderWarning mBW:
+						continue;
 					// An AI's offer or demand to the human: turned down.
 					case MsgShowTradeOffer mSTO:
 						new MsgDiplomacyCompleted().send();
