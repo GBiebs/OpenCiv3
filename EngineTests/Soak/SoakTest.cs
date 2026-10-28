@@ -75,13 +75,19 @@ public class SoakTest {
 			difficulty = difficulty,
 			worldCharacteristics = wc,
 			opponents = Enumerable.Repeat(new SelectedOpponent() { isRandom = true }, worldSize.numberOfCivs - 1).ToList(),
-			// Civ3's standard victories, so a game can be won.
+			// Civ3's standard victories, so a game can be won; SOAK_GAMETYPES=1
+			// adds Conquests' game types (regicide, elimination, victory
+			// points, capture the princess).
 			victoryConditions = new VictoryConditions {
 				AllowDominationVictory = true,
 				AllowConquestVictory = true,
 				AllowCulturalVictory = true,
 				AllowDiplomaticVictory = true,
 				AllowSpaceRaceVictory = true,
+				Regicide = Env("SOAK_GAMETYPES", 0) == 1,
+				CityElimination = Env("SOAK_GAMETYPES", 0) == 1,
+				VictoryLocations = Env("SOAK_GAMETYPES", 0) == 1,
+				CaptureTheFlag = Env("SOAK_GAMETYPES", 0) == 1,
 			}
 		};
 		gameSetup.Populate(save);
@@ -290,7 +296,9 @@ public class SoakTest {
 			+ $"{gameData.players.Where(p => !p.isBarbarians).Select(p => p.TotalCulture()).DefaultIfEmpty(0).Max()} in a civ, "
 			+ $"United Nations {(UnitedNations.Seat(gameData)?.owner.civilization.name ?? "not built")}, "
 			+ $"{messages.OfType<MsgElectionResults>().Count()} elections, "
-			+ $"{messages.OfType<MsgSpaceshipPart>().Count()} spaceship parts built; governments: "
+			+ $"{messages.OfType<MsgSpaceshipPart>().Count()} spaceship parts built, "
+			+ $"victory points up to {gameData.players.Select(p => p.victoryPoints).DefaultIfEmpty(0).Max()}, "
+			+ $"{messages.OfType<MsgPrincessDelivered>().Count()} princesses delivered; governments: "
 			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
 				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
