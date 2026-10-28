@@ -211,6 +211,7 @@ public class PlayerRelationship {
 		right.playerRelationships[left.id].refuseContactUntilTurn = -1;
 		WarRecord.OnPeace(left, right);
 		Agreements.OnPeace(gameData, left, right);
+		BorderWarnings.OnPeace(gameData, left, right);
 
 		// With the war over, both rethink their plans.
 		left.turnsUntilPriorityReevaluation = 0;

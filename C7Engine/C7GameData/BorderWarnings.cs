@@ -33,6 +33,30 @@ namespace C7GameData {
 			return other.units.Where(u => u.IsCombatUnit() && !u.IsLoaded() && u.location.OwningPlayer() == owner).ToList();
 		}
 
+		// When two civs make peace (the user's decision, as in Civ3), each
+		// one's units in the other's land go to the nearest tile of their
+		// own land they can stand on: land for land units, their waters or
+		// one of their cities for ships; failing that, their nearest city.
+		// Units aboard go with their ship or army.
+		public static void OnPeace(GameData gameData, Player a, Player b) {
+			foreach ((Player owner, Player other) in new[] { (a, b), (b, a) }) {
+				foreach (MapUnit unit in owner.units.Where(u => !u.IsLoaded() && u.location.OwningPlayer() == other).ToList()) {
+					Tile home = FriendlyLand(gameData, unit);
+					if (home != null) {
+						gameData.TeleportUnit(unit, home);
+					}
+				}
+			}
+		}
+
+		private static Tile FriendlyLand(GameData gameData, MapUnit unit) {
+			Player owner = unit.owner;
+			bool Fits(Tile t) => t.OwningPlayer() == owner && t.unitsOnTile.All(u => u.owner == owner)
+				&& (unit.IsWaterUnit() ? t.IsWater() || t.cityAtTile?.owner == owner : t.IsLand());
+			Tile best = gameData.map.tiles.Where(t => Tile.IsTileValid(t) && Fits(t)).MinBy(t => t.DistanceTo(unit.location));
+			return best ?? owner.cities.MinBy(c => c.location.DistanceTo(unit.location))?.location;
+		}
+
 		// Each unit goes to its owner's nearest city.
 		public static void SendHome(GameData gameData, IEnumerable<MapUnit> units) {
 			foreach (MapUnit unit in units.ToList()) {
