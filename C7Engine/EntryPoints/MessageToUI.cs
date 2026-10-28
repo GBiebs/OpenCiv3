@@ -232,6 +232,20 @@ namespace C7Engine {
 		}
 	}
 
+	// An AI demands tribute of the human (see TributeAI); the answer comes
+	// back as MsgTributeAnswer.
+	public class MsgTributeDemanded : MessageToUI {
+		public Player demander;
+		public Player victim;
+		public TradeOffer demand;
+
+		public MsgTributeDemanded(Player demander, Player victim, TradeOffer demand) {
+			this.demander = demander;
+			this.victim = victim;
+			this.demand = demand;
+		}
+	}
+
 	// Two civs at war made peace.
 	public class MsgPeaceTreatySigned : MessageToUI {
 		public Player a;

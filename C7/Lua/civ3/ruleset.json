@@ -12545,7 +12545,11 @@
       "brokeAllianceWithFriend": 2,
       "tookOurFlippedCity": 1,
       "refusedOurFlippedCity": -1,
-      "soldUsWorkers": 1
+      "soldUsWorkers": 1,
+      "demandedTribute": 2,
+      "demandedTributeWhileFriendly": 1,
+      "paidUsTribute": -1,
+      "calledOurBluff": 1
     },
     "dealValues": {
       "mapTilesPerGold": 4,

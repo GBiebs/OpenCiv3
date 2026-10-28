@@ -67,6 +67,8 @@ public class PlayerRelationship {
 	// ask every turn).
 	public int? lastPeaceOfferTurn = null;
 	public int? lastAgreementOfferTurn = null;
+	// The turn p1 last demanded tribute of p2.
+	public int? lastTributeDemandTurn = null;
 
 	public bool declaredWarWithActiveRightOfPassage = false;
 

@@ -868,6 +868,30 @@ public partial class Game {
 		));
 	}
 
+	// An AI demands tribute (Civ3's AIDEMANDTRIBUTE and the answers
+	// USERWILLGIVETRIBUTE, USERWILLNOTGIVETRIBUTE).
+	private void EmitTributeDemandedSignal(MsgTributeDemanded msg) {
+		List<string> wanted = msg.demand.techs.Select(t => t.Name).ToList();
+		if (msg.demand.gold is int gold) {
+			wanted.Add($"{gold} gold");
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new ConfirmPopUp(
+				controller.id,
+				"Foreign Advisor",
+				$"{msg.demander.civilization.leader} of the {msg.demander.civilization.noun} demands {string.Join(" and ", wanted)}:\n" +
+					"\"Give us what we want, and we will not crush you. Does that not sound fair?\"",
+				Advisor.Foreign,
+				Mood.Sad,
+				"Very well. We will give you what you want - this time.",
+				"Take your empty threats elsewhere.",
+				yesAction: () => new MsgTributeAnswer(msg.demander.id, msg.victim.id, msg.demand, pay: true).send(),
+				noAction: () => new MsgTributeAnswer(msg.demander.id, msg.victim.id, msg.demand, pay: false).send(),
+				hSize: 450
+			)
+		));
+	}
+
 	private void EmitForeignAdvisorSignal(string text, Mood mood) {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(controller.id, "Foreign Advisor", text, Advisor.Foreign, mood, 400)

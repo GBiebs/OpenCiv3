@@ -362,6 +362,13 @@ namespace C7GameData {
 		public int refusedOurFlippedCity = -1;
 		// They sold us one of their workers.
 		public int soldUsWorkers = 1;
+		// They demanded tribute of us (less if we were Polite or better), we
+		// demanded it of them and they paid, or they refused (called our
+		// bluff).
+		public int demandedTribute = 2;
+		public int demandedTributeWhileFriendly = 1;
+		public int paidUsTribute = -1;
+		public int calledOurBluff = 1;
 	}
 
 	// What goods in a deal are worth, in gold (see TradeOffer). Civ3's values

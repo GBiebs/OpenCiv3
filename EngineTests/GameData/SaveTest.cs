@@ -147,9 +147,12 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgEmbassyEstablished mEE:
 						continue;
-					// An AI's offer to the human: turned down.
+					// An AI's offer or demand to the human: turned down.
 					case MsgShowTradeOffer mSTO:
 						new MsgDiplomacyCompleted().send();
+						continue;
+					case MsgTributeDemanded mTD:
+						new MsgTributeAnswer(mTD.demander.id, mTD.victim.id, mTD.demand, pay: false).send();
 						continue;
 					default:
 						throw new Exception($"{msg}");

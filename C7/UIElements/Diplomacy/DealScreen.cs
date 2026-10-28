@@ -159,6 +159,15 @@ public partial class DealScreen : TextureRect {
 			acceptDeal.Pressed += AttemptDeal;
 			AddChild(acceptDeal);
 
+			// Demand what's on their side, giving nothing.
+			Button demand = new();
+			demand.Text = "\"Give me this, or else!\"";
+			demand.SetPosition(new Vector2(512 + 20, 650));
+			demand.Theme = fontTheme;
+			demand.Pressed += DemandTribute;
+			demand.Visible = !playersAtWar;
+			AddChild(demand);
+
 			Button goodbye = new();
 			goodbye.Text = "\"Never mind...\"";
 			goodbye.SetPosition(new Vector2(512 - 205, 670));
@@ -201,6 +210,29 @@ public partial class DealScreen : TextureRect {
 				opponentResponse.Text = "\"We cannot agree to that at this time.\"";
 			} else {
 				opponentResponse.Text = "\"That is not enough.\"";
+			}
+		});
+	}
+
+	// The AI gives in if it's outmatched (see TributeAI), and minds being
+	// asked either way.
+	private void DemandTribute() {
+		EngineStorage.ReadGameData((GameData gD) => {
+			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
+			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
+			if (opponentOffer.IsEmpty()) {
+				return;
+			}
+			TributeAI.OnDemand(gD, humanPlayer, opponentPlayer);
+			if (TributeAI.WouldPay(opponentPlayer, humanPlayer)) {
+				TributeAI.Pay(gD, humanPlayer, opponentPlayer, opponentOffer);
+				opponentResponse.Text = "\"We will give you what you request. But we do this out of a love of peace, not fear.\"";
+				opponentOffer.Clear();
+				humanOffer.Clear();
+				opponentTree.RefreshUiForOffer();
+				opponentOfferUi.RefreshUiForOffer();
+			} else {
+				opponentResponse.Text = "\"We will not be intimidated!\"";
 			}
 		});
 	}

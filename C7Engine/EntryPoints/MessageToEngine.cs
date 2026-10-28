@@ -214,6 +214,35 @@ namespace C7Engine {
 		}
 	}
 
+	// The human's answer to an AI's demand for tribute (MsgTributeDemanded).
+	public class MsgTributeAnswer : MessageToEngine {
+		private ID demanderId;
+		private ID victimId;
+		private TradeOffer demand;
+		private bool pay;
+
+		public MsgTributeAnswer(ID demanderId, ID victimId, TradeOffer demand, bool pay) {
+			this.demanderId = demanderId;
+			this.victimId = victimId;
+			this.demand = demand;
+			this.pay = pay;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			Player demander = gameData.GetPlayer(demanderId);
+			Player victim = gameData.GetPlayer(victimId);
+			if (demander == null || victim == null) {
+				return;
+			}
+			if (pay) {
+				C7Engine.AI.TributeAI.Pay(gameData, demander, victim, demand);
+			} else {
+				C7Engine.AI.TributeAI.Refuse(gameData, demander, victim);
+			}
+		}
+	}
+
 	// The player builds an embassy with another civ (see Embassies).
 	public class MsgEstablishEmbassy : MessageToEngine {
 		private ID playerId;
