@@ -239,6 +239,20 @@ public class AgreementTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	[Fact]
+	public void AnAIWinningItsWarAsksNoOneToJoin() {
+		us.DeclareWarOn(third, gameData.turn);
+		Feel(them, us, -20);
+		SetScore(them, third, 5);
+		Feel(us, them, -20);
+		foreach (MapUnit unit in third.units.ToList()) {
+			gameData.RemoveUnit(unit);
+		}
+		us.playerRelationships[third.id].warGains = 200;
+		AgreementAI.ProposeAgreements(us, gameData).Wait();
+		Assert.False(Agreements.Has(us, them, DealSubType.MilitaryAlliance, third.id));
+	}
+
+	[Fact]
 	public void AnAIAsksOnlyEverySoOften() {
 		Feel(us, them, -30);
 		Feel(them, us, -30);

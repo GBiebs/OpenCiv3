@@ -199,6 +199,12 @@ public class PeaceTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Ours.warLosses = 100;
 		us.gold = 1000;
 		Assert.Equal(100, PeaceAI.PeaceValue(gameData, us, them));
+
+		// Not for ever.
+		Ours.warLosses = 0;
+		Ours.warWearinessPoints = 0;
+		gameData.turn = 10 + PeaceAI.LongWarTurns;
+		Assert.Equal(0, PeaceAI.PeaceValue(gameData, us, them));
 	}
 
 	[Fact]

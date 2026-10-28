@@ -20,8 +20,8 @@ namespace C7Engine.AI {
 	//   settles for peace alone once its people tire of the war (war weariness
 	//   level WearyLevel) or the war has lasted LongWarTurns.
 	// While it's allied with another civ against them, it makes no separate
-	// peace unless it's losing (breaking an alliance costs it dearly; see
-	// Agreements). It offers peace at most every OfferEveryTurns turns, when the other civ
+	// peace unless it's losing or the war has lasted LongWarTurns (breaking
+	// an alliance costs it dearly; see Agreements). It offers peace at most every OfferEveryTurns turns, when the other civ
 	// will talk to it. All AI tuning.
 	public static class PeaceAI {
 		private static ILogger log = Log.ForContext(typeof(PeaceAI));
@@ -71,7 +71,7 @@ namespace C7Engine.AI {
 			bool weary = WarWeariness.Level(relationship.warWearinessPoints, WarWeariness.RulesFor(us)) >= WearyLevel;
 			Standing standing = StandingIn(us, them);
 			bool allied = gameData.players.Any(p => Agreements.Has(us, p, DealSubType.MilitaryAlliance, them.id));
-			if (allied && standing != Standing.Losing) {
+			if (allied && standing != Standing.Losing && turns < LongWarTurns) {
 				return null;
 			}
 			switch (standing) {

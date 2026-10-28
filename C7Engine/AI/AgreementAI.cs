@@ -18,7 +18,9 @@ namespace C7Engine.AI {
 	//   against a civ it is Annoyed with, if it's no weaker than three
 	//   quarters of that civ and has no peace treaty with it still running;
 	// - an embargo against a civ it is Annoyed with.
-	// On its turn it asks a civ to join its war, then a Gracious civ for a
+	// On its turn it asks a civ to join its war (unless it's winning it
+	// anyway: in the soak, AIs kept drawing more and more civs into wars
+	// nobody fought), then a Gracious civ for a
 	// pact, then a friend for an embargo against a civ it is Furious with; at
 	// most once every ProposeEveryTurns turns per civ. All AI tuning.
 	public static class AgreementAI {
@@ -72,7 +74,8 @@ namespace C7Engine.AI {
 			bool Fits(Agreement a) => WouldSign(gameData, us, them, a) && (them.isHuman || WouldSign(gameData, them, us, a));
 			// Help against an enemy of ours they aren't fighting yet.
 			Agreement alliance = available.FirstOrDefault(a => a.type == DealSubType.MilitaryAlliance
-				&& PlayerRelationship.AtWar(us, gameData.GetPlayer(a.against)) && !PlayerRelationship.AtWar(them, gameData.GetPlayer(a.against)) && Fits(a));
+				&& PlayerRelationship.AtWar(us, gameData.GetPlayer(a.against)) && !PlayerRelationship.AtWar(them, gameData.GetPlayer(a.against))
+				&& PeaceAI.StandingIn(us, gameData.GetPlayer(a.against)) != PeaceAI.Standing.Winning && Fits(a));
 			if (alliance != null) {
 				return alliance;
 			}
