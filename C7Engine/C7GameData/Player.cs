@@ -651,6 +651,10 @@ namespace C7GameData {
 			// TODO: consider any factors like trade reputations here and culture groups
 			int theirGoldValue = theirOffer.GoldEquivalentFor(gameData, this, other);
 			int ourGoldValue = ourOffer.GoldEquivalentFor(gameData, this, this);
+			// A human pays more for our maps and resources (see TradeAI).
+			if (other.isHuman && !isHuman) {
+				ourGoldValue += TradeAI.HumanPremium(gameData, this, other, ourOffer);
+			}
 			// Peace is worth what the war makes it worth (see PeaceAI).
 			if (theirOffer.partOfPeaceTreaty && AtWar(this, other)) {
 				if (PeaceAI.PeaceValue(gameData, this, other) is not int peace) {

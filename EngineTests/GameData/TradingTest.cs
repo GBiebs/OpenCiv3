@@ -211,23 +211,99 @@ public class TradingTest : IClassFixture<SaveGameFixture>, IDisposable {
 		gameData.InvalidateCachedTradeNetwork();
 		List<Tile> theirNews = them.tileKnowledge.knownTiles.Where(t => !us.tileKnowledge.isTileKnown(t)).ToList();
 
-		TradeAI.SwapGoods(us, gameData);
+		TradeAI.SwapGoods(us, gameData).Wait();
 		Assert.All(theirNews, t => Assert.True(us.tileKnowledge.isTileKnown(t)));
 		Assert.Equal(1, Trading.ResourceCount(gameData, us, wines));
 		Assert.Equal(1, Trading.ResourceCount(gameData, them, furs));
 	}
 
+	private void MapTrading() {
+		foreach (Player p in new[] { us, them }) {
+			p.knownTechs.Add(gameData.techs.First(t => t.flags.Contains(SaveTech.Flag.EnablesMapTrading)).id);
+		}
+	}
+
+	[Fact]
+	public void AHumanPaysTheTradeRateForOurMapsAndResources() {
+		Player human = them;
+		human.isHuman = true;
+		gameData.gameDifficulty.AIToAITradeRate = 150;
+		// Our spare Wines (two at our capital) are worth 150 to them; giving
+		// one costs us 15: we want 225 for it.
+		Resource wines = gameData.Resources.Find(r => r.Name == "Wines");
+		ourCapital.location.Resource = wines;
+		Tile vineyard = ourCapital.location.neighbors.Values.First(t => t.IsLand() && t.OwningPlayer() == us && !t.HasCity());
+		vineyard.Resource = wines;
+		vineyard.overlays.Add(gameData.terrainImprovements.Find(i => i.key == "road"));
+		gameData.InvalidateCachedTradeNetwork();
+		TradeOffer ours = new() { resources = [wines.Key] };
+		Assert.Equal(150 * 150 / 100 - 15, TradeAI.HumanPremium(gameData, us, human, ours));
+
+		human.gold = 1000;
+		Assert.False(us.WouldAcceptDealFrom(gameData, human, new TradeOffer { gold = 224 }, ours));
+		Assert.True(us.WouldAcceptDealFrom(gameData, human, new TradeOffer { gold = 225 }, ours));
+		// Another AI pays only the cost.
+		human.isHuman = false;
+		Assert.True(us.WouldAcceptDealFrom(gameData, them, new TradeOffer { gold = 15 }, ours));
+	}
+
+	[Fact]
+	public async System.Threading.Tasks.Task AnAIOffersAHumanItsMapForTheirsAndGold() {
+		Player human = them;
+		human.isHuman = true;
+		human.gold = 1000;
+		gameData.gameDifficulty.AIToAITradeRate = 150;
+		MapTrading();
+		// Their map shows us nothing new, so they pay in gold.
+		us.tileKnowledge.Learn(human.tileKnowledge.knownTiles.ToList());
+		int ourMapToThem = new TradeOffer { worldMap = true }.GoldEquivalentFor(gameData, human, us);
+		int theirMapToUs = new TradeOffer { worldMap = true }.GoldEquivalentFor(gameData, us, human);
+		Assert.True(ourMapToThem > 0);
+		Assert.Equal(0, theirMapToUs);
+
+		System.Threading.Tasks.Task offering = TradeAI.SwapGoods(us, gameData);
+		MsgShowTradeOffer shown = Assert.IsType<MsgShowTradeOffer>(EngineStorage.messagesToUI.Single(m => m is MsgShowTradeOffer));
+		Assert.True(shown.aiGive.worldMap);
+		Assert.True(shown.aiWant.worldMap);
+		Assert.Equal(ourMapToThem * 150 / 100, shown.aiWant.gold);
+		new MsgDiplomacyCompleted().send();
+		EngineStorage.ProcessNextMessageToEngine();
+		await offering;
+		Assert.Equal(gameData.turn, us.playerRelationships[human.id].lastGoodsOfferTurn);
+
+		// Not again for a while.
+		EngineStorage.messagesToUI.Clear();
+		gameData.turn += TradeAI.HumanOfferEveryTurns - 1;
+		// (An offer would wait for an answer.)
+		Assert.True(TradeAI.SwapGoods(us, gameData).IsCompleted);
+		Assert.DoesNotContain(EngineStorage.messagesToUI, m => m is MsgShowTradeOffer);
+	}
+
+	[Fact]
+	public void NoOfferAHumanCantPayFor() {
+		Player human = them;
+		human.isHuman = true;
+		human.gold = 0;
+		gameData.gameDifficulty.AIToAITradeRate = 200;
+		MapTrading();
+		// Nothing of theirs is new to us.
+		us.tileKnowledge.Learn(human.tileKnowledge.knownTiles.ToList());
+		// (An offer would wait for an answer.)
+		Assert.True(TradeAI.SwapGoods(us, gameData).IsCompleted);
+		Assert.DoesNotContain(EngineStorage.messagesToUI, m => m is MsgShowTradeOffer);
+	}
+
 	[Fact]
 	public void NoSwapsWithoutTheAdvanceOrAtWar() {
 		List<Tile> theirNews = them.tileKnowledge.knownTiles.Where(t => !us.tileKnowledge.isTileKnown(t)).ToList();
-		TradeAI.SwapGoods(us, gameData);
+		TradeAI.SwapGoods(us, gameData).Wait();
 		Assert.Contains(theirNews, t => !us.tileKnowledge.isTileKnown(t));
 
 		foreach (Player p in new[] { us, them }) {
 			p.knownTechs.Add(gameData.techs.First(t => t.flags.Contains(SaveTech.Flag.EnablesMapTrading)).id);
 		}
 		us.DeclareWarOn(them, gameData.turn);
-		TradeAI.SwapGoods(us, gameData);
+		TradeAI.SwapGoods(us, gameData).Wait();
 		Assert.Contains(theirNews, t => !us.tileKnowledge.isTileKnown(t));
 	}
 }

@@ -297,9 +297,11 @@ public class AgreementTest : IClassFixture<SaveGameFixture>, IDisposable {
 		PlayerRelationship relationship = us.playerRelationships[them.id];
 		relationship.brokenAlliances = 2;
 		relationship.lastAgreementOfferTurn = 25;
+		relationship.lastGoodsOfferTurn = 26;
 		C7GameData.GameData reloaded = SaveGame.FromGameData(gameData).Clone().ToGameData(fixture.behaviors);
 		PlayerRelationship again = reloaded.GetPlayer(us.id).playerRelationships[them.id];
 		Assert.Equal(2, again.brokenAlliances);
 		Assert.Equal(25, again.lastAgreementOfferTurn);
+		Assert.Equal(26, again.lastGoodsOfferTurn);
 	}
 }

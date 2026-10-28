@@ -47,7 +47,7 @@ namespace C7Engine {
 			// Roughly every 4 turns, see if there are trades to be made.
 			if (GameData.rng.Next(100) < 25) {
 				await AttemptTrading(player);
-				TradeAI.SwapGoods(player, gameData);
+				await TradeAI.SwapGoods(player, gameData);
 			}
 
 			BuildEmbassies(player, gameData);

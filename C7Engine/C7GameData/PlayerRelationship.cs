@@ -67,6 +67,8 @@ public class PlayerRelationship {
 	// ask every turn).
 	public int? lastPeaceOfferTurn = null;
 	public int? lastAgreementOfferTurn = null;
+	// The turn p1 last offered p2 (a human) maps or resources.
+	public int? lastGoodsOfferTurn = null;
 	// The turn p1 last demanded tribute of p2.
 	public int? lastTributeDemandTurn = null;
 
