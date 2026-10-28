@@ -1527,6 +1527,8 @@ namespace C7GameData {
 				if (prto.Blitz) prototype.flags.Add(SaveUnitPrototype.Flag.Blitz);
 				if (prto.King) prototype.flags.Add(SaveUnitPrototype.Flag.King);
 				if (prto.Immobile) prototype.flags.Add(SaveUnitPrototype.Flag.Immobile);
+				if (prto.SinkInSea) prototype.flags.Add(SaveUnitPrototype.Flag.SinksInSea);
+				if (prto.SinkInOcean) prototype.flags.Add(SaveUnitPrototype.Flag.SinksInOcean);
 				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;

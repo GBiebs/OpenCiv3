@@ -8,9 +8,14 @@ namespace C7Engine.Pathing {
 
 	public class UnitWalker : EdgeWalker<Tile> {
 		private MapUnit unit;
+		// The AI keeps a ship that may sink out of water it could sink in.
+		private readonly bool avoidsSinking;
+		private readonly bool safeAtSea;
 
 		public UnitWalker(MapUnit unit) {
 			this.unit = unit;
+			avoidsSinking = !unit.owner.isHuman && unit.IsWaterUnit() && (unit.unitType.sinksInSea || unit.unitType.sinksInOcean);
+			safeAtSea = avoidsSinking && Naval.SafeAtSea(unit.owner);
 		}
 
 		public override IEnumerable<Edge<Tile>> getEdges(Tile node) {
@@ -28,7 +33,8 @@ namespace C7Engine.Pathing {
 					if (unit.IsLandUnit())
 						isPassable = neighbor.IsLand();
 					else if (unit.IsWaterUnit())
-						isPassable = neighbor.IsWater() || neighborHasCityWithSameOwner;
+						isPassable = (neighbor.IsWater() || neighborHasCityWithSameOwner)
+							&& !(avoidsSinking && Naval.InDanger(unit.unitType, neighbor, safeAtSea));
 				}
 
 				if (!isPassable) {

@@ -3218,7 +3218,9 @@
       ],
       "unproducible": false,
       "flags": [
-        "rotateBeforeAttack"
+        "rotateBeforeAttack",
+        "sinksInSea",
+        "sinksInOcean"
       ],
       "categories": [
         "Sea"
@@ -3296,7 +3298,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "rotateBeforeAttack"
+        "rotateBeforeAttack",
+        "sinksInOcean"
       ],
       "categories": [
         "Sea"
@@ -7961,7 +7964,9 @@
       "unproducible": false,
       "flags": [
         "lethalSeaBombardment",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "sinksInSea",
+        "sinksInOcean"
       ],
       "categories": [
         "Sea"
@@ -8211,7 +8216,9 @@
       ],
       "unproducible": false,
       "flags": [
-        "rotateBeforeAttack"
+        "rotateBeforeAttack",
+        "sinksInSea",
+        "sinksInOcean"
       ],
       "categories": [
         "Sea"
@@ -12775,6 +12782,10 @@
       "respawnPrincess": true,
       "cityEliminationCount": 1,
       "massRegicideKings": 7
+    },
+    "naval": {
+      "sinkPercent": 50,
+      "seafaringSinkPercent": 25
     },
     "ageBonus": {
       "enabled": true,

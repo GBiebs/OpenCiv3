@@ -174,6 +174,8 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgPrincessDelivered mPD:
 						continue;
+					case MsgShipSank mSS:
+						continue;
 					default:
 						throw new Exception($"{msg}");
 				}

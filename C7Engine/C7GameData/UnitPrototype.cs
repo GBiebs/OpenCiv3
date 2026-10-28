@@ -244,6 +244,10 @@ namespace C7GameData {
 			}
 		}
 
+		// May sink ending its turn in sea or ocean (see Naval).
+		public bool sinksInSea => flags.Contains(SaveUnitPrototype.Flag.SinksInSea);
+		public bool sinksInOcean => flags.Contains(SaveUnitPrototype.Flag.SinksInOcean);
+
 		// An army, which other units load into (see MapUnit_Army.cs).
 		public bool isArmy {
 			get => flags.Contains(SaveUnitPrototype.Flag.Army);

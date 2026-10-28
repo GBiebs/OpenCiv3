@@ -537,6 +537,11 @@ public partial class Game : Node {
 				if (mTD.victim == controller)
 					EmitTributeDemandedSignal(mTD);
 				break;
+			case MsgShipSank mSS:
+				// Civ3's SHIPSUNK.
+				if (mSS.playerId == controller.id)
+					TemporaryPopup.Show(this, $"Our {mSS.ship} was lost in treacherous waters!", mapView.screenLocationOfTile(mSS.location, true));
+				break;
 			case MsgPrincessDelivered mPD:
 				if (mPD.captor == controller)
 					EmitForeignAdvisorSignal($"We have brought the {mPD.princess.adjective} princess to {mPD.capital.name}!", Mood.Happy);

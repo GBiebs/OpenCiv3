@@ -30,6 +30,9 @@ namespace C7GameData.Save {
 			// Doesn't move by itself: the Princess (carried by its captor, see
 			// Princess) and Civ3's aircraft and missiles.
 			Immobile,
+			// May sink ending its turn in sea, or in ocean (see Naval).
+			SinksInSea,
+			SinksInOcean,
 		}
 
 		public string name { get; set; }

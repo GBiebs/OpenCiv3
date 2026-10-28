@@ -232,6 +232,22 @@ namespace C7Engine {
 		}
 	}
 
+	// A ship of the player's sank at sea, with this many units aboard (see
+	// Naval).
+	public class MsgShipSank : MessageToUI {
+		public ID playerId;
+		public Tile location;
+		public string ship;
+		public int cargo;
+
+		public MsgShipSank(ID playerId, Tile location, string ship, int cargo) {
+			this.playerId = playerId;
+			this.location = location;
+			this.ship = ship;
+			this.cargo = cargo;
+		}
+	}
+
 	// `captor` brought the princess of the `princess` civ to its capital
 	// (see Princess).
 	public class MsgPrincessDelivered : MessageToUI {

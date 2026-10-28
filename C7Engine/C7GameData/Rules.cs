@@ -206,6 +206,9 @@ namespace C7GameData {
 		// What each victory condition takes. See the classes in Victory/.
 		public VictoryRules victory = new();
 
+		// Ships, submarines and coastal defenses. See Naval.
+		public NavalRules naval = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -492,6 +495,16 @@ namespace C7GameData {
 		public double localCultureFactor = 2;
 		public double celebratingFactor = .5;
 		public double disorderFactor = 2;
+	}
+
+	// Naval rules not in Civ3's BIQ.
+	public class NavalRules {
+		// The chance, in percent, that a ship ending its turn where it may
+		// sink does, and for a Seafaring civ (CivFanatics' measurements on
+		// Conquests: about 50% and 75% survive, whatever the ship, terrain or
+		// difficulty).
+		public int sinkPercent = 50;
+		public int seafaringSinkPercent = 25;
 	}
 
 	// The victory conditions' limits: Civ3's GAME "game limits" where the

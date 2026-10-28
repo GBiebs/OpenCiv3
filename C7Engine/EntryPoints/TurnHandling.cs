@@ -19,6 +19,9 @@ namespace C7Engine {
 		public static void OnEndTurn(Player player) {
 			GameData gameData = EngineStorage.gameData;
 
+			// Ships out where they may sink.
+			Naval.SinkShips(gameData, player);
+
 			var busyWorkers = gameData.mapUnits.Where(u => u.owner.id == player.id && u.WorkerJob != null);
 			foreach (MapUnit busyWorker in busyWorkers)
 				if (busyWorker.WorkerJob != null)
