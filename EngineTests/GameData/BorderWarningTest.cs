@@ -120,6 +120,19 @@ public class BorderWarningTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	[Fact]
+	public void AnAIsTroopsWanderingBackInAreAskedAgainNotFought() {
+		Tile field = warrior.location;
+		gameData.SpawnUnit(owner, gameData.unitPrototypes.Find(u => u.name == "Warrior"), ownerCity.location);
+		for (int i = 0; i < 4; i++) {
+			BorderWarnings.Check(gameData, owner);
+			gameData.TeleportUnit(warrior, field);
+		}
+		Assert.False(PlayerRelationship.AtWar(owner, intruder));
+		Assert.Equal(0, OwnerToIntruder.borderWarning);
+		Assert.Equal(gameData.rules.attitude.askedToLeave, OwnerToIntruder.borderAnger);
+	}
+
+	[Fact]
 	public void WarningsAreSaved() {
 		OwnerToIntruder.borderWarning = 2;
 		OwnerToIntruder.borderAnger = 4;

@@ -13,7 +13,10 @@ namespace C7GameData {
 	// it asks them to leave, the next it orders them home, and if they're
 	// still there after that it declares war, unless it has less than half
 	// their military (then it keeps ordering). Another AI sends its troops
-	// home when asked; a human chooses (MsgBorderWarning). While troops stay,
+	// home when asked, and that settles it: troops that wander back in are
+	// asked again, never ordered (in the soak, AI units heading somewhere
+	// walked straight back in, and wars broke out every few turns); a human
+	// chooses (MsgBorderWarning). While troops stay,
 	// the AI holds it against their civ: +1 attitude when it asked, +4 when it
 	// ordered (CivFanatics' study: "as long as you leave when forced to, you
 	// get the points back the next turn"; rules).
@@ -72,6 +75,7 @@ namespace C7GameData {
 					new MsgBorderWarning(owner, other, near, order).send();
 				} else {
 					SendHome(gameData, intruders);
+					relationship.borderWarning = 0;
 				}
 			}
 		}
