@@ -90,6 +90,44 @@ public class BombardInfo {
 	}
 };
 
+// An air mission, airdrop or airlift waiting for its target tile (see Air).
+public class AirTargetInfo {
+	public MapUnit unit;
+	public string action;
+	public Tile mouseTile;
+
+	public AirTargetInfo(MapUnit unit, string action) {
+		this.unit = unit;
+		this.action = action;
+	}
+
+	public Air.Mission Mission() {
+		return action switch {
+			C7Action.UnitBombing => Air.Mission.Bombing,
+			C7Action.UnitRecon => Air.Mission.Recon,
+			C7Action.UnitPrecisionStrike => Air.Mission.PrecisionStrike,
+			_ => Air.Mission.Rebase,
+		};
+	}
+
+	public bool CanTarget(GameData gameData, Tile tile) {
+		if (tile == null) {
+			return false;
+		}
+		return action switch {
+			C7Action.UnitAirdrop => Air.CanAirdrop(unit, tile),
+			C7Action.UnitAirlift => Air.CanAirlift(gameData, unit, tile),
+			_ => Air.CanFly(unit, Mission(), tile),
+		};
+	}
+
+	// How far around the unit to draw the reachable tiles; re-basing and
+	// airlifts reach too far to draw.
+	public int GridRange() {
+		return action is C7Action.UnitRebase or C7Action.UnitAirlift ? 0 : unit.unitType.operationalRange;
+	}
+}
+
 public partial class Game : Node {
 	private ILogger log = LogManager.ForContext<Game>();
 
@@ -156,8 +194,7 @@ public partial class Game : Node {
 	public GotoInfo gotoInfo = null;
 
 	public BombardInfo bombardInfo = null;
-	// An air order waiting for its target tile (see Air).
-	private (MapUnit unit, string action)? airTarget = null;
+	public AirTargetInfo airTargetInfo = null;
 
 	public TileInfo tileInfo = null;
 
@@ -940,19 +977,16 @@ public partial class Game : Node {
 	private bool CanDoubleClick(InputEventMouseButton eventMouseButton) {
 		Tile tile = PositionToTile(eventMouseButton.Position);
 
-		return gotoInfo == null && tile?.cityAtTile?.owner == controller;
+		return gotoInfo == null && airTargetInfo == null && tile?.cityAtTile?.owner == controller;
 	}
 
 	private void OnSingleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
 		if (gotoInfo != null) {
 			this.ResolveMovement(gotoInfo);
 			this.SetGotoMode(false);
-		} else if (airTarget is (MapUnit airUnit, string airAction)) {
-			airTarget = null;
-			Tile tile = PositionToTile(eventMouseButton.Position);
-			if (tile != null) {
-				SendAirOrder(airUnit, airAction, tile);
-			}
+		} else if (airTargetInfo != null) {
+			SendAirOrder(airTargetInfo, PositionToTile(eventMouseButton.Position));
+			SetAirTarget(null);
 		} else if (bombardInfo != null) {
 			Tile tile = PositionToTile(eventMouseButton.Position);
 			if (bombardInfo.bombardingUnit.CanBombardTile(tile, out var bombardTarget)) {
@@ -1027,6 +1061,8 @@ public partial class Game : Node {
 
 		if (bombardInfo != null)
 			setBombard(null);
+		else if (airTargetInfo != null)
+			SetAirTarget(null);
 		// Handle the shortcut of shift+right clicking a city to get the change production menu.
 		else if (shiftDown && activeTile && tile.cityAtTile?.owner == controller)
 			new RightClickChooseProductionMenu(this, tile.cityAtTile).Open(eventMouseButton.Position);
@@ -1094,6 +1130,8 @@ public partial class Game : Node {
 			gotoInfo = GetGotoInfo(eventMouseMotion.Position);
 		} else if (bombardInfo != null) {
 			bombardInfo.mouseTile = PositionToTile(eventMouseMotion.Position);
+		} else if (airTargetInfo != null) {
+			airTargetInfo.mouseTile = PositionToTile(eventMouseMotion.Position);
 		}
 	}
 
@@ -1233,13 +1271,46 @@ public partial class Game : Node {
 	private void ProcessActions() {
 		Godot.Collections.Array<StringName> actions = InputMap.GetActions();
 
+		List<string> pressed = [];
 		foreach (StringName action in actions) {
 			if (Input.IsActionJustPressed(action, exactMatch: true)) {
-				ProcessAction(action.ToString());
+				pressed.Add(action.ToString());
 			} else if (Input.IsActionJustReleased(action)) {
 				ProcessOnReleaseAction(action.ToString());
 			}
 		}
+		foreach (string action in ResolveSharedKeys(pressed)) {
+			ProcessAction(action);
+		}
+	}
+
+	// Civ3 gives some orders one key; where more than one of them could
+	// apply to the selected unit, keeps the one Civ3 picks. (Orders a unit
+	// can't do at all check that themselves.)
+	private List<string> ResolveSharedKeys(List<string> pressed) {
+		if (!IsMapUnitValid(CurrentlySelectedUnit)) {
+			return pressed;
+		}
+		MapUnit unit = CurrentlySelectedUnit;
+		bool CanTerraform(string action) => C7Action.ToTerraform(action) is Terraform tf && unit.CanPerformTerraformAction(tf);
+
+		// Shift-C cleans up pollution before clearing a forest or wetland.
+		if (pressed.Contains(C7Action.UnitClearDamage) && CanTerraform(C7Action.UnitClearDamage)) {
+			pressed.Remove(C7Action.UnitClearForest);
+			pressed.Remove(C7Action.UnitClearWetlands);
+		}
+		// Ctrl-F builds a fortress, or a barricade where one stands.
+		if (pressed.Contains(C7Action.UnitBuildFortress) && pressed.Contains(C7Action.UnitBuildBarricade)) {
+			bool fortress = C7Action.ToTerraform(C7Action.UnitBuildFortress)?.Improvement is TerrainImprovement fort
+				&& unit.location.overlays.HasImprovement(fort);
+			pressed.Remove(fortress ? C7Action.UnitBuildFortress : C7Action.UnitBuildBarricade);
+		}
+		// R flies recon, or re-bases a plane that has no recon mission.
+		int recon = pressed.IndexOf(C7Action.UnitRecon);
+		if (recon >= 0 && !SelectedUnitCan(C7Action.UnitRecon)) {
+			pressed[recon] = C7Action.UnitRebase;
+		}
+		return pressed;
 	}
 
 	private void ProcessOnReleaseAction(string currentAction) {
@@ -1327,6 +1398,11 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.Escape && bombardInfo != null) {
 			setBombard(null);
+			return;
+		}
+
+		if (currentAction == C7Action.Escape && airTargetInfo != null) {
+			SetAirTarget(null);
 			return;
 		}
 
@@ -1437,7 +1513,7 @@ public partial class Game : Node {
 			new ActionToEngineMsg(() => CurrentlySelectedUnit.Explore()).send();
 		}
 
-		if (currentAction == C7Action.UnitAutomate) {
+		if (currentAction == C7Action.UnitAutomate && SelectedUnitCan(currentAction)) {
 			new ActionToEngineMsg(() => CurrentlySelectedUnit.Automate()).send();
 		}
 
@@ -1457,12 +1533,14 @@ public partial class Game : Node {
 			});
 		}
 
-		if (currentAction == C7Action.UnitAirSuperiority) {
+		// Air orders share their keys with other orders (B bombs or builds a
+		// city, A airdrops or automates), so each acts only for a unit that has it.
+		if (currentAction == C7Action.UnitAirSuperiority && SelectedUnitCan(currentAction)) {
 			new MsgFlyMission(CurrentlySelectedUnit.id, Air.Mission.AirSuperiority, null).send();
 		}
-		if (currentAction is C7Action.UnitBombing or C7Action.UnitRecon or C7Action.UnitPrecisionStrike or C7Action.UnitRebase
-			or C7Action.UnitAirdrop or C7Action.UnitAirlift) {
-			airTarget = (CurrentlySelectedUnit, currentAction);
+		if ((currentAction is C7Action.UnitBombing or C7Action.UnitRecon or C7Action.UnitPrecisionStrike or C7Action.UnitRebase
+			or C7Action.UnitAirdrop or C7Action.UnitAirlift) && SelectedUnitCan(currentAction)) {
+			SetAirTarget(new AirTargetInfo(CurrentlySelectedUnit, currentAction));
 		}
 
 		if (currentAction == C7Action.UnitBombard) {
@@ -1479,15 +1557,15 @@ public partial class Game : Node {
 			new MsgPillage(CurrentlySelectedUnit.id).send();
 		}
 
-		if (currentAction == C7Action.UnitJoinCity) {
+		if (currentAction == C7Action.UnitJoinCity && SelectedUnitCan(currentAction)) {
 			new MsgJoinCity(CurrentlySelectedUnit.id).send();
 		}
 
-		if (currentAction == C7Action.UnitHurryProduction) {
+		if (currentAction == C7Action.UnitHurryProduction && SelectedUnitCan(currentAction)) {
 			new MsgUnitHurryProduction(CurrentlySelectedUnit.id).send();
 		}
 
-		if (currentAction == C7Action.UnitStartAgeOfScience) {
+		if (currentAction == C7Action.UnitStartAgeOfScience && SelectedUnitCan(currentAction)) {
 			new MsgStartAgeOfScience(CurrentlySelectedUnit.id).send();
 		}
 
@@ -1666,26 +1744,33 @@ public partial class Game : Node {
 		return result;
 	}
 
+	// Waits for the air order's target, showing the targeting cursor and
+	// the tiles in reach like bombarding (null stops waiting).
+	private void SetAirTarget(AirTargetInfo info) {
+		airTargetInfo = info;
+		if (info == null) {
+			Input.SetCustomMouseCursor(null);
+		} else {
+			info.mouseTile = PositionToTile(GetViewport().GetMousePosition());
+		}
+	}
+
 	// Sends the air order picked with its target, if it can be flown there.
-	private void SendAirOrder(MapUnit unit, string action, Tile tile) {
+	private void SendAirOrder(AirTargetInfo info, Tile tile) {
 		EngineStorage.ReadGameData((GameData gameData) => {
-			if (action == C7Action.UnitAirdrop || action == C7Action.UnitAirlift) {
-				bool airlift = action == C7Action.UnitAirlift;
-				if (airlift ? Air.CanAirlift(gameData, unit, tile) : Air.CanAirdrop(unit, tile)) {
-					new MsgAirMove(unit.id, airlift, tile).send();
-				}
+			if (!info.CanTarget(gameData, tile)) {
 				return;
 			}
-			Air.Mission mission = action switch {
-				C7Action.UnitBombing => Air.Mission.Bombing,
-				C7Action.UnitRecon => Air.Mission.Recon,
-				C7Action.UnitPrecisionStrike => Air.Mission.PrecisionStrike,
-				_ => Air.Mission.Rebase,
-			};
-			if (Air.CanFly(unit, mission, tile)) {
-				new MsgFlyMission(unit.id, mission, tile).send();
+			if (info.action is C7Action.UnitAirdrop or C7Action.UnitAirlift) {
+				new MsgAirMove(info.unit.id, info.action == C7Action.UnitAirlift, tile).send();
+			} else {
+				new MsgFlyMission(info.unit.id, info.Mission(), tile).send();
 			}
 		});
+	}
+
+	private bool SelectedUnitCan(string action) {
+		return C7Action.ToUnitAction(action) is UnitAction unitAction && CurrentlySelectedUnit.GetAvailableActions().Contains(unitAction);
 	}
 
 	private void HandleBombardClick(BombardInfo info, Tile tile) {

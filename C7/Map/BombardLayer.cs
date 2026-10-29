@@ -32,30 +32,45 @@ public partial class BombardLayer : LooseLayer {
 		bombardDenyCursorRect?.Hide();
 	}
 
+	// The unit picking a target, its reach in tiles, the tile under the
+	// mouse and whether it can be targeted: a bombard, or an air mission,
+	// airdrop or airlift, which pick their targets the same way.
+	private static (MapUnit unit, int range, Tile mouseTile, bool valid)? Targeting(Game game, GameData gameData) {
+		if (game.airTargetInfo is AirTargetInfo air) {
+			// CanTarget checks the range; re-basing and airlifts reach too far to draw.
+			return (air.unit, air.GridRange(), air.mouseTile, air.CanTarget(gameData, air.mouseTile));
+		}
+		if (game.bombardInfo is BombardInfo bombard) {
+			// CanBombardTile checks the range; an ICBM reaches anywhere.
+			MapUnit unit = bombard.bombardingUnit;
+			return (unit, unit.unitType.bombardRange, bombard.mouseTile, bombard.mouseTile != null && unit.CanBombardTile(bombard.mouseTile));
+		}
+		return null;
+	}
+
 	public override void drawObject(LooseView looseView, GameData gameData, Tile tile, Vector2 tileCenter) {
-		var bombardInfo = looseView.mapView.game.bombardInfo;
-		if (bombardInfo == null || bombardInfo.bombardingUnit.location != tile)
+		if (Targeting(looseView.mapView.game, gameData) is not { } targeting || targeting.unit.location != tile)
 			return;
 
-		var unit = bombardInfo.bombardingUnit;
-		var range = unit.unitType.bombardRange;
-		var reachableTiles = GetTileSquare(tile, range);
-
-		// Choose one of two cursors depending on mouse tile hover
-		// (CanBombardTile checks the range; an ICBM reaches anywhere).
-		if (bombardInfo.mouseTile != null) {
-			bool bombardable = unit.CanBombardTile(bombardInfo.mouseTile);
-			if (bombardable) {
-				DrawBombardCursor();
-				drawTargetBombardTile(looseView, TileCenter(bombardInfo.mouseTile));
-			} else
-				DrawBombardDenyCursor();
+		// Draw the grid of tiles in reach
+		if (targeting.range > 0 || looseView.mapView.game.bombardInfo != null) {
+			foreach (Tile bt in GetTileSquare(tile, targeting.range)) {
+				drawBombardTile(looseView, TileCenter(bt));
+			}
 		}
+	}
 
-		// Draw bombard grid
-		foreach (var bt in reachableTiles) {
-			drawBombardTile(looseView, TileCenter(bt));
-		}
+	// Choose one of two cursors depending on mouse tile hover, wherever the
+	// unit is (planes reach beyond the screen).
+	public override void onEndDraw(LooseView looseView, GameData gameData) {
+		if (Targeting(looseView.mapView.game, gameData) is not { } targeting || targeting.mouseTile == null)
+			return;
+
+		if (targeting.valid) {
+			DrawBombardCursor();
+			drawTargetBombardTile(looseView, TileCenter(targeting.mouseTile));
+		} else
+			DrawBombardDenyCursor();
 	}
 
 	private List<Tile> GetTileSquare(Tile tile, int range) {

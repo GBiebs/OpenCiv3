@@ -110,7 +110,8 @@ public partial class UnitButtons : VBoxContainer {
 		// the tooltip is readable.
 		string? tooltipText = C7Action.ToTooltip(action);
 		if (tooltipText != null) {
-			button.TooltipText = tooltipText;
+			string? keys = KeyHint(action);
+			button.TooltipText = keys == null ? tooltipText : $"{tooltipText} ({keys})";
 
 			var customTheme = new Theme();
 			customTheme.SetStylebox("panel", "TooltipPanel", TemporaryPopup.TooltipStyleBox());
@@ -120,6 +121,25 @@ public partial class UnitButtons : VBoxContainer {
 
 		row.AddChild(button);
 		buttonMap[action] = new ButtonAndTooltip(button, button.TooltipText);
+	}
+
+	// The keys for `action` the way Civ3 writes them ("Shift-R"), from the
+	// input map.
+	private static string? KeyHint(string action) {
+		// Game.HandleKeyboardInput handles G itself (Ctrl-G toggles the grid).
+		if (action == C7Action.UnitGoto) {
+			return "G";
+		}
+		if (!InputMap.HasAction(action)) {
+			return null;
+		}
+		List<string> keys = InputMap.ActionGetEvents(action).OfType<InputEventKey>().Select(KeyName).ToList();
+		return keys.Count > 0 ? string.Join(", ", keys) : null;
+	}
+
+	private static string KeyName(InputEventKey key) {
+		Key code = key.PhysicalKeycode != Key.None ? DisplayServer.KeyboardGetKeycodeFromPhysical(key.PhysicalKeycode) : key.Keycode;
+		return (key.CtrlPressed ? "Ctrl-" : "") + (key.ShiftPressed ? "Shift-" : "") + (key.AltPressed ? "Alt-" : "") + OS.GetKeycodeString(code);
 	}
 
 	private void OnNoMoreAutoselectableUnits() {
