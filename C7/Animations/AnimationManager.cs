@@ -320,9 +320,16 @@ public partial class C7Animation {
 		animationManager.playSound(folderPath, getINIData(), action);
 	}
 
+	// A move across a tile takes at most a Warrior's step (660 ms). Civ3
+	// moves every unit at one pace (its INIs give ships and soldiers the
+	// same speed, 225), but ships' run animations are long: a Frigate's is
+	// 1.75 s, a Carrier's 2.1 s.
+	private const double MaxMoveMs = 660;
+
 	public double getDuration() {
 		Util.FlicSheet flicSheet = getFlicSheet();
-		return flicSheet.animationSpeed * flicSheet.framesPerAnimation;
+		double duration = flicSheet.animationSpeed * flicSheet.framesPerAnimation;
+		return action == MapUnit.AnimatedAction.RUN ? Math.Min(duration, MaxMoveMs) : duration;
 	}
 
 	public Vector2I GetFlicAnimationOffset() {
