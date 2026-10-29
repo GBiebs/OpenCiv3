@@ -13,6 +13,9 @@ using Godot;
 [GlobalClass]
 public partial class Preferences : Control {
 	[Export] Civ3Checkbox promptForResearch;
+	[Export] Civ3Checkbox fullscreen;
+	[Export] Civ3Checkbox animateFriendly;
+	[Export] Civ3Checkbox animateEnemy;
 
 	// TODO: Make an audio volume control scene
 
@@ -48,6 +51,13 @@ public partial class Preferences : Control {
 		promptForResearch.Toggled += enabled => {
 			PreferencesSettings.SetPromptForResearch(enabled);
 		};
+
+		fullscreen.ButtonPressed = PreferencesSettings.GetFullscreen();
+		fullscreen.Toggled += PreferencesSettings.SetFullscreen;
+		animateFriendly.ButtonPressed = PreferencesSettings.GetAnimateFriendlyUnits();
+		animateFriendly.Toggled += PreferencesSettings.SetAnimateFriendlyUnits;
+		animateEnemy.ButtonPressed = PreferencesSettings.GetAnimateEnemyUnits();
+		animateEnemy.Toggled += PreferencesSettings.SetAnimateEnemyUnits;
 
 		ConnectVolumeSlider(masterVolumeRow, masterVolume, masterVolumeLabel, AudioManager.MasterBus,
 			() => { }); // music is always playing (through master)

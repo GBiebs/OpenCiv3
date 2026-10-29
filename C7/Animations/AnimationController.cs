@@ -1,3 +1,4 @@
+using C7.UIElements;
 using C7Engine;
 using C7GameData;
 using Godot;
@@ -25,6 +26,11 @@ public partial class AnimationController : Node {
 		switch (msg) {
 			case MsgStartUnitAnimation mSUA:
 				MapUnit unit = gameData.GetUnit(mSUA.unitID);
+				// Preferences: our units' animations and other civs'.
+				if (unit != null && !(unit.owner == game.controller ? PreferencesSettings.GetAnimateFriendlyUnits() : PreferencesSettings.GetAnimateEnemyUnits())) {
+					mSUA.markCompleted();
+					break;
+				}
 				// A plane on a mission is seen from its base or its target.
 				Tile flightTarget = unit != null && mSUA.flying ? FlightTarget(gameData, unit, mSUA) : null;
 				if (flightTarget != null && game.controller.tileKnowledge.isActiveTile(flightTarget)) {

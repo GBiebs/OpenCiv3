@@ -745,6 +745,7 @@ public partial class Game : Node {
 	public override void _Process(double delta) {
 		ProcessActions();
 		EdgeScroll(delta);
+		UpdateMouseMode();
 
 		if (!EngineStorage.HasPendingAnimations())
 			EngineStorage.ProcessNextMessageToEngine();
@@ -1021,6 +1022,25 @@ public partial class Game : Node {
 		} else {
 			ResolveMovement(move);
 		}
+	}
+
+	// Full screen, the mouse stays inside the game, so the map scrolls at
+	// every edge, also beside a second screen. While a move is held (not a
+	// quick click) the mouse hides, leaving only the go-to cursor (Civ3).
+	private void UpdateMouseMode() {
+		bool confined = GetWindow().HasFocus()
+			&& DisplayServer.WindowGetMode() is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
+		bool hidden = movePressTile != null && Time.GetTicksMsec() - movePressStartMs >= QuickClickMs;
+		Input.MouseModeEnum mode = confined
+			? (hidden ? Input.MouseModeEnum.ConfinedHidden : Input.MouseModeEnum.Confined)
+			: (hidden ? Input.MouseModeEnum.Hidden : Input.MouseModeEnum.Visible);
+		if (Input.MouseMode != mode) {
+			Input.MouseMode = mode;
+		}
+	}
+
+	public override void _ExitTree() {
+		Input.MouseMode = Input.MouseModeEnum.Visible;
 	}
 
 	// Scrolls the map while the mouse rests at an edge of the window.

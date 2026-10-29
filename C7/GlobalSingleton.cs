@@ -39,6 +39,10 @@ public partial class GlobalSingleton : Node {
 		}
 	}
 
+	public override void _Ready() {
+		C7.UIElements.PreferencesSettings.ApplyWindowMode();
+	}
+
 	public void ResetLoadGameFields() {
 		LoadGamePath = null;
 		SaveGame = null;
