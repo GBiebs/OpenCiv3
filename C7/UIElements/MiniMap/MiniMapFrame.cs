@@ -52,6 +52,9 @@ public partial class MiniMapFrame : TextureRect {
 		mapTextureRect.Texture = mapTexture;
 	}
 
+	// A click or drag on the minimap only moves the camera: it's handled
+	// here, so the map underneath doesn't also take it as a click (which
+	// would move the selected unit).
 	public override void _GuiInput(InputEvent @event) {
 		if (@event is InputEventMouseButton eventMouseButton) {
 			Control uiHover = GetViewport().GuiGetHoveredControl();
@@ -63,10 +66,14 @@ public partial class MiniMapFrame : TextureRect {
 						break;
 				}
 			}
+			if (uiHover is TextureRect && eventMouseButton.ButtonIndex == MouseButton.Left) {
+				AcceptEvent();
+			}
 		} else if (@event is InputEventMouseMotion eventMouseMotion) {
 			Control uiHover = GetViewport().GuiGetHoveredControl();
 			if (isDragging && uiHover is TextureRect) {
 				HandleMouseMotionInput(eventMouseMotion);
+				AcceptEvent();
 			}
 		}
 	}

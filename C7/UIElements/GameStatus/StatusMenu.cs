@@ -8,6 +8,9 @@ public partial class StatusMenu : Control {
 
 	[Export] ConsoleButton openDiplomacy;
 	[Export] ConsoleButton openPalaceScreen;
+	[Export] ConsoleButton openVictoryStatus;
+	[Export] ConsoleButton openSpaceship;
+	[Export] ConsoleButton openStatistics;
 
 	[Export] PopupOverlay popupOverlay;
 
@@ -16,6 +19,9 @@ public partial class StatusMenu : Control {
 		openPalaceScreen.Pressed += () => {
 			EmitSignal(SignalName.ShowGameView, C7Action.ShowPalaceView);
 		};
+		openVictoryStatus.Pressed += () => EmitSignal(SignalName.ShowGameView, C7Action.ShowVictoryStatusView);
+		openSpaceship.Pressed += () => EmitSignal(SignalName.ShowGameView, C7Action.ShowSpaceRaceView);
+		openStatistics.Pressed += () => EmitSignal(SignalName.ShowGameView, C7Action.ShowStatisticsView);
 	}
 
 	public override void _Process(double delta) {
@@ -39,6 +45,9 @@ public partial class StatusMenu : Control {
 
 			// TODO: Don't show the palace button if the player can't start building the palace
 			openPalaceScreen.ShowButton();
+			openVictoryStatus.ShowButton();
+			openSpaceship.ShowButton();
+			openStatistics.ShowButton();
 		});
 	}
 
