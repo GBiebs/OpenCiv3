@@ -33,6 +33,10 @@ namespace C7Engine {
 		public ID unitID;
 		public MapUnit.AnimatedAction action;
 		public AnimationEnding ending;
+		// A plane on a mission is drawn flying from `flightFrom` to
+		// `flightTo`, in tiles from where it stays (see Air.FlyOut).
+		public bool flying;
+		public (float x, float y) flightFrom, flightTo;
 
 		public MsgStartUnitAnimation(MapUnit unit, MapUnit.AnimatedAction action, AnimationEnding ending) {
 			this.unitID = unit.id;

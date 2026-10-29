@@ -139,6 +139,10 @@ namespace C7GameData {
 			else
 				await BombardTileImprovements(tile);
 
+			if (IsAirUnit() && hitPointsRemaining > 0) {
+				await Air.FlyBack(this, tile);
+			}
+
 			// A missile "never returns to its base" (Civilopedia "Combat").
 			if (unitType.cruiseMissile) {
 				RemoveFromPlay();
@@ -177,7 +181,7 @@ namespace C7GameData {
 			// TODO: Make configurable
 
 			movementPoints.onUnitMove(1);
-			await animateAsync(AnimatedAction.ATTACK1);
+			await AnimateAttack(tile);
 
 			// TODO: Figure out the bombard defense that walls grant.
 			double bombardStrength  = StrengthVersus(target, CombatRole.Bombard, facingDirection);
@@ -221,7 +225,8 @@ namespace C7GameData {
 				// Target destroyed, skip remaining fire -- TODO: Re-target?
 			}
 
-			TriggerPopUp(hitCount, tile, "Artillery bombardment successful! Enemy units injured.");
+			// Civ3's script.txt (UNITBOMBSUCEEDED, UNITBOMBARDSUCEEDED).
+			TriggerPopUp(hitCount, tile, IsAirUnit() ? "Bombing run successful! Enemy units injured." : "Artillery bombardment successful! Enemy units injured.");
 		}
 
 		private async Task BombardCity(Tile tile) {
@@ -294,11 +299,21 @@ namespace C7GameData {
 			});
 			WarWeariness.OnImprovementsDestroyed(tile, owner, destroyed.Count);
 
-			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {string.Join(" and ", destroyed.Select(i => i.key))}.");
+			TriggerPopUp(hitCount, tile, $"{(IsAirUnit() ? "Bombing run" : "Artillery bombardment")} successful! Destroyed {string.Join(" and ", destroyed.Select(i => i.key))}.");
+		}
+
+		// Artillery fires from where it stands; a plane flies to the target
+		// and bombs it, flying back once the bombing is over (see Air.FlyOut).
+		private async Task AnimateAttack(Tile tile) {
+			if (IsAirUnit()) {
+				await Air.FlyOut(this, tile, bomb: true);
+			} else {
+				await animateAsync(AnimatedAction.ATTACK1);
+			}
 		}
 
 		private async Task RunAnimatedBombard(Tile tile, double attackerOdds, Action callback) {
-			await animateAsync(AnimatedAction.ATTACK1);
+			await AnimateAttack(tile);
 			movementPoints.onUnitMove(1);
 			if (GameData.rng.NextDouble() < attackerOdds) {
 				await tile.AnimateAsync(this.hitList[GameData.rng.Next(0, hitList.Count)]);
@@ -312,7 +327,7 @@ namespace C7GameData {
 				if (hitCount > 0)
 					new MsgShowTemporaryPopup(successMessage, tile).send();
 				else
-					new MsgShowTemporaryPopup($"Artillery bombardment failed.", tile).send();
+					new MsgShowTemporaryPopup(IsAirUnit() ? "Our bombing run failed." : "Artillery bombardment failed.", tile).send();
 			}
 		}
 

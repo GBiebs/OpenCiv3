@@ -25,14 +25,19 @@ public partial class AnimationController : Node {
 		switch (msg) {
 			case MsgStartUnitAnimation mSUA:
 				MapUnit unit = gameData.GetUnit(mSUA.unitID);
-				if (unit != null && (game.controller.tileKnowledge.isActiveTile(unit.location) || game.controller.tileKnowledge.isActiveTile(unit.previousLocation))) {
+				// A plane on a mission is seen from its base or its target.
+				Tile flightTarget = unit != null && mSUA.flying ? FlightTarget(gameData, unit, mSUA) : null;
+				if (flightTarget != null && game.controller.tileKnowledge.isActiveTile(flightTarget)) {
+					game.ensureLocationIsInView(flightTarget);
+					animTracker.startAnimation(unit, mSUA.action, mSUA.markCompleted, mSUA.ending, mSUA.flying, mSUA.flightFrom, mSUA.flightTo);
+				} else if (unit != null && (game.controller.tileKnowledge.isActiveTile(unit.location) || game.controller.tileKnowledge.isActiveTile(unit.previousLocation))) {
 					// TODO: This needs to be extended so that the player is shown when AIs found cities, when they move units
 					// (optionally, depending on preferences) and generalized so that modders can specify whether custom
 					// animations should be shown to the player.
 					if (mSUA.action == MapUnit.AnimatedAction.ATTACK1)
 						game.ensureLocationIsInView(unit.location);
 
-					animTracker.startAnimation(unit, mSUA.action, mSUA.markCompleted, mSUA.ending);
+					animTracker.startAnimation(unit, mSUA.action, mSUA.markCompleted, mSUA.ending, mSUA.flying, mSUA.flightFrom, mSUA.flightTo);
 				} else {
 					mSUA.markCompleted();
 				}
@@ -48,6 +53,11 @@ public partial class AnimationController : Node {
 				}
 				break;
 		}
+	}
+
+	private static Tile FlightTarget(GameData gameData, MapUnit unit, MsgStartUnitAnimation msg) {
+		(float x, float y) far = Mathf.Abs(msg.flightTo.x) + Mathf.Abs(msg.flightTo.y) >= Mathf.Abs(msg.flightFrom.x) + Mathf.Abs(msg.flightFrom.y) ? msg.flightTo : msg.flightFrom;
+		return gameData.map.tileAt(unit.location.XCoordinate + (int)far.x, unit.location.YCoordinate + (int)far.y);
 	}
 
 	// Instead of Game calling animTracker.update periodically (this used to happen in _Process), this method gets called as necessary to bring

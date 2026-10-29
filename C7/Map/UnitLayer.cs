@@ -207,6 +207,30 @@ public partial class UnitLayer : LooseLayer {
 		looseView.mapView.game.animationController.updateAnimations();
 	}
 
+	// Planes on a mission are drawn along their flight, from their base's
+	// place on screen or, when the base is off screen, their target's.
+	public override void onEndDraw(LooseView looseView, GameData gameData) {
+		AnimationTracker tracker = looseView.mapView.game.animationController.animTracker;
+		foreach (ID id in tracker.FlyingUnits().ToList()) {
+			MapUnit unit = gameData.GetUnit(id);
+			if (unit == null) {
+				continue;
+			}
+			MapUnit.Appearance appearance = tracker.getUnitAppearance(unit);
+			if (looseView.tileCenters.TryGetValue(unit.location, out Vector2 baseCenter)) {
+				drawUnitAnimFrame(looseView, unit, appearance, baseCenter);
+				continue;
+			}
+			(float x, float y) far = tracker.FlightTarget(unit);
+			Tile target = gameData.map.tileAt(unit.location.XCoordinate + (int)far.x, unit.location.YCoordinate + (int)far.y);
+			if (looseView.tileCenters.TryGetValue(target, out Vector2 targetCenter)) {
+				appearance.offsetX -= far.x;
+				appearance.offsetY -= far.y;
+				drawUnitAnimFrame(looseView, unit, appearance, targetCenter);
+			}
+		}
+	}
+
 	// Returns which unit should be drawn from among a list of units. The list is assumed to be non-empty.
 	public MapUnit selectUnitToDisplay(LooseView looseView, Tile tile, List<MapUnit> units) {
 		// From the list, pick out which units are (1) the strongest defender vs the currently selected unit, (2) the currently selected unit
@@ -262,8 +286,10 @@ public partial class UnitLayer : LooseLayer {
 			drawEffectAnimFrame(looseView, tileEffect, progress, tileCenter);
 		}
 
-		// Enemy submarines we can't see aren't drawn (see Naval).
-		List<MapUnit> units = tile.unitsOnTile.Where(u => Naval.IsVisibleTo(u, looseView.mapView.game.controller)).ToList();
+		// Enemy submarines we can't see aren't drawn (see Naval), nor are
+		// planes out on a mission (see onEndDraw).
+		AnimationTracker tracker = looseView.mapView.game.animationController.animTracker;
+		List<MapUnit> units = tile.unitsOnTile.Where(u => Naval.IsVisibleTo(u, looseView.mapView.game.controller) && !tracker.IsFlying(u)).ToList();
 		if (units.Count == 0) {
 			return;
 		}

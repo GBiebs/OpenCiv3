@@ -267,11 +267,22 @@ namespace C7GameData {
 		}
 
 		public async Task animateAsync(AnimatedAction action, AnimationEnding ending = AnimationEnding.Stop) {
+			await animateAsync(action, ending, null);
+		}
+
+		// `flight`: drawn flying between these points, in tiles from here
+		// (a plane's mission, see Air.FlyOut).
+		public async Task animateAsync(AnimatedAction action, AnimationEnding ending, ((float x, float y) from, (float x, float y) to)? flight) {
 			var animationsEnabled = EngineStorage.animationsEnabled && !EngineStorage.gameData.observerMode;
-			var skipAnimations = SkipAnimations(action);
+			bool skipAnimations = flight == null && SkipAnimations(action);
 
 			if (animationsEnabled && !skipAnimations) {
 				var msg = new MsgStartUnitAnimation(this, action, ending);
+				if (flight is { } path) {
+					msg.flying = true;
+					msg.flightFrom = path.from;
+					msg.flightTo = path.to;
+				}
 				msg.send();
 
 				await EngineStorage.WaitForAnimationFinished(msg.animationId);

@@ -160,13 +160,18 @@ namespace C7GameData {
 			if (outcome == Outcome.Done) {
 				switch (mission) {
 					case Mission.Bombing:
+						// (Bombard flies out and back.)
 						await plane.Bombard(target);
 						break;
 					case Mission.Recon:
+						await FlyOut(plane, target, bomb: false);
 						Recon(gameData, plane, target);
+						await FlyBack(plane, target);
 						break;
 					case Mission.PrecisionStrike:
+						await FlyOut(plane, target, bomb: true);
 						PrecisionStrike(gameData, plane, target);
+						await FlyBack(plane, target);
 						break;
 				}
 			}
@@ -197,6 +202,33 @@ namespace C7GameData {
 				return Outcome.ShotDown;
 			}
 			return Outcome.Done;
+		}
+
+		// How a mission looks (Civ3): the plane flies to the target (its RUN
+		// animation), bombs it (the INI's VICTORY slot, "...Bomb.flc") and
+		// flies home. Only its picture moves; it never leaves its base.
+		internal static async Task FlyOut(MapUnit plane, Tile target, bool bomb) {
+			(float x, float y) there = FlightOffset(plane, target);
+			plane.facingDirection = plane.location.DirectionTo(target);
+			await plane.animateAsync(MapUnit.AnimatedAction.RUN, AnimationEnding.Stop, ((0, 0), there));
+			if (bomb) {
+				await plane.animateAsync(MapUnit.AnimatedAction.VICTORY, AnimationEnding.Stop, (there, there));
+			}
+		}
+
+		internal static async Task FlyBack(MapUnit plane, Tile target) {
+			(float x, float y) there = FlightOffset(plane, target);
+			plane.facingDirection = target.DirectionTo(plane.location);
+			await plane.animateAsync(MapUnit.AnimatedAction.RUN, AnimationEnding.Stop, (there, (0, 0)));
+			plane.ResetFacingDirection();
+		}
+
+		// Where `target` is from the plane, in the map's tile coordinates
+		// (the short way across a wrapping edge).
+		private static (float x, float y) FlightOffset(MapUnit plane, Tile target) {
+			GameMap map = EngineStorage.gameData.map;
+			return (map.CalculateXDelta(target.XCoordinate, plane.location.XCoordinate),
+				map.CalculateYDelta(target.YCoordinate, plane.location.YCoordinate));
 		}
 
 		private static void Recon(GameData gameData, MapUnit plane, Tile target) {

@@ -16,6 +16,10 @@ public partial class AnimationTracker {
 		public Action completionEvent;
 		public AnimationEnding ending;
 		public C7Animation anim;
+		// A plane on a mission, drawn flying between these points (in tiles
+		// from its base; see Air.FlyOut).
+		public bool flying;
+		public (float x, float y) flightFrom, flightTo;
 	}
 
 	private Dictionary<ID, ActiveAnimation> activeAnims = new Dictionary<ID, ActiveAnimation>();
@@ -24,7 +28,8 @@ public partial class AnimationTracker {
 		return DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 	}
 
-	private void startAnimation(ID id, C7Animation anim, Action completionEvent, AnimationEnding ending) {
+	private void startAnimation(ID id, C7Animation anim, Action completionEvent, AnimationEnding ending,
+		bool flying = false, (float x, float y) flightFrom = default, (float x, float y) flightTo = default) {
 		long currentTimeMS = getCurrentTimeMS();
 		long animDurationMS = (long)(anim.getDuration());
 
@@ -40,7 +45,10 @@ public partial class AnimationTracker {
 			endTimeMS = currentTimeMS + animDurationMS,
 			completionEvent = completionEvent,
 			ending = ending,
-			anim = anim
+			anim = anim,
+			flying = flying,
+			flightFrom = flightFrom,
+			flightTo = flightTo,
 		};
 
 		anim.playSound();
@@ -48,8 +56,24 @@ public partial class AnimationTracker {
 		activeAnims[id] = aa;
 	}
 
-	public void startAnimation(MapUnit unit, MapUnit.AnimatedAction action, Action completionEvent, AnimationEnding ending) {
-		startAnimation(unit.id, civ3AnimData.forUnit(unit, action), completionEvent, ending);
+	public void startAnimation(MapUnit unit, MapUnit.AnimatedAction action, Action completionEvent, AnimationEnding ending,
+		bool flying = false, (float x, float y) flightFrom = default, (float x, float y) flightTo = default) {
+		startAnimation(unit.id, civ3AnimData.forUnit(unit, action), completionEvent, ending, flying, flightFrom, flightTo);
+	}
+
+	// Planes on a mission, drawn along their flight rather than at their
+	// base (see UnitLayer), and the far end of the flight.
+	public bool IsFlying(MapUnit unit) {
+		return activeAnims.TryGetValue(unit.id, out ActiveAnimation aa) && aa.flying;
+	}
+
+	public IEnumerable<ID> FlyingUnits() {
+		return activeAnims.Where(kv => kv.Value.flying).Select(kv => kv.Key);
+	}
+
+	public (float x, float y) FlightTarget(MapUnit unit) {
+		ActiveAnimation aa = activeAnims[unit.id];
+		return Math.Abs(aa.flightTo.x) + Math.Abs(aa.flightTo.y) >= Math.Abs(aa.flightFrom.x) + Math.Abs(aa.flightFrom.y) ? aa.flightTo : aa.flightFrom;
 	}
 
 	public void startAnimation(Tile tile, AnimatedEffect effect, Action completionEvent, AnimationEnding ending) {
@@ -114,7 +138,11 @@ public partial class AnimationTracker {
 			var (action, progress, ending) = getCurrentActionAndProgress(unit);
 
 			float offsetX = 0, offsetY = 0;
-			if (action == MapUnit.AnimatedAction.RUN) {
+			ActiveAnimation aa = activeAnims[unit.id];
+			if (aa.flying) {
+				offsetX = aa.flightFrom.x + (aa.flightTo.x - aa.flightFrom.x) * progress;
+				offsetY = aa.flightFrom.y + (aa.flightTo.y - aa.flightFrom.y) * progress;
+			} else if (action == MapUnit.AnimatedAction.RUN) {
 				(int dX, int dY) = unit.facingDirection.ToCoordDiff();
 				offsetX = -1 * dX * (1f - progress);
 				offsetY = -1 * dY * (1f - progress);
