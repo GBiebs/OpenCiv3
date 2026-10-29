@@ -430,6 +430,7 @@ namespace C7GameData {
 
 			log.Debug($"Produced {producedItem} in {this}");
 			if (producedItem is UnitPrototype prototype) {
+				owner.stats.RecordUnitBuilt(prototype);
 				AddUnit(prototype, gameData);
 			} else if (producedItem is Building part && part.spaceshipPart != null) {
 				Spaceship.AddPart(gameData, this, part);
@@ -494,6 +495,8 @@ namespace C7GameData {
 			bool hasGranary = HasGranary();
 
 			foodStored += foodGrowth;
+			// Food beyond the box is thrown away, also every turn a city can't grow.
+			owner.stats.RecordGrowth(surplus: Math.Max(foodGrowth, 0), wasted: Math.Max(foodStored - foodNeededToGrow, 0));
 			foodStored = Math.Min(foodStored, foodNeededToGrow);
 
 			// Handle the city starving. Resisters are the first to starve.
@@ -650,18 +653,37 @@ namespace C7GameData {
 			switchedFromCategory = null;
 			shieldsLostToSwitching = 0;
 
-			shieldsStored += CurrentProductionYield().useful;
+			CorruptableValue production = CurrentProductionYield();
+			int cost = owner.ShieldCost(itemBeingProduced);
+			shieldsStored += production.useful;
+			// Shields beyond the cost are thrown away, whether the build finishes or not.
+			int excess = Math.Max(shieldsStored - cost, 0);
 			// An army waits, keeping its shields, while we lack the cities to
 			// support another (upstream proposal #1011; Civ3 doesn't say).
 			bool armyWaits = itemBeingProduced is UnitPrototype { isArmy: true } && !owner.CanSupportAnotherArmy();
-			if (shieldsStored >= owner.ShieldCost(itemBeingProduced) && residents.Count > itemBeingProduced.populationCost && !armyWaits) {
+			if (shieldsStored >= cost && residents.Count > itemBeingProduced.populationCost && !armyWaits) {
 				shieldsStored = 0;
+				// Inflows (e.g. Wealth) turn all their shields into something else every turn.
+				RecordProductionStats(production, overflowed: itemBeingProduced is Inflow ? 0 : excess, capped: 0);
 				RemoveCitizens(itemBeingProduced.populationCost);
 				return itemBeingProduced;
 			}
 
-			shieldsStored = Math.Min(shieldsStored, owner.ShieldCost(itemBeingProduced));
+			shieldsStored = Math.Min(shieldsStored, cost);
+			RecordProductionStats(production, overflowed: 0, capped: excess);
 			return null;
+		}
+
+		private void RecordProductionStats(CorruptableValue production, int overflowed, int capped) {
+			// What the city would have had to work with without civil disorder or
+			// anarchy, which zero out its useful production.
+			int produced = production.useful + production.corrupt;
+			CorruptableValue normal = new(produced, corruption);
+			int lost = normal.useful - production.useful;
+			bool anarchy = owner.government.transitionType;
+			owner.stats.RecordProduction(produced, normal.corrupt,
+				lostToDisorder: anarchy ? 0 : lost, lostToAnarchy: anarchy ? lost : 0,
+				overflowed, capped);
 		}
 
 		public int CurrentFoodYield() {

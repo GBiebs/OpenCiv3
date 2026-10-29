@@ -16,7 +16,13 @@ public partial class GameViews : CenterContainer {
 	[Export] public SpaceRaceView spaceRaceView;
 	[Export] public DemographicsView demographicsView;
 
+	// Built in code rather than in the scene.
+	public StatisticsView statisticsView { get; private set; }
+
 	public override void _Ready() {
+		statisticsView = new StatisticsView();
+		AddChild(statisticsView);
+		statisticsView.Hide();
 		Hide();
 	}
 
@@ -44,11 +50,21 @@ public partial class GameViews : CenterContainer {
 			case C7Action.ShowDemographicsView:
 				demographicsView.ShowView();
 				break;
+			case C7Action.ShowStatisticsView:
+				statisticsView.ShowView();
+				break;
 			default:
 				log.Warning("Unknown game view: " + gameView);
 				break;
 		}
 
+		Show();
+	}
+
+	/// The end-of-game statistics: every civ, and closing the screen runs <paramref name="onClose"/>.
+	public void ShowStatistics(System.Action onClose) {
+		HideGameViews();
+		statisticsView.ShowView(onClose);
 		Show();
 	}
 
@@ -58,5 +74,6 @@ public partial class GameViews : CenterContainer {
 		palaceView.Hide();
 		spaceRaceView.Hide();
 		demographicsView.Hide();
+		statisticsView.Hide();
 	}
 }

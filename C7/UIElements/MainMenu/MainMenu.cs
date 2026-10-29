@@ -54,6 +54,14 @@ public partial class MainMenu : Node {
 		Global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
 		Global.ResetLoadGameFields();
 
+		// Developer shortcut: `-- --load=<save>` opens a save straight away (see StatisticsCapture).
+		if (StatisticsCapture.LoadPath is string devLoadPath && !StatisticsCapture.loadConsumed) {
+			StatisticsCapture.loadConsumed = true;
+			Global.LoadGamePath = devLoadPath;
+			GetTree().CallDeferred(SceneTree.MethodName.ChangeSceneToFile, "res://C7Game.tscn");
+			return;
+		}
+
 		LoadDialog.SetDirectoryForLoading(@"Conquests/Saves");
 		LoadScenarioDialog.SetDirectoryForLoading(@"Conquests/Scenarios");
 		LoadScenarioDialog.GoToScenarioSetupAfterLoading = true;

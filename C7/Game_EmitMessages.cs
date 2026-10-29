@@ -1168,9 +1168,10 @@ public partial class Game {
 
 		var options = new List<ButtonAction>();
 
+		// The game statistics first, then back to the main menu.
 		var retireBtn = new ButtonAction() {
 			message = "Good! I’m Done!",
-			action = () => OnRetire()
+			action = () => gameViews.ShowStatistics(onClose: OnRetire)
 		};
 		var continueBtn = new ButtonAction() {
 			message = "Wait, lemme just play a couple of more turns..."

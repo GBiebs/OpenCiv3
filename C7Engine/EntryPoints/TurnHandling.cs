@@ -88,6 +88,10 @@ namespace C7Engine {
 					CultureFlip.CheckFlips(gameData, player);
 					player.DoCorruptionCalculations(gameData);
 
+					// Finances, growth and production below add to this turn's statistics.
+					if (!player.isBarbarians && !player.defeated)
+						player.stats.StartTurn(gameData.turn);
+
 					// Do the financial updates before updating the cities, so
 					// that a newly produced unit won't put a player over the
 					// unit support cap and cause them to lose gold unexpectedly.
@@ -106,6 +110,12 @@ namespace C7Engine {
 					player.CountDownAgeOfScience();
 
 					player.UpdateHistory(gameData);
+				}
+
+				// Snapshot the statistics once every player's cities have grown and borders expanded.
+				Dictionary<Player, PlayerStats.LandCount> land = PlayerStats.CountLand(gameData.map);
+				foreach (Player player in gameData.players) {
+					player.stats.EndTurn(player, land.GetValueOrDefault(player));
 				}
 
 				CheckVictory(gameData);

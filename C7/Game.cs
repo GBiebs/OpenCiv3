@@ -296,6 +296,10 @@ public partial class Game : Node {
 
 		EmitSignal(SignalName.GameInitialized);
 
+		if (StatisticsCapture.ShotsDir != null) {
+			StatisticsCapture.Run(this, gameViews);
+		}
+
 		if (Global.LoadGamePath == null) {
 			new MsgNewGame(controller.id).send();
 			await EngineStorage.WaitForMessageToEngine<MsgUiDisengaged>();
@@ -1308,6 +1312,9 @@ public partial class Game : Node {
 		if (eventKeyDown.Keycode == Godot.Key.F11) {
 			EmitSignal(SignalName.ShowGameView, C7Action.ShowDemographicsView);
 		}
+		if (eventKeyDown.Keycode == Godot.Key.F12) {
+			EmitSignal(SignalName.ShowGameView, C7Action.ShowStatisticsView);
+		}
 
 		if (eventKeyDown.Keycode == Godot.Key.C && HasCurrentlySelectedUnit()) {
 			mapView.centerCameraOnTile(CurrentlySelectedUnit.location);
@@ -1453,7 +1460,7 @@ public partial class Game : Node {
 
 	private bool IsModalSwitchEvent(InputEvent @event) {
 		if (@event is InputEventKey eventKeyDown && eventKeyDown.Pressed) {
-			return eventKeyDown.Keycode is >= Key.F1 and <= Key.F11;
+			return eventKeyDown.Keycode is >= Key.F1 and <= Key.F12;
 		}
 
 		return false;
