@@ -13,6 +13,9 @@ namespace C7GameData {
 		public HashSet<Tile> knownTiles { get; private set; } = new();
 		public HashSet<Tile> borderTiles { get; private set; } = new();
 		private HashSet<Tile> activeTiles = new HashSet<Tile>();
+		// Tiles a recon mission scouted: seen, units and all, until the
+		// player's next turn (see Air).
+		private readonly HashSet<Tile> scoutedTiles = [];
 
 		// Has this player explored all known ocean tiles?
 		// TODO: this should be split out for coast/ocean
@@ -197,6 +200,18 @@ namespace C7GameData {
 			RecomputeActiveTiles();
 		}
 
+		public void Scout(List<Tile> tiles) {
+			scoutedTiles.UnionWith(tiles);
+			Learn(tiles);
+		}
+
+		public void EndScouting() {
+			if (scoutedTiles.Count > 0) {
+				scoutedTiles.Clear();
+				RecomputeActiveTiles();
+			}
+		}
+
 		public List<Tile> AllKnownTiles() {
 			List<Tile> list = new List<Tile>();
 			foreach (Tile t in knownTiles) {
@@ -231,6 +246,7 @@ namespace C7GameData {
 					activeTiles.UnionWith(Structures.OutpostView(EngineStorage.gameData, t));
 				}
 			}
+			activeTiles.UnionWith(scoutedTiles);
 		}
 
 		public List<Tile> OwnedTiles() {

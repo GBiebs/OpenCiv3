@@ -233,7 +233,7 @@ namespace C7GameData {
 
 		private static void Recon(GameData gameData, MapUnit plane, Tile target) {
 			int radius = plane.owner.rules?.air.reconRadius ?? gameData.rules.air.reconRadius;
-			plane.owner.tileKnowledge.Learn(target.GetTilesWithinTileSquare(radius).Where(Tile.IsTileValid).Append(target).ToList());
+			plane.owner.tileKnowledge.Scout(target.GetTilesWithinTileSquare(radius).Where(Tile.IsTileValid).Append(target).ToList());
 			log.Information($"{plane} scouts around {target}");
 		}
 

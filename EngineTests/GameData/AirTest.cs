@@ -104,6 +104,27 @@ public class AirTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(fighter.movementPoints.canMove);
 	}
 
+	// Civ3 shows what recon saw, units and all, until the next turn; from a
+	// carrier at sea as from a city.
+	[Fact]
+	public async Task ReconSeesTheTilesUntilTheNextTurn() {
+		Tile sea = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsWater() && t.unitsOnTile.Count == 0 && t.DistanceTo(home.location) is > 3 and < 10);
+		MapUnit carrier = Spawn(us, "Carrier", sea);
+		MapUnit fighter = Spawn(us, "Fighter", sea);
+		fighter.loadedOnUnitId = carrier.id;
+		Tile target = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && t.DistanceTo(sea) == 5 && !us.tileKnowledge.isActiveTile(t));
+		MapUnit enemy = Spawn(them, "Warrior", target);
+		Assert.False(us.tileKnowledge.isActiveTile(target));
+
+		await Air.Fly(gameData, fighter, Air.Mission.Recon, target);
+		Assert.True(us.tileKnowledge.isActiveTile(target));
+		Assert.All(target.GetTilesWithinTileSquare(2).Where(Tile.IsTileValid), t => Assert.True(us.tileKnowledge.isActiveTile(t)));
+
+		TurnHandling.InitTurnData(us);
+		Assert.False(us.tileKnowledge.isActiveTile(target));
+		Assert.True(us.tileKnowledge.isTileKnown(target));
+	}
+
 	[Fact]
 	public async Task APrecisionStrikeHitsABuilding() {
 		City target = CityInteractions.BuildCity(LandAt(home.location, 8), them, "Target");

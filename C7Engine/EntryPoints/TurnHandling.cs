@@ -38,6 +38,10 @@ namespace C7Engine {
 				foreach (MapUnit mapUnit in gameData.mapUnits.Where(u => u.owner == player))
 					mapUnit.OnBeginTurn(skipTurn);
 			}
+			// What recon missions saw is fogged again.
+			foreach (Player p in player == null ? gameData.players : [player]) {
+				p.tileKnowledge.EndScouting();
+			}
 		}
 
 		// Implements the game loop. This method is called when the game is started and when the player signals that they're done moving.
