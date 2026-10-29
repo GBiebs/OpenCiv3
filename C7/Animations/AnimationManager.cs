@@ -87,7 +87,7 @@ public partial class AnimationManager {
 
 		Flic flic = Util.LoadFlic(filepath);
 
-		byte[] rawFrame = flic.Images[flicAnimationDirectionToRow(thumbnailDirection), thumbnailFrame];
+		byte[] rawFrame = flic.Images[FlicRow(flic, thumbnailDirection), thumbnailFrame];
 		// This actually doesn't return the tint frame with the civ color applied. The shader still needs to be applied.
 		(ImageTexture baseFrame, ImageTexture tintFrame) = Util.LoadTextureFromFlicData(rawFrame, flic.Palette, flic.Width, flic.Height);
 		AnimationThumbnails[key] = baseFrame;
@@ -156,11 +156,21 @@ public partial class AnimationManager {
 		return 2;
 	}
 
+	// Missiles (the Tactical Nuke, the ICBM) stand upright, so their
+	// animations have one facing, shown for every direction.
+	private static bool HasOneFacing(Flic flic) => flic.Images.GetLength(0) < 8;
+
+	private static int FlicRow(Flic flic, TileDirection tileDirection) {
+		return HasOneFacing(flic) ? 0 : flicAnimationDirectionToRow(tileDirection);
+	}
+
 	public static void loadFlicAnimation(string path, string name, ref SpriteFrames frames, ref SpriteFrames tint) {
 		Flic flic = Util.LoadFlic(path);
 
-		for (int row = 0; row < flic.Images.GetLength(0); row++) {
-			string direction = flicRowToAnimationDirection(row).ToString();
+		int directions = HasOneFacing(flic) ? 8 : flic.Images.GetLength(0);
+		for (int d = 0; d < directions; d++) {
+			int row = HasOneFacing(flic) ? 0 : d;
+			string direction = flicRowToAnimationDirection(d).ToString();
 			string animationName = name + "_" + direction;
 			frames.AddAnimation(animationName);
 			tint.AddAnimation(animationName);
