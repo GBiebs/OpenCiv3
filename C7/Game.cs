@@ -1781,7 +1781,15 @@ public partial class Game : Node {
 		Action bombard = () => {new MsgBombard(CurrentlySelectedUnit.id, tile).send();};
 
 		EngineStorage.ReadGameData((GameData gameData) => {
-			if (info.RequiresWarDeclaration(tile, out var player)) {
+			// A nuke hits everyone there, seen or not: war with each civ at
+			// peace with us there first.
+			if (Nuclear.IsNuke(info.bombardingUnit.unitType)) {
+				if (Nuclear.AtPeace(controller, tile).FirstOrDefault() is Player peaceful) {
+					MaybeDeclareWar(peaceful, () => HandleBombardClick(info, tile));
+				} else {
+					bombard.Invoke();
+				}
+			} else if (info.RequiresWarDeclaration(tile, out Player player)) {
 				MaybeDeclareWar(player, () => {
 					bombard.Invoke();
 				});

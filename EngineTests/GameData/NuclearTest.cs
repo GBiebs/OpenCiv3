@@ -113,10 +113,28 @@ public class NuclearTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.True(Nuclear.CanStrike(icbm, far));
 		Assert.True(icbm.CanBombardTile(far));
 
-		// Only at war, and only at someone's units or city.
-		Assert.False(Nuclear.CanStrike(icbm, LandAt(home.location, 9)));
+		// Any tile, seen or not, even with no one there (user, 2026-10-29).
+		Tile empty = LandAt(home.location, 9);
+		Assert.False(us.tileKnowledge.isActiveTile(empty));
+		Assert.True(Nuclear.CanStrike(icbm, empty));
+		Assert.Equal(Nuclear.Outcome.Detonated, Nuclear.Strike(gameData, icbm, empty));
+	}
+
+	[Fact]
+	public void ACivAtPeaceNeedsWarFirst() {
+		Tile far = LandAt(home.location, 7);
+		Spawn(them, "Warrior", far);
 		PlayerRelationship.SignPeaceAfterWar(us, them, gameData);
-		Assert.False(Nuclear.CanStrike(icbm, far));
+		MapUnit icbm = Spawn(us, "ICBM", home.location);
+		// It can be aimed there (the player may not know who's there), but
+		// it won't go off until we're at war.
+		Assert.True(Nuclear.CanStrike(icbm, far));
+		Assert.Equal([them], Nuclear.AtPeace(us, far));
+		Assert.Equal(Nuclear.Outcome.Impossible, Nuclear.Strike(gameData, icbm, far));
+		Assert.Contains(icbm, us.units);
+		us.DeclareWarOn(them, gameData.turn);
+		Assert.Empty(Nuclear.AtPeace(us, far));
+		Assert.Equal(Nuclear.Outcome.Detonated, Nuclear.Strike(gameData, icbm, far));
 	}
 
 	[Fact]
@@ -167,16 +185,23 @@ public class NuclearTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Building smd = gameData.Buildings.Find(b => b.HasWonderFlag(SaveBuilding.WonderFlag.DecreasesMissileSuccess));
 		City theirOther = CityInteractions.BuildCity(LandAt(home.location, 12), them, "Shield");
 		theirOther.AddBuilding(smd, gameData);
-		Assert.True(Nuclear.Defended(target.location));
+		Assert.True(Nuclear.Defended(us, target.location));
+		// Aimed beside the city the blast still reaches it, so it's covered;
+		// two tiles away it isn't.
 		Tile next = target.location.neighbors.Values.First(t => t.IsLand() && !t.HasCity());
 		Spawn(them, "Tank", next);
-		Assert.False(Nuclear.Defended(next));
+		Assert.True(Nuclear.Defended(us, next));
+		Tile beyond = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && t.DistanceTo(target.location) == 2
+			&& t.neighbors.Values.All(n => !n.HasCity()));
+		Assert.False(Nuclear.Defended(us, beyond));
+		// Our own missile defense doesn't shoot down our nukes.
+		Assert.False(Nuclear.Defended(them, target.location));
 
 		us.rules.nuclear.missileDefensePercent = 100;
 		Assert.Equal(Nuclear.Outcome.ShotDown, Nuclear.Strike(gameData, Spawn(us, "ICBM", home.location), target.location));
 		Assert.Equal(8, target.residents.Count);
-		// The tile next to it isn't covered.
-		Assert.Equal(Nuclear.Outcome.Detonated, Nuclear.Strike(gameData, Spawn(us, "ICBM", home.location), next));
+		Assert.Equal(Nuclear.Outcome.ShotDown, Nuclear.Strike(gameData, Spawn(us, "ICBM", home.location), next));
+		Assert.Equal(Nuclear.Outcome.Detonated, Nuclear.Strike(gameData, Spawn(us, "ICBM", home.location), beyond));
 		us.rules.nuclear.missileDefensePercent = 0;
 		Assert.Equal(Nuclear.Outcome.Detonated, Nuclear.Strike(gameData, Spawn(us, "ICBM", home.location), target.location));
 	}
@@ -195,6 +220,16 @@ public class NuclearTest : IClassFixture<SaveGameFixture>, IDisposable {
 		gameData.nukesUsed = 3;
 		C7GameData.GameData reloaded = SaveGame.FromGameData(gameData).Clone().ToGameData(fixture.behaviors);
 		Assert.Equal(3, reloaded.nukesUsed);
+	}
+
+	[Fact]
+	public void TheAINukesOnlyEnemies() {
+		MapUnit nuke = Spawn(us, "ICBM", home.location);
+		gameData.nukesUsed = 1;
+		Assert.Equal(target.location, NuclearAI.Target(gameData, nuke));
+		// Not empty land, though it may now aim there, nor a civ at peace.
+		PlayerRelationship.SignPeaceAfterWar(us, them, gameData);
+		Assert.Null(NuclearAI.Target(gameData, nuke));
 	}
 
 	[Fact]

@@ -38,9 +38,10 @@ namespace C7GameData {
 		public bool CanBombardTile(Tile tile, out BombardTarget bombardTarget) {
 			bombardTarget = BombardTarget.None;
 
-			// A nuclear weapon strikes instead (see Nuclear).
+			// A nuclear weapon strikes instead (see Nuclear), at any tile in
+			// range; Game asks to declare war on a civ at peace there.
 			if (Nuclear.IsNuke(unitType)) {
-				bombardTarget = tile.HasCity() ? BombardTarget.City : BombardTarget.Unit;
+				bombardTarget = tile.HasCity() ? BombardTarget.City : tile.unitsOnTile.Count > 0 ? BombardTarget.Unit : BombardTarget.None;
 				return Nuclear.CanStrike(this, tile);
 			}
 

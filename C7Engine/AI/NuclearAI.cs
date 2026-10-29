@@ -24,7 +24,7 @@ namespace C7Engine.AI {
 		internal static Tile Target(GameData gameData, MapUnit nuke) {
 			Player us = nuke.owner;
 			return gameData.map.tiles
-				.Where(t => (t.HasCity() || t.unitsOnTile.Count > 0) && Nuclear.CanStrike(nuke, t))
+				.Where(t => Nuclear.Victims(us, t).Count > 0 && Nuclear.AtPeace(us, t).Count == 0 && Nuclear.CanStrike(nuke, t))
 				.Where(t => t.neighbors.Values.Append(t).All(n => n.cityAtTile?.owner != us && n.unitsOnTile.All(u => u.owner != us)))
 				.OrderByDescending(t => (t.cityAtTile?.residents.Count ?? 0) * 100 + t.unitsOnTile.Sum(u => u.unitType.shieldCost))
 				.FirstOrDefault();
