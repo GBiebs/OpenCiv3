@@ -35,7 +35,9 @@ namespace C7GameData {
 		Irrigate,
 		ClearWetlands,
 		ClearForest,
-		PlantForest
+		PlantForest,
+		// Not a TFRM in Civ3's BIQ: a worker order (PRTO "build colony").
+		BuildColony,
 	}
 
 	public class ImportCiv3 {
@@ -197,6 +199,18 @@ namespace C7GameData {
 				if (civ3Tile.Irrigation) {
 					tile.overlays.Add(IRRIGATION);
 				}
+				// One of these at most (their owners are below).
+				if (civ3Tile.Barricade) {
+					tile.overlays.Add(BARRICADE);
+				} else if (civ3Tile.Fortress) {
+					tile.overlays.Add(FORTRESS);
+				} else if (civ3Tile.Airfield) {
+					tile.overlays.Add(AIRFIELD);
+				} else if (civ3Tile.RadarTower) {
+					tile.overlays.Add(RADAR_TOWER);
+				} else if (civ3Tile.Outpost) {
+					tile.overlays.Add(OUTPOST);
+				}
 				if (civ3Tile.ResourceID != -1) {
 					tile.resource = save.Resources[civ3Tile.ResourceID].Key;
 				}
@@ -216,6 +230,30 @@ namespace C7GameData {
 				if (tile != null && !tile.features.Contains("victoryLocation")) {
 					tile.features.Add("victoryLocation");
 				}
+			}
+
+			// The structures workers built (see Structures) and their owners.
+			void Own(int x, int y, int playerIndex, string colony = null) {
+				SaveTile tile = save.Map.tiles.Find(t => t.X == x && t.Y == y);
+				if (tile == null || playerIndex < 0 || playerIndex >= save.Players.Count) {
+					return;
+				}
+				if (colony != null && !tile.overlays.Contains(colony)) {
+					tile.overlays.Add(colony);
+				}
+				tile.structureOwner = save.Players[playerIndex].id;
+			}
+			foreach (QueryCiv3.Sav.AIBS airfield in savData.Aibs ?? []) {
+				Own(airfield.XCoordinate, airfield.YCoordinate, airfield.PlayerID);
+			}
+			foreach (QueryCiv3.Sav.OUTP outpost in savData.Outp ?? []) {
+				Own(outpost.XCoordinate, outpost.YCoordinate, outpost.PlayerID);
+			}
+			foreach (QueryCiv3.Sav.RADT radar in savData.Radt ?? []) {
+				Own(radar.XCoordinate, radar.YCoordinate, radar.PlayerID);
+			}
+			foreach (QueryCiv3.Sav.CLNY colony in savData.Clny ?? []) {
+				Own(colony.XCoordinate, colony.YCoordinate, colony.PlayerID, COLONY);
 			}
 
 			// make barbarians unpickable
@@ -1465,6 +1503,10 @@ namespace C7GameData {
 			// Civ3's "clean pollution". (Plant Forest has no effect yet, so
 			// it's left out.)
 			if (prto.ClearPollution) yield return TerraformKey.ClearDamage;
+			if (prto.BuildColony) yield return TerraformKey.BuildColony;
+			if (prto.BuildAirfield) yield return TerraformKey.BuildAirfield;
+			if (prto.BuildRadarTower) yield return TerraformKey.BuildRadarTower;
+			if (prto.BuildOutpost) yield return TerraformKey.BuildOutpost;
 		}
 
 		private static bool IsUnproducible(PRTO prto) {
@@ -2197,6 +2239,18 @@ namespace C7GameData {
 				save.TerraForms.Add(tf);
 				terraformIdByCiv3Key[tfKey] = tf.Id;
 			}
+
+			// Civ3's colony is a worker order, not a TFRM; it takes the turn
+			// like the other structures (see Structures).
+			SaveTerraform colony = new() {
+				Id = ids.CreateID("Terraform"),
+				Name = "Colony",
+				CivilopediaEntry = "TFRM_Build_Colony",
+				TurnsToComplete = 1,
+			};
+			colony.SetUpByTerraformKey(TerraformKey.BuildColony);
+			save.TerraForms.Add(colony);
+			terraformIdByCiv3Key[TerraformKey.BuildColony] = colony.Id;
 		}
 
 		private void SetBonus(string terrainKey, string improvementKey, Tile.YieldType type, int bonus) {

@@ -92,6 +92,9 @@ public class Terraform {
 			if (!tile.overlays.CanAdd(tile, Improvement))
 				throw new InvalidOperationException($"Cannot add {Improvement.key} to the tile {tile}");
 			tile.overlays.Add(Improvement);
+			if (Structures.IsStructure(Improvement)) {
+				Structures.OnBuilt(EngineStorage.gameData, tile, player);
+			}
 
 			var cityTile = tile.neighbors.FirstOrDefault(n => n.Value.HasCity()).Value;
 			if (Improvement.layer == TerrainImprovement.Layer.Roads && cityTile != null) {

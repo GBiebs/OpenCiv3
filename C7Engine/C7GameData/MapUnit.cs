@@ -318,6 +318,11 @@ namespace C7GameData {
 				yield return GreatWallBonus;
 			}
 
+			// A radar tower of ours covers us, attacking or defending.
+			if (Structures.RadarBonus(gD, this) is StrengthBonus radar) {
+				yield return radar;
+			}
+
 			if (role.Defending()) {
 				if (isFortified)
 					yield return gD.fortificationBonus;

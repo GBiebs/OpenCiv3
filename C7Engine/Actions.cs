@@ -58,6 +58,7 @@ public static class C7Action {
 	public const string UnitBuildRadarTower = "unit_build_radar_tower";
 	public const string UnitBuildOutpost = "unit_build_outpost";
 	public const string UnitBuildBarricade = "unit_build_barricade";
+	public const string UnitBuildColony = "unit_build_colony";
 	public const string UnitAutomate = "unit_automate";
 	public const string UnitDisband = "unit_disband";
 	public const string UnitExplore = "unit_explore";
@@ -126,6 +127,7 @@ public static class C7Action {
 		[UnitBuildRadarTower] = "Build Radar Tower",
 		[UnitBuildOutpost] = "Build Outpost",
 		[UnitBuildBarricade] = "Build Barricade",
+		[UnitBuildColony] = "Build Colony",
 		[UnitAutomate] = "Automate",
 		[UnitDisband] = "Disband",
 		[UnitExplore] = "Explore",

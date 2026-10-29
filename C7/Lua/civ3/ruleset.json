@@ -488,6 +488,34 @@
       "upgradesFrom": "fortress"
     },
     {
+      "key": "colony",
+      "layer": "holdings",
+      "zIndex": 6,
+      "movementCost": -1,
+      "consumesWorker": true
+    },
+    {
+      "key": "outpost",
+      "layer": "holdings",
+      "zIndex": 6,
+      "movementCost": -1,
+      "consumesWorker": true
+    },
+    {
+      "key": "airfield",
+      "layer": "holdings",
+      "zIndex": 6,
+      "movementCost": -1,
+      "consumesWorker": true
+    },
+    {
+      "key": "radarTower",
+      "layer": "holdings",
+      "zIndex": 6,
+      "movementCost": -1,
+      "consumesWorker": true
+    },
+    {
       "key": "ruins",
       "layer": "ruins",
       "zIndex": 2,
@@ -1001,7 +1029,11 @@
         "Terraform-7",
         "Terraform-13",
         "Terraform-3",
-        "Terraform-9"
+        "Terraform-9",
+        "Terraform-10",
+        "Terraform-11",
+        "Terraform-12",
+        "Terraform-14"
       ]
     },
     {
@@ -13237,6 +13269,13 @@
       "buildingDestroyedPercent": 50,
       "falloutPercent": 50
     },
+    "structures": {
+      "outpostVision": 2,
+      "outpostVisionOnHills": 3,
+      "outpostVisionOnMountains": 4,
+      "radarRange": 2,
+      "radarBonusPercent": 25
+    },
     "air": {
       "interceptPercent": 50,
       "stealthInterceptPercent": 5,
@@ -14700,7 +14739,11 @@
       "requiredTech": "tech-59",
       "aiScore": "terraforms.ai_score.default",
       "uiAction": "unit_build_airfield",
-      "buttonTexture": "ui.unit_control.unit_build_airfield"
+      "buttonTexture": "ui.unit_control.unit_build_airfield",
+      "improvement": "airfield",
+      "validators": [
+        "terraforms.validators.structure"
+      ]
     },
     {
       "id": "Terraform-11",
@@ -14710,7 +14753,11 @@
       "requiredTech": "tech-64",
       "aiScore": "terraforms.ai_score.default",
       "uiAction": "unit_build_radar_tower",
-      "buttonTexture": "ui.unit_control.unit_build_radar_tower"
+      "buttonTexture": "ui.unit_control.unit_build_radar_tower",
+      "improvement": "radarTower",
+      "validators": [
+        "terraforms.validators.structure"
+      ]
     },
     {
       "id": "Terraform-12",
@@ -14720,7 +14767,11 @@
       "requiredTech": "tech-2",
       "aiScore": "terraforms.ai_score.default",
       "uiAction": "unit_build_outpost",
-      "buttonTexture": "ui.unit_control.unit_build_outpost"
+      "buttonTexture": "ui.unit_control.unit_build_outpost",
+      "improvement": "outpost",
+      "validators": [
+        "terraforms.validators.structure"
+      ]
     },
     {
       "id": "Terraform-13",
@@ -14733,6 +14784,19 @@
       "animation": "fortress",
       "uiAction": "unit_build_barricade",
       "buttonTexture": "ui.unit_control.unit_build_barricade"
+    },
+    {
+      "id": "Terraform-14",
+      "name": "Colony",
+      "civilopediaEntry": "TFRM_Build_Colony",
+      "turnsToComplete": 1,
+      "improvement": "colony",
+      "validators": [
+        "terraforms.validators.structure"
+      ],
+      "aiScore": "terraforms.ai_score.default",
+      "uiAction": "unit_build_colony",
+      "buttonTexture": "ui.unit_control.unit_build_colony"
     }
   ],
   "governments": [

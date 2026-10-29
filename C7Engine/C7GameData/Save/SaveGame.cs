@@ -171,6 +171,13 @@ namespace C7GameData.Save {
 			data.defaultExperienceLevelKey = DefaultExperienceLevel;
 			data.defaultExperienceLevel = data.experienceLevels.Find(el => el.key == DefaultExperienceLevel);
 
+			// Structures' owners, now that the players exist.
+			for (int i = 0; i < Map.tiles.Count; i++) {
+				if (Map.tiles[i].structureOwner is ID structureOwner) {
+					data.map.tiles[i].overlays.structureOwner = data.players.Find(p => p.id == structureOwner);
+				}
+			}
+
 			data.UpdateTileOwners();
 			data.InvalidateCachedTradeNetwork();
 

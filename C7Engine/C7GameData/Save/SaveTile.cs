@@ -48,6 +48,7 @@ namespace C7GameData.Save {
 			}
 
 			overlays.AddRange(tile.overlays.GetImprovements().Select(i => i.key));
+			structureOwner = tile.overlays.structureOwner?.id;
 			volcanoEruptsOnTurn = tile.volcanoEruptsOnTurn >= 0 ? tile.volcanoEruptsOnTurn : null;
 		}
 
@@ -101,6 +102,8 @@ namespace C7GameData.Save {
 		public string resource;
 		public List<string> features = new List<string>();
 		public List<string> overlays = new List<string>();
+		// The player whose structure stands here (see Structures).
+		public ID structureOwner;
 	}
 
 }

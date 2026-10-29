@@ -38,6 +38,10 @@ namespace C7GameData {
 
 		public readonly Action<Tile.Yield> tileModifier;
 
+		// The worker who builds it is used up, and it belongs to its builder's
+		// civ (see Structures).
+		public readonly bool consumesWorker;
+
 		private Dictionary<(TerrainType, Tile.YieldType), int> bonusYields = [];
 		private readonly SaveTerrainImprovement dataSource;
 
@@ -62,6 +66,7 @@ namespace C7GameData {
 			movementCost = save.movementCost;
 			zIndex = save.zIndex;
 			defenseBonus = save.defenseBonus;
+			consumesWorker = save.consumesWorker;
 			dataSource = save;
 			this.upgradesFrom = upgradesFrom;
 

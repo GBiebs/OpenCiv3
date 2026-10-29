@@ -62,7 +62,16 @@ public class SaveTerrainImprovement {
 			zIndex: 5
 		);
 
-		// TODO: Add colony, outpost, airfield, radar tower
+		// Structures a worker gives itself up to build (see Structures):
+		// they're mutually exclusive with fortresses.
+		foreach (string structure in new[] { COLONY, OUTPOST, AIRFIELD, RADAR_TOWER }) {
+			yield return new(
+				structure,
+				Layer.Holdings,
+				zIndex: 6,
+				consumesWorker: true
+			);
+		}
 	}
 
 	public readonly string key;
@@ -82,6 +91,10 @@ public class SaveTerrainImprovement {
 	// Path to Lua function
 	public readonly string tileModifier;
 
+	// The worker who builds it is used up, and it belongs to its builder's
+	// civ (a colony, outpost, airfield or radar tower: see Structures).
+	public readonly bool consumesWorker;
+
 	public SaveTerrainImprovement(
 		string key,
 		Layer layer,
@@ -89,7 +102,8 @@ public class SaveTerrainImprovement {
 		StrengthBonus? defenseBonus = null,
 		float movementCost = -1,
 		int zIndex = 0,
-		string tileModifier = null
+		string tileModifier = null,
+		bool consumesWorker = false
 	) {
 		this.key = key;
 		this.layer = layer;
@@ -98,5 +112,6 @@ public class SaveTerrainImprovement {
 		this.movementCost = movementCost;
 		this.zIndex = zIndex;
 		this.tileModifier = tileModifier;
+		this.consumesWorker = consumesWorker;
 	}
 }

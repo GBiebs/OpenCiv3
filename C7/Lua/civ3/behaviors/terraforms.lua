@@ -22,6 +22,10 @@ terraforms.validators = {
   clear_damage = function(context)
     return context.tile:HasPollution() or context.tile:HasCraters()
   end,
+  -- A colony, outpost, airfield or radar tower (see Structures).
+  structure = function(context)
+    return context.tile:CanBuildStructure(context.terraform.Improvement, context.player)
+  end,
 }
 
 terraforms.effects = {

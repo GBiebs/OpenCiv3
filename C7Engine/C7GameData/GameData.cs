@@ -221,6 +221,9 @@ namespace C7GameData {
 					TryResolveOpposingNeighbors(t, TileDirection.NORTHEAST, TileDirection.SOUTHWEST);
 				}
 			}
+
+			// Structures now in someone's territory go or change hands.
+			Structures.OnTerritoryChanged(this);
 		}
 
 		private void TryResolveOpposingNeighbors(Tile t, TileDirection dirA, TileDirection dirB) {

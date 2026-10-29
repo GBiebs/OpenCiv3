@@ -215,6 +215,9 @@ namespace C7GameData {
 		// Nuclear weapons. See Nuclear.
 		public NuclearRules nuclear = new();
 
+		// Colonies, outposts, airfields and radar towers. See Structures.
+		public StructureRules structures = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -539,6 +542,20 @@ namespace C7GameData {
 		public int populationKilledPercent = 50;
 		public int buildingDestroyedPercent = 50;
 		public int falloutPercent = 50;
+	}
+
+	// Structures a worker builds (see Structures), from the Civilopedia.
+	public class StructureRules {
+		// "The range of vision for the Outpost is 2 tiles on flat terrain, 3
+		// on hills and 4 on mountains."
+		public int outpostVision = 2;
+		public int outpostVisionOnHills = 3;
+		public int outpostVisionOnMountains = 4;
+		// Radar towers: "Friendly units within the Radar Towers range get a
+		// +25% attack and defense bonus", within 2 tiles, once however many
+		// towers there are.
+		public int radarRange = 2;
+		public int radarBonusPercent = 25;
 	}
 
 	// Naval rules not in Civ3's BIQ.

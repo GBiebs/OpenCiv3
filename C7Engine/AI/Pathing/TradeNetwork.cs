@@ -11,7 +11,8 @@ namespace C7Engine.Pathing {
 
 		public void AddTile(Tile t, Player p) {
 			tiles.Add(t);
-			if (t.Resource != Resource.NONE && t.OwningPlayer() == p) {
+			// Our resources: in our territory, or under our colony.
+			if (t.Resource != Resource.NONE && (t.OwningPlayer() == p || Structures.Has(t, Tile.TileOverlays.COLONY, p))) {
 				if (resourceCounts.TryGetValue(t.Resource, out int currentCount)) {
 					resourceCounts[t.Resource] = currentCount + 1;
 				} else {

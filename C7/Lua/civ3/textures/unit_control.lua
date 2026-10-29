@@ -57,6 +57,7 @@ local unit_control = {
   unit_build_outpost = make_entry(3, 4),
   unit_build_barricade = make_entry(4, 4),
   unit_join_city = make_entry(0, 4),
+  unit_build_colony = make_entry(4, 2),
   unit_airlift = make_entry(1, 1),
   unit_airdrop = make_entry(4, 1),
   unit_bombing = make_entry(5, 4),

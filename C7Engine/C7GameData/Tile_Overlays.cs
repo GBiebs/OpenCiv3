@@ -51,9 +51,18 @@ public partial class Tile {
 		public const string RUINS = "ruins";
 		public const string POLLUTION = "pollution";
 		public const string CRATERS = "craters";
+		// Structures a worker gives itself up to build (see Structures).
+		public const string COLONY = "colony";
+		public const string OUTPOST = "outpost";
+		public const string AIRFIELD = "airfield";
+		public const string RADAR_TOWER = "radarTower";
 
 		private readonly Tile tile;
 		public Dictionary<Layer, TerrainImprovement> terrainImprovementByLayer { get; private set; } = [];
+
+		// The civ whose structure (a colony, outpost, airfield or radar tower)
+		// stands here, if any. It goes with the structure.
+		public Player structureOwner;
 
 		public TileOverlays(Tile tile) {
 			this.tile = tile;
@@ -77,13 +86,19 @@ public partial class Tile {
 			ApplyTerrainImprovementChange(improvement, null);
 		}
 
-		private static void ApplyTerrainImprovementChange(TerrainImprovement oldImprovement, TerrainImprovement newImprovement) {
+		private void ApplyTerrainImprovementChange(TerrainImprovement oldImprovement, TerrainImprovement newImprovement) {
 			var roadCreated = oldImprovement == null && newImprovement?.layer == Layer.Roads;
 			var roadRemoved = oldImprovement?.layer == Layer.Roads && newImprovement == null;
 
 			// If there's a change in road coverage, invalidate the cached trade network
 			if (roadCreated || roadRemoved) {
 				EngineStorage.gameData.InvalidateCachedTradeNetwork();
+			}
+
+			// A structure gone takes its owner with it (a colony its resource).
+			if (oldImprovement?.consumesWorker == true && structureOwner != null) {
+				structureOwner = null;
+				EngineStorage.gameData?.InvalidateCachedTradeNetwork();
 			}
 		}
 

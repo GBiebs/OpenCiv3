@@ -73,11 +73,38 @@ namespace C7.Map {
 					case CRATERS:
 						DrawCraters(looseView, tile, screenTarget);
 						break;
+					case COLONY:
+					case OUTPOST:
+					case AIRFIELD:
+					case RADAR_TOWER:
+						DrawStructure(looseView, tile, ti.key, screenTarget);
+						break;
 					default:
 						looseView.DrawTexture(TextureLoader.Load($"terrain_improvements.{ti.key}"), screenTarget.Position);
 						break;
 				}
 			}
+		}
+
+		private static readonly string[] StructureEras = ["ancient", "middle", "industrial", "modern"];
+
+		// A colony, outpost or airfield looks like its owner's era (Civ3 has
+		// four colonies, three outposts and two airfields); outposts and radar
+		// towers are tall, standing on the lower half of their art.
+		private void DrawStructure(LooseView looseView, Tile tile, string key, Rect2 screenTarget) {
+			int era = Math.Max(0, tile.overlays.structureOwner?.EraIndex() ?? 0);
+			string variant = key switch {
+				COLONY => StructureEras[Math.Min(era, 3)],
+				OUTPOST => StructureEras[Math.Min(era, 2)],
+				AIRFIELD => era >= 3 ? "modern" : "industrial",
+				_ => null,
+			};
+			ImageTexture texture = TextureLoader.Load(variant == null ? $"terrain_improvements.{key}" : $"terrain_improvements.{key}.{variant}");
+			Vector2 position = screenTarget.Position;
+			if (key is OUTPOST or RADAR_TOWER) {
+				position.Y -= tileSize.Y;
+			}
+			looseView.DrawTexture(texture, position);
 		}
 
 		private void DrawIrrigation(LooseView looseView, Tile tile, Rect2 screenTarget) {

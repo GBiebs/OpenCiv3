@@ -48,7 +48,8 @@ namespace C7GameData {
 		// Whether `plane` can be based at `tile`: one of its owner's cities,
 		// or a carrier of its owner's with room.
 		public static bool IsBase(MapUnit plane, Tile tile) {
-			return (tile.HasCity() && tile.cityAtTile.owner == plane.owner) || CarrierFor(plane, tile) != null;
+			return (tile.HasCity() && tile.cityAtTile.owner == plane.owner) || CarrierFor(plane, tile) != null
+				|| Structures.Has(tile, Tile.TileOverlays.AIRFIELD, plane.owner);
 		}
 
 		public static bool CanFly(MapUnit plane, Mission mission) {

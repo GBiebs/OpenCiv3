@@ -354,6 +354,11 @@ namespace C7GameData {
 			return riverNorth || riverNortheast || riverEast || riverSoutheast || riverSouth || riverSouthwest || riverWest || riverNorthwest;
 		}
 
+		// Whether `player` may build the structure here (see Structures).
+		public bool CanBuildStructure(TerrainImprovement structure, Player player) {
+			return Structures.CanBuild(this, structure, player);
+		}
+
 		// TODO: This method doesn't handle the electicity tech which allows
 		// irrigating without fresh water access.
 		public bool CanBeIrrigated(TerrainImprovement irrigation, Player player) {
@@ -504,14 +509,22 @@ namespace C7GameData {
 		public void FinishWorkerJob(Terraform currentWorkerJob) {
 			// Reset All Workers working on the finished Job
 			Player player = null;
+			List<MapUnit> workers = [];
 			foreach (MapUnit unit in unitsOnTile) {
 				player = unit.owner;
 				if (currentWorkerJob == unit.WorkerJob) {
 					unit.resetWorkerJob();
+					workers.Add(unit);
 				}
 			}
 
-			currentWorkerJob.OnComplete(player, this);
+			// The job is the workers' civ's, whoever else is here.
+			currentWorkerJob.OnComplete(workers.FirstOrDefault()?.owner ?? player, this);
+
+			// A structure uses up the worker who builds it (see Structures).
+			if (Structures.IsStructure(currentWorkerJob.Improvement) && workers.Count > 0) {
+				workers[0].RemoveFromPlay();
+			}
 		}
 
 		public float GetCurrentUnaccountedJobProgress(Terraform currentWorkerJob) {

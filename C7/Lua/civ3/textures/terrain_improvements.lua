@@ -25,7 +25,40 @@ terrain_improvements = {
   mine = make_entry(2, 1),
   fortress = make_entry(0, 0),
   barricade = make_entry(3, 0),
+  -- Colonies by their owner's era (column 1).
+  colony = {
+    ancient = make_entry(1, 0),
+    middle = make_entry(1, 1),
+    industrial = make_entry(1, 2),
+    modern = make_entry(1, 3),
+  },
 }
+
+--[[
+Play the World's "x_airfields and detect.PCX": the industrial and modern
+airfields (128x64) in the top row; below, in 128x128 cells standing on their
+lower half, the ancient, medieval and industrial outposts, and the radar
+tower under the first of them.
+--]]
+local AIRFIELDS = TERRAIN .. "x_airfields and detect.PCX"
+local function airfields_entry(x, y, height)
+  return {
+    path = AIRFIELDS,
+    crop_region = { 128 * x, y, 128, height },
+    shadows = false,
+  }
+end
+
+terrain_improvements.airfield = {
+  industrial = airfields_entry(0, 0, 64),
+  modern = airfields_entry(1, 0, 64),
+}
+terrain_improvements.outpost = {
+  ancient = airfields_entry(0, 64, 128),
+  middle = airfields_entry(1, 64, 128),
+  industrial = airfields_entry(2, 64, 128),
+}
+terrain_improvements.radarTower = airfields_entry(0, 192, 128)
 
 terrain_improvements.irrigation = {
   grass = TERRAIN .. "irrigation.pcx",

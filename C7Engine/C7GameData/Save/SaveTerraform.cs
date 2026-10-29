@@ -64,6 +64,7 @@ public class SaveTerraform {
 			TerraformKey.ClearWetlands => C7Action.UnitClearWetlands,
 			TerraformKey.ClearForest => C7Action.UnitClearForest,
 			TerraformKey.PlantForest => C7Action.UnitPlantForest,
+			TerraformKey.BuildColony => C7Action.UnitBuildColony,
 			_ => throw new ArgumentOutOfRangeException(nameof(tfKey), tfKey, null)
 		};
 	}
@@ -80,6 +81,10 @@ public class SaveTerraform {
 			TerraformKey.BuildBarricade => BARRICADE,
 			TerraformKey.BuildRoad => ROAD,
 			TerraformKey.BuildRailroad => RAILROAD,
+			TerraformKey.BuildColony => COLONY,
+			TerraformKey.BuildOutpost => OUTPOST,
+			TerraformKey.BuildAirfield => AIRFIELD,
+			TerraformKey.BuildRadarTower => RADAR_TOWER,
 			_ => null,
 		};
 	}
@@ -91,6 +96,7 @@ public class SaveTerraform {
 			TerraformKey.ClearWetlands => "clear_wetlands",
 			TerraformKey.ClearForest => "clear_forest",
 			TerraformKey.ClearDamage => "clear_damage",
+			TerraformKey.BuildColony or TerraformKey.BuildOutpost or TerraformKey.BuildAirfield or TerraformKey.BuildRadarTower => "structure",
 			_ => null,
 		};
 

@@ -498,6 +498,10 @@ public partial class MapUnit {
 
 		if (terraformProgress + turnProgress == totalCost) {
 			location.FinishWorkerJob(WorkerJob);
+			// A structure used this worker up (see Structures).
+			if (!owner.units.Contains(this)) {
+				return;
+			}
 		}
 
 		Wake();

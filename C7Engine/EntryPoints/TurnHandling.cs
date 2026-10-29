@@ -22,7 +22,8 @@ namespace C7Engine {
 			// Ships out where they may sink.
 			Naval.SinkShips(gameData, player);
 
-			var busyWorkers = gameData.mapUnits.Where(u => u.owner.id == player.id && u.WorkerJob != null);
+			// (A list: a worker that finishes a structure is used up.)
+			List<MapUnit> busyWorkers = gameData.mapUnits.Where(u => u.owner.id == player.id && u.WorkerJob != null).ToList();
 			foreach (MapUnit busyWorker in busyWorkers)
 				if (busyWorker.WorkerJob != null)
 					_ = busyWorker.PerformEndOfTurnAction();
