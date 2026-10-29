@@ -1591,6 +1591,8 @@ namespace C7GameData {
 				if (prto.Stealth) prototype.flags.Add(SaveUnitPrototype.Flag.Stealth);
 				if (prto.NuclearWeapon) prototype.flags.Add(SaveUnitPrototype.Flag.NuclearWeapon);
 				if (prto.ICBM) prototype.flags.Add(SaveUnitPrototype.Flag.ICBM);
+				if (prto.FootSoldier) prototype.flags.Add(SaveUnitPrototype.Flag.FootSoldier);
+				if (prto.TacticalMissile) prototype.flags.Add(SaveUnitPrototype.Flag.TacticalMissile);
 				if (prto.StartsGoldenAge) prototype.flags.Add(SaveUnitPrototype.Flag.StartsGoldenAge);
 				// -1 means the unit doesn't enslave.
 				if (prto.EnslaveResults >= 0 && prto.EnslaveResults < Prto.Length) prototype.enslaveResult = Prto[prto.EnslaveResults].Name;

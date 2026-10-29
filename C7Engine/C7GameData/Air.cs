@@ -240,12 +240,28 @@ namespace C7GameData {
 		// Paratroopers drop from one of their owner's cities onto land
 		// within their operational range that holds no foreign units or
 		// city, using their turn.
+		// Helicopters (Civilopedia): "air transports that can transport units
+		// to any square within their operational range, regardless of enemy
+		// units", foot soldiers only. They drop what they carry and stay at
+		// their base.
+		public static bool IsHelicopter(MapUnit unit) {
+			return unit.IsAirUnit() && unit.unitType.flags.Contains(SaveUnitPrototype.Flag.CanCarryFootUnitsOnly);
+		}
+
+		// Whether `unit` may airdrop this turn: a paratrooper in one of its
+		// owner's cities, or a helicopter carrying soldiers.
+		public static bool CanAirdropNow(MapUnit unit) {
+			if (!unit.unitType.actions.Contains(UnitAction.Airdrop) || !unit.movementPoints.canMove) {
+				return false;
+			}
+			return IsHelicopter(unit) ? unit.Passengers().Count > 0 : unit.IsLandUnit() && unit.location.cityAtTile?.owner == unit.owner;
+		}
+
 		public static bool CanAirdrop(MapUnit unit, Tile target) {
-			return unit.unitType.actions.Contains(UnitAction.Airdrop) && unit.IsLandUnit() && unit.movementPoints.canMove
-				&& unit.location.cityAtTile?.owner == unit.owner
+			return CanAirdropNow(unit)
 				&& Tile.IsTileValid(target) && target.IsLand() && target != unit.location
 				&& unit.location.DistanceTo(target) <= unit.unitType.operationalRange
-				&& !target.IsImpassableTo(unit.unitType)
+				&& (IsHelicopter(unit) ? unit.Passengers() : [unit]).All(u => !target.IsImpassableTo(u.unitType))
 				&& !(target.HasCity() && target.cityAtTile.owner != unit.owner)
 				&& target.unitsOnTile.All(u => u.owner == unit.owner);
 		}
@@ -254,11 +270,15 @@ namespace C7GameData {
 			if (!CanAirdrop(unit, target)) {
 				return false;
 			}
-			unit.Wake();
-			gameData.TeleportUnit(unit, target);
+			foreach (MapUnit soldier in IsHelicopter(unit) ? unit.Passengers() : [unit]) {
+				soldier.Wake();
+				soldier.loadedOnUnitId = null;
+				gameData.TeleportUnit(soldier, target);
+				soldier.movementPoints.onConsumeAll();
+				log.Information($"{soldier} airdrops to {target}{(soldier == unit ? "" : $" from {unit}")}");
+			}
 			unit.movementPoints.onConsumeAll();
 			unit.owner.tileKnowledge.AddTilesToKnown(target);
-			log.Information($"{unit} airdrops to {target}");
 			return true;
 		}
 

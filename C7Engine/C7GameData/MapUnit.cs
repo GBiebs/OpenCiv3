@@ -671,8 +671,19 @@ namespace C7GameData {
 			// An army needs a place for itself and one for each member.
 			bool hasRoom = FreeCapacity() >= 1 + mapUnit.Passengers().Count;
 
-			// TODO: type restrictions: only subs can carry nukes, carriers take aircraft, etc.
-			var suitableUnit = mapUnit.IsLandUnit();  // only land units in transports for now
+			// What each transport takes (Civilopedia): a carrier aircraft, which
+			// board it by re-basing (see Air); a missile sub tactical missiles;
+			// a helicopter foot soldiers, in a city; other transports land units.
+			HashSet<Save.SaveUnitPrototype.Flag> flags = unitType.flags;
+			HashSet<Save.SaveUnitPrototype.Flag> theirs = mapUnit.unitType.flags;
+			bool suitableUnit = mapUnit.IsLandUnit();
+			if (flags.Contains(Save.SaveUnitPrototype.Flag.CanCarryAircraft)) {
+				suitableUnit = false;
+			} else if (flags.Contains(Save.SaveUnitPrototype.Flag.CanCarryTacticalMissiles)) {
+				suitableUnit &= theirs.Contains(Save.SaveUnitPrototype.Flag.TacticalMissile);
+			} else if (flags.Contains(Save.SaveUnitPrototype.Flag.CanCarryFootUnitsOnly)) {
+				suitableUnit &= theirs.Contains(Save.SaveUnitPrototype.Flag.FootSoldier) && (!IsAirUnit() || location.HasCity());
+			}
 			return hasRoom && suitableUnit;
 		}
 
@@ -829,7 +840,7 @@ namespace C7GameData {
 					result.Add(Air.ActionFor(mission));
 				}
 			}
-			if (unitType.actions.Contains(UnitAction.Airdrop) && movementPoints.canMove && location.cityAtTile?.owner == owner) {
+			if (Air.CanAirdropNow(this)) {
 				result.Add(UnitAction.Airdrop);
 			}
 			if (unitType.actions.Contains(UnitAction.Airlift) && movementPoints.canMove && Air.HasAirport(location.cityAtTile)

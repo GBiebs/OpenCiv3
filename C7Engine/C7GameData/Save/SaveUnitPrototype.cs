@@ -51,6 +51,10 @@ namespace C7GameData.Save {
 			// A nuclear weapon (see Nuclear); an ICBM strikes anywhere.
 			NuclearWeapon,
 			ICBM,
+			// A foot soldier (helicopters carry only these) and a tactical
+			// missile (missile subs carry only these): see MapUnit.CanLoad.
+			FootSoldier,
+			TacticalMissile,
 		}
 
 		public string name { get; set; }

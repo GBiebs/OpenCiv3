@@ -1238,7 +1238,8 @@
       ],
       "flags": [
         "canCapture",
-        "amphibious"
+        "amphibious",
+        "footSoldier"
       ]
     },
     {
@@ -1322,7 +1323,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "footSoldier"
       ]
     },
     {
@@ -1405,7 +1407,8 @@
         "airlift"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "footSoldier"
       ]
     },
     {
@@ -1485,7 +1488,8 @@
         "airlift"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "footSoldier"
       ]
     },
     {
@@ -1564,7 +1568,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -1645,7 +1650,8 @@
         "Iron"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "footSoldier"
       ]
     },
     {
@@ -1902,7 +1908,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -1982,7 +1989,8 @@
         "airlift"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "footSoldier"
       ]
     },
     {
@@ -2067,7 +2075,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -2231,7 +2240,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -2397,7 +2407,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -3115,7 +3126,8 @@
       ],
       "unproducible": false,
       "flags": [
-        "nuclearWeapon"
+        "nuclearWeapon",
+        "tacticalMissile"
       ],
       "categories": [
         "Land"
@@ -5126,7 +5138,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5178,7 +5191,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5230,7 +5244,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5282,7 +5297,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5337,7 +5353,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5392,7 +5409,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5614,7 +5632,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -5669,7 +5688,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -6276,7 +6296,8 @@
       "flags": [
         "canCapture",
         "startsGoldenAge",
-        "amphibious"
+        "amphibious",
+        "footSoldier"
       ]
     },
     {
@@ -6385,7 +6406,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -6494,7 +6516,8 @@
       "flags": [
         "canCapture",
         "draftable",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -6634,7 +6657,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -6716,7 +6740,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
@@ -7764,7 +7789,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -8046,7 +8072,8 @@
       "flags": [
         "canCapture",
         "draftable",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -8337,7 +8364,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -8390,7 +8418,8 @@
       ],
       "flags": [
         "canCapture",
-        "startsGoldenAge"
+        "startsGoldenAge",
+        "footSoldier"
       ]
     },
     {
@@ -8572,7 +8601,8 @@
         "Terraform-3"
       ],
       "flags": [
-        "canCapture"
+        "canCapture",
+        "footSoldier"
       ]
     },
     {
@@ -8784,7 +8814,8 @@
       ],
       "flags": [
         "canCapture",
-        "zoneOfControl"
+        "zoneOfControl",
+        "footSoldier"
       ]
     },
     {
@@ -8862,7 +8893,8 @@
       ],
       "flags": [
         "canCapture",
-        "draftable"
+        "draftable",
+        "footSoldier"
       ]
     },
     {
