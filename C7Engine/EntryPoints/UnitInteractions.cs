@@ -50,6 +50,7 @@ namespace C7Engine {
 				if (unit.id == id) {
 					log.Verbose("Found matching unit with id " + id + " of type " + unit.GetType().Name + "; adding it to the wait queue");
 					waitQueue.Enqueue(unit);
+					return;
 				}
 			}
 			log.Warning("Failed to find a matching unit with id " + id);
