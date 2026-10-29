@@ -307,7 +307,10 @@ public class SoakTest {
 			+ $"{messages.OfType<MsgElectionResults>().Count()} elections, "
 			+ $"{messages.OfType<MsgSpaceshipPart>().Count()} spaceship parts built, "
 			+ $"victory points up to {gameData.players.Select(p => p.victoryPoints).DefaultIfEmpty(0).Max()}, "
-			+ $"{messages.OfType<MsgPrincessDelivered>().Count()} princesses delivered; governments: "
+			+ $"{messages.OfType<MsgPrincessDelivered>().Count()} princesses delivered, "
+			+ $"advances up to {gameData.players.Where(p => !p.isBarbarians).Select(p => p.knownTechs.Count).DefaultIfEmpty(0).Max()} "
+			+ $"(eras: {string.Join(" ", gameData.players.Where(p => !p.isBarbarians && !p.defeated).GroupBy(p => p.EraIndex()).OrderBy(g => g.Key).Select(g => $"{g.Key}x{g.Count()}"))}), "
+			+ $"{gameData.players.Count(p => !p.isBarbarians && p.HasTechWithFlag(SaveTech.Flag.EnablesMobilization))} civs that can mobilize; governments: "
 			+ string.Join(", ", gameData.players.Where(p => !p.isBarbarians && !p.defeated)
 				.GroupBy(p => p.government.name).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"));
 		Report($"OK seed {seed}: {gameData.turn} turns in {clock.Elapsed.TotalSeconds:F0} s, {civsLeft} civs and {cities} cities left{ending}; {events}", []);
