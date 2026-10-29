@@ -496,7 +496,8 @@ public partial class MapUnit {
 		var turnProgress = this.location.GetCurrentUnaccountedJobProgress(terraform);
 		var totalCost = (float)GetWorkerJobCost(this.location, this.WorkerJob);
 
-		if (terraformProgress + turnProgress == totalCost) {
+		// Done now if this turn's work finishes it (even with work to spare).
+		if (terraformProgress + turnProgress >= totalCost) {
 			location.FinishWorkerJob(WorkerJob);
 			// A structure used this worker up (see Structures).
 			if (!owner.units.Contains(this)) {

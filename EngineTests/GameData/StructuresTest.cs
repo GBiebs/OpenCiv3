@@ -56,8 +56,11 @@ public class StructuresTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	// Empty neutral land at least `distance` from both cities and from the
 	// other tiles given, with land around it.
-	private Tile Neutral(int distance = 6, params Tile[] awayFrom) {
+	private Tile Neutral(int distance = 6, params Tile[] awayFrom) => Neutral(false, distance, awayFrom);
+
+	private Tile Neutral(bool flat, int distance = 6, params Tile[] awayFrom) {
 		return gameData.map.tiles.Where(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity() && t.OwningPlayer() == null
+			&& (!flat || t.overlayTerrainType.movementCost == 1)
 			&& t.unitsOnTile.Count == 0 && !t.hasGoodyHut && !t.hasBarbarianCamp && t.Resource == Resource.NONE
 			&& t.DistanceTo(home.location) >= distance && t.DistanceTo(abroad.location) >= distance
 			&& awayFrom.All(a => t.DistanceTo(a) >= 6)
@@ -123,20 +126,28 @@ public class StructuresTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	[Fact]
 	public void BuildingOneUsesUpItsWorker() {
-		Tile site = Neutral(), other = Neutral(6, site);
+		Tile site = Neutral(flat: true), other = Neutral(6, site);
 		MapUnit worker = Spawn(us, "Worker", site);
 		MapUnit idle = Spawn(us, "Worker", site);
 		MapUnit second = Spawn(us, "Worker", other);
-		worker.PerformTerraformAction(Job(OUTPOST));
-		second.PerformTerraformAction(Job(AIRFIELD));
-		Assert.Contains(worker, us.units);
 
-		TurnHandling.OnEndTurn(us);
+		// A job the worker finishes this turn, with work to spare, is done at
+		// once (user, 2026-10-29: a 1-turn outpost waited for the end of the turn).
+		Assert.True(worker.workerSpeed() > site.overlayTerrainType.movementCost * Job(OUTPOST).TurnsToComplete);
+		worker.PerformTerraformAction(Job(OUTPOST));
 		Assert.True(Structures.Has(site, OUTPOST, us));
-		Assert.True(Structures.Has(other, AIRFIELD, us));
 		Assert.DoesNotContain(worker, us.units);
-		Assert.DoesNotContain(second, us.units);
 		Assert.Contains(idle, us.units);
+
+		// A longer one at the end of the turn.
+		Job(AIRFIELD).TurnsToComplete = 5;
+		second.PerformTerraformAction(Job(AIRFIELD));
+		Assert.Contains(second, us.units);
+		for (int turn = 0; turn < 5 && us.units.Contains(second); turn++) {
+			TurnHandling.OnEndTurn(us);
+		}
+		Assert.True(Structures.Has(other, AIRFIELD, us));
+		Assert.DoesNotContain(second, us.units);
 	}
 
 	[Fact]
