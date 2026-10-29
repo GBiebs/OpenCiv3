@@ -148,6 +148,20 @@ public partial class Game : Node {
 	private bool IsMovingCamera;
 	private Vector2 OldPosition;
 
+	// A left press choosing where the selected unit goes (Civ3): while the
+	// button is held the route, the turns and the target show (gotoInfo);
+	// releasing moves the unit there. A quick click on our own units
+	// selects them instead, and on our own city waits to see whether it's
+	// a double click, which opens the city.
+	private Tile movePressTile = null;
+	private ulong movePressStartMs = 0;
+	private const ulong QuickClickMs = 250;
+	private GotoInfo pendingCityClick = null;
+
+	// Moving the mouse to an edge of the window scrolls the map that way.
+	private const int EdgeScrollMargin = 3;
+	private const float EdgeScrollSpeed = 900;
+
 	[Export]
 	private PopupOverlay popupOverlay;
 	[Export]
@@ -730,6 +744,7 @@ public partial class Game : Node {
 
 	public override void _Process(double delta) {
 		ProcessActions();
+		EdgeScroll(delta);
 
 		if (!EngineStorage.HasPendingAnimations())
 			EngineStorage.ProcessNextMessageToEngine();
@@ -951,8 +966,25 @@ public partial class Game : Node {
 	private void HandleLeftMouseButton(InputEventMouseButton eventMouseButton) {
 		GetViewport().SetInputAsHandled();
 		Control uiHover = GetViewport().GuiGetHoveredControl();
+		if (!eventMouseButton.IsPressed() && movePressTile != null) {
+			EndMovePress(eventMouseButton);
+			return;
+		}
 		// Can't drag the map when the mouse is over a ui element
 		if (eventMouseButton.IsPressed() && uiHover is not TextureButton) {
+			// The second click of a double click on our city opens it.
+			if (pendingCityClick != null && PositionToTile(eventMouseButton.Position) == pendingCityClick.destinationTile) {
+				doubleClickHandler.Accept(eventMouseButton);
+				return;
+			}
+			// With a unit selected a left press picks where it goes; with
+			// none, a left drag pans the map (user, 2026-10-29).
+			if (CanClickToMove()) {
+				movePressTile = PositionToTile(eventMouseButton.Position);
+				movePressStartMs = Time.GetTicksMsec();
+				gotoInfo = GetGotoInfo(eventMouseButton.Position);
+				return;
+			}
 			OldPosition = eventMouseButton.Position;
 			IsMovingCamera = true;
 
@@ -964,6 +996,58 @@ public partial class Game : Node {
 		} else {
 			IsMovingCamera = false;
 		}
+	}
+
+	private bool CanClickToMove() {
+		return CurrentState == GameState.PlayerTurn && gotoInfo == null && airTargetInfo == null && bombardInfo == null
+			&& IsMapUnitValid(CurrentlySelectedUnit) && CurrentlySelectedUnit.owner == controller
+			&& CurrentlySelectedUnit.GetAvailableActions().Contains(UnitAction.Goto);
+	}
+
+	private void EndMovePress(InputEventMouseButton release) {
+		Tile tile = PositionToTile(release.Position);
+		bool quick = tile == movePressTile && Time.GetTicksMsec() - movePressStartMs < QuickClickMs;
+		GotoInfo move = gotoInfo;
+		movePressTile = null;
+		SetGotoMode(false);
+		if (tile == null || move == null) {
+			return;
+		}
+		if (quick && tile.cityAtTile?.owner == controller) {
+			pendingCityClick = move;
+			doubleClickHandler.Accept(release);
+		} else if (quick && tile.unitsOnTile.Any(u => u.owner == controller)) {
+			HandleUnitSelectionTileClick(release);
+		} else {
+			ResolveMovement(move);
+		}
+	}
+
+	// Scrolls the map while the mouse rests at an edge of the window.
+	private void EdgeScroll(double delta) {
+		if (IsMovingCamera || HasVisibleModal() || interactablePopUpController.Visible || !GetWindow().HasFocus()) {
+			return;
+		}
+		Rect2I window = new(DisplayServer.WindowGetPosition(), DisplayServer.WindowGetSize());
+		if (!window.HasPoint(DisplayServer.MouseGetPosition())) {
+			return;
+		}
+		Vector2 mouse = GetViewport().GetMousePosition();
+		Vector2 direction = EdgeScrollDirection(mouse, GetViewport().GetVisibleRect().Size);
+		if (direction == Vector2.Zero) {
+			return;
+		}
+		mapView.cameraLocation += direction * EdgeScrollSpeed * (float)delta;
+		// A move being picked follows the tile now under the mouse.
+		if (movePressTile != null && gotoInfo != null) {
+			gotoInfo = GetGotoInfo(mouse);
+		}
+	}
+
+	private static Vector2 EdgeScrollDirection(Vector2 mouse, Vector2 size) {
+		return new(
+			mouse.X <= EdgeScrollMargin ? -1 : mouse.X >= size.X - 1 - EdgeScrollMargin ? 1 : 0,
+			mouse.Y <= EdgeScrollMargin ? -1 : mouse.Y >= size.Y - 1 - EdgeScrollMargin ? 1 : 0);
 	}
 
 	private Tile PositionToTile(Vector2 position) {
@@ -981,6 +1065,18 @@ public partial class Game : Node {
 	}
 
 	private void OnSingleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
+		// One click on our city: our units there are selected, or else the
+		// selected unit goes there.
+		if (pendingCityClick != null) {
+			GotoInfo move = pendingCityClick;
+			pendingCityClick = null;
+			if (move.destinationTile.unitsOnTile.Any(u => u.owner == controller)) {
+				HandleUnitSelectionTileClick(eventMouseButton);
+			} else {
+				ResolveMovement(move);
+			}
+			return;
+		}
 		if (gotoInfo != null) {
 			this.ResolveMovement(gotoInfo);
 			this.SetGotoMode(false);
@@ -1001,6 +1097,7 @@ public partial class Game : Node {
 	}
 
 	private void OnDoubleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
+		pendingCityClick = null;
 		Tile tile = PositionToTile(eventMouseButton.Position);
 		if (tile?.cityAtTile?.owner == controller) {
 			EngineStorage.ReadGameData((GameData gameData) => {
@@ -1015,8 +1112,9 @@ public partial class Game : Node {
 			return;
 		}
 
-		// TODO: This should really be the top unit.
-		MapUnit unit = tile.unitsOnTile.FirstOrDefault();
+		// TODO: This should really be the top unit. One of ours that can
+		// still move, so a click on a stack selects someone to order.
+		MapUnit unit = tile.unitsOnTile.FirstOrDefault(u => u.owner == controller && u.movementPoints.canMove) ?? tile.unitsOnTile.FirstOrDefault();
 		if (unit == null || unit.owner != controller) {
 			return;
 		}
@@ -1126,6 +1224,10 @@ public partial class Game : Node {
 			GetViewport().SetInputAsHandled();
 			mapView.cameraLocation += OldPosition - eventMouseMotion.Position;
 			OldPosition = eventMouseMotion.Position;
+		} else if (movePressTile != null && !Input.IsMouseButtonPressed(MouseButton.Left)) {
+			// Released somewhere we didn't hear about (over the interface).
+			movePressTile = null;
+			SetGotoMode(false);
 		} else if (gotoInfo != null) {
 			gotoInfo = GetGotoInfo(eventMouseMotion.Position);
 		} else if (bombardInfo != null) {
