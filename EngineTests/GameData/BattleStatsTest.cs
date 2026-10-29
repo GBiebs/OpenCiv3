@@ -211,6 +211,21 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 		Assert.All(EngineStorage.gameData.players.Where(p => p != human), p => Assert.Equal(0, p.stats.TurnCount));
 	}
 
+	// Every order or decision the player sends counts, so a new kind of
+	// order isn't missed; only the engine's own messages don't.
+	[Fact]
+	public void EveryOrderIsAnAction() {
+		HashSet<Type> notActions = [typeof(MsgShutdownEngine), typeof(MsgEndTurn), typeof(MsgSetAnimationsEnabled),
+			typeof(MsgToggleAnimationsEnabled), typeof(MsgDiplomacyCompleted), typeof(MsgUiDisengaged)];
+		List<Type> messages = typeof(MessageToEngine).Assembly.GetTypes()
+			.Where(t => t.IsSubclassOf(typeof(MessageToEngine)) && !t.IsAbstract).ToList();
+		Assert.True(messages.Count > 40);
+		foreach (Type type in messages) {
+			MessageToEngine message = (MessageToEngine)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(type);
+			Assert.True(message.IsPlayerAction != notActions.Contains(type), type.Name);
+		}
+	}
+
 	[Fact]
 	public void ActionsDuringATurnGoIntoThatTurnsEntry() {
 		C7GameData.GameData gameData = NewGame();

@@ -116,6 +116,7 @@ namespace C7Engine {
 
 	// The human's air unit flies a mission (see Air).
 	public class MsgFlyMission : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private readonly ID unitId;
 		private readonly Air.Mission mission;
 		private readonly int tileX;
@@ -137,6 +138,7 @@ namespace C7Engine {
 
 	// The human's unit airdrops, or airlifts, to a tile (see Air).
 	public class MsgAirMove : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private readonly ID unitId;
 		private readonly bool airlift;
 		private readonly int tileX;
@@ -215,6 +217,8 @@ namespace C7Engine {
 	// Actions that require more than a 1 or 2 line lambda should probably use
 	// a custom subclass.
 	public class ActionToEngineMsg : MessageToEngine {
+		// The UI's unit orders: hold, explore, automate, disband.
+		public override bool IsPlayerAction => true;
 		private Func<Task> action;
 		public ActionToEngineMsg(Func<Task> action) {
 			this.action = action;
@@ -234,6 +238,7 @@ namespace C7Engine {
 	// Switches the player government to anarchy and determines when the player
 	// can exit anarchy.
 	public class StartGovernmentTransitionMsg : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private Player player;
 
 		public StartGovernmentTransitionMsg(Player p) {
@@ -249,6 +254,7 @@ namespace C7Engine {
 	}
 
 	public class SelectGovernmentMsg : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private Player player;
 		private Government government;
 
@@ -282,6 +288,7 @@ namespace C7Engine {
 
 	// The player tries a diplomatic or spy mission (see Espionage).
 	public class MsgEspionageMission : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID playerId;
 		private ID targetId;
 		private ID cityId;
@@ -314,6 +321,7 @@ namespace C7Engine {
 	// The player sends home its troops in another civ's land (see
 	// BorderWarnings).
 	public class MsgSendTroopsHome : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID playerId;
 		private ID ownerId;
 
@@ -335,6 +343,7 @@ namespace C7Engine {
 	// The target the human's stealth attacker picked (MsgChooseStealthTarget),
 	// or null to call the attack off. MapUnit.Move waits for it.
 	public class MsgStealthTarget : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		public readonly ID targetId;
 
 		public MsgStealthTarget(ID targetId) {
@@ -346,6 +355,7 @@ namespace C7Engine {
 
 	// The human launches their complete spaceship, winning the game.
 	public class MsgLaunchSpaceship : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private readonly ID playerId;
 
 		public MsgLaunchSpaceship(ID playerId) {
@@ -363,6 +373,7 @@ namespace C7Engine {
 	// Whether the human, owning the United Nations, calls an election
 	// (MsgElectionOffer). UnitedNations waits for it.
 	public class MsgCallElection : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		public readonly bool call;
 
 		public MsgCallElection(bool call) {
@@ -375,6 +386,7 @@ namespace C7Engine {
 	// The human's vote in a United Nations election (MsgVoteRequest): a
 	// candidate, or null to abstain. UnitedNations waits for it.
 	public class MsgVote : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		public readonly ID candidateId;
 
 		public MsgVote(ID candidateId) {
@@ -386,6 +398,7 @@ namespace C7Engine {
 
 	// The human's answer to an AI's demand for tribute (MsgTributeDemanded).
 	public class MsgTributeAnswer : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID demanderId;
 		private ID victimId;
 		private TradeOffer demand;
@@ -415,6 +428,7 @@ namespace C7Engine {
 
 	// The player builds an embassy with another civ (see Embassies).
 	public class MsgEstablishEmbassy : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID playerId;
 		private ID otherId;
 
@@ -440,6 +454,7 @@ namespace C7Engine {
 	// The player set a city's governor; or every city's, and the default
 	// for cities to come.
 	public class MsgSetGovernor : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID cityID;
 		private CityGovernor governor;
 		private bool allCities;
@@ -760,6 +775,7 @@ namespace C7Engine {
 	}
 
 	public class MsgPillage : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgPillage(ID unitId) {
@@ -772,6 +788,7 @@ namespace C7Engine {
 	}
 
 	public class MsgSetMobilization : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID playerId;
 		private bool mobilize;
 
@@ -787,6 +804,7 @@ namespace C7Engine {
 	}
 
 	public class MsgBuildArmy : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgBuildArmy(ID unitId) {
@@ -799,6 +817,7 @@ namespace C7Engine {
 	}
 
 	public class MsgUnitHurryProduction : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgUnitHurryProduction(ID unitId) {
@@ -811,6 +830,7 @@ namespace C7Engine {
 	}
 
 	public class MsgStartAgeOfScience : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgStartAgeOfScience(ID unitId) {
@@ -823,6 +843,7 @@ namespace C7Engine {
 	}
 
 	public class MsgJoinCity : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgJoinCity(ID unitId) {
@@ -835,6 +856,7 @@ namespace C7Engine {
 	}
 
 	public class MsgUpgradeUnit : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private ID unitId;
 
 		public MsgUpgradeUnit(ID unitId) {
@@ -852,6 +874,7 @@ namespace C7Engine {
 
 	// The player drafts a citizen of one of their cities.
 	public class MsgDraft : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private City city;
 		private ID playerId;
 
@@ -872,6 +895,7 @@ namespace C7Engine {
 
 	// The player sells a building in one of their cities.
 	public class MsgSellBuilding : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private City city;
 		private Building building;
 		private ID playerId;
@@ -894,6 +918,7 @@ namespace C7Engine {
 
 	// The player chose to raze a city they've just captured.
 	public class MsgRazeCity : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private City city;
 		private ID playerId;
 
@@ -910,6 +935,7 @@ namespace C7Engine {
 
 	// The human refuses a city that flipped to them (CultureFlip.Rebuff).
 	public class MsgRebuffRebels : MessageToEngine {
+		public override bool IsPlayerAction => true;
 		private City city;
 
 		public MsgRebuffRebels(City city) {
