@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using C7Engine;
+using C7Engine.AI;
 using C7Engine.Pathing;
 using C7GameData;
 using C7GameData.AIData;
@@ -292,6 +293,105 @@ public class StructuresTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(field, fighter.location);
 		field.overlays.structureOwner = them;
 		Assert.False(Air.IsBase(fighter, field));
+	}
+
+	[Fact]
+	public void TheAIMovesPlanesToItsAirfields() {
+		MapUnit bomber = Spawn(us, "Bomber", home.location);
+		us.DeclareWarOn(them, gameData.turn);
+		Tile field = gameData.map.tiles.Where(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity() && t.OwningPlayer() == null
+				&& t.unitsOnTile.Count == 0 && t.DistanceTo(abroad.location) < home.location.DistanceTo(abroad.location) - 2)
+			.OrderBy(t => t.DistanceTo(home.location)).First();
+		Assert.Null(AirAI.FrontBase(bomber, us, [them]));
+		Place(field, AIRFIELD, us);
+		Assert.Equal(field, AirAI.FrontBase(bomber, us, [them]));
+	}
+}
+
+// An AI civ's workers build colonies on resources it lacks.
+public class StructuresAITest : IClassFixture<SaveGameFixture>, IDisposable {
+	private readonly C7GameData.GameData gameData;
+	private readonly Player us;
+	private readonly City home;
+	private readonly Tile site;
+	private readonly Resource resource;
+
+	public StructuresAITest(SaveGameFixture fixture) {
+		gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		EngineStorage.animationsEnabled = false;
+		EngineStorage.messagesToUI.Clear();
+		us = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		home = CityInteractions.BuildCity(us.units.First(u => u.unitType.isSettler).location, us, "Home");
+		foreach (Tech t in gameData.techs) us.knownTechs.Add(t.id);
+
+		// One resource we lack, 3 tiles out; none other around.
+		resource = gameData.Resources.First(r => r.Category == ResourceCategory.STRATEGIC);
+		List<Tile> around = home.location.GetTilesWithinTileSquare(WorkerAI.ColonyRange).Where(Tile.IsTileValid).ToList();
+		foreach (Tile t in around) {
+			t.Resource = Resource.NONE;
+		}
+		MapUnit walker = Spawn("Worker", home.location);
+		PathingAlgorithm pathing = PathingAlgorithmChooser.GetAlgorithm(walker);
+		site = around.Where(t => t.IsLand() && !t.HasCity() && t.OwningPlayer() == null && t.unitsOnTile.Count == 0 && t.DistanceTo(home.location) == 3)
+			.First(t => pathing.PathFrom(home.location, t, walker)?.PathLength() > 0);
+		site.Resource = resource;
+		walker.RemoveFromPlay();
+	}
+
+	public void Dispose() {
+		EngineStorage.messagesToUI.Clear();
+	}
+
+	private MapUnit Spawn(string type, Tile tile, Player owner = null) => gameData.SpawnUnit(owner ?? us, gameData.unitPrototypes.Find(u => u.name == type), tile);
+
+	[Fact]
+	public async Task TheAIColonizesAResourceItLacks() {
+		MapUnit worker = Spawn("Worker", home.location);
+		Spawn("Worker", home.location);
+		WorkerAIData plan = WorkerAI.MakeAiData(worker, us);
+		Assert.Equal(COLONY, plan.workerMove.Improvement?.key);
+		Assert.Equal(site, plan.destination);
+
+		// Another worker doesn't head for the same site.
+		worker.currentAI = new WorkerAI(plan);
+		Assert.NotEqual(site, WorkerAI.MakeAiData(Spawn("Worker", home.location), us)?.destination);
+
+		// There, it roads the tile, then builds the colony.
+		gameData.TeleportUnit(worker, site);
+		worker.movementPoints.reset(worker.unitType.movement);
+		await worker.currentAI.PlayTurn(us, worker);
+		Assert.True(worker.WorkerJob?.ProvidesRoad());
+		for (int turn = 0; turn < 20 && !site.IsRoaded(); turn++) {
+			TurnHandling.OnEndTurn(us);
+		}
+		Assert.True(site.IsRoaded());
+		worker.movementPoints.reset(worker.unitType.movement);
+		await worker.currentAI.PlayTurn(us, worker);
+		TurnHandling.OnEndTurn(us);
+		Assert.True(Structures.Has(site, COLONY, us));
+		Assert.DoesNotContain(worker, us.units);
+	}
+
+	[Fact]
+	public void NotWhenItHasTheResourceOrOneWorkerOrForAHuman() {
+		foreach (MapUnit start in us.units.Where(u => u.unitType.name == "Worker").ToList()) {
+			start.RemoveFromPlay();
+		}
+		MapUnit worker = Spawn("Worker", home.location);
+		Assert.NotEqual(COLONY, WorkerAI.MakeAiData(worker, us)?.workerMove.Improvement?.key);
+		MapUnit second = Spawn("Worker", home.location);
+		Assert.Equal(COLONY, WorkerAI.MakeAiData(worker, us)?.workerMove.Improvement?.key);
+
+		home.location.Resource = resource;
+		gameData.InvalidateCachedTradeNetwork();
+		Assert.NotEqual(COLONY, WorkerAI.MakeAiData(worker, us)?.workerMove.Improvement?.key);
+		home.location.Resource = Resource.NONE;
+		gameData.InvalidateCachedTradeNetwork();
+
+		// A human's automated workers don't give themselves up.
+		us.isHuman = true;
+		Assert.NotEqual(COLONY, WorkerAI.MakeAiData(worker, us)?.workerMove.Improvement?.key);
 	}
 }
 

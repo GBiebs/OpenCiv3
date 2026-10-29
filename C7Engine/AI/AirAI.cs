@@ -8,8 +8,9 @@ namespace C7Engine.AI {
 	// target in range it can see (enemy units near our cities first, then any
 	// enemy units, then enemy cities), skipping ones the anti-aircraft fire
 	// there would likely down; a fighter with nothing to bomb flies air
-	// superiority. Planes with nothing to do move to the city nearest the
-	// enemy within re-basing range. Paratroopers stay with the ground units.
+	// superiority. Planes with nothing to do move to the city (or airfield)
+	// nearest the enemy within re-basing range. Paratroopers stay with the
+	// ground units.
 	public static class AirAI {
 		// Don't bomb where anti-aircraft fire downs a plane this often (%).
 		internal const int MaxShootDownPercent = 25;
@@ -57,15 +58,17 @@ namespace C7Engine.AI {
 			return (nearUs ? 3 : 1) * units + (t.HasCity() ? 10 : 0);
 		}
 
-		// Our city nearest an enemy city that the plane can re-base to, if
-		// it's nearer than where the plane is.
+		// Our city or airfield nearest an enemy city that the plane can
+		// re-base to, if it's nearer than where the plane is.
 		internal static Tile FrontBase(MapUnit plane, Player player, HashSet<Player> enemies) {
 			List<Tile> enemyCities = enemies.SelectMany(e => e.cities).Select(c => c.location).ToList();
 			if (enemyCities.Count == 0 || !Air.CanFly(plane, Air.Mission.Rebase)) {
 				return null;
 			}
 			int Distance(Tile t) => enemyCities.Min(e => e.DistanceTo(t));
-			Tile best = player.cities.Select(c => c.location)
+			IEnumerable<Tile> airfields = plane.location.GetTilesWithinTileSquare(plane.unitType.operationalRange * (player.rules?.air.rebaseRangeFactor ?? 6))
+				.Where(t => Tile.IsTileValid(t) && Structures.Has(t, Tile.TileOverlays.AIRFIELD, player));
+			Tile best = player.cities.Select(c => c.location).Concat(airfields)
 				.Where(t => Air.CanFly(plane, Air.Mission.Rebase, t))
 				.OrderBy(Distance)
 				.FirstOrDefault();

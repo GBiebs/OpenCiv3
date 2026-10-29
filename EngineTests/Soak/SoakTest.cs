@@ -298,6 +298,10 @@ public class SoakTest {
 			+ $"{messages.OfType<MsgVolcano>().Where(m => m.what == MsgVolcano.Event.Erupted).Select(m => m.tile).Distinct().Count()} volcanoes erupted, "
 			+ $"{messages.OfType<MsgGlobalWarming>().Count()} tiles changed by global warming, "
 			+ $"{messages.OfType<MsgPlague>().Count()} plague strikes, "
+			+ $"structures now: {gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.COLONY)} colonies "
+			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.OUTPOST)} outposts "
+			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.AIRFIELD)} airfields "
+			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.RADAR_TOWER)} radar towers, "
 			+ $"{messages.OfType<MsgGoodyHut>().Count()} goody huts found ("
 			+ string.Join(" ", messages.OfType<MsgGoodyHut>().GroupBy(m => m.outcome).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"))
 			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left), "

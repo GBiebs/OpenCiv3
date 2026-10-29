@@ -15,7 +15,20 @@ namespace C7Engine {
 			data = d;
 		}
 
+		// The worker's plan (other workers check it before heading for the
+		// same colony site).
+		internal WorkerAIData Plan => data;
+
+		// An AI civ builds a colony on a luxury or strategic resource it lacks,
+		// outside anyone's borders, within this many tiles of one of its cities.
+		internal const int ColonyRange = 4;
+
 		public static WorkerAIData MakeAiData(MapUnit unit, Player player) {
+			// A colony brings home a resource we lack (see Structures).
+			if (GetColonyPlan(unit, player) is WorkerAIData colony) {
+				return colony;
+			}
+
 			// First, check if there are any tiles our civ works that we can
 			// improve.
 			List<Tile> highPriorityTiles = new();
@@ -62,8 +75,13 @@ namespace C7Engine {
 				return UnitAI.Result.Error;
 			}
 
-			// If we're at the destination, do our planned move.
+			// If we're at the destination, do our planned move. A structure's
+			// tile gets a road first, joining it to our network.
 			if (unit.location == data.destination) {
+				if (Structures.IsStructure(data.workerMove.Improvement) && !unit.location.IsRoaded()
+					&& EngineStorage.gameData.Terraforms.FirstOrDefault(t => t.ProvidesRoad() && unit.CanPerformTerraformAction(t)) is Terraform road) {
+					return PerformWorkerMove(unit, road);
+				}
 				return PerformWorkerMove(unit, data.workerMove);
 			}
 
@@ -121,6 +139,39 @@ namespace C7Engine {
 			}
 
 			return UnitAI.Result.Done;
+		}
+
+		// A plan to build a colony (AI civs only; a human's automated workers
+		// don't give themselves up): the nearest luxury or strategic resource
+		// we lack, outside anyone's borders and within ColonyRange of one of
+		// our cities, that no other worker of ours is headed for, while we
+		// have another worker. On its way the worker roads the tiles it
+		// crosses (see PlayTurnImpl).
+		private static WorkerAIData? GetColonyPlan(MapUnit unit, Player player) {
+			GameData gameData = EngineStorage.gameData;
+			Terraform colony = gameData.Terraforms.Find(t => t.Improvement?.key == Tile.TileOverlays.COLONY);
+			if (player.isHuman || colony == null || !unit.unitType.terraformActions.Contains(colony) || player.cities.Count == 0
+				|| player.units.Count(u => u.unitType.terraformActions.Contains(colony)) < 2) {
+				return null;
+			}
+			City capital = player.cities.Find(c => c.capital) ?? player.cities[0];
+			Dictionary<Resource, int> have = gameData.GetTradeNetwork().GetResourcesAvailableToCity(player, capital);
+			HashSet<Tile> headedFor = player.units.Where(u => u != unit && u.currentAI is WorkerAI w && w.Plan?.workerMove == colony)
+				.Select(u => ((WorkerAI)u.currentAI).Plan.destination).ToHashSet();
+			PathingAlgorithm algorithm = PathingAlgorithmChooser.GetAlgorithm(unit);
+			IEnumerable<Tile> sites = player.cities.SelectMany(c => c.location.GetTilesWithinTileSquare(ColonyRange))
+				.Where(t => Tile.IsTileValid(t) && !have.ContainsKey(t.Resource) && !headedFor.Contains(t)
+					&& colony.MeetsRequirements(player, t))
+				.Distinct().OrderBy(t => t.DistanceTo(unit.location));
+			foreach (Tile site in sites) {
+				TilePath path = algorithm.PathFrom(unit.location, site, unit);
+				if (site != unit.location && (path == null || path.PathLength() == 0)) {
+					continue;
+				}
+				log.Information($"Set AI for unit at {unit.location} to build a colony at {site}");
+				return new WorkerAIData() { workerMove = colony, destination = site, pathToDestination = path };
+			}
+			return null;
 		}
 
 		// Given a list of tile candidates, return a plan to improve the nearest
