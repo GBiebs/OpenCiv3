@@ -45,6 +45,14 @@ public class PlayerStats {
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> cities = new();
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> tilesOwned = new();
 	[JsonConverter(typeof(CompactIntListConverter))] public List<int> tilesImproved = new();
+	// Civ3's histograph: the score (the average of the turn scores, which
+	// decides the game at the time limit), power (see Power), the culture
+	// of all the civ's cities, and victory points. From the turn's history
+	// record; 0 for turns before they were recorded here.
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> score = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> power = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> culture = new();
+	[JsonConverter(typeof(CompactIntListConverter))] public List<int> victoryPoints = new();
 
 	// Money, from the turn's finances. Gold income = taxes, tax collectors, gold
 	// from other civs, interest and wealth; expenses = building maintenance, unit
@@ -85,7 +93,7 @@ public class PlayerStats {
 	public IEnumerable<List<int>> AllSeries() => [
 		shieldsProduced, shieldsCorrupted, shieldsLostToDisorder, shieldsLostToAnarchy, shieldsOverflowed, shieldsCapped,
 		foodSurplus, foodWasted,
-		population, cities, tilesOwned, tilesImproved,
+		population, cities, tilesOwned, tilesImproved, score, power, culture, victoryPoints,
 		goldIncome, goldExpenses, netGold, commerce, commerceCorrupted, beakers,
 		actions, battles, battlesWon, battleExpectedWins10k, battleVariance10k,
 	];
@@ -98,6 +106,7 @@ public class PlayerStats {
 
 	/// Opens the entry for <paramref name="turn"/>; the Record methods add to it.
 	public void StartTurn(int turn) {
+		Align();
 		turns.Add(turn);
 		foreach (List<int> series in AllSeries()) {
 			series.Add(0);
@@ -106,6 +115,16 @@ public class PlayerStats {
 	}
 
 	private bool HasOpenTurn => turnOpen;
+
+	// A save made before a series existed has it shorter than the turns:
+	// it gets zeros for those turns, at the front.
+	private void Align() {
+		foreach (List<int> series in AllSeries()) {
+			if (series.Count < turns.Count) {
+				series.InsertRange(0, Enumerable.Repeat(0, turns.Count - series.Count));
+			}
+		}
+	}
 
 	private static void Add(List<int> series, int amount) {
 		series[^1] += amount;
@@ -138,13 +157,24 @@ public class PlayerStats {
 	}
 
 	/// Records the end-of-turn snapshot and closes the entry.
-	public void EndTurn(Player player, LandCount land) {
+	public void EndTurn(Player player, LandCount land, HistTurnRecord history = null) {
 		if (!HasOpenTurn) return;
 		population[^1] = player.cities.Sum(c => c.residents.Count);
 		cities[^1] = player.cities.Count;
 		tilesOwned[^1] = land.owned;
 		tilesImproved[^1] = land.improved;
+		if (history != null) {
+			score[^1] = history.Score;
+			power[^1] = history.Power;
+			culture[^1] = history.Culture;
+			victoryPoints[^1] = history.VP;
+		}
 		turnOpen = false;
+	}
+
+	// The player's history record for the turn just played, if any.
+	public static HistTurnRecord LastHistory(Player player, GameData gameData) {
+		return gameData.history.GetValueOrDefault(player.id.ToString())?.LastOrDefault();
 	}
 
 	// Actions and battles happen while a turn is played, after turn processing
@@ -154,7 +184,7 @@ public class PlayerStats {
 	private void UseCurrentTurnEntry(Player player, GameData gameData) {
 		if (turns.Count > 0 && turns[^1] == gameData.turn) return;
 		StartTurn(gameData.turn);
-		EndTurn(player, CountLand(gameData.map).GetValueOrDefault(player));
+		EndTurn(player, CountLand(gameData.map).GetValueOrDefault(player), LastHistory(player, gameData));
 	}
 
 	public void RecordAction(Player player, GameData gameData) {

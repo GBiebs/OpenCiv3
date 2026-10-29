@@ -115,7 +115,7 @@ namespace C7Engine {
 				// Snapshot the statistics once every player's cities have grown and borders expanded.
 				Dictionary<Player, PlayerStats.LandCount> land = PlayerStats.CountLand(gameData.map);
 				foreach (Player player in gameData.players) {
-					player.stats.EndTurn(player, land.GetValueOrDefault(player));
+					player.stats.EndTurn(player, land.GetValueOrDefault(player), PlayerStats.LastHistory(player, gameData));
 				}
 
 				CheckVictory(gameData);

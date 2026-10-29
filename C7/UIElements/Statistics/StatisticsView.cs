@@ -88,7 +88,9 @@ public partial class StatisticsView : CenterContainer {
 		// A one-off rating shown as bars rather than a line over turns.
 		bool startPosition = false,
 		// Totals by unit type, shown as a table rather than a line over turns.
-		bool unitTable = false);
+		bool unitTable = false,
+		// Only in games that score victory points (Conquests' game types).
+		bool victoryPointsOnly = false);
 
 	private static string Whole(double v) => v.ToString("N0");
 	private static string Percent(double v) => v.ToString("P1");
@@ -124,6 +126,15 @@ public partial class StatisticsView : CenterContainer {
 	private static readonly List<Stat> Stats = [
 		new("Start position", "start rating, against the game's average start (100)", "Start position", "start rating (100 = average)",
 			s => ([], []), s => s.startRating?.rating, v => v.ToString("0"), cardLabel: "100 = average", startPosition: true),
+		// Civ3's histograph.
+		new("Score", "the game's score: the average of the turns' scores", "Score", "score now",
+			s => PerTurn(s, s.score), s => s.score.LastOrDefault(), Whole),
+		new("Power", "cities, gold, culture, advances, resources, military, nukes and wonders", "Power", "power now",
+			s => PerTurn(s, s.power), s => s.power.LastOrDefault(), Whole),
+		new("Culture", "the culture of all the civ's cities", "Culture", "culture points now",
+			s => PerTurn(s, s.culture), s => s.culture.LastOrDefault(), Whole),
+		new("Victory points", "victory points, from Conquests' game types", "Victory points", "victory points now",
+			s => PerTurn(s, s.victoryPoints), s => s.victoryPoints.LastOrDefault(), Whole, victoryPointsOnly: true),
 		new("Production", "shields per turn", "Production (shields per turn)", "shields in total",
 			s => PerTurn(s, s.shieldsProduced), s => PlayerStats.Sum(s.shieldsProduced), Whole),
 		new("Production efficiency", "share of usable shields that went into builds", "Production efficiency", "of usable shields used",
@@ -147,7 +158,8 @@ public partial class StatisticsView : CenterContainer {
 	private static Stat StatNamed(string name) => Stats.First(s => s.name == name);
 
 	// The start ratings are a judge's view of the map: only shown once the game is over.
-	private List<Stat> VisibleStats => Stats.Where(s => endOfGame || !s.startPosition).ToList();
+	private List<Stat> VisibleStats => Stats.Where(s => (endOfGame || !s.startPosition)
+		&& (!s.victoryPointsOnly || civs.Any(c => c.stats.victoryPoints.Any(v => v > 0)))).ToList();
 
 	// Game actions only exist for human players.
 	private IEnumerable<CivStats> CivsFor(Stat stat) =>
@@ -285,7 +297,7 @@ public partial class StatisticsView : CenterContainer {
 
 		AddLegend(new Vector2(78, 172), vertical: false, width: 880);
 
-		string[] charts = ["Production", "Population", "Commerce", "Improved tiles", "Production efficiency", "Luck"];
+		string[] charts = ["Score", "Power", "Culture", "Production", "Population", "Commerce"];
 		for (int i = 0; i < charts.Length; i++) {
 			Stat stat = StatNamed(charts[i]);
 			Rect2 rect = new(76 + (i % 3) * 296, 202 + (i / 3) * 252, 284, 240);
@@ -325,12 +337,14 @@ public partial class StatisticsView : CenterContainer {
 			bigChart.hoverEnabled = true;
 		}
 
+		// More than ten stats: one line each, so the civs still fit below.
 		List<Stat> listed = VisibleStats;
+		int spacing = listed.Count > 10 ? 26 : 40;
 		for (int i = 0; i < listed.Count; i++) {
 			string name = listed[i].name;
 			StatTile tile = new() {
-				Position = new Vector2(804, 74 + i * 40),
-				Size = new Vector2(150, 36),
+				Position = new Vector2(804, 74 + i * spacing),
+				Size = new Vector2(150, spacing - 4),
 				label = name,
 				value = Headline(listed[i], player),
 				selected = i == selectedStat,
@@ -339,7 +353,7 @@ public partial class StatisticsView : CenterContainer {
 			background.AddChild(tile);
 		}
 
-		float legendTop = 74 + listed.Count * 40 + 10;
+		float legendTop = 74 + listed.Count * spacing + 10;
 		AddLegend(new Vector2(806, legendTop), vertical: true, width: 146);
 		if (civs.Count > 1) {
 			AddLabel("Click a civ to see its numbers.", new Rect2(806, legendTop + civs.Count * 22 + 4, 146, 18), 10);
@@ -520,6 +534,11 @@ public partial class StatisticsView : CenterContainer {
 		public override void _Draw() {
 			DrawRect(new Rect2(Vector2.Zero, Size), selected || hovered ? Highlight : Shade);
 			DrawRect(new Rect2(Vector2.Zero, Size), Border, filled: false, width: selected ? 2 : 1);
+			if (Size.Y < 30) {
+				DrawString(LineChart.BoldFont, new Vector2(6, 15), label, HorizontalAlignment.Left, Size.X - 12, 11, Ink);
+				DrawString(LineChart.RegularFont, new Vector2(6, 15), value, HorizontalAlignment.Right, Size.X - 12, 11, Ink);
+				return;
+			}
 			DrawString(LineChart.BoldFont, new Vector2(6, 16), label, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
 			DrawString(LineChart.RegularFont, new Vector2(6, 31), value, HorizontalAlignment.Left, Size.X - 12, 12, Ink);
 		}

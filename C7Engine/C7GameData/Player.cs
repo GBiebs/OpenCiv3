@@ -1625,11 +1625,7 @@ namespace C7GameData {
 
 			// TODO: Make formulas moddable
 
-			// "Power is an amalgam of cities, gold, culture, advances, resources, military strength,
-			// nuclear weapons, and wonder."
-			// Exact formula is unknown, so we repeat the previous value.
-			// TODO: Figure out power formula
-			int power = (lastTurn?.Power ?? 100);
+			int power = Power.Of(this, gameData);
 
 			// Score is the _average_ of "turn scores".
 			// Here we calculate the cumulative moving average: S[n+1] = S[n] + (x[n+1] - S[N])/(n+1)
@@ -1644,7 +1640,7 @@ namespace C7GameData {
 				Power = power,
 				Score = score,
 				Culture = totalCulture,
-				VP = 0 // TODO: victory points
+				VP = victoryPoints,
 			});
 		}
 	}

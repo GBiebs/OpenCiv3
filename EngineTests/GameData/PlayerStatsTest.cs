@@ -45,6 +45,65 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
+	public void SeriesNewerThanTheSaveArePadded() {
+		PlayerStats stats = new();
+		stats.StartTurn(1);
+		stats.StartTurn(2);
+		// As in a save made before the histograph's series were recorded.
+		stats.score.Clear();
+		stats.power.Clear();
+		stats.StartTurn(3);
+		Assert.Equal([0, 0, 0], stats.score);
+		Assert.All(PublicSeries(stats), series => Assert.Equal(3, series.Count));
+	}
+
+	// Civ3's "amalgam of cities, gold, culture, advances, resources,
+	// military strength, nuclear weapons, and wonders", each weighed by
+	// its rule.
+	[Fact]
+	public void PowerAddsUpItsParts() {
+		C7GameData.GameData gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		Player player = gameData.players.First(p => !p.isBarbarians && !p.isHuman);
+		City city = CityInteractions.BuildCity(player.units.First(u => u.unitType.isSettler).location, player, "Mighty");
+		city.AddBuilding(gameData.Buildings.Find(b => b.name == "The Pyramids"), gameData);
+		MapUnit icbm = gameData.SpawnUnit(player, gameData.unitPrototypes.Find(u => u.name == "ICBM"), city.location);
+		// (A mod's nuke with strength still counts only as a nuke.)
+		icbm.unitType.attack = 20;
+		gameData.SpawnUnit(player, gameData.unitPrototypes.Find(u => u.name == "Warrior"), city.location);
+		player.gold = 123;
+		PowerRules rules = player.rules?.power ?? gameData.rules.power;
+
+		int Only(System.Action<PowerRules> set) {
+			rules.pointsPerCity = rules.pointsPerAdvance = rules.pointsPerResource = rules.pointsPerStrength = rules.pointsPerNuke = rules.pointsPerWonder = 0;
+			rules.goldPerPoint = rules.culturePerPoint = int.MaxValue;
+			set(rules);
+			return Power.Of(player, gameData);
+		}
+		Assert.Equal(0, Only(_ => { }));
+		Assert.Equal(7 * player.cities.Count, Only(r => r.pointsPerCity = 7));
+		Assert.Equal(12, Only(r => r.goldPerPoint = 10));
+		Assert.Equal(player.TotalCulture(), Only(r => r.culturePerPoint = 1));
+		Assert.Equal(3 * player.knownTechs.Count, Only(r => r.pointsPerAdvance = 3));
+		int strength = player.units.Where(u => u != icbm && u.IsCombatUnit()).Sum(u => u.unitType.attack + u.unitType.defense);
+		Assert.True(strength > 0);
+		Assert.Equal(strength, Only(r => r.pointsPerStrength = 1));
+		Assert.Equal(50, Only(r => r.pointsPerNuke = 50));
+		Assert.Equal(25, Only(r => r.pointsPerWonder = 25));
+		int resources = gameData.GetTradeNetwork().GetResourcesAvailableToCity(player, city).Keys
+			.Count(r => r.Category is ResourceCategory.LUXURY or ResourceCategory.STRATEGIC);
+		Assert.Equal(10 * resources, Only(r => r.pointsPerResource = 10));
+
+		// The history records it, and the victory points.
+		player.victoryPoints = 42;
+		gameData.history.TryAdd(player.id.ToString(), new());
+		player.UpdateHistory(gameData);
+		HistTurnRecord record = gameData.history[player.id.ToString()].Last();
+		Assert.Equal(Power.Of(player, gameData), record.Power);
+		Assert.Equal(42, record.VP);
+	}
+
+	[Fact]
 	public void RecordingOutsideATurnDoesNothing() {
 		PlayerStats stats = new();
 		stats.RecordProduction(10, 1, 1, 1, 1, 1);
@@ -249,6 +308,15 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 			List<Tile> owned = gameData.map.tiles.Where(t => t.owningCity?.owner == player).ToList();
 			Assert.Equal(owned.Count, stats.tilesOwned[^1]);
 			Assert.Equal(owned.Count(t => t.overlays.HasBeenImproved()), stats.tilesImproved[^1]);
+
+			// The histograph's series come from the turn's history record.
+			HistTurnRecord history = gameData.history[player.id.ToString()].Last();
+			Assert.Equal(history.Score, stats.score[^1]);
+			Assert.Equal(history.Power, stats.power[^1]);
+			Assert.Equal(history.Culture, stats.culture[^1]);
+			Assert.Equal(history.VP, stats.victoryPoints[^1]);
+			Assert.Equal(Power.Of(player, gameData), history.Power);
+			Assert.True(history.Power > 0);
 		}
 
 		Assert.All(human.stats.shieldsProduced, shields => Assert.True(shields > 0));

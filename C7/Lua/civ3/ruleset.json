@@ -13308,6 +13308,16 @@
       "radarRange": 2,
       "radarBonusPercent": 25
     },
+    "power": {
+      "pointsPerCity": 10,
+      "goldPerPoint": 10,
+      "culturePerPoint": 10,
+      "pointsPerAdvance": 5,
+      "pointsPerResource": 10,
+      "pointsPerStrength": 1,
+      "pointsPerNuke": 50,
+      "pointsPerWonder": 25
+    },
     "air": {
       "interceptPercent": 50,
       "stealthInterceptPercent": 5,

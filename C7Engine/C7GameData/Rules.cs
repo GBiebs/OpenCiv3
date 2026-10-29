@@ -218,6 +218,9 @@ namespace C7GameData {
 		// Colonies, outposts, airfields and radar towers. See Structures.
 		public StructureRules structures = new();
 
+		// Power on the histograph. See Power.
+		public PowerRules power = new();
+
 		// Old buildings produce more culture. See AgeBonusRules.
 		public AgeBonusRules ageBonus = new();
 
@@ -556,6 +559,24 @@ namespace C7GameData {
 		// towers there are.
 		public int radarRange = 2;
 		public int radarBonusPercent = 25;
+	}
+
+	// Civ3's histograph: "Power is an amalgam of cities, gold, culture,
+	// advances, resources, military strength, nuclear weapons, and
+	// wonders." It doesn't say how they're weighed; these are the points
+	// each gives (see Power).
+	public class PowerRules {
+		public int pointsPerCity = 10;
+		public int goldPerPoint = 10;
+		public int culturePerPoint = 10;
+		public int pointsPerAdvance = 5;
+		// For each luxury or strategic resource the capital has.
+		public int pointsPerResource = 10;
+		// For each point of attack and defense of the military units.
+		public int pointsPerStrength = 1;
+		public int pointsPerNuke = 50;
+		// For each great wonder in the civ's cities.
+		public int pointsPerWonder = 25;
 	}
 
 	// Naval rules not in Civ3's BIQ.
