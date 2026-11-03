@@ -401,21 +401,13 @@ public partial class Game {
 	}
 
 	public void EmitCivilizationDestroyedSignal(MsgCivilizationDestroyed msg) {
+		// Sad for a civ we were at peace with, glad for an enemy.
 		var friend = false;
-		var humanDefeated = false;
 		EngineStorage.ReadGameData(data => {
-			humanDefeated = IsHumanDefeated(data);
 			var destroyedPlayer = data.players.First(p => p.civilization == msg.civilization);
 			if (controller.IsAtPeaceWith(destroyedPlayer))
 				friend = true;
 		});
-
-		// Once the human is out, the game over popup is the only one that matters.
-		if (humanDefeated) {
-			if (msg.civilization == controller.civilization)
-				EmitDefeatSignal();
-			return;
-		}
 
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(
@@ -429,16 +421,20 @@ public partial class Game {
 		));
 	}
 
-	// The human has been destroyed and can only leave the game. Observers keep watching.
+	// The human has been destroyed and isn't watching in observer mode.
 	private bool IsHumanDefeated(GameData data) {
 		return controller.defeated && !data.observerMode;
 	}
 
-	private void EmitDefeatSignal() {
+	private void EmitDefeatSignal(ID playerId) {
 		var options = new List<ButtonAction>() {
 			new ButtonAction() {
 				message = "Return to the main menu",
 				action = () => OnRetire()
+			},
+			new ButtonAction() {
+				message = "Let the game play on without me",
+				action = () => ToggleObserverMode()
 			}
 		};
 
@@ -1157,28 +1153,22 @@ public partial class Game {
 	}
 
 	private void EmitVictorySignal(MsgVictory msg) {
-		var humanDefeated = false;
-		EngineStorage.ReadGameData(data => humanDefeated = IsHumanDefeated(data));
-		if (humanDefeated)
-			return;
-
 		var endMsg =
 			$"The {msg.winner.civilization.noun} have won a {msg.victory.Header()} victory!\n"
 			+ "This game is over: No further score will be entered.\n\n";
 
-		var options = new List<ButtonAction>();
+		var continueAction = controller.defeated ? "see how it plays out for" : "play";
 
-		// The game statistics first, then back to the main menu.
-		var retireBtn = new ButtonAction() {
-			message = "Good! I’m Done!",
-			action = () => gameViews.ShowStatistics(onClose: OnRetire)
+		var options = new List<ButtonAction> {
+			// The game statistics first, then back to the main menu.
+			new ButtonAction() {
+				message = "Good! I’m Done!",
+				action = () => gameViews.ShowStatistics(onClose: OnRetire)
+			},
+			new ButtonAction() {
+				message = $"Wait, lemme just {continueAction} a couple of more turns..."
+			}
 		};
-		var continueBtn = new ButtonAction() {
-			message = "Wait, lemme just play a couple of more turns..."
-		};
-
-		options.Add(retireBtn);
-		options.Add(continueBtn);
 
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new OptionsPopUp(

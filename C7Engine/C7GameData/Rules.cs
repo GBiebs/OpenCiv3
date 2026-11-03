@@ -13,15 +13,12 @@ namespace C7GameData {
 		public int FoodNeededToGrowForLevel1Cities = 20;
 		public int FoodNeededToGrowForLevel2Cities = 40;
 		public int FoodNeededToGrowForLevel3Cities = 60;
-		// When the capital is lost, how far (in tiles of walking distance) another
-		// city counts as a neighbor of a candidate new capital. Civ3: 8, a 17x17
-		// square. Civ3's BIQ has no such value, so Civ3 saves get this default.
-		public int CapitalNeighborDistance = 8;
 		// How far apart (in tiles, counting diagonals as one) a new city must
 		// be from every other: 2, as in Civ3, forbids only neighbors (user,
 		// 2026-11-03, after trying 3); 3 would leave two tiles between. The
 		// AI keeps two tiles between its own cities anyway.
 		public int MinimumCityDistance = 2;
+		public int CapitalNeighborDistance = 8; // for capital relocation calculations
 		public float BuildingDiscountForCivTraits = .5f;
 		public string StartUnitType1;
 		public string StartUnitType2;
