@@ -148,15 +148,14 @@ public partial class Game : Node {
 	private bool IsMovingCamera;
 	private Vector2 OldPosition;
 
-	// A left press choosing where the selected unit goes (Civ3): while the
-	// button is held the route, the turns and the target show (gotoInfo);
-	// releasing moves the unit there. A quick click on our own units
-	// selects them instead, and on our own city waits to see whether it's
-	// a double click, which opens the city.
+	// A left press with a unit selected (Civ3): once the button has been held
+	// a moment, the route, the turns and the target show (gotoInfo) and
+	// releasing moves the unit there. Only holding moves, so a quick click
+	// can select another unit without its route flashing up first (user,
+	// 2026-11-02); on our own city two quick clicks open it.
 	private Tile movePressTile = null;
 	private ulong movePressStartMs = 0;
-	private const ulong QuickClickMs = 250;
-	private GotoInfo pendingCityClick = null;
+	private const ulong HoldToMoveMs = 300;
 
 	// Moving the mouse to an edge of the window scrolls the map that way.
 	private const int EdgeScrollMargin = 3;
@@ -748,6 +747,7 @@ public partial class Game : Node {
 
 	public override void _Process(double delta) {
 		ProcessActions();
+		UpdateMovePress();
 		EdgeScroll(delta);
 		UpdateMouseMode();
 
@@ -977,17 +977,11 @@ public partial class Game : Node {
 		}
 		// Can't drag the map when the mouse is over a ui element
 		if (eventMouseButton.IsPressed() && uiHover is not TextureButton) {
-			// The second click of a double click on our city opens it.
-			if (pendingCityClick != null && PositionToTile(eventMouseButton.Position) == pendingCityClick.destinationTile) {
-				doubleClickHandler.Accept(eventMouseButton);
-				return;
-			}
-			// With a unit selected a left press picks where it goes; with
+			// With a unit selected a left press may pick where it goes; with
 			// none, a left drag pans the map (user, 2026-10-29).
 			if (CanClickToMove()) {
 				movePressTile = PositionToTile(eventMouseButton.Position);
 				movePressStartMs = Time.GetTicksMsec();
-				gotoInfo = GetGotoInfo(eventMouseButton.Position);
 				return;
 			}
 			OldPosition = eventMouseButton.Position;
@@ -1010,21 +1004,26 @@ public partial class Game : Node {
 	}
 
 	private void EndMovePress(InputEventMouseButton release) {
-		Tile tile = PositionToTile(release.Position);
-		bool quick = tile == movePressTile && Time.GetTicksMsec() - movePressStartMs < QuickClickMs;
+		// The route showed: the button was held, so the unit goes.
 		GotoInfo move = gotoInfo;
-		movePressTile = null;
 		SetGotoMode(false);
-		if (tile == null || move == null) {
+		if (move != null) {
+			ResolveMovement(move);
 			return;
 		}
-		if (quick && tile.cityAtTile?.owner == controller) {
-			pendingCityClick = move;
+		// A quick click selects our units there; on our own city it waits
+		// for a second click, which opens the city.
+		if (PositionToTile(release.Position)?.cityAtTile?.owner == controller) {
 			doubleClickHandler.Accept(release);
-		} else if (quick && tile.unitsOnTile.Any(u => u.owner == controller)) {
-			HandleUnitSelectionTileClick(release);
 		} else {
-			ResolveMovement(move);
+			HandleUnitSelectionTileClick(release);
+		}
+	}
+
+	// After the button has been held a moment, the move's route shows.
+	private void UpdateMovePress() {
+		if (movePressTile != null && gotoInfo == null && Time.GetTicksMsec() - movePressStartMs >= HoldToMoveMs) {
+			gotoInfo = GetGotoInfo(GetViewport().GetMousePosition());
 		}
 	}
 
@@ -1034,7 +1033,7 @@ public partial class Game : Node {
 	private void UpdateMouseMode() {
 		bool confined = GetWindow().HasFocus()
 			&& DisplayServer.WindowGetMode() is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
-		bool hidden = movePressTile != null && Time.GetTicksMsec() - movePressStartMs >= QuickClickMs;
+		bool hidden = movePressTile != null && Time.GetTicksMsec() - movePressStartMs >= HoldToMoveMs;
 		Input.MouseModeEnum mode = confined
 			? (hidden ? Input.MouseModeEnum.ConfinedHidden : Input.MouseModeEnum.Confined)
 			: (hidden ? Input.MouseModeEnum.Hidden : Input.MouseModeEnum.Visible);
@@ -1089,18 +1088,6 @@ public partial class Game : Node {
 	}
 
 	private void OnSingleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
-		// One click on our city: our units there are selected, or else the
-		// selected unit goes there.
-		if (pendingCityClick != null) {
-			GotoInfo move = pendingCityClick;
-			pendingCityClick = null;
-			if (move.destinationTile.unitsOnTile.Any(u => u.owner == controller)) {
-				HandleUnitSelectionTileClick(eventMouseButton);
-			} else {
-				ResolveMovement(move);
-			}
-			return;
-		}
 		if (gotoInfo != null) {
 			this.ResolveMovement(gotoInfo);
 			this.SetGotoMode(false);
@@ -1121,7 +1108,6 @@ public partial class Game : Node {
 	}
 
 	private void OnDoubleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
-		pendingCityClick = null;
 		Tile tile = PositionToTile(eventMouseButton.Position);
 		if (tile?.cityAtTile?.owner == controller) {
 			EngineStorage.ReadGameData((GameData gameData) => {
@@ -1278,43 +1264,6 @@ public partial class Game : Node {
 			return;
 		}
 
-		if (eventKeyDown.Keycode == Godot.Key.F1) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowDomesticAdvisor);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F2) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowTradeAdvisor);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F3) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowMilitaryAdvisor);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F4) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowForeignAdvisor);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F5) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowCulturalAdvisor);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F6) {
-			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowScienceAdvisor);
-		}
-
-		if (eventKeyDown.Keycode == Godot.Key.F7) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowWondersView);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F8) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowVictoryStatusView);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F9) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowPalaceView);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F10) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowSpaceRaceView);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F11) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowDemographicsView);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.F12) {
-			EmitSignal(SignalName.ShowGameView, C7Action.ShowStatisticsView);
-		}
 
 		if (eventKeyDown.Keycode == Godot.Key.C && HasCurrentlySelectedUnit()) {
 			mapView.centerCameraOnTile(CurrentlySelectedUnit.location);
@@ -1535,6 +1484,23 @@ public partial class Game : Node {
 			return;
 		}
 
+		// The advisors (F1-F6) and the game views (F7-F12), also while one of
+		// them or the city screen is open (not over a popup, nor during the
+		// computer's turn). They're read from the input map, which a focused
+		// control can't swallow.
+		if (!popupOverlay.ShowingPopup && CurrentState != GameState.ComputerTurn) {
+			switch (currentAction) {
+				case C7Action.ShowDomesticAdvisor or C7Action.ShowTradeAdvisor or C7Action.ShowMilitaryAdvisor
+					or C7Action.ShowForeignAdvisor or C7Action.ShowCulturalAdvisor or C7Action.ShowScienceAdvisor:
+					EmitSignal(SignalName.ShowSpecificAdvisor, currentAction);
+					return;
+				case C7Action.ShowWondersView or C7Action.ShowVictoryStatusView or C7Action.ShowPalaceView
+					or C7Action.ShowSpaceRaceView or C7Action.ShowDemographicsView or C7Action.ShowStatisticsView:
+					EmitSignal(SignalName.ShowGameView, currentAction);
+					return;
+			}
+		}
+
 		// never poll for actions if UI elements are visible
 		if (HasVisibleModal()) {
 			return;
@@ -1735,12 +1701,15 @@ public partial class Game : Node {
 		new MsgStartWorkerJob(CurrentlySelectedUnit.id, terraform).send();
 	}
 
+	// Leaving go-to mode also drops a move being held (a key or a right
+	// click cancels it).
 	private void SetGotoMode(bool isOn) {
 		if (isOn) {
 			this.gotoInfo = new();
 		} else {
 			this.gotoInfo = null;
 			this.lastTile = null;
+			this.movePressTile = null;
 		}
 	}
 
