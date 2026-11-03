@@ -1613,6 +1613,21 @@ namespace C7GameData {
 			return producible.ShieldCost(this, costFactor);
 		}
 
+		// The averaged parts of the score so far. A record saved before the
+		// parts were kept has only the score: it's split in this turn's
+		// proportions.
+		private static ScoreVictory.ScoreParts LastScoreParts(HistTurnRecord lastTurn, ScoreVictory.ScoreParts now) {
+			if (lastTurn == null) {
+				return default;
+			}
+			ScoreVictory.ScoreParts kept = new(lastTurn.ScoreHappy, lastTurn.ScoreContent, lastTurn.ScoreTerritory, lastTurn.ScoreFutureTech);
+			if (kept.Total > 0 || lastTurn.Score == 0 || now.Total <= 0) {
+				return kept;
+			}
+			float scale = lastTurn.Score / now.Total;
+			return new(now.happy * scale, now.contentAndSpecialists * scale, now.territory * scale, now.futureTech * scale);
+		}
+
 		public void UpdateHistory(GameData gameData) {
 			if (!gameData.history.ContainsKey(id.ToString()))
 				return;
@@ -1627,20 +1642,28 @@ namespace C7GameData {
 
 			int power = Power.Of(this, gameData);
 
-			// Score is the _average_ of "turn scores".
-			// Here we calculate the cumulative moving average: S[n+1] = S[n] + (x[n+1] - S[N])/(n+1)
-			int lastScore = (lastTurn?.Score ?? 0);
-			float turnScore = ScoreVictory.ComputeTurnScore(this, gameData);
-			int score = (int) Math.Floor(lastScore + (turnScore - lastScore) / (1f * (n+1)));
+			// Score is the _average_ of "turn scores": the cumulative moving
+			// average S[n+1] = S[n] + (x[n+1] - S[n]) / (n+1) of each of its
+			// parts, kept as fractions. (Flooring the running total every turn
+			// lost up to a point a turn: 15 where the average was 43.)
+			ScoreVictory.ScoreParts parts = ScoreVictory.ComputeTurnScoreParts(this, gameData);
+			ScoreVictory.ScoreParts last = LastScoreParts(lastTurn, parts);
+			float Average(float before, float now) => before + (now - before) / (n + 1);
+			ScoreVictory.ScoreParts average = new(Average(last.happy, parts.happy), Average(last.contentAndSpecialists, parts.contentAndSpecialists),
+				Average(last.territory, parts.territory), Average(last.futureTech, parts.futureTech));
 
 			int totalCulture = TotalCulture();
 
 			gameData.history[id.ToString()].Add(new HistTurnRecord {
 				Date = gameData.timeOptions.GetRawNumber(gameData.turn),
 				Power = power,
-				Score = score,
+				Score = (int)Math.Floor(average.Total),
 				Culture = totalCulture,
 				VP = victoryPoints,
+				ScoreHappy = average.happy,
+				ScoreContent = average.contentAndSpecialists,
+				ScoreTerritory = average.territory,
+				ScoreFutureTech = average.futureTech,
 			});
 		}
 	}

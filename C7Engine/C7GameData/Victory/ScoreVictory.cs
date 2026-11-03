@@ -63,7 +63,18 @@ public class ScoreVictory : IVictory {
 		];
 	}
 
+	// A turn's score in its parts, each times the difficulty: happy
+	// citizens count twice, content citizens and specialists once, each
+	// tile of territory once, and future techs.
+	public record struct ScoreParts(float happy, float contentAndSpecialists, float territory, float futureTech) {
+		public float Total => happy + contentAndSpecialists + territory + futureTech;
+	}
+
 	public static float ComputeTurnScore(Player player, GameData gameData) {
+		return ComputeTurnScoreParts(player, gameData).Total;
+	}
+
+	public static ScoreParts ComputeTurnScoreParts(Player player, GameData gameData) {
 		List<Tile> scoredTiles = player.tileKnowledge.ScoreTiles();
 
 		List<CityResident> citizens = player.cities.SelectMany(c => c.residents.Where(r => r.citizenType.IsDefaultCitizen)).ToList();
@@ -77,10 +88,8 @@ public class ScoreVictory : IVictory {
 		// TODO: gameData.gameDifficulty.ScoreMultiplier
 		float difficultyFactor = GetDifficultyScoreFactor(gameData);
 
-		float turnScore = (scoredTiles.Count + (2 * happyCitizens) + contentCitizens + specialists + futureTechs);
-		turnScore *= difficultyFactor;
-
-		return turnScore;
+		return new ScoreParts(2 * happyCitizens * difficultyFactor, (contentCitizens + specialists) * difficultyFactor,
+			scoredTiles.Count * difficultyFactor, futureTechs * difficultyFactor);
 	}
 
 	// 1 for Chieftain, 2 for Warlord, 3 for Regent, etc.

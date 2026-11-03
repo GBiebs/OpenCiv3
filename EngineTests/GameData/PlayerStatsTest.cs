@@ -103,6 +103,56 @@ public class PlayerStatsTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(42, record.VP);
 	}
 
+	// The histograph's summary: each part of the score averaged over the
+	// turns like the score, so the parts add up to it.
+	[Fact]
+	public void TheHistoryAveragesTheScoresParts() {
+		C7GameData.GameData gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		Player player = gameData.players.First(p => !p.isBarbarians && !p.isHuman);
+		CityInteractions.BuildCity(player.units.First(u => u.unitType.isSettler).location, player, "Scored");
+		gameData.history[player.id.ToString()] = new();
+
+		// A happy citizen counts twice what a content one does.
+		CityResident citizen = player.cities[0].residents[0];
+		citizen.mood = CityResident.Mood.Content;
+		ScoreVictory.ScoreParts content = ScoreVictory.ComputeTurnScoreParts(player, gameData);
+		citizen.mood = CityResident.Mood.Happy;
+		ScoreVictory.ScoreParts happy = ScoreVictory.ComputeTurnScoreParts(player, gameData);
+		Assert.True(happy.happy > 0);
+		Assert.Equal(2 * (content.contentAndSpecialists - happy.contentAndSpecialists), happy.happy - content.happy, 3);
+
+		ScoreVictory.ScoreParts first = ScoreVictory.ComputeTurnScoreParts(player, gameData);
+		Assert.True(first.territory > 0);
+		player.UpdateHistory(gameData);
+		HistTurnRecord record = gameData.history[player.id.ToString()].Last();
+		Assert.Equal(first.happy, record.ScoreHappy, 3);
+		Assert.Equal(first.contentAndSpecialists, record.ScoreContent, 3);
+		Assert.Equal(first.territory, record.ScoreTerritory, 3);
+		Assert.Equal((int)System.Math.Floor(first.Total), record.Score);
+
+		// More land the next turn: each part is the average of the two turns.
+		Tile away = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity() && t.OwningPlayer() == null
+			&& gameData.cities.All(c => c.location.DistanceTo(t) > 6));
+		CityInteractions.BuildCity(away, player, "Further");
+		player.tileKnowledge.AddTilesToKnown(away);
+		ScoreVictory.ScoreParts second = ScoreVictory.ComputeTurnScoreParts(player, gameData);
+		Assert.True(second.territory > first.territory);
+		player.UpdateHistory(gameData);
+		record = gameData.history[player.id.ToString()].Last();
+		Assert.Equal((first.territory + second.territory) / 2, record.ScoreTerritory, 3);
+		// The score is their sum, floored only at the end.
+		float sum = record.ScoreHappy + record.ScoreContent + record.ScoreTerritory + record.ScoreFutureTech;
+		Assert.Equal((int)System.Math.Floor(sum), record.Score);
+		Assert.Equal((int)System.Math.Floor((first.Total + second.Total) / 2), record.Score);
+
+		// A record saved before the parts were kept goes on from its score.
+		gameData.history[player.id.ToString()] = [new HistTurnRecord { Score = 40 }];
+		player.UpdateHistory(gameData);
+		record = gameData.history[player.id.ToString()].Last();
+		Assert.Equal((int)System.Math.Floor((40 + second.Total) / 2), record.Score);
+	}
+
 	[Fact]
 	public void RecordingOutsideATurnDoesNothing() {
 		PlayerStats stats = new();
