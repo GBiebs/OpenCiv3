@@ -82,17 +82,17 @@ public class ImprovementKnowledgeTest : IClassFixture<SaveGameFixture>, IDisposa
 		Assert.Contains("road", again.tileKnowledge.SeenImprovements(there));
 	}
 
-	// The AI draws no map, so its view changing doesn't update its memory.
+	// The AI draws no map, so it keeps no memory of improvements (it would
+	// only cost its turns time).
 	[Fact]
 	public void TheAIKeepsNoMemoryOfWhatItSees() {
 		Player ai = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
 		Tile aiHome = ai.units[0].location;
 		Tile watched = aiHome.neighbors.Values.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity() && !t.overlays.GetImprovements().Any());
+		watched.overlays.Add(road);
 		ai.tileKnowledge.AddTilesToKnown(aiHome);
 		Assert.True(ai.tileKnowledge.isActiveTile(watched));
-
-		watched.overlays.Add(road);
 		ai.tileKnowledge.RecomputeActiveTiles();
-		Assert.DoesNotContain("road", ai.tileKnowledge.knownTerrainImprovements[watched.Id]);
+		Assert.False(ai.tileKnowledge.knownTerrainImprovements.ContainsKey(watched.Id));
 	}
 }

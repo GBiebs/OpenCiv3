@@ -306,8 +306,13 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 		}
 		WaitForStartTurnMessage();
 
-		// Make the player a human again so we can save and load the game.
+		// Make the player a human again so we can save and load the game. As
+		// an AI it remembered no improvements (only humans do), so it sees its
+		// units' tiles again as a human, as loading the save will.
 		human.isHuman = true;
+		foreach (MapUnit unit in human.units) {
+			human.tileKnowledge.AddTilesToKnown(unit.location);
+		}
 		C7GameData.GameData game = null;
 		EngineStorage.ReadGameData((C7GameData.GameData gameData) => {
 			game = gameData;

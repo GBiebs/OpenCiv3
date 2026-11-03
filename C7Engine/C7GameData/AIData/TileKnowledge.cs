@@ -52,7 +52,12 @@ namespace C7GameData {
 				knownTiles.Add(t);
 				borderTiles.Remove(t);
 
-				knownTerrainImprovements[t.Id] = t.overlays.GetImprovements().Select(ti => ti.key).ToList();
+				// Only humans remember improvements (see RememberImprovements):
+				// recording every AI unit's view on every move slowed AI turns
+				// by an eighth.
+				if (_player.isHuman) {
+					knownTerrainImprovements[t.Id] = t.overlays.GetImprovements().Select(ti => ti.key).ToList();
+				}
 
 				foreach (Tile border in t.neighbors.Values) {
 					if (border == Tile.NONE) {
