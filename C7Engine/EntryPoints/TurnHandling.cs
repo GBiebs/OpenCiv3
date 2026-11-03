@@ -140,11 +140,17 @@ namespace C7Engine {
 		/// <param name="firstTurn"></param>
 		/// <returns>true when it is time for the human to take control again</returns>
 		private static async Task<bool> PlayPlayerTurns(GameData gameData, bool firstTurn) {
-			// Order players: Human -> AI -> Barbarian AI
+			// Order players: Humans -> AI -> Barbarian AI. Each human in the
+			// game takes their turn in order (hotseat), and the UI follows
+			// whoever's turn it is.
 			var orderedPlayers = gameData.players.OrderByDescending(p => !p.isBarbarians).ThenByDescending(p => p.isHuman).ToList();
+			// With no human left (all defeated, or everyone handed to the AI in
+			// observer mode), the UI controller still gets its turn, so control
+			// returns to the UI and the loop stops.
+			bool anyHumanLeft = gameData.players.Any(p => p.isHuman && !p.defeated);
 			foreach (Player player in orderedPlayers) {
-				// A defeated UI controller still gets its turn, so control returns to the UI and the loop stops.
-				if (player.hasPlayedThisTurn || (player.defeated && player.id != EngineStorage.uiControllerID)) {
+				bool takesControl = (player.isHuman && !player.defeated) || (!anyHumanLeft && player.id == EngineStorage.uiControllerID);
+				if (player.hasPlayedThisTurn || (player.defeated && !takesControl)) {
 					continue;
 				}
 
@@ -163,16 +169,17 @@ namespace C7Engine {
 					await PlayerAI.PlayTurn(player, gameData);
 				}
 
-				if (player.id != EngineStorage.uiControllerID) {
-					OnEndTurn(player);
-					player.hasPlayedThisTurn = true;
-				}
-
-				//Human player check. Let the human see what's going on even if they are in observer mode.
-				if (player.id == EngineStorage.uiControllerID) {
-					new MsgStartTurn().send();
+				// Control passes to this player; their End Turn (MsgEndTurn)
+				// finishes their turn and carries on with the next player. The
+				// human sees what's going on even in observer mode.
+				if (takesControl) {
+					EngineStorage.uiControllerID = player.id;
+					new MsgStartTurn(player.id).send();
 					return true;
 				}
+
+				OnEndTurn(player);
+				player.hasPlayedThisTurn = true;
 			}
 			return false;
 		}

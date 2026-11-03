@@ -64,7 +64,15 @@ namespace C7Engine {
 			this.controllerId = controllerId;
 		}
 	}
-	public class MsgStartTurn : MessageToUI { }
+	// Whose turn it is: the player now controlling the UI (with several
+	// humans, a different one each time).
+	public class MsgStartTurn : MessageToUI {
+		public ID playerId;
+
+		public MsgStartTurn(ID playerId = null) {
+			this.playerId = playerId;
+		}
+	}
 	public class MsgGameMainMenu : MessageToUI { }
 
 	public class MsgDiplomacyPopUp : MessageToUI { }
