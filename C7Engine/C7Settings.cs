@@ -183,6 +183,17 @@ namespace C7Engine {
 			return null;
 		}
 
+		// The Civ3 install the game finds without a setting (CIV3_HOME, the
+		// registry or Steam), so saves stay in Civ3's Saves folder; null if none.
+		private static string FoundCiv3InstallDir() {
+			try {
+				string found = QueryCiv3.Civ3Location.GetCiv3Path();
+				return Directory.Exists(found) ? found : null;
+			} catch {
+				return null;
+			}
+		}
+
 		public static string GetSaveFolder() {
 			if (settings == null) {
 				LoadSettings();
@@ -261,6 +272,9 @@ namespace C7Engine {
 				if (string.IsNullOrEmpty(civ3FromIni)) {
 					civ3FromIni = GetSettingsValueOrDefault("Locations", "civ3InstallDir", null);
 				}
+				if (string.IsNullOrEmpty(civ3FromIni)) {
+					civ3FromIni = FoundCiv3InstallDir();
+				}
 				if (!string.IsNullOrEmpty(civ3FromIni)) {
 					try {
 						if (!Path.IsPathRooted(civ3FromIni)) {
@@ -288,7 +302,7 @@ namespace C7Engine {
 			if (standaloneLastResort) {
 				lastResort = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "C7", "Saves"));
 			} else {
-				string civ3 = GetSettingsValueOrDefault("locations", "civ3InstallDir", null);
+				string civ3 = GetSettingsValueOrDefault("locations", "civ3InstallDir", null) ?? FoundCiv3InstallDir();
 				if (!string.IsNullOrEmpty(civ3)) {
 					lastResort = Path.Combine(civ3, "Conquests", "Saves");
 				} else {
