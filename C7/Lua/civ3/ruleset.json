@@ -13305,6 +13305,8 @@
       "outpostVision": 2,
       "outpostVisionOnHills": 3,
       "outpostVisionOnMountains": 4,
+      "colonyVision": 1,
+      "radarVision": 2,
       "radarRange": 2,
       "radarBonusPercent": 25
     },

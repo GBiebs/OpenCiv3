@@ -554,6 +554,10 @@ namespace C7GameData {
 		public int outpostVision = 2;
 		public int outpostVisionOnHills = 3;
 		public int outpostVisionOnMountains = 4;
+		// Colonies and radar towers see this far on any terrain (the tiles
+		// Civ3's saves mark as seen by structures).
+		public int colonyVision = 1;
+		public int radarVision = 2;
 		// Radar towers: "Friendly units within the Radar Towers range get a
 		// +25% attack and defense bonus", within 2 tiles, once however many
 		// towers there are.

@@ -95,10 +95,12 @@ public partial class Tile {
 				EngineStorage.gameData.InvalidateCachedTradeNetwork();
 			}
 
-			// A structure gone takes its owner with it (a colony its resource).
-			if (oldImprovement?.consumesWorker == true && structureOwner != null) {
+			// A structure gone takes its owner with it (a colony its resource,
+			// and what it saw).
+			if (oldImprovement?.consumesWorker == true && structureOwner is Player owner) {
 				structureOwner = null;
 				EngineStorage.gameData?.InvalidateCachedTradeNetwork();
+				owner.tileKnowledge?.RecomputeActiveTiles();
 			}
 		}
 

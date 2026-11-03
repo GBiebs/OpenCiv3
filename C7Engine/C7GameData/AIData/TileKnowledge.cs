@@ -241,9 +241,9 @@ namespace C7GameData {
 					}
 				}
 
-				// Our outposts see around them (see Structures).
-				if (t.overlays.structureOwner == _player && Structures.Has(t, Tile.TileOverlays.OUTPOST, _player)) {
-					activeTiles.UnionWith(Structures.OutpostView(EngineStorage.gameData, t));
+				// Our structures see around them (see Structures).
+				if (t.overlays.structureOwner == _player) {
+					activeTiles.UnionWith(Structures.View(EngineStorage.gameData, t));
 				}
 			}
 			activeTiles.UnionWith(scoutedTiles);

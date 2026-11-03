@@ -264,6 +264,38 @@ public class StructuresTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(us.tileKnowledge.isActiveTile(site));
 	}
 
+	// Civ3's saves mark the tiles next to a colony, and 2 around a radar
+	// tower, as seen by structures, on hills and mountains too.
+	[Theory]
+	[InlineData(COLONY, 1)]
+	[InlineData(RADAR_TOWER, 2)]
+	public void ColoniesAndRadarTowersSeeAroundThem(string key, int range) {
+		Tile site = Neutral(12);
+		Assert.All(us.units, u => Assert.True(u.location.DistanceTo(site) > 8));
+		site.overlayTerrainType = gameData.terrainTypes.Find(t => t.Key == "mountains");
+		List<Tile> view = site.GetTilesWithinTileSquare(range).Where(Tile.IsTileValid).ToList();
+		Tile beyond = site.GetTilesWithinTileSquare(range + 1).First(t => Tile.IsTileValid(t) && !view.Contains(t));
+		Assert.False(us.tileKnowledge.isActiveTile(site));
+
+		Place(site, key, us);
+		Assert.All(view, t => Assert.True(us.tileKnowledge.isTileKnown(t) && us.tileKnowledge.isActiveTile(t)));
+		Assert.False(us.tileKnowledge.isActiveTile(beyond));
+
+		// The rules set how far.
+		if (key == COLONY) {
+			us.rules.structures.colonyVision = range + 1;
+		} else {
+			us.rules.structures.radarVision = range + 1;
+		}
+		us.tileKnowledge.RecomputeActiveTiles();
+		Assert.True(us.tileKnowledge.isActiveTile(beyond));
+
+		// Pillaged, it sees nothing.
+		site.overlays.PillageNext();
+		Assert.False(us.tileKnowledge.isActiveTile(site));
+		Assert.True(us.tileKnowledge.isTileKnown(site));
+	}
+
 	[Fact]
 	public void AColonyGivesItsResourceByRoad() {
 		MapUnit walker = Spawn(us, "Worker", home.location);
