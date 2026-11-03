@@ -920,15 +920,13 @@ namespace C7GameData {
 		}
 
 		public int GetCulturePerTurnRaw() {
-			int result = 0;
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			foreach (CityBuilding cb in GetBuildings()) {
-				if (IsCapturedWonder(cb)) {
-					continue;
-				}
-				result += cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
-			}
-			return result;
+			return GetBuildings().Sum(CulturePerTurnFrom);
+		}
+
+		// The culture one of this city's buildings makes a turn.
+		public int CulturePerTurnFrom(CityBuilding cb) {
+			return IsCapturedWonder(cb) ? 0 : cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
 		}
 
 		// A great wonder that another civ built and we captured keeps its

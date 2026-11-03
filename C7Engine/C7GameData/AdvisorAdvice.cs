@@ -114,6 +114,32 @@ namespace C7GameData {
 			return new(Mood.Happy, partners.Count > 0 ? "Our trade is in good order." : "We have no one to trade with yet.");
 		}
 
+		// How soon the cultural advisor mentions a city's borders growing.
+		public const int BordersSoonTurns = 5;
+
+		// The cultural advisor: no culture at all, a civ that thinks the least
+		// of our culture, borders about to grow, then the best opinion of us.
+		public static Advice Culture(GameData gameData, Player player) {
+			int perTurn = player.cities.Sum(c => c.GetCulturePerTurn());
+			if (player.cities.Count > 0 && perTurn <= 0) {
+				return new(Mood.Sad, "Our cities make no culture. Temples and other fine buildings would give our people something to be proud of.");
+			}
+			List<(Player civ, CultureOpinion opinion)> opinions = CultureReport.Opinions(gameData, player);
+			if (opinions.Count > 0 && opinions[^1].opinion.cultureRatioPercent == gameData.cultureOpinions.Min(o => o.cultureRatioPercent)) {
+				return new(Mood.Sad, $"The {opinions[^1].civ.civilization.noun} are {opinions[^1].opinion.name} our culture.");
+			}
+			CultureReport.CityCulture soon = CultureReport.Cities(player)
+				.Where(c => CultureReport.TurnsToExpand(c) <= BordersSoonTurns)
+				.OrderBy(CultureReport.TurnsToExpand).FirstOrDefault();
+			if (soon != null) {
+				return new(Mood.Surprised, $"The borders of {soon.city.name} will grow in {Turns(CultureReport.TurnsToExpand(soon).Value)}.");
+			}
+			if (opinions.Count > 0) {
+				return new(Mood.Happy, $"The {opinions[0].civ.civilization.noun} are {opinions[0].opinion.name} our culture.");
+			}
+			return new(Mood.Happy, $"Our culture grows by {perTurn} a turn.");
+		}
+
 		public static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
 		public static string WithArticle(string noun) => ("AEIOU".Contains(char.ToUpperInvariant(noun[0])) ? "an " : "a ") + noun;
