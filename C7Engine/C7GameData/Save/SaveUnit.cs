@@ -24,6 +24,8 @@ namespace C7GameData.Save {
 		// True for multiple types of automation, including worker automation
 		// and automated exploring.
 		public bool isAutomated;
+		// Which one: "work" or "explore" (MapUnit.AutomationKind).
+		public string automation;
 
 		// Whether this unit has produced a great leader (Civ3's "Elite*").
 		public bool hasProducedLeader;
@@ -51,6 +53,7 @@ namespace C7GameData.Save {
 			hitPointsRemaining = unit.hitPointsRemaining;
 			action = unit.isFortified ? "fortified" : unit.airSuperiority ? "airSuperiority" : "";
 			isAutomated = unit.isAutomated;
+			automation = unit.AutomationKind();
 			hasProducedLeader = unit.hasProducedLeader;
 			scientificLeader = unit.scientificLeader;
 			attackedThisTurn = unit.attackedThisTurn;
@@ -87,6 +90,10 @@ namespace C7GameData.Save {
 			unit.location.unitsOnTile.Add(unit);
 			unit.movementPoints.reset(movePointsRemaining);
 			unit.name = string.IsNullOrEmpty(name) ? unit.unitType.name : name;
+			// Older saves only say it was automated: workers worked, others explored.
+			if (isAutomated) {
+				unit.resumeAutomation = automation ?? (unit.unitType.isWorker ? "work" : "explore");
+			}
 
 			Player originalNationality = players.Find(player => player.civilization.name == nationality);
 			if (originalNationality != null) {

@@ -157,11 +157,31 @@ public partial class MapUnit {
 		await MoveAlongPath();
 	}
 
+	// What an automated unit is doing, as saved: "work" or "explore" (null if
+	// not automated). Its plan isn't saved, so after a load it makes a new one.
+	public string AutomationKind() {
+		if (!isAutomated) {
+			return null;
+		}
+		return currentAI switch {
+			WorkerAI => "work",
+			ExplorerAI => "explore",
+			_ => resumeAutomation,
+		};
+	}
+
 	public async void PlayAutomatedTurn() {
 		if (currentAI == null) {
-			// TODO: handle giving automated workers from loaded saves the
-			// proper unit ai.
-			isAutomated = false;
+			// Loaded from a save: carry on with the same kind of automation.
+			string resume = resumeAutomation;
+			resumeAutomation = null;
+			if (resume == "work") {
+				Automate();
+			} else if (resume == "explore") {
+				Explore();
+			} else {
+				isAutomated = false;
+			}
 			return;
 		}
 		UnitAI.Result result = await currentAI.PlayTurn(owner, this);
