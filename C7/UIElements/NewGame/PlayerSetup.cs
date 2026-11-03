@@ -21,6 +21,8 @@ public partial class PlayerSetup : Control {
 
 	[Export] GridContainer opponentListContainer;
 	List<OptionButton> opponentSelectors = new();
+	// Hotseat: whether each rival is another human at this computer.
+	List<CheckBox> humanToggles = new();
 
 	[Export] GridContainer rulesContainer;
 
@@ -162,10 +164,21 @@ public partial class PlayerSetup : Control {
 
 			CenterContainer container = new();
 			opponentListContainer.AddChild(container);
-			container.AddChild(optionButton);
+			HBoxContainer slot = new();
+			container.AddChild(slot);
+			slot.AddChild(optionButton);
+
+			// Hotseat: this rival is another human, taking turns at this computer.
+			CheckBox human = new() { Text = "Human", TooltipText = "Another player at this computer (hotseat)", FocusMode = FocusModeEnum.None };
+			human.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
+			human.AddThemeColorOverride("font_pressed_color", Color.Color8(33, 25, 14));
+			human.AddThemeColorOverride("font_hover_color", Color.Color8(33, 25, 14));
+			human.AddThemeFontSizeOverride("font_size", 12);
+			slot.AddChild(human);
+			humanToggles.Add(human);
 
 			container.CustomMinimumSize = new Vector2(312.0f / columns, 312.0f / rows);
-			optionButton.CustomMinimumSize = new Vector2(290.0f / columns, optionButton.CustomMinimumSize.Y);
+			optionButton.CustomMinimumSize = new Vector2(290.0f / columns - 70, optionButton.CustomMinimumSize.Y);
 
 			optionButton.AddItem(SelectedOpponent.NONE);
 			optionButton.AddItem(SelectedOpponent.RANDOM);
@@ -267,13 +280,15 @@ public partial class PlayerSetup : Control {
 	private List<SelectedOpponent> CollectSelectedOpponents() {
 		List<SelectedOpponent> opponents = [];
 
-		foreach (OptionButton ob in opponentSelectors) {
+		for (int i = 0; i < opponentSelectors.Count; i++) {
+			OptionButton ob = opponentSelectors[i];
 			string selectedName = ob.GetItemText(ob.Selected);
+			bool human = humanToggles[i].ButtonPressed;
 
 			opponents.Add(selectedName switch {
 				SelectedOpponent.NONE => new SelectedOpponent { isNone = true },
-				SelectedOpponent.RANDOM => new SelectedOpponent { isRandom = true },
-				_ => new SelectedOpponent { Name = selectedName },
+				SelectedOpponent.RANDOM => new SelectedOpponent { isRandom = true, isHuman = human },
+				_ => new SelectedOpponent { Name = selectedName, isHuman = human },
 			});
 		}
 

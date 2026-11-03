@@ -14,6 +14,8 @@ public struct SelectedOpponent {
 	public bool isRandom;
 	public bool isNone;
 	public string Name;
+	// Another human at this computer (hotseat), taking turns with the player.
+	public bool isHuman;
 }
 
 public class GameSetup {
@@ -146,7 +148,7 @@ public class GameSetup {
 			taken.Add(selectedName);
 
 			Civilization civ = save.Civilizations.Find(x => x.name == selectedName);
-			AddPlayer(save, civ, isHuman: false);
+			AddPlayer(save, civ, isHuman: opponent.isHuman);
 		}
 	}
 

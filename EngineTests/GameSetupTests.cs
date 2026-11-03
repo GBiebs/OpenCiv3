@@ -65,6 +65,29 @@ public class GameSetupTests {
 		Assert.Equal(wc.worldSize.numberOfCivs, save.Map.startingLocations.Count);
 	}
 
+	// Hotseat: a rival slot marked human becomes a second human player.
+	[Fact]
+	public void AHumanOpponentIsAnotherHuman() {
+		(SaveGame save, WorldCharacteristics wc) = CreateTestWorld();
+
+		GameSetup gameSetup = new() {
+			playerCivilization = save.Civilizations.First(c => !c.isBarbarian),
+			difficulty = save.Difficulties.First(),
+			worldCharacteristics = wc,
+			opponents = [
+				new SelectedOpponent { isRandom = true, isHuman = true },
+				new SelectedOpponent { isRandom = true },
+				new SelectedOpponent { isNone = true },
+			],
+			victoryConditions = new VictoryConditions()
+		};
+
+		gameSetup.Populate(save);
+
+		Assert.Equal(2, save.Players.Count(p => p.human));
+		Assert.Equal(4, save.Players.Count);
+	}
+
 	// All NONE rivals means a solo game: only the barbarian and the human.
 	[Fact]
 	public void AllNoneOpponentsMakeSoloGame() {
