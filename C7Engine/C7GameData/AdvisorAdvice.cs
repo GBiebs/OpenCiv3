@@ -73,6 +73,25 @@ namespace C7GameData {
 			return new(Mood.Happy, "We are at peace with every civilization we know.");
 		}
 
+		// The military advisor: cities without a defender (worse at war), units
+		// we pay for beyond the free ones, then units we could upgrade.
+		public static Advice Military(GameData gameData, Player player) {
+			bool atWar = gameData.GetKnownRivals(player).Any(p => PlayerRelationship.AtWar(player, p));
+			List<City> undefended = MilitaryReport.Undefended(player);
+			if (undefended.Count > 0) {
+				return new(atWar ? Mood.Angry : Mood.Sad, $"{Names(undefended)} {Are(undefended)} without a defender!");
+			}
+			(_, _, int cost) = player.TotalUnitsAllowedUnitsAndSupportCost();
+			if (cost > 0) {
+				return new(Mood.Sad, $"Our units cost us {cost} gold a turn beyond what our cities support for free.");
+			}
+			int upgradable = MilitaryReport.ByType(gameData, player).Sum(g => g.upgradable);
+			if (upgradable > 0) {
+				return new(Mood.Surprised, upgradable == 1 ? "One of our units can be upgraded." : $"{upgradable} of our units can be upgraded.");
+			}
+			return new(Mood.Happy, "Our forces stand ready.");
+		}
+
 		public static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
 		public static string WithArticle(string noun) => ("AEIOU".Contains(char.ToUpperInvariant(noun[0])) ? "an " : "a ") + noun;
