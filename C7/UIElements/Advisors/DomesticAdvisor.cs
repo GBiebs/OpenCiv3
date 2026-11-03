@@ -43,7 +43,7 @@ public partial class DomesticAdvisor : Control {
 	Label luxurySliderLabel = new();
 
 	TextureRect advisorHead = new();
-	Label DialogBoxAdvise = new();
+	Label DialogBoxAdvise;
 
 	// The Y position of the two sliders.
 	private int scienceSliderY = 84;
@@ -70,16 +70,7 @@ public partial class DomesticAdvisor : Control {
 		advisorHead.SetPosition(new Vector2(851, 0));
 		background.AddChild(advisorHead);
 
-		ImageTexture DialogBoxTexture = TextureLoader.Load("advisors.dialog_box");
-		TextureButton DialogBox = new TextureButton();
-		DialogBox.TextureNormal = DialogBoxTexture;
-		DialogBox.SetPosition(new Vector2(806, 110));
-		background.AddChild(DialogBox);
-
-		//TODO: Multi-line capabilities
-		DialogBoxAdvise.Text = "You are running OpenCiv3!";
-		DialogBoxAdvise.SetPosition(new Vector2(815, 119));
-		background.AddChild(DialogBoxAdvise);
+		(_, DialogBoxAdvise) = AdvisorUtils.CreateAdvisorDialogBox(background);
 
 		TextureLoader.SetButtonTextures(close, "ui.exit");
 		close.Pressed += () => {
@@ -249,16 +240,12 @@ public partial class DomesticAdvisor : Control {
 				growth.Text = "Balanced";
 			}
 
-			//TODO: Randomize or set logically
-			advisorHead.Texture = AdvisorHead.GetPopupImage(AdvisorHead.Advisor.Domestic, AdvisorHead.Mood.Happy, playerController.EraIndex());
+			AdvisorUtils.ShowAdvice(advisorHead, DialogBoxAdvise, AdvisorHead.Advisor.Domestic,
+				AdvisorAdvice.Domestic(gameData, playerController), playerController.EraIndex());
 
 			// Disable the change government button unless we have a government to
 			// switch to.
 			changeGovernment.Disabled = playerController.GetAvailableGovernments(gameData).Count == 1;
-
-			if (playerController.government.transitionType && playerController.inAnarchyUntilTurn > gameData.turn) {
-				DialogBoxAdvise.Text = $"{playerController.inAnarchyUntilTurn - gameData.turn} turns of anarchy left";
-			}
 
 			foreach (var node in cityListContainer.GetChildren()) {
 				cityListContainer.RemoveChild(node);
@@ -345,7 +332,7 @@ public partial class DomesticAdvisor : Control {
 
 		Label maintenanceLabel = new();
 		maintenanceLabel.CustomMinimumSize = new Vector2(40, 0);
-		maintenanceLabel.Text = "0";  // TODO: track maintenance
+		maintenanceLabel.Text = $"{city.MaintenanceCosts()}";
 		maintenanceLabel.HorizontalAlignment = HorizontalAlignment.Center;
 		maintenanceLabel.VerticalAlignment = VerticalAlignment.Center;
 		maintenanceLabel.ClipText = true;
@@ -405,7 +392,8 @@ public partial class DomesticAdvisor : Control {
 
 		Label productionLabel = new();
 		productionLabel.CustomMinimumSize = new Vector2(75, 0);
-		string turnsLeft = city.TurnsUntilProductionFinished() == int.MaxValue ? "(9999999 turns)" : $"({city.TurnsUntilProductionFinished()} turns)";
+		int turns = city.TurnsUntilProductionFinished();
+		string turnsLeft = turns == int.MaxValue ? "(never)" : $"({AdvisorAdvice.Turns(turns)})";
 		productionLabel.Text = $"{city.itemBeingProduced.name}\n{turnsLeft}";
 		productionLabel.VerticalAlignment = VerticalAlignment.Center;
 		productionLabel.ClipText = true;

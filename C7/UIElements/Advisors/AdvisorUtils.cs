@@ -1,6 +1,9 @@
+using C7GameData;
 using Godot;
 
 public static class AdvisorUtils {
+	private static readonly Color Ink = new(0.13f, 0.10f, 0.05f);
+
 	public static TextureButton CreateExitButton(Control parent, Vector2? position = null) {
 		Vector2 buttonPosition = position ?? new Vector2(952, 720);
 
@@ -32,13 +35,31 @@ public static class AdvisorUtils {
 		dialogBox.SetPosition(boxPosition);
 		parent.AddChild(dialogBox);
 
-		//TODO: Multi-line capabilities
-		Label dialogBoxLabel = new();
-		dialogBoxLabel.Text = "You are running OpenCiv3!";
+		// The advice wraps inside the box (set before the size, so it wraps
+		// at it rather than growing).
+		Label dialogBoxLabel = new() {
+			AutowrapMode = TextServer.AutowrapMode.WordSmart,
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+		};
+		dialogBoxLabel.AddThemeColorOverride("font_color", Ink);
+		dialogBoxLabel.AddThemeFontSizeOverride("font_size", 14);
 		dialogBoxLabel.SetPosition(labelPosition);
+		dialogBoxLabel.Size = dialogBoxTexture.GetSize() - new Vector2(18, 18);
 		parent.AddChild(dialogBoxLabel);
 
 		return (dialogBox, dialogBoxLabel);
+	}
+
+	// What the advisor says, with the face to match.
+	public static void ShowAdvice(TextureRect head, Label label, AdvisorHead.Advisor advisor, AdvisorAdvice.Advice advice, int eraIndex) {
+		AdvisorHead.Mood mood = advice.mood switch {
+			AdvisorAdvice.Mood.Sad => AdvisorHead.Mood.Sad,
+			AdvisorAdvice.Mood.Angry => AdvisorHead.Mood.Angry,
+			AdvisorAdvice.Mood.Surprised => AdvisorHead.Mood.Surprised,
+			_ => AdvisorHead.Mood.Happy,
+		};
+		head.Texture = AdvisorHead.GetPopupImage(advisor, mood, eraIndex);
+		label.Text = advice.text;
 	}
 
 	public static Label CreateAdvisorTitle(Control parent, float containerWidth, string advisorTitleString) {

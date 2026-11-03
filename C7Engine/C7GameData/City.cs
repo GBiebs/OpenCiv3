@@ -546,30 +546,7 @@ namespace C7GameData {
 		// town size; it needs fresh water or an aqueduct to become a city, and
 		// a hospital to become a metropolis.
 		public int SizeLimit(GameData gD) {
-			// If the city doesn't have fresh water and doesn't have an aqueduct
-			// then it can't grow into a city.
-			//
-			// TODO: lakes are bodies of water under 20 tiles (https://civilization.fandom.com/wiki/Fresh_Water_Lake_(Civ3))
-			bool hasFreshwaterAccess = location.BordersRiver();
-			foreach (Tile t in location.neighbors.Values) {
-				if (!t.IsLand() && t.isFreshWater) {
-					hasFreshwaterAccess = true;
-					break;
-				}
-			}
-
-			bool canGrowIntoCity = hasFreshwaterAccess;
-			if (!hasFreshwaterAccess) {
-				// TODO: Skip obsolete buildings (see Building.IsObsolete).
-				foreach (CityBuilding cb in GetBuildings()) {
-					if (cb.building.allowsCitySize2 || cb.building.allowsCitySize3) {
-						canGrowIntoCity = true;
-						break;
-					}
-				}
-			}
-
-			if (!canGrowIntoCity) {
+			if (!CanGrowIntoCity()) {
 				return gD.rules.MaximumLevel1CitySize;
 			}
 
@@ -584,6 +561,16 @@ namespace C7GameData {
 
 			// With fresh water or an aqueduct we can grow to a city.
 			return gD.rules.MaximumLevel2CitySize;
+		}
+
+		// Whether the city may pass town size: with fresh water or an aqueduct.
+		public bool CanGrowIntoCity() {
+			// TODO: lakes are bodies of water under 20 tiles (https://civilization.fandom.com/wiki/Fresh_Water_Lake_(Civ3))
+			if (location.BordersRiver() || location.neighbors.Values.Any(t => !t.IsLand() && t.isFreshWater)) {
+				return true;
+			}
+			// TODO: Skip obsolete buildings (see Building.IsObsolete).
+			return GetBuildings().Any(cb => cb.building.allowsCitySize2 || cb.building.allowsCitySize3);
 		}
 
 		public bool HasGranary() {
