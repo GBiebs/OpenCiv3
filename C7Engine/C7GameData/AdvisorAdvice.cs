@@ -52,13 +52,37 @@ namespace C7GameData {
 			return new(Mood.Happy, net > 0 ? "All is calm at home, and the treasury is growing." : "All is calm at home.");
 		}
 
+		// The foreign advisor: no one met yet, our wars, then civs angry with
+		// us (AIs only: a human's attitude isn't ours to know).
+		public static Advice Foreign(GameData gameData, Player player) {
+			List<Player> known = gameData.GetKnownRivals(player);
+			if (known.Count == 0) {
+				return new(Mood.Surprised, "We haven't met another civilization yet.");
+			}
+			List<Player> enemies = known.Where(p => PlayerRelationship.AtWar(player, p)).ToList();
+			if (enemies.Count > 0) {
+				return new(Mood.Angry, $"We are at war with {Nouns(enemies)}!");
+			}
+			foreach (Attitude.Level level in new[] { Attitude.Level.Furious, Attitude.Level.Annoyed }) {
+				List<Player> upset = known.Where(p => !p.isHuman && Attitude.Of(gameData, p, player) == level).ToList();
+				if (upset.Count > 0) {
+					string who = Nouns(upset);
+					return new(Mood.Sad, $"{char.ToUpperInvariant(who[0])}{who[1..]} are {level.ToString().ToLowerInvariant()} with us.");
+				}
+			}
+			return new(Mood.Happy, "We are at peace with every civilization we know.");
+		}
+
 		public static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
 		public static string WithArticle(string noun) => ("AEIOU".Contains(char.ToUpperInvariant(noun[0])) ? "an " : "a ") + noun;
 
-		// "Rome", "Rome and Veii", "Rome, Veii and 3 more".
-		private static string Names(List<City> cities) {
-			List<string> names = cities.Select(c => c.name).ToList();
+		private static string Names(List<City> cities) => List(cities.Select(c => c.name).ToList());
+
+		private static string Nouns(List<Player> players) => List(players.Select(p => $"the {p.civilization.noun}").ToList());
+
+		// "Rome", "Rome and Veii", "Rome, Veii and Antium", "Rome, Veii and 3 more".
+		private static string List(List<string> names) {
 			return names.Count switch {
 				1 => names[0],
 				2 => $"{names[0]} and {names[1]}",

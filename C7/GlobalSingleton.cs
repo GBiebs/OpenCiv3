@@ -81,6 +81,7 @@ public partial class GlobalSingleton : Node {
 		UserData.RegisterType<CityGraphicsDetails>();
 		UserData.RegisterType<PopHead.TextureKey>();
 		UserData.RegisterType<BorderLayer.TextureDetails>();
+		UserData.RegisterType<LeaderPortrait>();
 
 		// Note, we register all of AdvisorHeader rather than just
 		// AdvisorHead.AdvisorGraphicsDetails because we access the nums

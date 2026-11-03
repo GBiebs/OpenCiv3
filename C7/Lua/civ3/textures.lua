@@ -124,6 +124,7 @@ textures.advisors = {
   },
   foreign = {
     background = ADVISORS .. "foreign.pcx",
+    -- The panel with two tabs (the art has no third).
     navigation = {
       treaties = {
         path = ADVISORS .. "foreignTAB.pcx",
@@ -133,11 +134,29 @@ textures.advisors = {
         path = ADVISORS .. "foreignTAB.pcx",
         crop_region = { 225, 1, 223, 236 },
       },
-      details = {
-        path = ADVISORS .. "foreignTAB.pcx",
-        crop_region = { 449, 1, 223, 236 },
-      }
-    }
+    },
+    -- Rings behind a portrait: the civ picked, and a civ at war with us.
+    highlight = {
+      selected = {
+        path = ADVISORS .. "leader_highlight.pcx",
+        crop_region = { 1, 1, 126, 126 },
+        shadows = false,
+        transparent_color_indexes = { 255 },
+      },
+      war = {
+        path = ADVISORS .. "leader_highlight.pcx",
+        crop_region = { 128, 1, 126, 126 },
+        shadows = false,
+        transparent_color_indexes = { 255 },
+      },
+    },
+    -- A civ we haven't met (254 is the art's guide lines).
+    mystery = {
+      path = ADVISORS .. "foreignMYSTERY.pcx",
+      crop_region = { 0, 0, 114, 114 },
+      shadows = false,
+      transparent_color_indexes = { 254, 255 },
+    },
   },
   culture = {
     background = ADVISORS .. "culture.pcx",
