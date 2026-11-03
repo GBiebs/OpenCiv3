@@ -73,6 +73,16 @@ namespace C7Engine {
 			this.playerId = playerId;
 		}
 	}
+
+	// Another human takes the UI, outside their turn, to answer what the
+	// engine asks them next (an AI's demand or offer, a UN vote).
+	public class MsgHandOver : MessageToUI {
+		public ID playerId;
+
+		public MsgHandOver(ID playerId) {
+			this.playerId = playerId;
+		}
+	}
 	public class MsgGameMainMenu : MessageToUI { }
 
 	public class MsgDiplomacyPopUp : MessageToUI { }

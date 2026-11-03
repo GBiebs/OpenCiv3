@@ -539,6 +539,7 @@ namespace C7Engine {
 				}
 
 				if (them.isHuman) {
+					TurnHandling.HandControlTo(them);
 					new MsgShowTradeOffer(us, them, weWant, weGive).send();
 					await EngineStorage.WaitForMessageToEngine<MsgDiplomacyCompleted>();
 				} else {

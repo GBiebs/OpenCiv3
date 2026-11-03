@@ -93,6 +93,7 @@ namespace C7Engine.AI {
 				OnDemand(gameData, us, them);
 				log.Information($"{us} demands {demand.ToString()} of {them}");
 				if (them.isHuman) {
+					TurnHandling.HandControlTo(them);
 					new MsgTributeDemanded(us, them, demand).send();
 					await EngineStorage.WaitForMessageToEngine<MsgTributeAnswer>();
 				} else if (WouldPay(them, us)) {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using C7Engine;
@@ -181,6 +182,43 @@ public class TributeTest : IClassFixture<SaveGameFixture>, IDisposable {
 		EngineStorage.ProcessNextMessageToEngine();
 		await demanding;
 		Assert.Contains(theirTech.id, us.knownTechs);
+	}
+
+	// Hotseat: a human whose turn it isn't is handed the UI before being
+	// asked, so the demand isn't put to whoever happens to be playing.
+	[Fact]
+	public async Task AnotherHumanIsHandedTheUIBeforeBeingAsked() {
+		them.isHuman = true;
+		Player inControl = gameData.players.First(p => p != us && p != them && !p.isBarbarians);
+		inControl.isHuman = true;
+		EngineStorage.uiControllerID = inControl.id;
+		Outmatch(TributeAI.GiveInFactor);
+		Task demanding = TributeAI.MakeDemands(us, gameData);
+
+		List<MessageToUI> shown = EngineStorage.messagesToUI.ToList();
+		MsgHandOver handOver = Assert.IsType<MsgHandOver>(shown.Single(m => m is MsgHandOver));
+		MsgTributeDemanded demand = Assert.IsType<MsgTributeDemanded>(shown.Single(m => m is MsgTributeDemanded));
+		Assert.Equal(them.id, handOver.playerId);
+		Assert.True(shown.IndexOf(handOver) < shown.IndexOf(demand));
+		Assert.Equal(them.id, EngineStorage.uiControllerID);
+
+		new MsgTributeAnswer(us.id, them.id, demand.demand, pay: true).send();
+		EngineStorage.ProcessNextMessageToEngine();
+		await demanding;
+	}
+
+	[Fact]
+	public async Task NoHandOverToTheHumanAlreadyPlaying() {
+		them.isHuman = true;
+		EngineStorage.uiControllerID = them.id;
+		Outmatch(TributeAI.GiveInFactor);
+		Task demanding = TributeAI.MakeDemands(us, gameData);
+
+		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgHandOver>());
+		MsgTributeDemanded demand = Assert.IsType<MsgTributeDemanded>(EngineStorage.messagesToUI.Single(m => m is MsgTributeDemanded));
+		new MsgTributeAnswer(us.id, them.id, demand.demand, pay: true).send();
+		EngineStorage.ProcessNextMessageToEngine();
+		await demanding;
 	}
 
 	[Fact]

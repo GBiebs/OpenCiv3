@@ -112,6 +112,7 @@ namespace C7Engine.AI {
 				relationship.lastPeaceOfferTurn = gameData.turn;
 				log.Information($"{us} offers {them} peace ({price} gold)");
 				if (them.isHuman) {
+					TurnHandling.HandControlTo(them);
 					new MsgShowTradeOffer(us, them, weWant, weGive).send();
 					await EngineStorage.WaitForMessageToEngine<MsgDiplomacyCompleted>();
 				} else if (them.WouldAcceptDealFrom(gameData, us, weGive, weWant)) {

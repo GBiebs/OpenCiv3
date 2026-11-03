@@ -16,6 +16,17 @@ namespace C7Engine {
 			log.Information("\n*** Beginning turn " + gameData.turn + " ***");
 		}
 
+		// Before the engine asks a human something and waits for the answer:
+		// with several humans (hotseat) it may not be their turn, so they're
+		// given control first, and MsgHandOver lets the UI change players.
+		public static void HandControlTo(Player human) {
+			if (human.id == EngineStorage.uiControllerID) {
+				return;
+			}
+			EngineStorage.uiControllerID = human.id;
+			new MsgHandOver(human.id).send();
+		}
+
 		public static void OnEndTurn(Player player) {
 			GameData gameData = EngineStorage.gameData;
 

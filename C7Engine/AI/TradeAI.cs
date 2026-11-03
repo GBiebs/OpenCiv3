@@ -41,6 +41,7 @@ namespace C7Engine.AI {
 					}
 					relationship.lastGoodsOfferTurn = gameData.turn;
 					log.Information($"{us} offers {them} {ours.ToString()} for {theirs.ToString()}");
+					TurnHandling.HandControlTo(them);
 					new MsgShowTradeOffer(us, them, theirs, ours).send();
 					await EngineStorage.WaitForMessageToEngine<MsgDiplomacyCompleted>();
 					continue;

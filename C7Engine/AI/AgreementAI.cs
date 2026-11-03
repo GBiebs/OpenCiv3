@@ -109,6 +109,7 @@ namespace C7Engine.AI {
 				TradeOffer weWant = new() { agreements = [wanted] };
 				log.Information($"{us} proposes {wanted.Describe(gameData)} to {them}");
 				if (them.isHuman) {
+					TurnHandling.HandControlTo(them);
 					new MsgShowTradeOffer(us, them, weWant, weGive).send();
 					await EngineStorage.WaitForMessageToEngine<MsgDiplomacyCompleted>();
 				} else if (them.WouldAcceptDealFrom(gameData, us, weGive, weWant)) {

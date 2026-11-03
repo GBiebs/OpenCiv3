@@ -111,6 +111,7 @@ namespace C7GameData {
 			gameData.unitedNations.lastOfferTurn = gameData.turn;
 			bool call;
 			if (player.isHuman) {
+				C7Engine.TurnHandling.HandControlTo(player);
 				new MsgElectionOffer(player.id).send();
 				call = (await EngineStorage.WaitForMessageToEngine<MsgCallElection>()).call;
 			} else {
@@ -128,6 +129,7 @@ namespace C7GameData {
 			Dictionary<Player, Player> votes = new();
 			foreach (Player voter in Voters(gameData)) {
 				if (voter.isHuman) {
+					C7Engine.TurnHandling.HandControlTo(voter);
 					new MsgVoteRequest(voter.id, candidates).send();
 					MsgVote vote = await EngineStorage.WaitForMessageToEngine<MsgVote>();
 					votes[voter] = vote.candidateId == null ? null : candidates.Find(c => c.id == vote.candidateId);
