@@ -152,10 +152,11 @@ public partial class Game : Node {
 	// a moment, the route, the turns and the target show (gotoInfo) and
 	// releasing moves the unit there. Only holding moves, so a quick click
 	// can select another unit without its route flashing up first (user,
-	// 2026-11-02); on our own city two quick clicks open it.
+	// 2026-11-02, then a third shorter); on our own city two quick clicks
+	// open it.
 	private Tile movePressTile = null;
 	private ulong movePressStartMs = 0;
-	private const ulong HoldToMoveMs = 300;
+	private const ulong HoldToMoveMs = 200;
 
 	// Moving the mouse to an edge of the window scrolls the map that way.
 	private const int EdgeScrollMargin = 3;
