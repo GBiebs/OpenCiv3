@@ -142,6 +142,10 @@ public partial class MainMenu : Node {
 	public void LoadGame() {
 		log.Information("load game button pressed");
 		PlayButtonPressedSound();
+		try {
+			LoadDialog.SetupForLoadWithLatestSave();
+		} catch {
+		}
 		LoadDialog.Popup();
 	}
 
