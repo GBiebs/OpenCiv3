@@ -39,6 +39,38 @@ public partial class Tile {
 			tile.overlays.Add(craters);
 	}
 
+	public bool HasRoadGraphics() {
+		if (this.HasCity() && this.neighbors.Any(x => x.Value.HasRoadGraphics())) return true;
+		if (!HasRoad()) return false;
+		return CanRenderTerrainGraphics(ROAD);
+	}
+
+	public bool HasRailroadGraphics() {
+		if (this.HasCity()
+			&& EngineStorage.GetUIController()
+				.HasTech(EngineStorage.gameData.Terraforms.First(t => t.Improvement.key == RAILROAD).RequiredTech)
+			&& this.neighbors.Any(x => x.Value.HasRailroadGraphics())) return true;
+		if (!HasRailroad()) return false;
+		return CanRenderTerrainGraphics(RAILROAD);
+	}
+
+	public bool HasIrrigationGraphics() {
+		if (!HasIrrigation()) return false;
+		return CanRenderTerrainGraphics(IRRIGATION);
+	}
+
+	public bool HasPollutionGraphics() {
+		if (!HasPollution()) return false;
+		return CanRenderTerrainGraphics(POLLUTION);
+	}
+
+	private bool CanRenderTerrainGraphics(string terrainType) {
+		if (EngineStorage.gameData.observerMode)
+			return true;
+		Player player = EngineStorage.GetUIController();
+		return player.tileKnowledge.SeenImprovements(this).Contains(terrainType);
+	}
+
 	public class TileOverlays {
 		public const string ROAD = "road";
 		public const string RAILROAD = "railroad";

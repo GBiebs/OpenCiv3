@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using C7Engine;
+using Serilog;
 
 namespace C7GameData {
 	public class TileKnowledge {
@@ -11,6 +12,7 @@ namespace C7GameData {
 		}
 
 		public HashSet<Tile> knownTiles { get; private set; } = new();
+		public Dictionary<ID, IEnumerable<string>> knownTerrainImprovements { get; private set; } = new();
 		public HashSet<Tile> borderTiles { get; private set; } = new();
 		private HashSet<Tile> activeTiles = new HashSet<Tile>();
 		// Tiles a recon mission scouted: seen, units and all, until the
@@ -24,9 +26,9 @@ namespace C7GameData {
 		// The set of tiles this player currently has explorers headed towards.
 		public HashSet<Tile> aiExplorationTargets = new();
 
-		public void AddTilesToKnown(Tile unitLocation, bool recomputeActiveTiles = true) {
-			knownTiles.Add(unitLocation);
-			borderTiles.Remove(unitLocation);
+		public void AddTilesToKnown(Tile location, bool recomputeActiveTiles = true) {
+			knownTiles.Add(location);
+			borderTiles.Remove(location);
 
 			// Crude benchmarking tool for GetTilesVisibleToUnit, which can be
 			// a hot function when profiling.
@@ -35,7 +37,7 @@ namespace C7GameData {
 			// 	stopwatch.Start();
 
 			// 	for (int i = 0; i < 10000; ++i) {
-			// 		foreach (Tile t in GetTilesVisibleToUnit(unitLocation)) {
+			// 		foreach (Tile t in GetTilesVisibleToUnit(location)) {
 			// 			knownTiles.Add(t);
 			// 		}
 			// 	}
@@ -43,9 +45,14 @@ namespace C7GameData {
 			// 	System.Console.WriteLine($"10k runs took: {stopwatch.ElapsedMilliseconds} milliseconds");
 			// }
 
-			foreach (Tile t in GetTilesVisibleToUnit(unitLocation)) {
+			// Line of sight from the terrain, whether or not a unit is there
+			// (#1074 cut an empty tile's view to its neighbors, which a new
+			// city's view, the AI's settling and our tests rely on).
+			foreach (Tile t in GetTilesVisibleToUnit(location)) {
 				knownTiles.Add(t);
 				borderTiles.Remove(t);
+
+				knownTerrainImprovements[t.Id] = t.overlays.GetImprovements().Select(ti => ti.key).ToList();
 
 				foreach (Tile border in t.neighbors.Values) {
 					if (border == Tile.NONE) {
@@ -220,7 +227,29 @@ namespace C7GameData {
 			return list;
 		}
 
+		// The improvements this player sees on a tile: what's there while it's
+		// in view, otherwise what they saw last (Civ3's fog of war).
+		public IEnumerable<string> SeenImprovements(Tile t) {
+			if (isActiveTile(t)) {
+				return t.overlays.GetImprovements().Select(ti => ti.key);
+			}
+			return knownTerrainImprovements.TryGetValue(t.Id, out var keys) ? keys : [];
+		}
+
+		// Only a human's map shows remembered improvements, so only they keep
+		// them (it costs the AI's turns nothing).
+		private void RememberImprovements(IEnumerable<Tile> tiles) {
+			if (!_player.isHuman) {
+				return;
+			}
+			foreach (Tile t in tiles) {
+				knownTerrainImprovements[t.Id] = t.overlays.GetImprovements().Select(ti => ti.key).ToList();
+			}
+		}
+
 		public void RecomputeActiveTiles() {
+			// Tiles going out of view are remembered as they were last seen.
+			RememberImprovements(activeTiles);
 			activeTiles.Clear();
 			foreach (Tile t in knownTiles) {
 				// A tile within a city's borders and all of its neighbors are active.
@@ -247,6 +276,7 @@ namespace C7GameData {
 				}
 			}
 			activeTiles.UnionWith(scoutedTiles);
+			RememberImprovements(activeTiles);
 		}
 
 		public List<Tile> OwnedTiles() {
