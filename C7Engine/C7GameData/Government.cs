@@ -113,6 +113,8 @@ namespace C7GameData {
 			}
 		}
 
+		// (An Agricultural civ's city keeps its extra food through this in
+		// Yield.ApplyPlayerModifiers, which adds it after the penalty.)
 		private static void TilePenalty(Tile.Yield yield) {
 			yield.penalty += yield.yield > 2 ? 1 : 0;
 		}

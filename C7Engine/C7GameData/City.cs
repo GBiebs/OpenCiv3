@@ -98,6 +98,7 @@ namespace C7GameData {
 		public int draftedThatTurn = 0;
 
 		public bool isInCivilDisorder = false;
+		public bool hasFreshwaterAccess => location.BordersRiver() || location.NeighborsFreshWater();
 
 		// The food a citizen eats each turn.
 		public const int FoodPerCitizen = 2;
@@ -544,7 +545,7 @@ namespace C7GameData {
 
 		// The largest this city can grow: a town can always reach the rules'
 		// town size; it needs fresh water or an aqueduct to become a city, and
-		// a hospital to become a metropolis.
+		// a hospital to become a metropolis. Obsolete buildings don't count.
 		public int SizeLimit(GameData gD) {
 			if (!CanGrowIntoCity()) {
 				return gD.rules.MaximumLevel1CitySize;
@@ -552,11 +553,8 @@ namespace C7GameData {
 
 			// If we're a city trying to grow into a metropolis, we need a
 			// hospital.
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			foreach (CityBuilding cb in GetBuildings()) {
-				if (cb.building.allowsCitySize3) {
-					return int.MaxValue;
-				}
+			if (GetBuildings().Any(cb => cb.building.allowsCitySize3 && !cb.building.IsObsolete(owner))) {
+				return int.MaxValue;
 			}
 
 			// With fresh water or an aqueduct we can grow to a city.
@@ -566,11 +564,8 @@ namespace C7GameData {
 		// Whether the city may pass town size: with fresh water or an aqueduct.
 		public bool CanGrowIntoCity() {
 			// TODO: lakes are bodies of water under 20 tiles (https://civilization.fandom.com/wiki/Fresh_Water_Lake_(Civ3))
-			if (location.BordersRiver() || location.neighbors.Values.Any(t => !t.IsLand() && t.isFreshWater)) {
-				return true;
-			}
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			return GetBuildings().Any(cb => cb.building.allowsCitySize2 || cb.building.allowsCitySize3);
+			return hasFreshwaterAccess
+				|| GetBuildings().Any(cb => (cb.building.allowsCitySize2 || cb.building.allowsCitySize3) && !cb.building.IsObsolete(owner));
 		}
 
 		public bool HasGranary() {

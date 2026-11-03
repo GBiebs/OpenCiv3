@@ -180,6 +180,7 @@ public partial class Tile {
 		}
 
 		// See https://wiki.civforum.de/wiki/Stadtfeldertrag_(Civ3)
+		// TODO: Consider making these values moddable via Lua
 		if (HasCity()) {
 			// A Commercial civ's cities and metropolises make two and three
 			// more (CivWiki; the cities' +2 matches Civ3's saves). A capital
@@ -187,6 +188,7 @@ public partial class Tile {
 			bool commercial = cityAtTile.owner.civilization.traits.Contains(Civilization.Trait.Commercial);
 			TraitBonusRules traitBonuses = EngineStorage.gameData.rules.traitBonuses;
 			int regularCityYield;
+			bool isCommercial = player.civilization?.traits.Contains(Civilization.Trait.Commercial) == true;
 			if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel1CitySize) {
 				regularCityYield = 1;
 			} else if (cityAtTile.residents.Count <= EngineStorage.gameData.rules.MaximumLevel2CitySize) {
@@ -226,8 +228,6 @@ public partial class Tile {
 	public Yield CommerceYield(Player player) {
 		int yield = BaseCommerceYield(player);
 
-		// TODO: handle the commerce bonus for costal cities+seafaring
-		// TODO: handle the commerce bonus for commerial civs
 		return Yield.CalculateForPlayer(this, yield, YieldType.Commerce, player);
 	}
 	public Yield CommerceYield(City city) {

@@ -596,6 +596,8 @@ namespace C7Engine {
 		// nationality, and resisters stay as they are.
 		private static void FixRemainingUnhappyCities(Player player) {
 			foreach (City city in player.cities) {
+				// Every citizen comes back, so plan the food for all of them.
+				int numResidents = city.residents.Count;
 				List<CityResident> workers = city.residents.Where(r => !r.resisting).ToList();
 				foreach (CityResident worker in workers) {
 					city.RemoveCitizen(worker);
@@ -608,7 +610,7 @@ namespace C7Engine {
 						city = city
 					};
 					city.AddCitizen(newResident);
-					CityTileAssignmentAI.AssignNewCitizenToTile(EngineStorage.gameData, newResident, manageMoods: true);
+					CityTileAssignmentAI.AssignNewCitizenToTile(EngineStorage.gameData, newResident, manageMoods: true, totalResidents: numResidents);
 				}
 			}
 		}
