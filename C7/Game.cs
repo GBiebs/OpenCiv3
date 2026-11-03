@@ -197,6 +197,7 @@ public partial class Game : Node {
 	private readonly Dictionary<ID, List<MessageToUI>> heldMessages = new();
 	private readonly Queue<Action> afterHandOver = new();
 	private HandOverScreen handOverScreen;
+	private bool startedATurn;
 
 	private MapView mapView;
 
@@ -311,6 +312,14 @@ public partial class Game : Node {
 		if (Global.LoadGamePath == null) {
 			new MsgNewGame(controller.id).send();
 			await EngineStorage.WaitForMessageToEngine<MsgUiDisengaged>();
+		}
+
+		// Hotseat: starting or loading the game, whoever's turn it is gives
+		// their password (or may choose one) before their empire shows.
+		if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1) {
+			startedATurn = true;
+			GameData gameData = EngineStorage.gameData;
+			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", null);
 		}
 
 		try {
@@ -494,7 +503,12 @@ public partial class Game : Node {
 				EmitDawnOfCivilizationSignal(mNGP);
 				break;
 			case MsgStartTurn mST:
-				if (mST.playerId != null && mST.playerId != controller.id) {
+				// Another human's turn; and in a hotseat game the first turn
+				// after starting or loading it too, so its password is asked
+				// (or can be chosen) before anyone's empire shows.
+				bool firstHotseatStart = !startedATurn && gameData.players.Count(p => p.isHuman && !p.defeated) > 1;
+				startedATurn = true;
+				if (mST.playerId != null && (mST.playerId != controller.id || firstHotseatStart)) {
 					HandOverTo(mST.playerId, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", OnPlayerStartTurn);
 				} else {
 					OnPlayerStartTurn();
@@ -1514,6 +1528,11 @@ public partial class Game : Node {
 	}
 
 	private void ProcessActions() {
+		// Nothing behind the hand-over screen: not even keys typed into its
+		// password field.
+		if (handOverScreen != null) {
+			return;
+		}
 		Godot.Collections.Array<StringName> actions = InputMap.GetActions();
 
 		List<string> pressed = [];
@@ -1565,7 +1584,7 @@ public partial class Game : Node {
 	}
 
 	private bool HasVisibleModal() {
-		if (popupOverlay.Visible || cityScreen.Visible || diplomacy.Visible)
+		if (handOverScreen != null || popupOverlay.Visible || cityScreen.Visible || diplomacy.Visible)
 			return true;
 
 		if (advisor.Visible || gameViews.Visible || preferences.Visible)

@@ -40,8 +40,10 @@ public class CreateGame {
 		EngineStorage.gameData = gameData;
 		EngineStorage.gameData.onGameCreation();
 
+		// Whose turn it is: the first human still in the game who hasn't
+		// played this turn (a hotseat save may be from a later human's turn).
 		Player humanPlayer = gameData.players.Any(p => p.isHuman) switch {
-			true => gameData.players.Find(p => p.isHuman),
+			true => gameData.players.Find(p => p.isHuman && !p.defeated && !p.hasPlayedThisTurn) ?? gameData.players.Find(p => p.isHuman),
 			false => throw new Exception($"The provided save does not contain a human player"),
 		};
 

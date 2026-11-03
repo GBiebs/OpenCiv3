@@ -25,7 +25,7 @@ public class HotseatTurnTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	// A new game whose first human has the turn, and a second human.
 	private async Task<(Player first, Player second)> StartGame() {
-		Player first = await CreateGame.createGame(fixture.saveGame, (_) => fixture.behaviors);
+		Player first = await CreateGame.createGame(fixture.saveGame.Clone(), (_) => fixture.behaviors);
 		Player second = EngineStorage.gameData.players.First(p => !p.isHuman && !p.isBarbarians);
 		second.isHuman = true;
 		TurnHandling.OnBeginTurn();
@@ -101,10 +101,24 @@ public class HotseatTurnTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(second.id, await EndTurn());
 	}
 
+	// A save from the second human's turn loads with them in control.
+	[Fact]
+	public async Task ASaveFromALaterHumansTurnLoadsWithThem() {
+		C7GameData.Save.SaveGame save = fixture.saveGame.Clone();
+		C7GameData.Save.SavePlayer first = save.Players.First(p => p.human);
+		C7GameData.Save.SavePlayer second = save.Players.First(p => !p.human && p.canBePicked);
+		second.human = true;
+		first.hasPlayedCurrentTurn = true;
+
+		Player inControl = await CreateGame.createGame(save, (_) => fixture.behaviors);
+		Assert.Equal(second.id, inControl.id);
+		Assert.Equal(second.id, EngineStorage.uiControllerID);
+	}
+
 	// With a single human nothing changes: the turn comes back to them.
 	[Fact]
 	public async Task OneHumanKeepsTheTurn() {
-		Player human = await CreateGame.createGame(fixture.saveGame, (_) => fixture.behaviors);
+		Player human = await CreateGame.createGame(fixture.saveGame.Clone(), (_) => fixture.behaviors);
 		TurnHandling.OnBeginTurn();
 		TurnHandling.InitTurnData();
 		await TurnHandling.AdvanceTurn();

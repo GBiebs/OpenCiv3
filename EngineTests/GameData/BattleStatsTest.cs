@@ -216,7 +216,9 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 	[Fact]
 	public void EveryOrderIsAnAction() {
 		HashSet<Type> notActions = [typeof(MsgShutdownEngine), typeof(MsgEndTurn), typeof(MsgSetAnimationsEnabled),
-			typeof(MsgToggleAnimationsEnabled), typeof(MsgDiplomacyCompleted), typeof(MsgUiDisengaged)];
+			typeof(MsgToggleAnimationsEnabled), typeof(MsgDiplomacyCompleted), typeof(MsgUiDisengaged),
+			// A hotseat password isn't a move in the game.
+			typeof(MsgSetPassword)];
 		List<Type> messages = typeof(MessageToEngine).Assembly.GetTypes()
 			.Where(t => t.IsSubclassOf(typeof(MessageToEngine)) && !t.IsAbstract).ToList();
 		Assert.True(messages.Count > 40);

@@ -672,6 +672,25 @@ namespace C7Engine {
 		}
 	}
 
+	// Hotseat: the player in control sets (or clears, with an empty one)
+	// their password; no one else's.
+	public class MsgSetPassword : MessageToEngine {
+		private readonly ID playerId;
+		private readonly string password;
+
+		public MsgSetPassword(ID playerId, string password) {
+			this.playerId = playerId;
+			this.password = password;
+		}
+
+		public override void process() {
+			if (playerId != EngineStorage.uiControllerID) {
+				return;
+			}
+			EngineStorage.gameData.GetPlayer(playerId)?.SetPassword(password);
+		}
+	}
+
 	public class MsgEndTurn : MessageToEngine {
 		private ILogger log = Log.ForContext<MsgEndTurn>();
 

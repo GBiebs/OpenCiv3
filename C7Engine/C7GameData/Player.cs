@@ -68,6 +68,24 @@ namespace C7GameData {
 		public bool hasPlayedThisTurn = false;
 		public bool skipFirstTurn = false;
 
+		// Hotseat: a password the player gives before their turn shows them
+		// their empire, as Civ3's (empty for none). Kept as a salted hash, so
+		// a save doesn't show it.
+		public string passwordHash = "";
+
+		public bool HasPassword() => !string.IsNullOrEmpty(passwordHash);
+
+		public void SetPassword(string password) {
+			passwordHash = string.IsNullOrEmpty(password) ? "" : HashPassword(password);
+		}
+
+		public bool CheckPassword(string password) => !HasPassword() || HashPassword(password ?? "") == passwordHash;
+
+		private string HashPassword(string password) {
+			byte[] bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{id}:{password}"));
+			return Convert.ToHexString(bytes);
+		}
+
 		// Has this player been defeated?
 		public bool defeated = false;
 

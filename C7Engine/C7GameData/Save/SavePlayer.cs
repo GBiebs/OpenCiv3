@@ -54,6 +54,9 @@ namespace C7GameData.Save {
 		// The amount of gold this player has.
 		public int gold = 0;
 
+		// Hotseat: the player's password, hashed (Player.passwordHash).
+		public string passwordHash = "";
+
 		// The number of "beakers" (gold) spent on the currently researched
 		// tech.
 		public int beakers = 0;
@@ -121,6 +124,7 @@ namespace C7GameData.Save {
 				scienceRate = scienceRate,
 				taxRate = taxRate,
 				gold = gold,
+				passwordHash = passwordHash ?? "",
 				turnsUntilPriorityReevaluation = turnsUntilPriorityReevaluation,
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				hasVictoriousArmy = hasVictoriousArmy,
@@ -202,6 +206,7 @@ namespace C7GameData.Save {
 			scienceRate = player.scienceRate;
 			taxRate = player.taxRate;
 			gold = player.gold;
+			passwordHash = player.passwordHash;
 			beakers = player.beakers;
 			turnsResearched = player.turnsResearched;
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;
