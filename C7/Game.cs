@@ -433,6 +433,7 @@ public partial class Game : Node {
 
 			// Allow the domestic advisor to trigger popups.
 			advisor.domesticAdvisor.SetPopupOverlay(popupOverlay);
+			advisor.scienceAdvisor.SetPopupOverlay(popupOverlay);
 		});
 	}
 
@@ -822,6 +823,19 @@ public partial class Game : Node {
 		} else {
 			log.Information("It's not your turn!");
 		}
+	}
+
+	// Switching away from the science advisor commits the research chosen in it, which may
+	// need the player's OK first. If so, navigate runs only once they give it.
+	private void LeaveScienceAdvisorThen(System.Action navigate) {
+		ScienceAdvisor science = advisor.scienceAdvisor;
+		if (science.Visible) {
+			if (popupOverlay.ShowingPopup || science.AskToConfirmSwitch(navigate)) {
+				return;
+			}
+			science.CommitPendingResearch();
+		}
+		navigate();
 	}
 
 	// Runs any action a popup deferred until an advisor screen was closed.
@@ -1585,16 +1599,21 @@ public partial class Game : Node {
 		// The advisors (F1-F6) and the game views (F7-F11), also while one of
 		// them or the city screen is open (not over a popup, nor during the
 		// computer's turn). They're read from the input map, which a focused
-		// control can't swallow.
+		// control can't swallow. Leaving the science advisor settles its
+		// pending research pick first (asking if that loses beakers).
 		if (!popupOverlay.ShowingPopup && CurrentState != GameState.ComputerTurn) {
-			switch (currentAction) {
+			string action = currentAction;
+			switch (action) {
+				case C7Action.ShowScienceAdvisor:
+					EmitSignal(SignalName.ShowSpecificAdvisor, action);
+					return;
 				case C7Action.ShowDomesticAdvisor or C7Action.ShowTradeAdvisor or C7Action.ShowMilitaryAdvisor
-					or C7Action.ShowForeignAdvisor or C7Action.ShowCulturalAdvisor or C7Action.ShowScienceAdvisor:
-					EmitSignal(SignalName.ShowSpecificAdvisor, currentAction);
+					or C7Action.ShowForeignAdvisor or C7Action.ShowCulturalAdvisor:
+					LeaveScienceAdvisorThen(() => EmitSignal(SignalName.ShowSpecificAdvisor, action));
 					return;
 				case C7Action.ShowWondersView or C7Action.ShowVictoryStatusView or C7Action.ShowPalaceView
 					or C7Action.ShowSpaceRaceView or C7Action.ShowDemographicsView:
-					EmitSignal(SignalName.ShowGameView, currentAction);
+					LeaveScienceAdvisorThen(() => EmitSignal(SignalName.ShowGameView, action));
 					return;
 			}
 		}
