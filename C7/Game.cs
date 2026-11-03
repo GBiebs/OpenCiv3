@@ -1484,7 +1484,7 @@ public partial class Game : Node {
 			return;
 		}
 
-		// The advisors (F1-F6) and the game views (F7-F12), also while one of
+		// The advisors (F1-F6) and the game views (F7-F11), also while one of
 		// them or the city screen is open (not over a popup, nor during the
 		// computer's turn). They're read from the input map, which a focused
 		// control can't swallow.
@@ -1495,7 +1495,7 @@ public partial class Game : Node {
 					EmitSignal(SignalName.ShowSpecificAdvisor, currentAction);
 					return;
 				case C7Action.ShowWondersView or C7Action.ShowVictoryStatusView or C7Action.ShowPalaceView
-					or C7Action.ShowSpaceRaceView or C7Action.ShowDemographicsView or C7Action.ShowStatisticsView:
+					or C7Action.ShowSpaceRaceView or C7Action.ShowDemographicsView:
 					EmitSignal(SignalName.ShowGameView, currentAction);
 					return;
 			}

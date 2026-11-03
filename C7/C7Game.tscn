@@ -264,7 +264,7 @@ custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
 script = ExtResource("8_7a2mf")
 text = "G"
-tooltipText = "Statistics and graphs (F12)"
+tooltipText = "Statistics and graphs"
 
 [node name="Preferences" parent="CanvasLayer" instance=ExtResource("3_prefs")]
 visible = false

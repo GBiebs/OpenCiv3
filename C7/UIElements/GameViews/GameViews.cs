@@ -79,8 +79,9 @@ public partial class GameViews : CenterContainer {
 		Show();
 	}
 
-	/// The end-of-game statistics: every civ, and closing the screen runs <paramref name="onClose"/>.
-	public void ShowStatistics(System.Action onClose) {
+	/// The statistics; at the end of the game every civ's, and closing the
+	/// screen runs <paramref name="onClose"/>.
+	public void ShowStatistics(System.Action onClose = null) {
 		HideGameViews();
 		statisticsView.ShowView(onClose);
 		Show();

@@ -10,13 +10,18 @@ using Godot;
 /// Civ3's histograph: every civ we've met (all of them once the game is
 /// over) as a band down the years, as wide as its share of the score, power,
 /// culture or victory points; the world ranking by score and our score's
-/// parts on the right. Reached from the victory status screen's "Show" list.
+/// parts on the right. Reached from the victory status screen's "Show" list,
+/// which also leads to the statistics.
 /// </summary>
 public partial class HistographView : CenterContainer {
 	public enum Mode { Score, Power, Culture, VictoryPoints }
 
 	private static readonly Color Ink = new(0.13f, 0.10f, 0.05f);
 	private const int MaxRanked = 16;
+
+	// The "Show" list's entries besides the histograph's modes (whose ids are
+	// their numbers).
+	public const int VictoryStatusEntry = 10, StatisticsEntry = 11;
 
 	private TextureRect background;
 	private Mode mode;
@@ -78,7 +83,7 @@ public partial class HistographView : CenterContainer {
 		}
 		background.AddChild(chart);
 
-		AddShowList(gameData, shown);
+		AddShowList(this, background, HasVictoryPoints(gameData, player), (int)mode, new Vector2(192, 666));
 		AddScorePanel(shown, history, player);
 	}
 
@@ -89,14 +94,13 @@ public partial class HistographView : CenterContainer {
 		return gameData.players.Where(p => met.Contains(p) && !p.isBarbarians).ToList();
 	}
 
-	private void AddShowList(GameData gameData, List<Player> shown) {
-		bool victoryPoints = shown.Any(p => (gameData.history.GetValueOrDefault(p.id.ToString())?.LastOrDefault()?.VP ?? 0) > 0);
-		AddShowList(this, background, victoryPoints, mode, new Vector2(192, 666));
-	}
+	// Whether a civ we see has victory points, which puts them on the list.
+	public static bool HasVictoryPoints(GameData gameData, Player player) => Shown(gameData, player)
+		.Any(p => (gameData.history.GetValueOrDefault(p.id.ToString())?.LastOrDefault()?.VP ?? 0) > 0);
 
-	// The "Show" list of the histograph and the victory status screen, on
-	// parchment like Civ3's, with its label to the left.
-	public static OptionButton AddShowList(Control view, Control parent, bool victoryPoints, Mode? selected, Vector2 position) {
+	// The "Show" list of the victory status screen, the histograph and the
+	// statistics, on parchment like Civ3's, with its label to the left.
+	public static OptionButton AddShowList(Control view, Control parent, bool victoryPoints, int selected, Vector2 position) {
 		Label label = new() {
 			Text = "Show",
 			Position = position - new Vector2(44, -2),
@@ -128,20 +132,27 @@ public partial class HistographView : CenterContainer {
 		foreach (string color in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) {
 			list.AddThemeColorOverride(color, Ink);
 		}
-		list.AddItem("Victory Status");
-		list.AddItem("Score");
-		list.AddItem("Power");
-		list.AddItem("Culture");
+		list.AddItem("Victory Status", VictoryStatusEntry);
+		list.AddItem("Score", (int)Mode.Score);
+		list.AddItem("Power", (int)Mode.Power);
+		list.AddItem("Culture", (int)Mode.Culture);
 		if (victoryPoints) {
-			list.AddItem("Victory Points");
+			list.AddItem("Victory Points", (int)Mode.VictoryPoints);
 		}
-		list.Selected = selected is Mode m ? 1 + (int)m : 0;
+		list.AddItem("Statistics", StatisticsEntry);
+		list.Selected = list.GetItemIndex(selected);
 		list.ItemSelected += index => {
 			GameViews views = view.GetParent<GameViews>();
-			if (index == 0) {
-				views.ShowVictoryStatus();
-			} else {
-				views.ShowHistograph((Mode)(index - 1));
+			switch (list.GetItemId((int)index)) {
+				case VictoryStatusEntry:
+					views.ShowVictoryStatus();
+					break;
+				case StatisticsEntry:
+					views.ShowStatistics();
+					break;
+				case int mode:
+					views.ShowHistograph((Mode)mode);
+					break;
 			}
 		};
 		parent.AddChild(list);

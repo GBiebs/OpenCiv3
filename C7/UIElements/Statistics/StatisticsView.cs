@@ -7,7 +7,8 @@ using C7GameData;
 using Godot;
 
 /// <summary>
-/// The statistics screen (F12, and at the end of the game): production,
+/// The statistics screen (F8's "Show" list, the G button, and at the end of
+/// the game): production,
 /// efficiencies, population, commerce, improved tiles, units built, game actions
 /// and luck.
 /// It opens on a dashboard of headline numbers and small charts; clicking one
@@ -35,6 +36,10 @@ public partial class StatisticsView : CenterContainer {
 	private string focusName;
 	// What the exit button does: hide the screen, or (at the end of the game) leave it.
 	private Action onClose;
+	// Opened in game, the victory status screen's "Show" list leads on from
+	// here (with victory points once anyone has some).
+	private bool showList;
+	private bool victoryPointsListed;
 
 	// The chart in the big chart view (for developer screenshots of the hover box).
 	public LineChart bigChart { get; private set; }
@@ -64,16 +69,19 @@ public partial class StatisticsView : CenterContainer {
 				: [controller];
 			shown = players.Select(p => ForPlayer(p, p == controller)).ToList();
 			met = HistographView.Shown(gameData, controller).Select(p => ForPlayer(p, p == controller)).ToList();
+			victoryPointsListed = HistographView.HasVictoryPoints(gameData, controller);
 		});
-		ShowView(shown, Layout.Dashboard, onClose: onClose, endOfGame: EngineStorage.gameData.gameOver, histographCivs: met);
+		ShowView(shown, Layout.Dashboard, onClose: onClose, endOfGame: EngineStorage.gameData.gameOver, histographCivs: met,
+			showList: onClose == null);
 	}
 
 	public static CivStats ForPlayer(Player player, bool isPlayer) =>
 		new(player.civilization.name, TextureLoader.LoadColor(player.GetPlayerColor()), player.stats, isPlayer);
 
 	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null, bool endOfGame = false,
-		List<CivStats> histographCivs = null) {
+		List<CivStats> histographCivs = null, bool showList = false) {
 		this.endOfGame = endOfGame;
+		this.showList = showList;
 		this.histographCivs = histographCivs ?? shown;
 		civs = shown.OrderByDescending(c => c.isPlayer).ToList();
 		this.layout = layout;
@@ -260,6 +268,10 @@ public partial class StatisticsView : CenterContainer {
 
 		TextureButton close = AdvisorUtils.CreateExitButton(background);
 		close.Pressed += () => onClose();
+		if (showList) {
+			HistographView.AddShowList(this, background, victoryPointsListed, HistographView.StatisticsEntry,
+				layout == Layout.Dashboard ? new Vector2(192, 728) : new Vector2(192, 666));
+		}
 
 		// Nothing to show before the first turn, unless the start has been rated.
 		if (civs.Count == 0 || (Player.stats.TurnCount == 0 && Player.stats.startRating == null)) {
@@ -340,7 +352,9 @@ public partial class StatisticsView : CenterContainer {
 			AddLabel(details, new Rect2(166, 128, 560, 18 * lines + 4), 12, wrap: true);
 			chartTop = 136 + 18 * lines + 8;
 		}
-		Rect2 chartRect = new(160, chartTop, 566, 676 - chartTop);
+		// Above the "Show" list, where there is one.
+		float chartBottom = showList ? 660 : 676;
+		Rect2 chartRect = new(160, chartTop, 566, chartBottom - chartTop);
 		if (stat.startPosition) {
 			bigChart = null;
 			StartPositionBars(chartRect);

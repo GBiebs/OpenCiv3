@@ -92,9 +92,7 @@ public partial class VictoryStatusView : Control {
 		_show?.QueueFree();
 		_show = new Control { MouseFilter = MouseFilterEnum.Pass };
 		background.AddChild(_show);
-		bool victoryPoints = HistographView.Shown(gameData, player)
-			.Any(p => (gameData.history.GetValueOrDefault(p.id.ToString())?.LastOrDefault()?.VP ?? 0) > 0);
-		HistographView.AddShowList(this, _show, victoryPoints, null, new Vector2(195, 670));
+		HistographView.AddShowList(this, _show, HistographView.HasVictoryPoints(gameData, player), HistographView.VictoryStatusEntry, new Vector2(195, 670));
 	}
 
 	private void ProcessVictoryCondition(IVictory dv, GameData gameData, Player player, List<Player> rivals) {
