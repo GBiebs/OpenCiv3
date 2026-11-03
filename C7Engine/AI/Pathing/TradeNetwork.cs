@@ -90,6 +90,15 @@ namespace C7Engine.Pathing {
 			}
 		}
 
+		// Whether `a` and `b` can trade resources: both have a capital and the
+		// two capitals trade (see ApplyResourceDeals).
+		public bool CapitalsTrade(Player a, Player b) {
+			City aCapital = a.cities.Find(c => c.IsCapital());
+			City bCapital = b.cities.Find(c => c.IsCapital());
+			return aCapital != null && bCapital != null && segments.ContainsKey(a) && segments.ContainsKey(b)
+				&& CapitalsTrade(a, aCapital, b, bCapital);
+		}
+
 		private bool CapitalsTrade(Player a, City aCapital, Player b, City bCapital) {
 			TradeNetworkSegment ours = segments[a][aCapital];
 			TradeNetworkSegment theirs = segments[b][bCapital];

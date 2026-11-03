@@ -92,6 +92,28 @@ namespace C7GameData {
 			return new(Mood.Happy, "Our forces stand ready.");
 		}
 
+		// The trade advisor: cities off the capital's network, a luxury a civ
+		// we can trade with could give us, a resource we have to spare.
+		public static Advice Trade(GameData gameData, Player player) {
+			List<City> unconnected = TradeReport.Unconnected(gameData, player);
+			if (unconnected.Count > 0) {
+				bool one = unconnected.Count == 1;
+				return new(Mood.Sad, $"{Names(unconnected)} {(one ? "isn't" : "aren't")} joined to our capital, so {(one ? "it gets" : "they get")} none of our resources.");
+			}
+			List<TradeReport.Partner> partners = TradeReport.Partners(gameData, player).Where(p => p.standing != TradeReport.Standing.CannotTrade).ToList();
+			foreach (TradeReport.Partner partner in partners) {
+				Resource wanted = TradeReport.TheyCouldSell(gameData, player, partner.civ).FirstOrDefault(r => r.Category == ResourceCategory.LUXURY);
+				if (wanted != null) {
+					return new(Mood.Surprised, $"The {partner.civ.civilization.noun} could trade us {wanted.Name}.");
+				}
+			}
+			TradeReport.ResourceRow spare = TradeReport.Resources(gameData, player).FirstOrDefault(r => r.local + r.imported - r.exported >= 2);
+			if (spare != null && partners.Count > 0) {
+				return new(Mood.Happy, $"We have {spare.resource.Name} to spare for trade.");
+			}
+			return new(Mood.Happy, partners.Count > 0 ? "Our trade is in good order." : "We have no one to trade with yet.");
+		}
+
 		public static string Turns(int turns) => turns == 1 ? "1 turn" : $"{turns} turns";
 
 		public static string WithArticle(string noun) => ("AEIOU".Contains(char.ToUpperInvariant(noun[0])) ? "an " : "a ") + noun;
