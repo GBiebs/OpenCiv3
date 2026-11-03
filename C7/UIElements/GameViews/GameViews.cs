@@ -18,12 +18,30 @@ public partial class GameViews : CenterContainer {
 
 	// Built in code rather than in the scene.
 	public StatisticsView statisticsView { get; private set; }
+	public HistographView histographView { get; private set; }
 
 	public override void _Ready() {
 		statisticsView = new StatisticsView();
 		AddChild(statisticsView);
 		statisticsView.Hide();
+		histographView = new HistographView();
+		AddChild(histographView);
+		histographView.Hide();
 		Hide();
+	}
+
+	// The victory status screen's "Show" list switches between it and the
+	// histograph (Civ3).
+	public void ShowHistograph(HistographView.Mode mode) {
+		HideGameViews();
+		histographView.ShowView(mode);
+		Show();
+	}
+
+	public void ShowVictoryStatus() {
+		HideGameViews();
+		victoryStatusView.ShowView();
+		Show();
 	}
 
 	private void OnShowSpecificAdvisor(string advisor) {
@@ -75,5 +93,6 @@ public partial class GameViews : CenterContainer {
 		spaceRaceView.Hide();
 		demographicsView.Hide();
 		statisticsView.Hide();
+		histographView.Hide();
 	}
 }

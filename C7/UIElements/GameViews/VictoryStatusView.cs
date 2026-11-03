@@ -15,6 +15,8 @@ public partial class VictoryStatusView : Control {
 	private TextureButton _close;
 	// Launches the player's complete spaceship (see Spaceship).
 	private Button _launch;
+	// Switches to the histograph's score, power or culture (Civ3).
+	private Control _show;
 
 	private const float LabelColumnWidth = 185f;
 	private const float ValueColumnWidth = 40f;
@@ -86,6 +88,13 @@ public partial class VictoryStatusView : Control {
 		}
 
 		_launch.Visible = Spaceship.CanLaunch(gameData, player);
+
+		_show?.QueueFree();
+		_show = new Control { MouseFilter = MouseFilterEnum.Pass };
+		background.AddChild(_show);
+		bool victoryPoints = HistographView.Shown(gameData, player)
+			.Any(p => (gameData.history.GetValueOrDefault(p.id.ToString())?.LastOrDefault()?.VP ?? 0) > 0);
+		HistographView.AddShowList(this, _show, victoryPoints, null, new Vector2(195, 670));
 	}
 
 	private void ProcessVictoryCondition(IVictory dv, GameData gameData, Player player, List<Player> rivals) {

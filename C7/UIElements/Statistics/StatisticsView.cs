@@ -23,6 +23,9 @@ public partial class StatisticsView : CenterContainer {
 
 	private TextureRect background;
 	private List<CivStats> civs = new();
+	// The histograph's stats (score, power, culture) show every civ we've
+	// met, as Civ3 does, where the others show only ours mid-game.
+	private List<CivStats> histographCivs = new();
 	private Layout layout = Layout.Dashboard;
 	private int selectedStat = 0;
 	// The end of the game: every civ is compared, and the start ratings are shown.
@@ -53,21 +56,25 @@ public partial class StatisticsView : CenterContainer {
 	/// Shows the statistics in game: every civ once the game is over, otherwise only the player's own.
 	public void ShowView(Action onClose = null) {
 		List<CivStats> shown = new();
+		List<CivStats> met = new();
 		EngineStorage.ReadGameData((GameData gameData) => {
 			Player controller = gameData.GetPlayer(EngineStorage.uiControllerID);
 			IEnumerable<Player> players = gameData.gameOver
 				? gameData.players.Where(p => !p.isBarbarians && p.stats.TurnCount > 0)
 				: [controller];
 			shown = players.Select(p => ForPlayer(p, p == controller)).ToList();
+			met = HistographView.Shown(gameData, controller).Select(p => ForPlayer(p, p == controller)).ToList();
 		});
-		ShowView(shown, Layout.Dashboard, onClose: onClose, endOfGame: EngineStorage.gameData.gameOver);
+		ShowView(shown, Layout.Dashboard, onClose: onClose, endOfGame: EngineStorage.gameData.gameOver, histographCivs: met);
 	}
 
 	public static CivStats ForPlayer(Player player, bool isPlayer) =>
 		new(player.civilization.name, TextureLoader.LoadColor(player.GetPlayerColor()), player.stats, isPlayer);
 
-	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null, bool endOfGame = false) {
+	public void ShowView(List<CivStats> shown, Layout layout, string statName = null, Action onClose = null, string focus = null, bool endOfGame = false,
+		List<CivStats> histographCivs = null) {
 		this.endOfGame = endOfGame;
+		this.histographCivs = histographCivs ?? shown;
 		civs = shown.OrderByDescending(c => c.isPlayer).ToList();
 		this.layout = layout;
 		selectedStat = Math.Max(VisibleStats.FindIndex(s => s.name == statName), 0);
@@ -90,7 +97,9 @@ public partial class StatisticsView : CenterContainer {
 		// Totals by unit type, shown as a table rather than a line over turns.
 		bool unitTable = false,
 		// Only in games that score victory points (Conquests' game types).
-		bool victoryPointsOnly = false);
+		bool victoryPointsOnly = false,
+		// Drawn as Civ3's histograph, for every civ we've met.
+		bool histograph = false);
 
 	private static string Whole(double v) => v.ToString("N0");
 	private static string Percent(double v) => v.ToString("P1");
@@ -128,13 +137,13 @@ public partial class StatisticsView : CenterContainer {
 			s => ([], []), s => s.startRating?.rating, v => v.ToString("0"), cardLabel: "100 = average", startPosition: true),
 		// Civ3's histograph.
 		new("Score", "the game's score: the average of the turns' scores", "Score", "score now",
-			s => PerTurn(s, s.score), s => s.score.LastOrDefault(), Whole),
+			s => PerTurn(s, s.score), s => s.score.LastOrDefault(), Whole, histograph: true),
 		new("Power", "cities, gold, culture, advances, resources, military, nukes and wonders", "Power", "power now",
-			s => PerTurn(s, s.power), s => s.power.LastOrDefault(), Whole),
+			s => PerTurn(s, s.power), s => s.power.LastOrDefault(), Whole, histograph: true),
 		new("Culture", "the culture of all the civ's cities", "Culture", "culture points now",
-			s => PerTurn(s, s.culture), s => s.culture.LastOrDefault(), Whole),
+			s => PerTurn(s, s.culture), s => s.culture.LastOrDefault(), Whole, histograph: true),
 		new("Victory points", "victory points, from Conquests' game types", "Victory points", "victory points now",
-			s => PerTurn(s, s.victoryPoints), s => s.victoryPoints.LastOrDefault(), Whole, victoryPointsOnly: true),
+			s => PerTurn(s, s.victoryPoints), s => s.victoryPoints.LastOrDefault(), Whole, victoryPointsOnly: true, histograph: true),
 		new("Production", "shields per turn", "Production (shields per turn)", "shields in total",
 			s => PerTurn(s, s.shieldsProduced), s => PlayerStats.Sum(s.shieldsProduced), Whole),
 		new("Production efficiency", "share of usable shields that went into builds", "Production efficiency", "of usable shields used",
@@ -159,11 +168,12 @@ public partial class StatisticsView : CenterContainer {
 
 	// The start ratings are a judge's view of the map: only shown once the game is over.
 	private List<Stat> VisibleStats => Stats.Where(s => (endOfGame || !s.startPosition)
-		&& (!s.victoryPointsOnly || civs.Any(c => c.stats.victoryPoints.Any(v => v > 0)))).ToList();
+		&& (!s.victoryPointsOnly || histographCivs.Any(c => c.stats.victoryPoints.Any(v => v > 0)))).ToList();
 
 	// Game actions only exist for human players.
 	private IEnumerable<CivStats> CivsFor(Stat stat) =>
-		stat.actionsOnly ? civs.Where(c => c.isPlayer || PlayerStats.Sum(c.stats.actions) > 0) : civs;
+		stat.histograph ? histographCivs
+		: stat.actionsOnly ? civs.Where(c => c.isPlayer || PlayerStats.Sum(c.stats.actions) > 0) : civs;
 
 	private static string Headline(Stat stat, CivStats civ) {
 		// Computer players give no commands.
@@ -302,7 +312,12 @@ public partial class StatisticsView : CenterContainer {
 			Stat stat = StatNamed(charts[i]);
 			Rect2 rect = new(76 + (i % 3) * 296, 202 + (i / 3) * 252, 284, 240);
 			AddBox(rect, () => Open(Layout.ChartBrowser, stat.name));
-			Chart(stat, new Rect2(rect.Position + new Vector2(8, 6), rect.Size - new Vector2(16, 12)), stat.chartTitle, 12);
+			Rect2 inner = new(rect.Position + new Vector2(8, 6), rect.Size - new Vector2(16, 12));
+			if (stat.histograph) {
+				Histograph(stat, inner, stat.chartTitle);
+			} else {
+				Chart(stat, inner, stat.chartTitle, 12);
+			}
 		}
 	}
 
@@ -333,8 +348,13 @@ public partial class StatisticsView : CenterContainer {
 			bigChart = null;
 			UnitsBuiltTable(chartRect);
 		} else {
-			bigChart = Chart(stat, chartRect, stat.unit);
-			bigChart.hoverEnabled = true;
+			if (stat.histograph) {
+				bigChart = null;
+				Histograph(stat, chartRect, big: true);
+			} else {
+				bigChart = Chart(stat, chartRect, stat.unit);
+				bigChart.hoverEnabled = true;
+			}
 		}
 
 		// More than ten stats: one line each, so the civs still fit below.
@@ -361,6 +381,27 @@ public partial class StatisticsView : CenterContainer {
 	}
 
 	// ---------------------------------------------------------------- pieces
+
+	// Bands down the turns, as wide as each civ's share (see HistographChart);
+	// the big one with the civs' names and the dates.
+	private HistographChart Histograph(Stat stat, Rect2 rect, string title = "", bool big = false) {
+		HistographChart chart = new() {
+			Position = rect.Position,
+			Size = rect.Size,
+			title = title,
+			fontSize = big ? 12 : 11,
+			showNames = big,
+			showDates = big,
+			formatValue = stat.format,
+			timeLabel = turn => EngineStorage.gameData?.timeOptions.GetDisplayTime(turn) ?? $"Turn {turn}",
+		};
+		foreach (CivStats civ in CivsFor(stat)) {
+			(List<int> turns, List<double> values) = stat.perTurn(civ.stats);
+			chart.bands.Add(new HistographChart.Band(civ.name, civ.color, turns, values));
+		}
+		background.AddChild(chart);
+		return chart;
+	}
 
 	private LineChart Chart(Stat stat, Rect2 rect, string title = "", int fontSize = 13) {
 		LineChart chart = new() {
