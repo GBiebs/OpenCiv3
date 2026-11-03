@@ -18,10 +18,10 @@ namespace C7GameData {
 		// square. Civ3's BIQ has no such value, so Civ3 saves get this default.
 		public int CapitalNeighborDistance = 8;
 		// How far apart (in tiles, counting diagonals as one) a new city must
-		// be from every other: 3 leaves two tiles between them (user,
-		// 2026-11-03). Civ3 itself only forbids neighbors (2); the AI already
-		// kept two tiles between its cities.
-		public int MinimumCityDistance = 3;
+		// be from every other: 2, as in Civ3, forbids only neighbors (user,
+		// 2026-11-03, after trying 3); 3 would leave two tiles between. The
+		// AI keeps two tiles between its own cities anyway.
+		public int MinimumCityDistance = 2;
 		public float BuildingDiscountForCivTraits = .5f;
 		public string StartUnitType1;
 		public string StartUnitType2;

@@ -6,9 +6,10 @@ using Xunit;
 
 namespace EngineTests.GameData;
 
-// A new city must stand the rules' minimum distance from every other: by
-// default 3 tiles (diagonals counting as one), two tiles between them
-// (user, 2026-11-03; Civ3 itself only forbids neighbors).
+// A new city must stand the rules' minimum distance from every other
+// (diagonals counting as one): by default 2, as in Civ3, so only a neighbor
+// is too close (user, 2026-11-03). The other tests raise it to 3 (two tiles
+// between) to check each place that follows the rule.
 public class CitySpacingTest : IClassFixture<SaveGameFixture> {
 	private readonly C7GameData.GameData gameData;
 	private readonly Player us;
@@ -41,33 +42,39 @@ public class CitySpacingTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
-	public void TwoTilesBetweenCities() {
-		Assert.Equal(3, gameData.rules.MinimumCityDistance);
+	public void NotNextToACity() {
+		Assert.Equal(2, gameData.rules.MinimumCityDistance);
 		Assert.False(CanBuildAt(1));
-		Assert.False(CanBuildAt(2));
-		Assert.True(CanBuildAt(3));
+		Assert.True(CanBuildAt(2));
 
-		// No Build City button there.
-		gameData.TeleportUnit(settler, At(2));
+		// No Build City button next to a city.
+		gameData.TeleportUnit(settler, At(1));
 		Assert.DoesNotContain(UnitAction.BuildCity, settler.GetAvailableActions());
 	}
 
 	[Fact]
 	public void TheRuleSetsTheDistance() {
-		us.rules.MinimumCityDistance = 2;
+		us.rules.MinimumCityDistance = 3;
 		Assert.False(CanBuildAt(1));
-		Assert.True(CanBuildAt(2));
+		Assert.False(CanBuildAt(2));
+		Assert.True(CanBuildAt(3));
+		gameData.TeleportUnit(settler, At(2));
+		Assert.DoesNotContain(UnitAction.BuildCity, settler.GetAvailableActions());
 	}
 
 	[Fact]
 	public void AGoodyHutCityKeepsItsDistanceToo() {
 		MapUnit explorer = us.units.First(u => !u.unitType.isSettler);
+		Assert.False(GoodyHuts.IsPossible(GoodyHuts.Outcome.City, gameData, explorer, At(1)));
+		Assert.True(GoodyHuts.IsPossible(GoodyHuts.Outcome.City, gameData, explorer, At(2)));
+		us.rules.MinimumCityDistance = 3;
 		Assert.False(GoodyHuts.IsPossible(GoodyHuts.Outcome.City, gameData, explorer, At(2)));
 		Assert.True(GoodyHuts.IsPossible(GoodyHuts.Outcome.City, gameData, explorer, At(3)));
 	}
 
 	[Fact]
 	public void TheEngineRefusesACityTooClose() {
+		us.rules.MinimumCityDistance = 3;
 		gameData.TeleportUnit(settler, At(2));
 		Assert.Null(settler.BuildCity("Crowded").Result);
 		Assert.Single(us.cities);
@@ -77,6 +84,7 @@ public class CitySpacingTest : IClassFixture<SaveGameFixture> {
 	// it set out) looks for another instead of founding there.
 	[Fact]
 	public void AnAISettlerGivesUpASiteTooClose() {
+		us.rules.MinimumCityDistance = 3;
 		Tile site = At(2);
 		gameData.TeleportUnit(settler, site);
 		SettlerAI ai = new(new C7GameData.AIData.SettlerAIData { goal = C7GameData.AIData.SettlerAIData.SettlerGoal.BUILD_CITY, destination = site });
