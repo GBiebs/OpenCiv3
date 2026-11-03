@@ -483,7 +483,7 @@ namespace C7GameData {
 			//
 			// MM = map modifier (tiny=160, small=200, standard=240, large=320, huge=400)
 			// COST = tech cost
-			// CF = difficulty factor
+			// CF = difficulty factor (below)
 			// N = number of known civs that have discovered the tech
 			// CL = civs left in game
 			//
@@ -501,7 +501,14 @@ namespace C7GameData {
 				}
 			}
 
-			int difficultyFactor = player.isHuman ? gameDifficulty.HumanCostFactor : gameDifficulty.AiCostFactor;
+			// Unlike production, research isn't made cheaper for the AI: since
+			// patch 1.29f Civ3 charges the AI the neutral cost on every level
+			// and the human for the AI's advantage instead, dividing by the AI
+			// cost factor, at most the neutral one (Monarch's 9 makes advances
+			// 11% dearer, Deity's 6 67%; easy levels change nothing).
+			int neutralFactor = gameDifficulty.HumanCostFactor;
+			int aiFactor = gameDifficulty.AiCostFactor > 0 ? gameDifficulty.AiCostFactor : neutralFactor;
+			int difficultyFactor = player.isHuman ? Math.Min(aiFactor, neutralFactor) : neutralFactor;
 			float knowledgeFactor = 1.0f - knownCivsThatKnowTheTech / (civsLeft * 1.75f);
 			float researchCost = map.techRate * 10 * tech.Cost  * knowledgeFactor/ (difficultyFactor * 10);
 
