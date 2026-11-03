@@ -11,10 +11,9 @@ namespace C7Engine {
 		private static ILogger log = Log.ForContext<UnitInteractions>();
 
 		public static MapUnit getNextSelectedUnit() {
-			foreach (Player player in EngineStorage.gameData.players.Where(p => p.isHuman)) {
-				//TODO: Should pass in a player GUID instead of checking for human
-				//This current limits us to one human player, although it's better
-				//than the old limit of one non-barbarian player.
+			// The units of the human whose turn it is (with several humans,
+			// only theirs).
+			foreach (Player player in EngineStorage.gameData.players.Where(p => p.isHuman && p.id == EngineStorage.uiControllerID)) {
 				foreach (MapUnit unit in player.units.Where(u => u.movementPoints.canMove)) {
 					if (unit.isFortified) {
 						continue;

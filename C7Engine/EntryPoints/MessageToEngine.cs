@@ -528,7 +528,8 @@ namespace C7Engine {
 		}
 
 		public override void process() {
-			Player player = EngineStorage.gameData.GetFirstHumanPlayer();
+			// Whoever's playing chose it (with several humans, not always the first).
+			Player player = EngineStorage.GetUIController();
 
 			bool isTechEraBeyondPlayerEra = EraUtils.GetEraIndex(tech.EraCivilopediaName) > EraUtils.GetEraIndex(player.eraCivilopediaName);
 			if (player.knownTechs.Contains(tech.id) || isTechEraBeyondPlayerEra)
@@ -568,7 +569,7 @@ namespace C7Engine {
 		}
 
 		public override void process() {
-			Player player = EngineStorage.gameData.GetFirstHumanPlayer();
+			Player player = EngineStorage.GetUIController();
 			if (!player.ClaimFreeTech(EngineStorage.gameData, tech)) {
 				return;
 			}

@@ -68,6 +68,28 @@ public class HotseatTurnTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(second.hasPlayedThisTurn);
 	}
 
+	// In the second human's turn, the units offered for orders and a
+	// research choice are theirs, and the first human's waiting units aren't
+	// offered to them.
+	[Fact]
+	public async Task TheSecondHumanGetsTheirOwnUnitsAndResearch() {
+		(Player first, Player second) = await StartGame();
+		MapUnit waiting = first.units[0];
+		UnitInteractions.waitUnit(waiting.id);
+		Assert.Equal(second.id, await EndTurn());
+
+		Assert.Equal(second, UnitInteractions.getNextSelectedUnit().owner);
+		foreach (MapUnit unit in second.units) {
+			unit.SkipTurn();
+		}
+		Assert.Equal(MapUnit.NONE, UnitInteractions.getNextSelectedUnit());
+
+		Tech tech = second.GetAvailableTechsToResearch(EngineStorage.gameData.techs).First();
+		new MsgChooseResearch(tech, MsgChooseResearch.AdvisorState.DontShow).process();
+		Assert.Equal(tech.id, second.currentlyResearchedTech);
+		Assert.NotEqual(tech.id, first.currentlyResearchedTech);
+	}
+
 	// A defeated human no longer gets turns while another human plays on.
 	[Fact]
 	public async Task ADefeatedHumanIsSkipped() {

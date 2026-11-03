@@ -12,7 +12,8 @@ namespace C7Engine {
 
 			Player human = player;
 			if (human == null && gameData.players != null) {
-				human = gameData.GetFirstHumanPlayer();
+				// Whoever's playing (with several humans, not always the first).
+				human = gameData.GetPlayer(EngineStorage.uiControllerID) ?? gameData.GetFirstHumanPlayer();
 				if (human == null) {
 					human = gameData.players.FirstOrDefault(p => !p.isBarbarians);
 				}

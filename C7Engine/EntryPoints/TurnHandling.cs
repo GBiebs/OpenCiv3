@@ -184,6 +184,10 @@ namespace C7Engine {
 				// finishes their turn and carries on with the next player. The
 				// human sees what's going on even in observer mode.
 				if (takesControl) {
+					// Units the last human told to wait aren't this one's.
+					if (player.id != EngineStorage.uiControllerID) {
+						UnitInteractions.ClearWaitQueue();
+					}
 					EngineStorage.uiControllerID = player.id;
 					new MsgStartTurn(player.id).send();
 					return true;
