@@ -1,4 +1,5 @@
 using C7GameData;
+using C7Engine;
 using Godot;
 using Resource = C7GameData.Resource;
 using Serilog;
@@ -28,7 +29,7 @@ namespace C7.Map {
 			if (gameData.observerMode) {
 				return true;
 			}
-			return gameData.GetFirstHumanPlayer().KnowsAboutResource(t.Resource);
+			return EngineStorage.GetUIController().KnowsAboutResource(t.Resource);
 		}
 	}
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using C7.Textures;
+using C7Engine;
 using C7GameData;
 using Godot;
 
@@ -77,7 +78,7 @@ public class FogOfWarMiniLayer : MiniMapLayer {
 
 	public override void Configure(GameData gD) {
 		_observerMode = gD.observerMode;
-		_tileKnowledge = gD.GetFirstHumanPlayer().tileKnowledge;
+		_tileKnowledge = EngineStorage.GetUIController().tileKnowledge;
 	}
 
 	public override void DrawTile(Image mapImage, Tile tile, int x, int y) {

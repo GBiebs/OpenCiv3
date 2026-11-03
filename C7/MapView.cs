@@ -13,8 +13,9 @@ using System.Diagnostics;
 // approach.) LooseLayer is effectively the standard map layer. The MapView contains a list of loose layers, inside a LooseView object. Right now to
 // add a new layer you must modify the MapView constructor to add it to the list, but (TODO) eventually that will be made moddable.
 public abstract class LooseLayer {
-	// The player that controls the UI
-	protected Player player = EngineStorage.GetUIController();
+	// The player that controls the UI (with several humans, whoever is
+	// playing, so it's looked up each time)
+	protected Player player => EngineStorage.GetUIController();
 
 	// drawObject draws the things this layer is supposed to draw that are associated with the given tile. Its parameters are:
 	//   looseView: The Node2D to actually draw to, e.g., use looseView.DrawCircle(...) to draw a circle. This object also contains a reference to
@@ -587,7 +588,7 @@ public partial class LooseView : Node2D {
 		if (gameData.observerMode) {
 			return true;
 		}
-		TileKnowledge knowledge = gameData.GetFirstHumanPlayer().tileKnowledge;
+		TileKnowledge knowledge = EngineStorage.GetUIController().tileKnowledge;
 		return tile != Tile.NONE && knowledge.isTileKnown(tile);
 	}
 

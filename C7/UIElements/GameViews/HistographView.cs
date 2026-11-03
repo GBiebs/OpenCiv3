@@ -67,7 +67,7 @@ public partial class HistographView : CenterContainer {
 		AddLabel("HISTOGRAPH", new Rect2(140, 12, 605, 36), 24, align: HorizontalAlignment.Center);
 		AddLabel("SCORE", new Rect2(795, 12, 160, 36), 24, align: HorizontalAlignment.Center);
 
-		Player player = gameData.GetPlayer(EngineStorage.uiControllerID) ?? gameData.GetFirstHumanPlayer();
+		Player player = gameData.GetPlayer(EngineStorage.uiControllerID) ?? EngineStorage.GetUIController();
 		List<Player> shown = Shown(gameData, player);
 		Dictionary<Player, List<HistTurnRecord>> history = shown.ToDictionary(p => p, p => gameData.history.GetValueOrDefault(p.id.ToString()) ?? new());
 

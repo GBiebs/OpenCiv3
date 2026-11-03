@@ -190,6 +190,14 @@ public partial class Game : Node {
 
 	public Player controller; // Player that's controlling the UI.
 
+	// Hotseat: news held for each other human until they next take the UI
+	// (see MessageRecipients), what runs once a human has taken it (one a
+	// frame, as engine messages are), and the screen hiding the map until
+	// they have.
+	private readonly Dictionary<ID, List<MessageToUI>> heldMessages = new();
+	private readonly Queue<Action> afterHandOver = new();
+	private HandOverScreen handOverScreen;
+
 	private MapView mapView;
 
 	public enum GameState {
@@ -409,18 +417,7 @@ public partial class Game : Node {
 			mapView.gridLayer.visible = PreferencesSettings.GetShowGrid();
 
 			if (!cameraLocation.HasValue) {
-				// Set initial camera location. If the UI controller has any cities, focus on their capital. Otherwise, focus on their
-				// starting settler.
-				if (controller.cities.Count > 0) {
-					City capital = controller.cities.Find(c => c.IsCapital());
-					if (capital != null)
-						mapView.centerCameraOnTile(capital.location);
-				} else {
-					MapUnit startingSettler =
-						controller.units.Find(u => u.unitType.actions.Contains(UnitAction.BuildCity));
-					if (startingSettler != null)
-						mapView.centerCameraOnTile(startingSettler.location);
-				}
+				CenterOnControllersEmpire();
 			} else {
 				mapView.cameraLocation = cameraLocation.Value;
 			}
@@ -437,7 +434,59 @@ public partial class Game : Node {
 		});
 	}
 
+	// If the UI controller has any cities, focus on their capital. Otherwise,
+	// focus on their starting settler.
+	private void CenterOnControllersEmpire() {
+		if (controller.cities.Count > 0) {
+			City capital = controller.cities.Find(c => c.IsCapital());
+			if (capital != null)
+				mapView.centerCameraOnTile(capital.location);
+		} else {
+			MapUnit startingSettler =
+				controller.units.Find(u => u.unitType.actions.Contains(UnitAction.BuildCity)) ?? controller.units.FirstOrDefault();
+			if (startingSettler != null)
+				mapView.centerCameraOnTile(startingSettler.location);
+		}
+	}
+
+	// Hotseat: another human takes the UI, for their turn or to answer what
+	// the engine asks them next. Their map hides behind the hand-over screen
+	// until they say they're there; then the news held for them, then `then`.
+	private void HandOverTo(ID playerId, string message, Action then) {
+		EngineStorage.ReadGameData(gameData => controller = gameData.GetPlayer(playerId));
+		cityScreen.Hide();
+		advisor.Hide();
+		gameViews.Hide();
+		handOverScreen = new HandOverScreen(controller, message, () => {
+			handOverScreen.QueueFree();
+			handOverScreen = null;
+			CenterOnControllersEmpire();
+			if (heldMessages.Remove(controller.id, out List<MessageToUI> news)) {
+				foreach (MessageToUI held in news) {
+					afterHandOver.Enqueue(() => DispatchEngineMessage(held));
+				}
+			}
+			if (then != null) {
+				afterHandOver.Enqueue(then);
+			}
+		});
+		popupOverlay.GetParent().AddChild(handOverScreen);
+	}
+
 	public void HandleEngineMessage(MessageToUI msg) {
+		// Hotseat: a copy of the news for each other human, for their turn.
+		if (controller != null) {
+			foreach (ID id in MessageRecipients.HeldFor(msg, EngineStorage.gameData, controller.id)) {
+				if (!heldMessages.TryGetValue(id, out List<MessageToUI> held)) {
+					heldMessages[id] = held = new();
+				}
+				held.Add(msg);
+			}
+		}
+		DispatchEngineMessage(msg);
+	}
+
+	private void DispatchEngineMessage(MessageToUI msg) {
 		GameData gameData = EngineStorage.gameData;
 
 		switch (msg) {
@@ -445,7 +494,14 @@ public partial class Game : Node {
 				EmitDawnOfCivilizationSignal(mNGP);
 				break;
 			case MsgStartTurn mST:
-				OnPlayerStartTurn();
+				if (mST.playerId != null && mST.playerId != controller.id) {
+					HandOverTo(mST.playerId, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", OnPlayerStartTurn);
+				} else {
+					OnPlayerStartTurn();
+				}
+				break;
+			case MsgHandOver mHO:
+				HandOverTo(mHO.playerId, "Your advisors have urgent business for you.", null);
 				break;
 			case MsgGameMainMenu mMM:
 				EmitGameMainMenuSignal();
@@ -802,7 +858,12 @@ public partial class Game : Node {
 		if (!EngineStorage.HasPendingAnimations())
 			EngineStorage.ProcessNextMessageToEngine();
 
-		if (EngineStorage.TryDequeueNextMessageToUI(out MessageToUI msg))
+		// While the hand-over screen is up, the engine's messages wait.
+		if (handOverScreen != null)
+			return;
+		if (afterHandOver.TryDequeue(out Action next))
+			next();
+		else if (EngineStorage.TryDequeueNextMessageToUI(out MessageToUI msg))
 			HandleEngineMessage(msg);
 	}
 

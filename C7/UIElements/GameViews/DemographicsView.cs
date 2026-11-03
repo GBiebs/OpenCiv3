@@ -33,7 +33,7 @@ public partial class DemographicsView : Control {
 		Show();
 
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = gameData.GetFirstHumanPlayer();
+			Player player = EngineStorage.GetUIController();
 
 		});
 	}

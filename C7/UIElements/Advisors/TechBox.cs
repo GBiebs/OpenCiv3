@@ -52,7 +52,7 @@ public partial class TechBox : TextureButton {
 		if (!tech.RequiredForEraAdvancement)
 			smallFont = ResourceLoader.Load<FontFile>("res://Fonts/NotoSans-Italic.ttf");
 
-		if (tech.id == EngineStorage.gameData.GetFirstHumanPlayer().currentlyResearchedTech)
+		if (tech.id == EngineStorage.GetUIController().currentlyResearchedTech)
 			smallFont = ResourceLoader.Load<FontFile>("res://Fonts/NotoSans-Bold.ttf");
 
 		smallFontTheme.DefaultFont = smallFont;
@@ -93,7 +93,7 @@ public partial class TechBox : TextureButton {
 		int boxBorderWidth = 16;
 		int charLimitOfCurrentBox = (int)((TextureNormal.GetWidth() - boxBorderWidth) / averageCharLength);
 
-		int estimatedTurns = EngineStorage.gameData.GetFirstHumanPlayer().EstimateTurnsToResearch(EngineStorage.gameData, tech);
+		int estimatedTurns = EngineStorage.GetUIController().EstimateTurnsToResearch(EngineStorage.gameData, tech);
 		string estimatedTurnsString = estimatedTurns > 50 ? $"(-- turns)" : $"({estimatedTurns} turns)";
 
 		string techName = tech.Name;
@@ -164,7 +164,7 @@ public partial class TechBox : TextureButton {
 
 	private void UpdateLabelTheme() {
 		Color color = Colors.Black;
-		bool isTechEraBeyondPlayerEra = GetEraIndex(tech.EraCivilopediaName) > GetEraIndex(EngineStorage.gameData.GetFirstHumanPlayer().eraCivilopediaName);
+		bool isTechEraBeyondPlayerEra = GetEraIndex(tech.EraCivilopediaName) > GetEraIndex(EngineStorage.GetUIController().eraCivilopediaName);
 
 		if (techState is TechState.kKnown)
 			color = Colors.MediumBlue;
@@ -249,7 +249,7 @@ public partial class TechBox : TextureButton {
 
 		// Then add the correct units to the list
 		foreach (UnitPrototype u in unitsRequiringTech) {
-			if (u.producibleBy.Contains(EngineStorage.gameData.GetFirstHumanPlayer().civilization)) {
+			if (u.producibleBy.Contains(EngineStorage.GetUIController().civilization)) {
 				units.Add(u);
 			}
 		}
