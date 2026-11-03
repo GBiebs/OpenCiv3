@@ -13047,6 +13047,7 @@
     "maximumLevel1CitySize": 6,
     "maximumLevel2CitySize": 12,
     "capitalNeighborDistance": 8,
+    "minimumCityDistance": 3,
     "foodNeededToGrowForLevel1Cities": 20,
     "foodNeededToGrowForLevel2Cities": 40,
     "foodNeededToGrowForLevel3Cities": 60,

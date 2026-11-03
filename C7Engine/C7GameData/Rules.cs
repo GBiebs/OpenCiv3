@@ -17,6 +17,11 @@ namespace C7GameData {
 		// city counts as a neighbor of a candidate new capital. Civ3: 8, a 17x17
 		// square. Civ3's BIQ has no such value, so Civ3 saves get this default.
 		public int CapitalNeighborDistance = 8;
+		// How far apart (in tiles, counting diagonals as one) a new city must
+		// be from every other: 3 leaves two tiles between them (user,
+		// 2026-11-03). Civ3 itself only forbids neighbors (2); the AI already
+		// kept two tiles between its cities.
+		public int MinimumCityDistance = 3;
 		public float BuildingDiscountForCivTraits = .5f;
 		public string StartUnitType1;
 		public string StartUnitType2;

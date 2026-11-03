@@ -50,7 +50,7 @@ namespace C7Engine {
 		C7GameData.UnitAI.MoveResult UnitAI.PlayTurnImpl(Player player, MapUnit unit) {
 			switch (data.goal) {
 				case SettlerAIData.SettlerGoal.BUILD_CITY:
-					if (IsInvalidCityLocation(data.destination)) {
+					if (IsInvalidCityLocation(data.destination, player)) {
 						log.Information("Seeking new destination for settler " + unit.id + " headed to " + data.destination);
 						return C7GameData.UnitAI.Result.Error;
 					}
@@ -90,16 +90,10 @@ namespace C7Engine {
 			return C7GameData.UnitAI.Result.Done;
 		}
 
-		private static bool IsInvalidCityLocation(Tile tile) {
-			if (tile.cityAtTile != null) {
-				return true;
-			}
-			foreach (Tile neighbor in tile.neighbors.Values) {
-				if (neighbor.cityAtTile != null) {
-					return true;
-				}
-			}
-			return false;
+		// A city now stands there or too close (another settler got there
+		// first): the rules' minimum distance, or at least not next door.
+		private static bool IsInvalidCityLocation(Tile tile, Player player) {
+			return tile.HasCityCloserThan(player.rules?.MinimumCityDistance ?? 2);
 		}
 
 		public string SummarizePlan() {

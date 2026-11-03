@@ -21,7 +21,7 @@ namespace C7Engine {
 		public static Dictionary<Tile, float> GetScoredSettlerCandidates(Tile start, Player player, HashSet<Tile> excludedTiles = null) {
 			List<MapUnit> playerUnits = player.units;
 			// TODO: handle settling other continents
-			IEnumerable<Tile> candidates = player.tileKnowledge.AllKnownTiles().Where(t => !IsInvalidCityLocation(t) && t.continent == start.continent);
+			IEnumerable<Tile> candidates = player.tileKnowledge.AllKnownTiles().Where(t => !IsInvalidCityLocation(t, player) && t.continent == start.continent);
 			Dictionary<Tile, float> scores = AssignTileScores(start, player, candidates, playerUnits.FindAll(u => u.unitType.name == "Settler"), excludedTiles);
 			return scores;
 		}
@@ -100,21 +100,14 @@ namespace C7Engine {
 			return score;
 		}
 
-		private static bool IsInvalidCityLocation(Tile tile) {
+		// The AI keeps two tiles between its cities, more if the rules' minimum
+		// distance asks for it.
+		private const int AIMinimumCityDistance = 3;
+
+		private static bool IsInvalidCityLocation(Tile tile, Player player) {
 			if (tile == Tile.NONE || tile.HasCity())
 				return true;
-			foreach (Tile neighbor in tile.neighbors.Values) {
-				if (neighbor.HasCity()) {
-					return true;
-				}
-				foreach (Tile neighborOfNeighbor in neighbor.neighbors.Values) {
-					if (neighborOfNeighbor.HasCity()) {
-						return true;
-					}
-				}
-			}
-
-			return false;
+			return tile.HasCityCloserThan(Math.Max(AIMinimumCityDistance, player.rules?.MinimumCityDistance ?? 0));
 		}
 
 		/// <summary>

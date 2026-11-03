@@ -73,7 +73,7 @@ namespace C7GameData {
 				case Outcome.City:
 					// Not in an elimination game (Conquests readme: "City goodie
 					// hut spawns are not possible in Elimination Mode").
-					return tile.IsAllowCities() && !tile.HasCity() && tile.neighbors.Values.All(n => !n.HasCity())
+					return tile.IsAllowCities() && !tile.HasCity() && !tile.HasCityCloserThan((player.rules ?? gameData.rules).MinimumCityDistance)
 						&& gameData.victoryConditions?.CityElimination != true;
 				case Outcome.Tech:
 					return player.EraIndex() == 0 && player.GetAvailableTechsToResearch(gameData.techs).Count > 0;

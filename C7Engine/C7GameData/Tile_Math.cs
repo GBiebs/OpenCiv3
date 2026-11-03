@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using C7GameData.Save;
 
 namespace C7GameData;
@@ -201,6 +202,12 @@ public partial class Tile {
 
 	// Same as GetTilesWithinRankDistance, but includes "corner tiles",
 	// i.e., returns perfect tile squares.
+	// Whether a city stands closer than `distance` tiles (diagonals count as
+	// one), this tile included.
+	public bool HasCityCloserThan(int distance) {
+		return GetTilesWithinTileSquare(Math.Max(0, distance - 1)).Any(t => IsTileValid(t) && t.HasCity());
+	}
+
 	public List<Tile> GetTilesWithinTileSquare(int rank) {
 		List<Tile> result = new();
 		for (int i = 0; i < (rank * 2 + 1) * (rank * 2 + 1); ++i) {

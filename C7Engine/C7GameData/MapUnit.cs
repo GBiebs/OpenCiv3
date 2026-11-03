@@ -781,7 +781,7 @@ namespace C7GameData {
 			if (location.HasCity() || !location.IsAllowCities()) {
 				return false;
 			}
-			return location.neighbors.Values.All(tile => !tile.HasCity());
+			return !location.HasCityCloserThan((owner?.rules ?? EngineStorage.gameData.rules).MinimumCityDistance);
 		}
 
 		public bool CanPerformTerraformAction(Terraform terraform) {
