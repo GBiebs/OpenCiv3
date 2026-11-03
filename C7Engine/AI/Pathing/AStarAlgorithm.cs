@@ -81,7 +81,7 @@ namespace C7Engine.Pathing {
 				}
 
 				// Otherwise check each neighbor that we can use.
-				foreach (Edge<Tile> neighborEdge in edgeWalker.getEdges(current)) {
+				foreach (Edge<Tile> neighborEdge in edgeWalker.getEdges(current, destination)) {
 					Tile neighbor = neighborEdge.current;
 
 					// TODO: the possibility here is to create a building/improvement/tech effect like "canal"

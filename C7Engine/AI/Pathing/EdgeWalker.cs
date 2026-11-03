@@ -4,6 +4,10 @@ using C7GameData;
 namespace C7Engine.Pathing {
 	public abstract class EdgeWalker<TNode> {
 		public abstract IEnumerable<Edge<TNode>> getEdges(TNode node);
+
+		// The edges on the way to a destination: the same unless reaching the
+		// destination itself takes an edge no other path may use.
+		public virtual IEnumerable<Edge<TNode>> getEdges(TNode node, TNode destination) => getEdges(node);
 	}
 
 	public class UnitWalker : EdgeWalker<Tile> {
@@ -18,7 +22,9 @@ namespace C7Engine.Pathing {
 			safeAtSea = avoidsSinking && Naval.SafeAtSea(unit.owner);
 		}
 
-		public override IEnumerable<Edge<Tile>> getEdges(Tile node) {
+		public override IEnumerable<Edge<Tile>> getEdges(Tile node) => getEdges(node, null);
+
+		public override IEnumerable<Edge<Tile>> getEdges(Tile node, Tile destination) {
 			List<Edge<Tile>> result = new List<Edge<Tile>>();
 			foreach (KeyValuePair<TileDirection, Tile> pair in node.neighbors) {
 				TileDirection direction = pair.Key;
@@ -30,8 +36,11 @@ namespace C7Engine.Pathing {
 				if (unit.owner.isHuman && !unit.owner.HasExploredTile(neighbor)) {
 					isPassable = true;
 				} else {
+					// A land unit goes to sea only as its go-to's last step, onto
+					// a ship (#943), never over ships; whether it may board
+					// there is the pathing's entry check (Intent.Load).
 					if (unit.IsLandUnit())
-						isPassable = neighbor.IsLand();
+						isPassable = neighbor.IsLand() || neighbor == destination;
 					else if (unit.IsWaterUnit())
 						isPassable = (neighbor.IsWater() || neighborHasCityWithSameOwner)
 							&& !(avoidsSinking && Naval.InDanger(unit.unitType, neighbor, safeAtSea));
