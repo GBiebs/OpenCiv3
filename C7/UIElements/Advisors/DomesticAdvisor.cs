@@ -44,6 +44,7 @@ public partial class DomesticAdvisor : Control {
 
 	TextureRect advisorHead = new();
 	Label DialogBoxAdvise;
+	AdvisorList advisorList;
 
 	// The Y position of the two sliders.
 	private int scienceSliderY = 84;
@@ -65,6 +66,8 @@ public partial class DomesticAdvisor : Control {
 		background.Texture = DomesticBackground;
 
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "DOMESTIC ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Domestic);
+		background.AddChild(advisorList);
 
 		advisorHead.Texture = AdvisorHead.GetPopupImage(AdvisorHead.Advisor.Domestic, AdvisorHead.Mood.Happy, eraIndex: 0);
 		advisorHead.SetPosition(new Vector2(851, 0));
@@ -242,6 +245,7 @@ public partial class DomesticAdvisor : Control {
 
 			AdvisorUtils.ShowAdvice(advisorHead, DialogBoxAdvise, AdvisorHead.Advisor.Domestic,
 				AdvisorAdvice.Domestic(gameData, playerController), playerController.EraIndex());
+			advisorList.Refresh(playerController.EraIndex());
 
 			// Disable the change government button unless we have a government to
 			// switch to.

@@ -22,6 +22,7 @@ public partial class MilitaryAdvisor : Control {
 
 	private TextureRect advisorHead;
 	private Label advice;
+	private AdvisorList advisorList;
 	private Control content;
 	private bool byCity;
 	private int ourPage, theirPage;
@@ -40,6 +41,8 @@ public partial class MilitaryAdvisor : Control {
 		AdvisorUtils.CreateExitButton(background).Pressed += () => GetParent<Advisors>().Hide();
 		(_, advice) = AdvisorUtils.CreateAdvisorDialogBox(background);
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "MILITARY ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Military);
+		background.AddChild(advisorList);
 	}
 
 	public void ShowAdvisor() {
@@ -55,6 +58,7 @@ public partial class MilitaryAdvisor : Control {
 		EngineStorage.ReadGameData(gameData => {
 			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Military, AdvisorAdvice.Military(gameData, us), us.EraIndex());
+			advisorList.Refresh(us.EraIndex());
 			AddSummary(gameData, us);
 			if (byCity) {
 				AddCities(us);

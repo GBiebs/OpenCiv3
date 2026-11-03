@@ -21,8 +21,9 @@ public partial class ForeignAdvisor : Control {
 
 	private const int PerPage = 8;
 	private const float PortraitSize = 115;
-	private static readonly Vector2 Center = new(400, 378);
-	private static readonly Vector2 Radius = new(285, 212);
+	// Inside the parchment: its left edge and the tabs on the right.
+	private static readonly Vector2 Center = new(412, 378);
+	private static readonly Vector2 Radius = new(265, 212);
 	private static readonly Vector2 TabsAt = new(770, 290);
 	private static readonly Color Ink = new(0.13f, 0.10f, 0.05f);
 
@@ -45,6 +46,7 @@ public partial class ForeignAdvisor : Control {
 
 	private TextureRect advisorHead;
 	private Label advice;
+	private AdvisorList advisorList;
 	private Control content;
 	private Player selected;
 	private int page;
@@ -62,6 +64,8 @@ public partial class ForeignAdvisor : Control {
 		AdvisorUtils.CreateExitButton(background).Pressed += () => GetParent<Advisors>().Hide();
 		(_, advice) = AdvisorUtils.CreateAdvisorDialogBox(background);
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "FOREIGN ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Foreign);
+		background.AddChild(advisorList);
 	}
 
 	public void ShowAdvisor() {
@@ -77,6 +81,7 @@ public partial class ForeignAdvisor : Control {
 		EngineStorage.ReadGameData(gameData => {
 			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Foreign, AdvisorAdvice.Foreign(gameData, us), us.EraIndex());
+			advisorList.Refresh(us.EraIndex());
 
 			List<Player> rivals = gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated).ToList();
 			HashSet<Player> known = gameData.GetKnownRivals(us).ToHashSet();

@@ -21,6 +21,7 @@ public partial class CulturalAdvisor : Control {
 
 	private TextureRect advisorHead;
 	private Label advice;
+	private AdvisorList advisorList;
 	private Control content;
 	private int cityPage, wonderPage;
 
@@ -36,6 +37,8 @@ public partial class CulturalAdvisor : Control {
 		AdvisorUtils.CreateExitButton(background).Pressed += () => GetParent<Advisors>().Hide();
 		(_, advice) = AdvisorUtils.CreateAdvisorDialogBox(background);
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "CULTURAL ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Culture);
+		background.AddChild(advisorList);
 	}
 
 	public void ShowAdvisor() {
@@ -51,6 +54,7 @@ public partial class CulturalAdvisor : Control {
 		EngineStorage.ReadGameData(gameData => {
 			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Culture, AdvisorAdvice.Culture(gameData, us), us.EraIndex());
+			advisorList.Refresh(us.EraIndex());
 
 			(int improvements, int wonders) = PerTurn(us);
 			int perTurn = us.cities.Sum(c => c.GetCulturePerTurn());

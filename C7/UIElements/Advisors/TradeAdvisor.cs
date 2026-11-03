@@ -23,6 +23,7 @@ public partial class TradeAdvisor : Control {
 
 	private TextureRect advisorHead;
 	private Label advice;
+	private AdvisorList advisorList;
 	private Control content;
 	private Player selected;
 	private int page;
@@ -39,6 +40,8 @@ public partial class TradeAdvisor : Control {
 		AdvisorUtils.CreateExitButton(background).Pressed += () => GetParent<Advisors>().Hide();
 		(_, advice) = AdvisorUtils.CreateAdvisorDialogBox(background);
 		AdvisorUtils.CreateAdvisorTitle(background, background.Texture.GetWidth(), "TRADE ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Trade);
+		background.AddChild(advisorList);
 	}
 
 	public void ShowAdvisor() {
@@ -54,6 +57,7 @@ public partial class TradeAdvisor : Control {
 		EngineStorage.ReadGameData(gameData => {
 			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Trade, AdvisorAdvice.Trade(gameData, us), us.EraIndex());
+			advisorList.Refresh(us.EraIndex());
 			AddResources(gameData, us);
 			AddNetwork(gameData, us);
 			List<Partner> partners = Partners(gameData, us);

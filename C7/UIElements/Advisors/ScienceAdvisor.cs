@@ -36,6 +36,8 @@ public partial class ScienceAdvisor : Control {
 		MouseFilter = MouseFilterEnum.Stop;
 	}
 
+	private AdvisorList advisorList;
+
 	public override void _Ready() {
 		this.CreateUI();
 	}
@@ -54,6 +56,8 @@ public partial class ScienceAdvisor : Control {
 		(_dialogBox, _dialogBoxLabel) = AdvisorUtils.CreateAdvisorDialogBox(background);
 
 		AdvisorUtils.CreateAdvisorTitle(background, AncientBackground.GetWidth(), "SCIENCE ADVISOR");
+		advisorList = new AdvisorList(AdvisorHead.Advisor.Science);
+		background.AddChild(advisorList);
 
 		CreatePreviousEraButton();
 		CreateNextEraButton();
@@ -192,6 +196,7 @@ public partial class ScienceAdvisor : Control {
 
 		EngineStorage.ReadGameData((GameData gameData) => {
 			Player player = gameData.GetFirstHumanPlayer();
+			advisorList.Refresh(player.EraIndex());
 
 			// TODO: Choose advisor head
 			// _advisorHead.Texture = AdvisorHead.GetPopupImage(AdvisorHead.Advisor.Science, AdvisorHead.Mood.Happy, player.EraIndex());

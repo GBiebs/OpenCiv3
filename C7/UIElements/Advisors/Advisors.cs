@@ -33,8 +33,9 @@ public partial class Advisors : CenterContainer {
 		OnShowGameView(null);
 	}
 
-	private void ShowLatestAdvisor() {
-		OnShowSpecificAdvisor(latest);
+	// From the advisor list on each advisor's screen.
+	public void ShowAdvisor(string advisorType) {
+		OnShowSpecificAdvisor(advisorType);
 	}
 
 	private void OnShowSpecificAdvisor(string advisorType) {
