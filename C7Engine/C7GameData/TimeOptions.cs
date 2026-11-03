@@ -65,6 +65,15 @@ public sealed class TimeOptions {
 	/// <returns></returns>
 	/// <exception cref="Exception"></exception>
 	public int GetRawNumber(int current) {
+		// Past the calendar's last turn (playing on after the game, as Civ3
+		// allows), time goes on at the last period's pace.
+		int lastTurn = GetTotalTurns();
+		if (current > lastTurn) {
+			int value = GetRawNumber(lastTurn) + (current - lastTurn) * timeScale[1, timeScale.GetLength(1) - 1];
+			SetTimeUnitCurrent(value);
+			return value;
+		}
+
 		int i = 0;
 		int acc = timeScale[0, i];
 		var currentNormalized = current;
