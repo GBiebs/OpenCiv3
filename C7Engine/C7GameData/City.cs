@@ -11,6 +11,9 @@ namespace C7GameData {
 		public Building building;
 		public Player builtByPlayer;
 		public int year;
+		public int turnBuilt;
+		public int baseCulturePerTurn;
+		public int currentCulturePerTurn;
 		public int totalCulture; // This represents the total culture produced by the building.
 								 // In Civ3, this value is displayed in the cultural advisor tab
 	}
@@ -919,9 +922,10 @@ namespace C7GameData {
 			return GetBuildings().Sum(CulturePerTurnFrom);
 		}
 
-		// The culture one of this city's buildings makes a turn.
+		// The culture one of this city's buildings makes a turn (its age bonus
+		// included, see UpdateAgeBonus).
 		public int CulturePerTurnFrom(CityBuilding cb) {
-			return IsCapturedWonder(cb) ? 0 : cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
+			return IsCapturedWonder(cb) ? 0 : cb.currentCulturePerTurn;
 		}
 
 		// A great wonder that another civ built and we captured keeps its
@@ -947,33 +951,33 @@ namespace C7GameData {
 			return gold;
 		}
 
-		// Civ 3 doubles a building's culture once it is a millennium old.
-		private int CultureAgeBonusMultiplier(CityBuilding cb) {
+		// Returns the age bonus for a building. Uses the Lua ageBonus function if available; otherwise returns 0 (no bonus).
+		public int GetAgeBonus(CityBuilding cb) {
 			Building building = cb.building;
 			if (building.culturePerTurn <= 0 || building.noAgeBonus) {
-				return 1;
+				return 0;
 			}
 
 			GameData gameData = EngineStorage.gameData;
 			if (gameData?.timeOptions == null) {
-				return 1;
+				return 0;
 			}
 
-			AgeBonusRules rules = gameData.rules?.ageBonus;
-			if (rules == null || !rules.enabled) {
-				return 1;
+			// Use the Lua ageBonus function if available
+			Func<CityBuilding, GameData, City, Player, int> ageBonus = gameData?.ageBonusFunc;
+			if (ageBonus != null) {
+				return ageBonus(cb, gameData, this, owner);
 			}
 
-			int ageInYears = gameData.timeOptions.GetAbsoluteYear(gameData.turn) - cb.year;
-			int multiplier = rules.GetMultiplier(ageInYears, building.IsWonder());
+			// Default: no age bonus applied
+			return 0;
+		}
 
-			Func<AgeBonusContext, int> luaFunc = gameData.ageBonusMultiplierFunc;
-			if (luaFunc == null) {
-				return multiplier;
+		// Uses the Lua ageBonus function if available; otherwise keeps base culture per turn unchanged.
+		public void UpdateAgeBonuses(GameData gameData) {
+			foreach (CityBuilding cb in constructed_buildings) {
+				UpdateAgeBonus(gameData, cb);
 			}
-
-			AgeBonusContext context = new(owner, this, building, ageInYears, multiplier);
-			return luaFunc(context);
 		}
 
 		[MoonSharpHidden]
@@ -1001,16 +1005,39 @@ namespace C7GameData {
 		}
 
 		public void AddBuilding(Building building, GameData gameData) {
-			constructed_buildings.Add(new CityBuilding {
+			CityBuilding cb = new CityBuilding {
 				building = building,
 				builtByPlayer = owner,
 				// A game without a calendar (bare test data) records year 0.
 				year = gameData.timeOptions?.GetAbsoluteYear(gameData.turn) ?? 0,
+				turnBuilt = gameData.turn,
+				baseCulturePerTurn = building.culturePerTurn,
+				currentCulturePerTurn = building.culturePerTurn,
 				totalCulture = 0
-			});
+			};
+			UpdateAgeBonus(gameData, cb);
+			constructed_buildings.Add(cb);
 			// It may be a Harbor or an Airport.
 			gameData.InvalidateCachedTradeNetwork();
 		}
+
+		// Uses the Lua ageBonus function if available; otherwise keeps base culture per turn unchanged.
+		private void UpdateAgeBonus(GameData gameData, CityBuilding cb) {
+			if (cb.building == null || cb.building.culturePerTurn <= 0 || cb.building.noAgeBonus) {
+				cb.currentCulturePerTurn = cb.baseCulturePerTurn;
+				return;
+			}
+
+			Func<CityBuilding, GameData, City, Player, int> ageBonus = gameData?.ageBonusFunc;
+			if (ageBonus != null) {
+				cb.currentCulturePerTurn = ageBonus(cb, gameData, this, owner);
+				return;
+			}
+
+			// Default: keep the base culture per turn (no age bonus applied)
+			cb.currentCulturePerTurn = cb.baseCulturePerTurn;
+		}
+
 		public void RemoveBuilding(CityBuilding building) {
 			constructed_buildings.Remove(building);
 			EngineStorage.gameData?.InvalidateCachedTradeNetwork();
@@ -1281,9 +1308,7 @@ namespace C7GameData {
 			int start = GetBorderExpansionLevel();
 			// TODO: Skip obsolete buildings (see Building.IsObsolete).
 			foreach (CityBuilding cb in GetBuildings()) {
-				if (!IsCapturedWonder(cb)) {
-					cb.totalCulture += cb.building.culturePerTurn * CultureAgeBonusMultiplier(cb);
-				}
+				cb.totalCulture += CulturePerTurnFrom(cb);
 			}
 
 			perPlayerCulture[owner] += GetCulturePerTurn();

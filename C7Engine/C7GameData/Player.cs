@@ -1060,6 +1060,7 @@ namespace C7GameData {
 					new MsgResistanceQuelled(id, c, stopped, c.IsInResistance()).send();
 				}
 
+				c.UpdateAgeBonuses(gameData);
 				// Ensure borders expand before we assign the new citizen, so that
 				// the new citizen can go on one of our new tiles.
 				if (c.UpdateCultureAndCheckForExpansion()) {

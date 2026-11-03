@@ -13,6 +13,9 @@ namespace C7GameData.Save {
 		public string building;
 		public ID builtByPlayer;
 		public int year;
+		public int turnBuilt;
+		public int baseCulturePerTurn;
+		public int currentCulturePerTurn;
 		public int totalCulture;
 
 		public SaveCityBuilding() { }
@@ -21,14 +24,24 @@ namespace C7GameData.Save {
 			building = cityBuilding.building.name;
 			builtByPlayer = cityBuilding.builtByPlayer.id;
 			year = cityBuilding.year;
+			turnBuilt = cityBuilding.turnBuilt;
+			baseCulturePerTurn = cityBuilding.baseCulturePerTurn;
+			currentCulturePerTurn = cityBuilding.currentCulturePerTurn;
 			totalCulture = cityBuilding.totalCulture;
 		}
 
 		public CityBuilding ToCityBuilding(List<Building> buildings, List<Player> players) {
+			Building type = buildings.Find(buildingType => buildingType.name == building);
+			// Saves from before these were kept: the building's own culture
+			// (the age bonus comes back with the next turn's update).
+			int baseCulture = baseCulturePerTurn != 0 ? baseCulturePerTurn : type?.culturePerTurn ?? 0;
 			return new CityBuilding {
-				building = buildings.Find(buildingType => buildingType.name == building),
+				building = type,
 				builtByPlayer = players.Find(player => player.id == builtByPlayer),
 				year = year,
+				turnBuilt = turnBuilt,
+				baseCulturePerTurn = baseCulture,
+				currentCulturePerTurn = currentCulturePerTurn != 0 ? currentCulturePerTurn : baseCulture,
 				totalCulture = totalCulture,
 			};
 		}
