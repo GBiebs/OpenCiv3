@@ -41,35 +41,61 @@ namespace C7Engine.Online {
 
 		public bool Connected => !connection.Closed;
 
+		// Tries the invite's addresses in turn (the first is the likeliest):
+		// one where a computer with another certificate answers (another
+		// computer with the same home-network address, at the player's
+		// end) is passed over, never told the password.
 		public static async Task<OnlineClient> Join(Invite invite, string name, string password, string gameVersion,
 			OnlineLimits limits = null, CancellationToken cancel = default) {
 			limits ??= new OnlineLimits();
+			bool anotherComputer = false;
+			foreach (string host in invite.hosts) {
+				(TcpClient tcp, SslStream ssl, bool wrongCertificate) = await Reach(host, invite, limits, cancel);
+				if (ssl != null) {
+					return await Greet(tcp, ssl, host, name, password, gameVersion, limits, cancel);
+				}
+				anotherComputer |= wrongCertificate;
+			}
+			throw new JoinFailedException(anotherComputer
+				? "A computer answered, but it isn't the host this invite is for (its certificate doesn't match). Ask the host for a new invite."
+				: "Couldn't reach the host. Check that they're hosting, and that you're both on Tailscale (or the same home network).");
+		}
+
+		// An encrypted connection to the host at `host`, or none (and
+		// whether a computer with another certificate answered there).
+		private static async Task<(TcpClient, SslStream, bool)> Reach(string host, Invite invite, OnlineLimits limits, CancellationToken cancel) {
 			TcpClient tcp = new();
 			SslStream ssl = null;
+			try {
+				using (CancellationTokenSource connecting = CancellationTokenSource.CreateLinkedTokenSource(cancel)) {
+					connecting.CancelAfter(limits.connectTime);
+					await tcp.ConnectAsync(host, invite.port, connecting.Token);
+				}
+				ssl = new SslStream(tcp.GetStream(), leaveInnerStreamOpen: false);
+				using CancellationTokenSource handshake = CancellationTokenSource.CreateLinkedTokenSource(cancel);
+				handshake.CancelAfter(limits.handshakeTime);
+				await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions {
+					TargetHost = "OpenCiv3 host",
+					EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+					CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
+					RemoteCertificateValidationCallback = (_, certificate, _, _) =>
+						certificate != null && HostCertificate.Fingerprint(certificate) == invite.fingerprint,
+				}, handshake.Token);
+				return (tcp, ssl, false);
+			} catch (Exception e) when (e is SocketException or OperationCanceledException or AuthenticationException or System.IO.IOException) {
+				ssl?.Dispose();
+				tcp.Dispose();
+				return (null, null, e is AuthenticationException);
+			}
+		}
+
+		// Hello, with the password, to the host the connection reached.
+		private static async Task<OnlineClient> Greet(TcpClient tcp, SslStream ssl, string host, string name, string password, string gameVersion,
+			OnlineLimits limits, CancellationToken cancel) {
 			Connection connection = null;
 			using CancellationTokenSource joining = CancellationTokenSource.CreateLinkedTokenSource(cancel);
 			joining.CancelAfter(limits.handshakeTime);
 			try {
-				try {
-					await tcp.ConnectAsync(invite.host, invite.port, joining.Token);
-				} catch (Exception e) when (e is SocketException or OperationCanceledException) {
-					throw new JoinFailedException($"Couldn't reach a host at {invite.host}, port {invite.port}.");
-				}
-				ssl = new SslStream(tcp.GetStream(), leaveInnerStreamOpen: false);
-				try {
-					await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions {
-						TargetHost = "OpenCiv3 host",
-						EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-						CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
-						RemoteCertificateValidationCallback = (_, certificate, _, _) =>
-							certificate != null && HostCertificate.Fingerprint(certificate) == invite.fingerprint,
-					}, joining.Token);
-				} catch (AuthenticationException) {
-					throw new JoinFailedException("That computer isn't the host this invite is for (its certificate doesn't match). "
-						+ "Ask the host for a new invite.");
-				} catch (Exception e) when (e is System.IO.IOException or OperationCanceledException) {
-					throw new JoinFailedException($"The computer at {invite.host}, port {invite.port}, isn't hosting a game.");
-				}
 				connection = new Connection(ssl, limits.maxMessageFromHost);
 				connection.Send(new Hello { protocol = OnlineProtocol.Version, game = gameVersion, name = name, password = password });
 				OnlineMessage reply;
@@ -85,7 +111,7 @@ namespace C7Engine.Online {
 					throw new JoinFailedException("The host didn't answer.");
 				}
 				OnlineClient client = new(tcp, ssl, connection, limits) { playerId = welcome.you, hostName = welcome.hostName };
-				log.Information("Joined {Host} at {Address} as player {Id}", welcome.hostName, invite.host, welcome.you);
+				log.Information("Joined {Host} at {Address} as player {Id}", welcome.hostName, host, welcome.you);
 				_ = Task.Run(client.Read);
 				_ = Task.Run(client.KeepAlive);
 				return client;

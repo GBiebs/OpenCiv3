@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
@@ -88,7 +89,33 @@ public class OnlineConnectionTest {
 		host.Dispose();
 		JoinFailedException failed = await Assert.ThrowsAsync<JoinFailedException>(
 			() => OnlineClient.Join(invite, "Sargon", Password, GameVersion, Quick()));
-		Assert.Equal($"Couldn't reach a host at 127.0.0.1, port {invite.port}.", failed.Message);
+		Assert.Equal("Couldn't reach the host. Check that they're hosting, and that you're both on Tailscale (or the same home network).", failed.Message);
+	}
+
+	// The invite's addresses in turn: none listening at the first, another
+	// host at the second (never told the password), ours at the third.
+	[Fact]
+	public async Task TheGameTriesTheInvitesAddressesInTurn() {
+		using OnlineHost host = StartHost();
+		using OnlineHost other = new("Shulgi", "another password", GameVersion, Quick());
+		other.Start(host.port, IPAddress.IPv6Loopback);
+		Invite invite = host.InviteAt(["127.0.0.2", "::1", "127.0.0.1"]);
+		using OnlineClient client = await OnlineClient.Join(Invite.Parse(invite.Code), "Sargon", Password, GameVersion, Quick());
+		Assert.Equal("Hammurabi", client.hostName);
+		Assert.Equal(0, other.hellos);
+	}
+
+	// Only other computers answered.
+	[Fact]
+	public async Task NoneOfTheAddressesIsTheHost() {
+		using OnlineHost host = StartHost();
+		using OnlineHost other = new("Shulgi", "another password", GameVersion, Quick());
+		other.Start(host.port, IPAddress.IPv6Loopback);
+		using var stranger = HostCertificate.Create();
+		JoinFailedException failed = await Assert.ThrowsAsync<JoinFailedException>(() => OnlineClient.Join(
+			new Invite(["::1"], host.port, HostCertificate.Fingerprint(stranger)), "Sargon", Password, GameVersion, Quick()));
+		Assert.StartsWith("A computer answered, but it isn't the host this invite is for", failed.Message);
+		Assert.Equal(0, other.hellos);
 	}
 
 	// Before the Hello (or anything else it can't read), a connection that

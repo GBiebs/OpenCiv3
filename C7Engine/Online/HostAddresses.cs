@@ -43,6 +43,19 @@ namespace C7Engine.Online {
 			return Ordered(found);
 		}
 
+		// What goes in the invite: a private network tool's addresses and the
+		// home network's, never this computer's internet ones (they'd tell
+		// the players where it is); the internet address the host gave, for
+		// port forwarding, last.
+		public static List<string> ForInvite(IEnumerable<Address> found, string internetAddress = null) {
+			// (IPv4 first: Tailscale's IPv6 address only repeats its IPv4 one.)
+			List<string> chosen = Ordered(found).Where(a => a.kind != Kind.Internet).OrderBy(a => a.address.Contains(':')).Select(a => a.address).ToList();
+			if (!string.IsNullOrWhiteSpace(internetAddress)) {
+				chosen = chosen.Take(Invite.MaxHosts - 1).Append(internetAddress.Trim()).ToList();
+			}
+			return chosen.Take(Invite.MaxHosts).ToList();
+		}
+
 		public static List<Address> Ordered(IEnumerable<Address> addresses) {
 			// IPv4 first: shorter to send.
 			return addresses.DistinctBy(a => a.address).OrderBy(a => a.kind).ThenBy(a => a.address.Contains(':')).ToList();

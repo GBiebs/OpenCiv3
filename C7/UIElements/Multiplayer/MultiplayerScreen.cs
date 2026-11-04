@@ -245,7 +245,7 @@ public partial class MultiplayerScreen : Control {
 		lobby = new OnlineLobby(host, NewSlots(MaxCivs(), humans: 2, online: true), CivNames());
 		lobby.SetSettings(LobbySettings());
 		ShowSetupScreen();
-		AddMessage($"Hosting on port {host.port}. Send your players the invite and the game's password (Invite Players...).");
+		AddMessage("Send your players the invite code and the game's password (Invite Players...).");
 		ShowInvite();
 	}
 
@@ -275,44 +275,42 @@ public partial class MultiplayerScreen : Control {
 		panel.Button("Back", new Vector2(320, 180), ChooseGameType);
 	}
 
-	// The invite to send, and the game's password.
+	// The invite code to send, and the game's password. The code holds the
+	// addresses players' games may find this computer at (Tailscale's, the
+	// home network's), never its internet address unless the host gave one
+	// for port forwarding (C7.ini); no address is shown.
 	private void ShowInvite() {
 		OnlinePanel panel = OpenPopup(640, 330);
 		panel.Header("Invite Players");
-		panel.Text("Send your players the invite and the game's password:", 54, 14, left: true);
-		List<HostAddresses.Address> addresses = HostAddresses.OfThisComputer();
-		OptionButton choice = panel.Show(OnlinePanel.Choice(new Vector2(30, 80), new Vector2(300, 28)));
-		foreach (HostAddresses.Address address in addresses) {
-			choice.AddItem(address.Label);
+		string internetAddress = C7Settings.GetSettingsValueOrDefault(C7Settings.Multiplayer.SectionName, C7Settings.Multiplayer.InternetAddress, "");
+		List<string> addresses = HostAddresses.ForInvite(HostAddresses.OfThisComputer(), internetAddress);
+		if (addresses.Count == 0) {
+			panel.Text("This computer isn't on a network your players can reach. Start Tailscale (or connect to your home network), "
+				+ "then open Invite Players again.", 80, 14);
+			panel.Button("Close", new Vector2(270, 290), ClosePopup);
+			return;
 		}
-		choice.AddItem("Internet address (port forwarding)...");
-		LineEdit typed = panel.Show(OnlinePanel.Field(new Vector2(340, 80), 270, "Your internet address"));
-		LineEdit invite = panel.Show(OnlinePanel.Field(new Vector2(30, 114), 470));
+		panel.Text("Send your players this invite code and the game's password:", 54, 14, left: true);
+		LineEdit invite = panel.Show(OnlinePanel.Field(new Vector2(30, 80), 580));
+		invite.Text = host.InviteAt(addresses).Code;
 		invite.Editable = false;
 		invite.SelectAllOnFocus = true;
+		invite.AddThemeFontSizeOverride("font_size", 12);
 		// Read-only, but as easy to read as a field to type in.
 		invite.AddThemeColorOverride("font_uneditable_color", OnlinePanel.Ink);
 		invite.AddThemeStyleboxOverride("read_only", invite.GetThemeStylebox("normal"));
-		void Update() {
-			bool typing = choice.Selected == addresses.Count;
-			typed.Visible = typing;
-			Invite made = host.InviteAt(typing ? typed.Text.Trim() : addresses[choice.Selected].address);
-			invite.Text = Invite.Parse(made.ToString()) != null ? made.ToString() : "";
-		}
-		typed.TextChanged += _ => Update();
-		choice.ItemSelected += _ => Update();
-		Update();
-		panel.Button("Copy", new Vector2(512, 114), () => DisplayServer.ClipboardSet(invite.Text));
-		panel.Text("Game password:", 158, 14, left: true, width: 140);
-		LineEdit password = panel.Show(OnlinePanel.Field(new Vector2(170, 154), 180));
+		panel.Button("Copy the Code", new Vector2(30, 116), () => DisplayServer.ClipboardSet(invite.Text));
+		panel.Text("Game password:", 160, 14, left: true, width: 140);
+		LineEdit password = panel.Show(OnlinePanel.Field(new Vector2(170, 156), 180));
 		password.Text = gamePassword;
 		password.TextChanged += text => {
 			gamePassword = text;
 			host.SetPassword(text);
 		};
-		panel.Text("(For players who join after a change.)", 160, 12, left: true, x: 360, width: 250);
-		panel.Text($"With Tailscale, share this computer with each player first. With port forwarding, forward TCP port {host.port} "
-			+ "on your router to this computer. Windows may ask whether to let the game accept connections: allow it.", 196, 12, left: true);
+		panel.Text("(For players who join after a change.)", 162, 12, left: true, x: 360, width: 250);
+		panel.Text("With Tailscale, share this computer with each player first: the code finds it through Tailscale "
+			+ "(or your home network) and never holds your internet address. Windows may ask whether to let the game "
+			+ "accept connections: allow it.", 198, 12, left: true);
 		panel.Button("Close", new Vector2(270, 290), ClosePopup);
 	}
 
@@ -321,7 +319,7 @@ public partial class MultiplayerScreen : Control {
 	private void ShowJoin(string problem = null) {
 		OnlinePanel panel = OpenPopup(640, 330);
 		panel.Header("Join a Game Online");
-		panel.Text("Paste the invite the host sent you:", 56, 14, left: true);
+		panel.Text("Paste the invite code the host sent you:", 56, 14, left: true);
 		LineEdit inviteField = panel.Show(OnlinePanel.Field(new Vector2(30, 82), 580));
 		inviteField.Text = C7Settings.GetSettingsValueOrDefault(C7Settings.Multiplayer.SectionName, C7Settings.Multiplayer.LastInvite, "");
 		panel.Text("Password:", 128, 14, left: true, width: 150);
@@ -356,7 +354,7 @@ public partial class MultiplayerScreen : Control {
 		Invite parsed = Invite.Parse(inviteText);
 		name = name.Trim();
 		if (parsed == null) {
-			status.Text = "That isn't an invite: it looks like 100.101.102.103:47300/ABCD... (copy it whole).";
+			status.Text = "That isn't an invite code: copy it whole (it begins with OC3-).";
 			return;
 		}
 		if (name == "" || name.Any(char.IsControl)) {

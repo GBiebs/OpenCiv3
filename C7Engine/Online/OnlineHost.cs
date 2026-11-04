@@ -86,6 +86,8 @@ namespace C7Engine.Online {
 
 		public Invite InviteAt(string address) => new(address, port, fingerprint);
 
+		public Invite InviteAt(IEnumerable<string> addresses) => new(addresses, port, fingerprint);
+
 		// For the players who join from now on.
 		public void SetPassword(string gamePassword) {
 			passwordHash = SHA256.HashData(Encoding.UTF8.GetBytes(gamePassword ?? ""));

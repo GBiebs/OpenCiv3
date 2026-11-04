@@ -17,6 +17,8 @@ namespace C7Engine.Online {
 		public int maxMessageFromPlayer = 64 * 1024;
 		// The host sends the game itself.
 		public int maxMessageFromHost = 64 * 1024 * 1024;
+		// Connecting to each of an invite's addresses.
+		public TimeSpan connectTime = TimeSpan.FromSeconds(5);
 		// From connecting to being let in: the encrypted handshake and the
 		// password.
 		public TimeSpan handshakeTime = TimeSpan.FromSeconds(10);
