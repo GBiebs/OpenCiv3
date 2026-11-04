@@ -82,6 +82,7 @@ public partial class MainMenu : Node {
 		ButtonContainer.Tutorial.Visible = false;
 		ButtonContainer.LoadGame.Pressed += LoadGame;
 		ButtonContainer.LoadScenario.Pressed += LoadScenario;
+		ButtonContainer.JoinOnline.Pressed += JoinOnline;
 		ButtonContainer.HallOfFame.Pressed += HallOfFame;
 		ButtonContainer.HallOfFame.Visible = false;
 		ButtonContainer.Preferences.Pressed += ShowPreferences;
@@ -153,6 +154,14 @@ public partial class MainMenu : Node {
 		log.Information("load scenario button pressed");
 		PlayButtonPressedSound();
 		LoadScenarioDialog.Popup();
+	}
+
+	// Online play: a host's invite and password (hosting starts on the
+	// player setup screen).
+	public void JoinOnline() {
+		PlayButtonPressedSound();
+		Global.HostingOnline = false;
+		GetTree().ChangeSceneToFile("res://UIElements/Online/online_game.tscn");
 	}
 
 	public void showCredits() {

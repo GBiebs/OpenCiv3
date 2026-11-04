@@ -51,6 +51,15 @@ namespace C7Engine {
 			public const string Civ3InstallDir = "civ3InstallDir";
 		}
 
+		// Online play: the name a joining player gives, the last invite
+		// they used, and the port a host listens on.
+		public static class Multiplayer {
+			public const string SectionName = nameof(Multiplayer);
+			public const string Name = nameof(Name);
+			public const string LastInvite = nameof(LastInvite);
+			public const string Port = nameof(Port);
+		}
+
 		public static class Rules {
 			public const string SectionName = nameof(Rules);
 			public const string AllowDominationVictory = nameof(AllowDominationVictory);

@@ -17,7 +17,8 @@ internal static class OnlineTestKit {
 
 	public static OnlineHost StartHost(OnlineLimits limits = null, string password = Password) {
 		OnlineHost host = new("Hammurabi", password, GameVersion, limits ?? Quick());
-		host.Start(port: 0);
+		// (This computer only, so no other one can reach a test's host.)
+		host.Start(port: 0, only: IPAddress.Loopback);
 		return host;
 	}
 

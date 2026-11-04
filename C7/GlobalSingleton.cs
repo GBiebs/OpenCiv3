@@ -22,6 +22,10 @@ public partial class GlobalSingleton : Node {
 	// Generated game data used when starting a new game
 	public SaveGame SaveGame;
 
+	// Online play: the player setup screen made SaveGame to host online
+	// (the online screen's lobby); otherwise that screen joins a game.
+	public bool HostingOnline;
+
 	// The characteristics of the world to generate. This exists in the singleton
 	// to allow the world setup screen to pass the information to the player
 	// setup screen, which is what actually kicks off the world generation.
@@ -46,6 +50,7 @@ public partial class GlobalSingleton : Node {
 	public void ResetLoadGameFields() {
 		LoadGamePath = null;
 		SaveGame = null;
+		HostingOnline = false;
 	}
 
 	public void ActivateGameMode(GameMode.Config config) {

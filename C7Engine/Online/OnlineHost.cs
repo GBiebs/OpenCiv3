@@ -43,7 +43,8 @@ namespace C7Engine.Online {
 		public readonly string hostName;
 		public int port { get; private set; }
 
-		private readonly byte[] passwordHash;
+		// (Replaced whole when the host changes the password.)
+		private volatile byte[] passwordHash;
 		private readonly string gameVersion;
 		private readonly OnlineLimits limits;
 		private readonly X509Certificate2 certificate;
@@ -61,7 +62,7 @@ namespace C7Engine.Online {
 
 		public OnlineHost(string hostName, string gamePassword, string gameVersion, OnlineLimits limits = null) {
 			this.hostName = hostName;
-			passwordHash = SHA256.HashData(Encoding.UTF8.GetBytes(gamePassword ?? ""));
+			SetPassword(gamePassword);
 			this.gameVersion = gameVersion;
 			this.limits = limits ?? new OnlineLimits();
 			guard = new PasswordGuard(this.limits);
@@ -69,10 +70,13 @@ namespace C7Engine.Online {
 			fingerprint = HostCertificate.Fingerprint(certificate);
 		}
 
-		// Starts listening (port 0: any free one, for tests).
-		public void Start(int port = OnlineProtocol.DefaultPort) {
-			listener = new TcpListener(IPAddress.IPv6Any, port);
-			listener.Server.DualMode = true;
+		// Starts listening, on every address of this computer unless given
+		// one (tests: this computer only, port 0 for any free one).
+		public void Start(int port = OnlineProtocol.DefaultPort, IPAddress only = null) {
+			listener = new TcpListener(only ?? IPAddress.IPv6Any, port);
+			if (only == null) {
+				listener.Server.DualMode = true;
+			}
 			listener.Start();
 			this.port = ((IPEndPoint)listener.LocalEndpoint).Port;
 			log.Information("Hosting on port {Port}", this.port);
@@ -81,6 +85,22 @@ namespace C7Engine.Online {
 		}
 
 		public Invite InviteAt(string address) => new(address, port, fingerprint);
+
+		// For the players who join from now on.
+		public void SetPassword(string gamePassword) {
+			passwordHash = SHA256.HashData(Encoding.UTF8.GetBytes(gamePassword ?? ""));
+		}
+
+		// A password that's hard to guess and easy to read out: no letters
+		// that look alike (about 50 bits).
+		public static string NewPassword() {
+			const string letters = "abcdefghjkmnpqrstuvwxyz23456789";
+			char[] password = new char[10];
+			for (int i = 0; i < password.Length; i++) {
+				password[i] = letters[RandomNumberGenerator.GetInt32(letters.Length)];
+			}
+			return new string(password);
+		}
 
 		public IReadOnlyList<RemotePlayer> Players => players.Values.OrderBy(p => p.id).ToList();
 
