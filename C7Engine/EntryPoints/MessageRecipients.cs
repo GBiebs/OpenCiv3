@@ -52,6 +52,7 @@ namespace C7Engine {
 				MsgUnitsCaptured m => [m.capturerId, m.victimId],
 				MsgLeaderBorn m => [m.playerId],
 				MsgUnitEnslaved m => [m.enslaverId, m.victimId],
+				MsgDiplomacyNews m => [m.playerId],
 				_ => [],
 			};
 			return ids.Where(id => id != null).Distinct().ToList();

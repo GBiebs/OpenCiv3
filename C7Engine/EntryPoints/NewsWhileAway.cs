@@ -4,7 +4,7 @@ namespace C7Engine {
 	// Play by email: the news a human misses while the others play (who it
 	// concerns: MessageRecipients) is written down in their part of the save
 	// as a line of text, and shown at the start of their next turn
-	// (TurnHandling.HearFromAIs). Hotseat keeps the messages themselves
+	// (TurnHandling.HearFromOthers). Hotseat keeps the messages themselves
 	// instead, since the human is at the same computer.
 	public static class NewsWhileAway {
 		// Called for every message to the UI.
@@ -52,6 +52,8 @@ namespace C7Engine {
 						: null;
 				case MsgCityRansacked m:
 					return $"{m.city.name} was ransacked by the {m.barbTribe} tribe, who carried away {m.goldLiberated} gold!";
+				case MsgDiplomacyNews m:
+					return m.playerId == viewer.id ? m.text : null;
 				case MsgBarbarianCampDispersed m:
 					return m.goldEarned > 0 ? $"We cleared a barbarian encampment and earned {m.goldEarned} gold." : "We cleared a barbarian encampment.";
 				case MsgBuildingSold m:

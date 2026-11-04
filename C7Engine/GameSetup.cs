@@ -29,6 +29,9 @@ public class GameSetup {
 	// With other humans: each plays their turn on their own computer and
 	// emails the save on (otherwise they take turns at this one).
 	public bool playByEmail { get; set; }
+	// With other humans: the administrator's password (none for no
+	// administrator). See Administration.
+	public string adminPassword { get; set; }
 
 	ID.Factory ids;
 
@@ -36,7 +39,9 @@ public class GameSetup {
 		save.GameDifficulty = difficulty;
 
 		save.VictoryConditions = victoryConditions;
-		save.PlayByEmail = playByEmail && opponents.Any(o => o.isHuman && !o.isNone);
+		bool otherHumans = opponents.Any(o => o.isHuman && !o.isNone);
+		save.PlayByEmail = playByEmail && otherHumans;
+		save.AdminPasswordHash = otherHumans ? Passwords.Hash(adminPassword) : "";
 
 		if (save.Map.tiles.Count == 0) {
 			log.Information("Starting map generation");

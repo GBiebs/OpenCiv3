@@ -67,6 +67,8 @@ namespace C7GameData.Save {
 				UnitedNations = data.unitedNations,
 				NukesUsed = data.nukesUsed,
 				PlayByEmail = data.playByEmail,
+				HumanDeals = data.humanDeals,
+				AdminPasswordHash = data.adminPasswordHash,
 				BarbarianInfo = data.barbarianInfo,
 				Units = data.mapUnits.ConvertAll(unit => new SaveUnit(unit)),
 				UnitPrototypes = data.unitPrototypes.ConvertAll(proto => new SaveUnitPrototype(proto)),
@@ -302,6 +304,8 @@ namespace C7GameData.Save {
 				unitedNations = UnitedNations ?? new(),
 				nukesUsed = NukesUsed,
 				playByEmail = PlayByEmail,
+				humanDeals = HumanDeals ?? new(),
+				adminPasswordHash = AdminPasswordHash ?? "",
 				Codex = Codex,
 			};
 
@@ -564,6 +568,8 @@ namespace C7GameData.Save {
 		public UnitedNationsState UnitedNations = new();
 		public int NukesUsed;
 		public bool PlayByEmail;
+		public List<HumanDeal> HumanDeals = new();
+		public string AdminPasswordHash = "";
 		public List<SavePlayer> Players = new List<SavePlayer>();
 		public List<SaveCity> Cities = new List<SaveCity>();
 		public BarbarianInfo BarbarianInfo = new BarbarianInfo();

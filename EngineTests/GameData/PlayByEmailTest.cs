@@ -83,7 +83,7 @@ public class PlayByEmailTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	private Task Arrive(Player human) {
 		EngineStorage.uiControllerID = human.id;
-		return TurnHandling.HearFromAIs(human);
+		return TurnHandling.HearFromOthers(human);
 	}
 
 	[Fact]

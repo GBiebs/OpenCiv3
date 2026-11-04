@@ -38,6 +38,10 @@ public class PlayerRelationship {
 	// has been reached.
 	public int refuseContactUntilTurn = -1;
 
+	// Hotseat and play by email: p1, a human, has asked p2's envoys not to
+	// come back until this turn (HumanDiplomacy).
+	public int refuseEnvoysUntilTurn = -1;
+
 	public List<MultiTurnDeal> multiTurnDeals = new List<MultiTurnDeal>();
 
 	// True if p1 and p2 have embassies with each other (always both ways).

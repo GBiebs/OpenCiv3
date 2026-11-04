@@ -21,26 +21,29 @@ namespace C7Engine {
 		// with several humans (hotseat) it may not be their turn, so they're
 		// given control first, and MsgHandOver lets the UI change players.
 		// Play by email: an AI talks to a human only at the start of that
-		// human's turn, on their computer (HearFromAIs), never on its own
+		// human's turn, on their computer (HearFromOthers), never on its own
 		// turn, when no one would be there to answer. `onlyWith` is the human
 		// it's talking to then.
 		public static bool TalksTo(GameData gameData, Player them, Player onlyWith) {
 			return onlyWith != null ? them == onlyWith : !(gameData.playByEmail && them.isHuman);
 		}
 
-		// Play by email: once the human whose turn it is has given their
-		// password, the news they missed while away, then, once a turn, what
-		// the AIs have to say to them: an election to call or a vote, offers
-		// of peace, agreements, demands and trades, as on the AIs' turns
-		// (trades as often too). Then their turn begins (MsgTurnReady).
-		public static async Task HearFromAIs(Player human) {
+		// Hotseat and play by email: once the human whose turn it is has given
+		// their password, the news they missed while away (by email), the
+		// deals other humans have sent them (HumanDiplomacy), then by email,
+		// once a turn, what the AIs have to say to them: an election to call
+		// or a vote, offers of peace, agreements, demands and trades, as on
+		// the AIs' turns (trades as often too). Then their turn begins
+		// (MsgTurnReady).
+		public static async Task HearFromOthers(Player human) {
 			GameData gameData = EngineStorage.gameData;
 			if (human.newsWhileAway.Count > 0) {
 				new MsgNewsWhileAway(human.id, new(human.newsWhileAway)).send();
 				human.newsWhileAway.Clear();
 				await EngineStorage.WaitForMessageToEngine<MsgNewsRead>();
 			}
-			if (human.heardFromAIsOnTurn != gameData.turn) {
+			await HumanDiplomacy.HearFromHumans(gameData, human);
+			if (gameData.playByEmail && human.heardFromAIsOnTurn != gameData.turn) {
 				human.heardFromAIsOnTurn = gameData.turn;
 				await UnitedNations.MaybeCallElection(gameData, human);
 				await UnitedNations.CastAwaitedVote(gameData, human);
@@ -211,7 +214,7 @@ namespace C7Engine {
 				}
 
 				// The United Nations' owner may call an election before its turn
-				// (a human playing by email, once at their computer: HearFromAIs).
+				// (a human playing by email, once at their computer: HearFromOthers).
 				if (!player.isBarbarians && !player.defeated && !(gameData.playByEmail && player.isHuman)) {
 					await UnitedNations.MaybeCallElection(gameData, player);
 				}

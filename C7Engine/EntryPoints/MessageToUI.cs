@@ -97,13 +97,52 @@ namespace C7Engine {
 		}
 	}
 
-	// Play by email: the AIs have had their say (TurnHandling.HearFromAIs),
-	// and the human's turn begins.
+	// Hotseat and play by email: the other humans and (by email) the AIs
+	// have had their say (TurnHandling.HearFromOthers), and the human's turn
+	// begins.
 	public class MsgTurnReady : MessageToUI {
 		public ID playerId;
 
 		public MsgTurnReady(ID playerId) {
 			this.playerId = playerId;
+		}
+	}
+
+	// Another human's envoy has come with a new deal (HumanDiplomacy): will
+	// `playerId` hear them? The UI answers MsgEnvoyAnswer.
+	public class MsgEnvoyArrives : MessageToUI {
+		public ID playerId;
+		public ID fromId;
+
+		public MsgEnvoyArrives(ID playerId, ID fromId) {
+			this.playerId = playerId;
+			this.fromId = fromId;
+		}
+	}
+
+	// The deal another human has sent `playerId`, on the deal screen (the UI
+	// sends MsgDiplomacyCompleted when it closes).
+	public class MsgShowHumanDeal : MessageToUI {
+		public ID playerId;
+		public ID fromId;
+
+		public MsgShowHumanDeal(ID playerId, ID fromId) {
+			this.playerId = playerId;
+			this.fromId = fromId;
+		}
+	}
+
+	// News of a deal between humans for `playerId`: sent or done (`good`),
+	// refused or turned down.
+	public class MsgDiplomacyNews : MessageToUI {
+		public ID playerId;
+		public string text;
+		public bool good;
+
+		public MsgDiplomacyNews(ID playerId, string text, bool good) {
+			this.playerId = playerId;
+			this.text = text;
+			this.good = good;
 		}
 	}
 

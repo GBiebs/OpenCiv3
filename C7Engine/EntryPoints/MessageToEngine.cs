@@ -4,6 +4,7 @@ using Serilog;
 
 namespace C7Engine {
 	using System;
+	using System.Collections.Generic;
 	using C7GameData;
 
 	public abstract class MessageToEngine {
@@ -691,12 +692,85 @@ namespace C7Engine {
 		}
 	}
 
-	// Play by email: the human in control is at their computer (has given
-	// their password), so the AIs can talk to them (TurnHandling.HearFromAIs).
-	public class MsgHearFromAIs : MessageToEngine {
+	// Hotseat and play by email: the human in control is at the computer
+	// (has given their password), so the other humans' deals and (by email)
+	// the AIs can reach them (TurnHandling.HearFromOthers).
+	public class MsgHearFromOthers : MessageToEngine {
 		public override async void process() {
 			if (EngineStorage.gameData.GetPlayer(EngineStorage.uiControllerID) is Player human) {
-				await TurnHandling.HearFromAIs(human);
+				await TurnHandling.HearFromOthers(human);
+			}
+		}
+	}
+
+	// The human in control answers the deal on the table with another human,
+	// or makes them one (HumanDiplomacy.Answer).
+	public class MsgHumanDeal : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID otherId;
+		private readonly HumanDealAnswer answer;
+		private readonly TradeOffer weGive;
+		private readonly TradeOffer theyGive;
+
+		public MsgHumanDeal(ID otherId, HumanDealAnswer answer, TradeOffer weGive, TradeOffer theyGive) {
+			this.otherId = otherId;
+			this.answer = answer;
+			this.weGive = weGive;
+			this.theyGive = theyGive;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is Player us && gameData.GetPlayer(otherId) is Player them) {
+				HumanDiplomacy.Answer(gameData, us, them, answer, weGive ?? new(), theyGive ?? new());
+			}
+		}
+	}
+
+	// The human in control answers another human's envoy (MsgEnvoyArrives).
+	public class MsgEnvoyAnswer : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID fromId;
+		private readonly EnvoyAnswer answer;
+
+		public MsgEnvoyAnswer(ID fromId, EnvoyAnswer answer) {
+			this.fromId = fromId;
+			this.answer = answer;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is Player us && gameData.GetPlayer(fromId) is Player them) {
+				HumanDiplomacy.AnswerEnvoy(gameData, us, them, answer);
+			}
+		}
+	}
+
+	// The administrator's changes (Administration), with their password. A
+	// human whose turn it is and who is handed to the AI has it played for
+	// them at once.
+	public class MsgAdministerGame : MessageToEngine {
+		private readonly string adminPassword;
+		private readonly List<Administration.Change> changes;
+		private readonly string newAdminPassword;
+
+		public MsgAdministerGame(string adminPassword, List<Administration.Change> changes, string newAdminPassword = null) {
+			this.adminPassword = adminPassword;
+			this.changes = changes;
+			this.newAdminPassword = newAdminPassword;
+		}
+
+		public override async void process() {
+			GameData gameData = EngineStorage.gameData;
+			Player playing = gameData.GetPlayer(EngineStorage.uiControllerID);
+			bool wasHuman = playing?.isHuman == true;
+			if (!Administration.Apply(gameData, adminPassword, changes, newAdminPassword)) {
+				return;
+			}
+			if (wasHuman && !playing.isHuman) {
+				await TurnHandling.AdvanceTurn();
 			}
 		}
 	}

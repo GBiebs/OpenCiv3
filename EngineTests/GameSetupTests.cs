@@ -106,6 +106,27 @@ public class GameSetupTests {
 		Assert.Equal(playByEmail, save.PlayByEmail);
 	}
 
+	// The administrator's password, kept hashed, for a game with other
+	// humans only.
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void TheAdminPasswordIsForAGameWithOtherHumans(bool humanRival) {
+		(SaveGame save, WorldCharacteristics wc) = CreateTestWorld();
+		GameSetup gameSetup = new() {
+			playerCivilization = save.Civilizations.First(c => !c.isBarbarian),
+			difficulty = save.Difficulties.First(),
+			worldCharacteristics = wc,
+			opponents = [new SelectedOpponent { isRandom = true, isHuman = humanRival }, new SelectedOpponent { isRandom = true }],
+			victoryConditions = new VictoryConditions(),
+			adminPassword = "sid",
+		};
+		gameSetup.Populate(save);
+		Assert.Equal(humanRival, save.AdminPasswordHash != "");
+		Assert.DoesNotContain("sid", save.AdminPasswordHash);
+		Assert.Equal(humanRival, C7GameData.Passwords.Check(save.AdminPasswordHash, "sid") && save.AdminPasswordHash != "");
+	}
+
 	// All NONE rivals means a solo game: only the barbarian and the human.
 	[Fact]
 	public void AllNoneOpponentsMakeSoloGame() {

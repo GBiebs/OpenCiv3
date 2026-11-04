@@ -218,8 +218,9 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 		HashSet<Type> notActions = [typeof(MsgShutdownEngine), typeof(MsgEndTurn), typeof(MsgSetAnimationsEnabled),
 			typeof(MsgToggleAnimationsEnabled), typeof(MsgDiplomacyCompleted), typeof(MsgUiDisengaged),
 			// A hotseat password isn't a move in the game, nor arriving for a
-			// turn played by email and reading the news.
-			typeof(MsgSetPassword), typeof(MsgHearFromAIs), typeof(MsgNewsRead)];
+			// turn played by email and reading the news, nor the
+			// administrator's changes.
+			typeof(MsgSetPassword), typeof(MsgHearFromOthers), typeof(MsgNewsRead), typeof(MsgAdministerGame)];
 		List<Type> messages = typeof(MessageToEngine).Assembly.GetTypes()
 			.Where(t => t.IsSubclassOf(typeof(MessageToEngine)) && !t.IsAbstract).ToList();
 		Assert.True(messages.Count > 40);

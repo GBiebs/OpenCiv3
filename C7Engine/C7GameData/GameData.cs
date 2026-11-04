@@ -34,8 +34,19 @@ namespace C7GameData {
 		// Nuclear weapons fired so far (see Nuclear).
 		public int nukesUsed;
 		// Play by email: each human plays their turn from the save the one
-		// before sent them (TurnHandling.HearFromAIs).
+		// before sent them (TurnHandling.HearFromOthers).
 		public bool playByEmail;
+		// Hotseat and play by email: the deals humans have sent each other,
+		// waiting for an answer (HumanDiplomacy).
+		public List<HumanDeal> humanDeals = new();
+		// Hotseat and play by email: the administrator's password, chosen
+		// when the game is set up (Passwords; "" for no administrator). See
+		// Administration.
+		public string adminPasswordHash = "";
+
+		public bool HasAdminPassword() => !string.IsNullOrEmpty(adminPasswordHash);
+
+		public bool CheckAdminPassword(string password) => HasAdminPassword() && Passwords.Check(adminPasswordHash, password);
 
 		public List<City> cities = new List<City>();
 

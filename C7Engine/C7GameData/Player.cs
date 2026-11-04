@@ -69,48 +69,26 @@ namespace C7GameData {
 		public bool skipFirstTurn = false;
 
 		// Hotseat and play by email: a password the player gives before their
-		// turn shows them their empire, as Civ3's (empty for none). Kept as a
-		// slow salted hash, so a save sent by email doesn't give it away.
+		// turn shows them their empire, as Civ3's (empty for none). See
+		// Passwords.
 		public string passwordHash = "";
 
 		// Play by email: news of their empire from while they were away,
 		// shown at the start of their turn, and the turn the AIs last talked
-		// to them (TurnHandling.HearFromAIs).
+		// to them (TurnHandling.HearFromOthers).
 		public List<string> newsWhileAway = new();
 		public int heardFromAIsOnTurn = -1;
-
-		private const int PasswordIterations = 100_000;
 
 		public bool HasPassword() => !string.IsNullOrEmpty(passwordHash);
 
 		public void SetPassword(string password) {
-			if (string.IsNullOrEmpty(password)) {
-				passwordHash = "";
-				return;
-			}
-			byte[] salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
-			passwordHash = $"pbkdf2:{PasswordIterations}:{Convert.ToBase64String(salt)}:{Convert.ToBase64String(Pbkdf2(password, salt, PasswordIterations))}";
+			passwordHash = Passwords.Hash(password);
 		}
 
+		// (Hotseat saves from before play by email used the player's id as
+		// salt.)
 		public bool CheckPassword(string password) {
-			if (!HasPassword()) {
-				return true;
-			}
-			password ??= "";
-			string[] parts = passwordHash.Split(':');
-			if (parts.Length == 4 && parts[0] == "pbkdf2" && int.TryParse(parts[1], out int iterations)) {
-				byte[] expected = Convert.FromBase64String(parts[3]);
-				return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
-					Pbkdf2(password, Convert.FromBase64String(parts[2]), iterations), expected);
-			}
-			// Hotseat saves from before play by email: the player's id as salt.
-			byte[] bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes($"{id}:{password}"));
-			return Convert.ToHexString(bytes) == passwordHash;
-		}
-
-		private static byte[] Pbkdf2(string password, byte[] salt, int iterations) {
-			return System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations,
-				System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+			return Passwords.Check(passwordHash, password, legacySalt: id.ToString());
 		}
 
 		// Has this player been defeated?

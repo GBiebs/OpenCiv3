@@ -72,6 +72,10 @@ namespace C7GameData {
 		public int MaxRankOfBarbarianCampTiles;
 		public int BarbarianCampGold = 25; // gold for dispersing a barbarian camp; not in Civ3's BIQ, so this is also the default for Civ3 saves and older OpenCiv3 saves
 		public int DefaultDealDuration;
+		// Hotseat and play by email: the turns a human can ask another's
+		// envoys to stay away (Civ3's "do not contact me for 20 turns"). Not
+		// in Civ3's BIQ. See HumanDiplomacy.
+		public int EnvoyRefusalTurns = 20;
 		public float TreasuryInterestRate = .05f;
 		public int MaxInterest = 50;
 		public int ShieldCostPerGold;
