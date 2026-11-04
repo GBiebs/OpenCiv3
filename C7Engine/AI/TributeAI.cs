@@ -79,8 +79,8 @@ namespace C7Engine.AI {
 		}
 
 		// On `us`'s turn: demand tribute of civs we can.
-		public static async Task MakeDemands(Player us, GameData gameData) {
-			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated).ToList()) {
+		public static async Task MakeDemands(Player us, GameData gameData, Player onlyWith = null) {
+			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated && TurnHandling.TalksTo(gameData, p, onlyWith)).ToList()) {
 				if (!PlayerRelationship.TryGetRelationship(us, them, out PlayerRelationship relationship)
 					|| relationship.lastTributeDemandTurn is int last && gameData.turn - last < DemandEveryTurns) {
 					continue;

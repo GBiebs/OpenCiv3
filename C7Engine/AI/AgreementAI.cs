@@ -91,8 +91,8 @@ namespace C7Engine.AI {
 
 		// On `us`'s turn: propose an agreement to each civ we have an embassy
 		// with, if we want one.
-		public static async Task ProposeAgreements(Player us, GameData gameData) {
-			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated).ToList()) {
+		public static async Task ProposeAgreements(Player us, GameData gameData, Player onlyWith = null) {
+			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated && TurnHandling.TalksTo(gameData, p, onlyWith)).ToList()) {
 				if (!PlayerRelationship.TryGetRelationship(us, them, out PlayerRelationship relationship) || relationship.AtWar()
 					|| !relationship.hasEmbassy) {
 					continue;

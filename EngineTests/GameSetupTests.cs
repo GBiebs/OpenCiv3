@@ -88,6 +88,24 @@ public class GameSetupTests {
 		Assert.Equal(4, save.Players.Count);
 	}
 
+	// Play by email needs another human; alone, it's an ordinary game.
+	[Theory]
+	[InlineData(true, true)]
+	[InlineData(false, false)]
+	public void PlayByEmailNeedsAnotherHuman(bool humanRival, bool playByEmail) {
+		(SaveGame save, WorldCharacteristics wc) = CreateTestWorld();
+		GameSetup gameSetup = new() {
+			playerCivilization = save.Civilizations.First(c => !c.isBarbarian),
+			difficulty = save.Difficulties.First(),
+			worldCharacteristics = wc,
+			opponents = [new SelectedOpponent { isRandom = true, isHuman = humanRival }, new SelectedOpponent { isRandom = true }],
+			victoryConditions = new VictoryConditions(),
+			playByEmail = true,
+		};
+		gameSetup.Populate(save);
+		Assert.Equal(playByEmail, save.PlayByEmail);
+	}
+
 	// All NONE rivals means a solo game: only the barbarian and the human.
 	[Fact]
 	public void AllNoneOpponentsMakeSoloGame() {

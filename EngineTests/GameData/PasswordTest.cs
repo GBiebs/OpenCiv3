@@ -40,8 +40,8 @@ public class PasswordTest : IClassFixture<SaveGameFixture> {
 		Assert.False(human.HasPassword());
 	}
 
-	// Two players with the same password don't share a hash (it's salted
-	// with the player), and the save never shows it.
+	// Two players with the same password don't share a hash (it's salted),
+	// and the save never shows it.
 	[Fact]
 	public void TheSaveKeepsItHashed() {
 		human.SetPassword("hammurabi");
@@ -53,6 +53,27 @@ public class PasswordTest : IClassFixture<SaveGameFixture> {
 		C7GameData.GameData reloaded = save.Clone().ToGameData(fixture.behaviors);
 		Assert.True(reloaded.GetPlayer(human.id).CheckPassword("hammurabi"));
 		Assert.False(reloaded.GetPlayer(human.id).CheckPassword("nebuchadnezzar"));
+	}
+
+	// Playing by email the save travels, so the hash is slow to guess at
+	// and salted at random.
+	[Fact]
+	public void TheHashIsSlowAndSaltedAtRandom() {
+		human.SetPassword("hammurabi");
+		string first = human.passwordHash;
+		Assert.StartsWith("pbkdf2:100000:", first);
+		human.SetPassword("hammurabi");
+		Assert.NotEqual(first, human.passwordHash);
+		Assert.True(human.CheckPassword("hammurabi"));
+	}
+
+	// Hotseat saves from before keep their passwords.
+	[Fact]
+	public void AnOlderHashStillWorks() {
+		human.passwordHash = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+			System.Text.Encoding.UTF8.GetBytes($"{human.id}:hammurabi")));
+		Assert.True(human.CheckPassword("hammurabi"));
+		Assert.False(human.CheckPassword("nebuchadnezzar"));
 	}
 
 	// Only the player in control sets their own.

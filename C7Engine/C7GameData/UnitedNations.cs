@@ -85,7 +85,8 @@ namespace C7GameData {
 		// hasn't been offered one in the last turns (a new owner may call one
 		// at once).
 		public static bool ElectionDue(GameData gameData, Player owner) {
-			if (gameData.gameOver || gameData.victoryConditions?.AllowDiplomaticVictory != true || Seat(gameData)?.owner != owner) {
+			if (gameData.gameOver || gameData.victoryConditions?.AllowDiplomaticVictory != true || Seat(gameData)?.owner != owner
+				|| gameData.unitedNations.awaitedElection != null) {
 				return false;
 			}
 			UnitedNationsState state = gameData.unitedNations;
@@ -118,25 +119,75 @@ namespace C7GameData {
 				call = WouldCall(gameData, player);
 			}
 			if (call) {
-				await HoldElection(gameData);
+				await HoldElection(gameData, present: player.isHuman ? player : null);
 			}
 		}
 
 		// Every civ votes (a human is asked), everyone hears the result, and a
-		// winner becomes Secretary-General and wins the game.
-		public static async Task<Player> HoldElection(GameData gameData) {
+		// winner becomes Secretary-General and wins the game. In a game played
+		// by email, the humans other than the one `present` vote at the start
+		// of their turns (CastAwaitedVote), and the result waits for them.
+		public static async Task<Player> HoldElection(GameData gameData, Player present = null) {
 			List<Player> candidates = Candidates(gameData);
 			Dictionary<Player, Player> votes = new();
+			List<ID> awaited = new();
 			foreach (Player voter in Voters(gameData)) {
-				if (voter.isHuman) {
-					C7Engine.TurnHandling.HandControlTo(voter);
-					new MsgVoteRequest(voter.id, candidates).send();
-					MsgVote vote = await EngineStorage.WaitForMessageToEngine<MsgVote>();
-					votes[voter] = vote.candidateId == null ? null : candidates.Find(c => c.id == vote.candidateId);
+				if (voter.isHuman && gameData.playByEmail && voter != present) {
+					awaited.Add(voter.id);
+				} else if (voter.isHuman) {
+					votes[voter] = await AskVote(voter, candidates);
 				} else {
 					votes[voter] = Vote(gameData, voter, candidates);
 				}
 			}
+			if (awaited.Count > 0) {
+				gameData.unitedNations.awaitedElection = new AwaitedElection {
+					candidates = candidates.Select(c => c.id).ToList(),
+					votes = votes.Select(v => new CastVote { voter = v.Key.id, candidate = v.Value?.id }).ToList(),
+					awaited = awaited,
+				};
+				log.Information($"UN election called; waiting for {awaited.Count} human votes");
+				return null;
+			}
+			return Announce(gameData, candidates, votes);
+		}
+
+		private static async Task<Player> AskVote(Player voter, List<Player> candidates) {
+			C7Engine.TurnHandling.HandControlTo(voter);
+			new MsgVoteRequest(voter.id, candidates).send();
+			MsgVote vote = await EngineStorage.WaitForMessageToEngine<MsgVote>();
+			return vote.candidateId == null ? null : candidates.Find(c => c.id == vote.candidateId);
+		}
+
+		// Play by email: at the start of `human`'s turn, their vote in an
+		// election called while they were away; once every human still in
+		// the game has voted, the result.
+		public static async Task CastAwaitedVote(GameData gameData, Player human) {
+			AwaitedElection election = gameData.unitedNations.awaitedElection;
+			if (election == null) {
+				return;
+			}
+			List<Player> candidates = election.candidates.Select(gameData.GetPlayer).Where(c => c != null).ToList();
+			if (election.awaited.Contains(human.id)) {
+				Player choice = await AskVote(human, candidates);
+				election.votes.Add(new CastVote { voter = human.id, candidate = choice?.id });
+				election.awaited.Remove(human.id);
+			}
+			election.awaited.RemoveAll(id => gameData.GetPlayer(id) is not Player p || p.defeated);
+			if (election.awaited.Count > 0) {
+				return;
+			}
+			gameData.unitedNations.awaitedElection = null;
+			Dictionary<Player, Player> votes = new();
+			foreach (CastVote vote in election.votes) {
+				if (gameData.GetPlayer(vote.voter) is Player voter && !voter.defeated) {
+					votes[voter] = vote.candidate == null ? null : candidates.Find(c => c.id == vote.candidate);
+				}
+			}
+			Announce(gameData, candidates, votes);
+		}
+
+		private static Player Announce(GameData gameData, List<Player> candidates, Dictionary<Player, Player> votes) {
 			Player winner = Winner(votes);
 			log.Information($"UN election: {string.Join(", ", votes.Select(v => $"{v.Key} for {v.Value?.ToString() ?? "nobody"}"))}; winner {winner?.ToString() ?? "none"}");
 			new MsgElectionResults(candidates, votes.Select(v => (v.Key, v.Value)).ToList(), winner).send();
@@ -155,5 +206,19 @@ namespace C7GameData {
 		public int lastOfferTurn;
 		// The civ elected, which wins the game.
 		public ID secretaryGeneral;
+		// Play by email: an election waiting for humans' votes.
+		public AwaitedElection awaitedElection;
+	}
+
+	public class AwaitedElection {
+		public List<ID> candidates = new();
+		public List<CastVote> votes = new();
+		public List<ID> awaited = new();
+	}
+
+	// A vote: a null candidate abstained.
+	public class CastVote {
+		public ID voter;
+		public ID candidate;
 	}
 }

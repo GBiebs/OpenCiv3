@@ -691,6 +691,21 @@ namespace C7Engine {
 		}
 	}
 
+	// Play by email: the human in control is at their computer (has given
+	// their password), so the AIs can talk to them (TurnHandling.HearFromAIs).
+	public class MsgHearFromAIs : MessageToEngine {
+		public override async void process() {
+			if (EngineStorage.gameData.GetPlayer(EngineStorage.uiControllerID) is Player human) {
+				await TurnHandling.HearFromAIs(human);
+			}
+		}
+	}
+
+	// Play by email: the human has read the news from while they were away.
+	public class MsgNewsRead : MessageToEngine {
+		public override void process() { }
+	}
+
 	public class MsgEndTurn : MessageToEngine {
 		private ILogger log = Log.ForContext<MsgEndTurn>();
 

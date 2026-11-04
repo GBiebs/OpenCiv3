@@ -33,6 +33,9 @@ namespace C7GameData {
 		public UnitedNationsState unitedNations = new();
 		// Nuclear weapons fired so far (see Nuclear).
 		public int nukesUsed;
+		// Play by email: each human plays their turn from the save the one
+		// before sent them (TurnHandling.HearFromAIs).
+		public bool playByEmail;
 
 		public List<City> cities = new List<City>();
 

@@ -435,7 +435,7 @@ namespace C7Engine {
 			return null;
 		}
 
-		private static async Task AttemptTrading(Player us) {
+		internal static async Task AttemptTrading(Player us, Player onlyWith = null) {
 			GameData gD = EngineStorage.gameData;
 
 			log.Information($"{us} is checking for trading opportunities");
@@ -447,7 +447,7 @@ namespace C7Engine {
 				}
 
 				// Barbarians can't trade.
-				if (them.isBarbarians || us.isBarbarians) {
+				if (them.isBarbarians || us.isBarbarians || !TurnHandling.TalksTo(gD, them, onlyWith)) {
 					continue;
 				}
 

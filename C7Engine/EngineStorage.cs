@@ -81,6 +81,12 @@ namespace C7Engine {
 			return tcs.Task.ContinueWith(t => (T)t.Result);
 		}
 
+		// Whether the engine is waiting for a T from the UI (for tests, whose
+		// answers must come after the engine starts waiting).
+		internal static bool IsWaitingForMessageToEngine<T>() where T : MessageToEngine {
+			return pendingEngineWaiters.ContainsKey(typeof(T));
+		}
+
 		public static void ReadGameData(Action<GameData> accessor) {
 			accessor(gameData);
 		}

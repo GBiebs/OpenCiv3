@@ -40,6 +40,15 @@ namespace C7Engine {
 			return name;
 		}
 
+		// Play by email: the save sent to the human who plays next, named
+		// for them so they find it.
+		public static string PlayByEmailFileName(GameData gameData, Player next) {
+			int turn = gameData.turn;
+			string date = gameData.timeOptions?.GetDisplayTime(turn) ?? turn.ToString();
+			string name = $"PBEM-{next.civilization.noun} to play-Turn {turn:000}-{date}.json";
+			return string.Join("_", name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+		}
+
 		public static string GetSaveDirectory() {
 			return C7Settings.GetSaveFolder();
 		}

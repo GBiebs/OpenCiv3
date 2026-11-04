@@ -26,6 +26,9 @@ public class GameSetup {
 	public WorldCharacteristics worldCharacteristics { get; init; }
 	public List<SelectedOpponent> opponents { get; init; } = [];
 	public VictoryConditions victoryConditions { get; set; }
+	// With other humans: each plays their turn on their own computer and
+	// emails the save on (otherwise they take turns at this one).
+	public bool playByEmail { get; set; }
 
 	ID.Factory ids;
 
@@ -33,6 +36,7 @@ public class GameSetup {
 		save.GameDifficulty = difficulty;
 
 		save.VictoryConditions = victoryConditions;
+		save.PlayByEmail = playByEmail && opponents.Any(o => o.isHuman && !o.isNone);
 
 		if (save.Map.tiles.Count == 0) {
 			log.Information("Starting map generation");

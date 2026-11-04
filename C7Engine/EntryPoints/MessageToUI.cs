@@ -10,6 +10,7 @@ namespace C7Engine {
 
 	public class MessageToUI : IMessageToUI {
 		public void send() {
+			NewsWhileAway.Record(this);
 			EngineStorage.messagesToUI.Enqueue(this);
 		}
 	}
@@ -83,6 +84,29 @@ namespace C7Engine {
 			this.playerId = playerId;
 		}
 	}
+	// Play by email: the news a human missed while away
+	// (NewsWhileAway), at the start of their turn; the UI answers
+	// MsgNewsRead once they've read it.
+	public class MsgNewsWhileAway : MessageToUI {
+		public ID playerId;
+		public List<string> news;
+
+		public MsgNewsWhileAway(ID playerId, List<string> news) {
+			this.playerId = playerId;
+			this.news = news;
+		}
+	}
+
+	// Play by email: the AIs have had their say (TurnHandling.HearFromAIs),
+	// and the human's turn begins.
+	public class MsgTurnReady : MessageToUI {
+		public ID playerId;
+
+		public MsgTurnReady(ID playerId) {
+			this.playerId = playerId;
+		}
+	}
+
 	public class MsgGameMainMenu : MessageToUI { }
 
 	public class MsgDiplomacyPopUp : MessageToUI { }

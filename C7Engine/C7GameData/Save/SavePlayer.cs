@@ -54,8 +54,13 @@ namespace C7GameData.Save {
 		// The amount of gold this player has.
 		public int gold = 0;
 
-		// Hotseat: the player's password, hashed (Player.passwordHash).
+		// Hotseat and play by email: the player's password, hashed
+		// (Player.passwordHash).
 		public string passwordHash = "";
+		// Play by email: news from while they were away, and the turn the AIs
+		// last talked to them.
+		public List<string> newsWhileAway = new();
+		public int heardFromAIsOnTurn = -1;
 
 		// The number of "beakers" (gold) spent on the currently researched
 		// tech.
@@ -125,6 +130,8 @@ namespace C7GameData.Save {
 				taxRate = taxRate,
 				gold = gold,
 				passwordHash = passwordHash ?? "",
+				newsWhileAway = new(newsWhileAway ?? new()),
+				heardFromAIsOnTurn = heardFromAIsOnTurn,
 				turnsUntilPriorityReevaluation = turnsUntilPriorityReevaluation,
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
 				hasVictoriousArmy = hasVictoriousArmy,
@@ -207,6 +214,8 @@ namespace C7GameData.Save {
 			taxRate = player.taxRate;
 			gold = player.gold;
 			passwordHash = player.passwordHash;
+			newsWhileAway = new(player.newsWhileAway);
+			heardFromAIsOnTurn = player.heardFromAIsOnTurn;
 			beakers = player.beakers;
 			turnsResearched = player.turnsResearched;
 			inAnarchyUntilTurn = player.inAnarchyUntilTurn;

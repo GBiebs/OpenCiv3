@@ -228,6 +228,50 @@ public class DiplomaticVictoryTest : IClassFixture<SaveGameFixture>, IDisposable
 		Assert.False(gameData.gameOver);
 	}
 
+	// Play by email: a human away votes at the start of their turn, and the
+	// result waits for them; no other election is called meanwhile.
+	[Fact]
+	public void PlayingByEmailTheResultWaitsForAHumanAway() {
+		gameData.playByEmail = true;
+		Task<Player> election = UnitedNations.HoldElection(gameData);
+		Assert.True(election.IsCompleted);
+		Assert.Null(election.Result);
+		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgVoteRequest>());
+		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgElectionResults>());
+		Assert.Equal([human.id], gameData.unitedNations.awaitedElection.awaited);
+		Assert.False(UnitedNations.ElectionDue(gameData, founder));
+
+		Task voting = UnitedNations.CastAwaitedVote(gameData, human);
+		Assert.Single(EngineStorage.messagesToUI.OfType<MsgVoteRequest>(), m => m.voterId == human.id);
+		new MsgVote(founder.id).send();
+		EngineStorage.ProcessNextMessageToEngine();
+		Assert.True(voting.Wait(TimeSpan.FromSeconds(5)));
+		MsgElectionResults results = Assert.Single(EngineStorage.messagesToUI.OfType<MsgElectionResults>());
+		Assert.Equal(5, results.votes.Count);
+		Assert.Contains((human, founder), results.votes);
+		Assert.Null(gameData.unitedNations.awaitedElection);
+	}
+
+	// The one present when it's called votes at once; a human defeated
+	// before voting doesn't hold it up.
+	[Fact]
+	public void PlayingByEmailOnlyTheHumansAwayAreAwaited() {
+		gameData.playByEmail = true;
+		small.isHuman = true;
+		Task<Player> election = UnitedNations.HoldElection(gameData, present: small);
+		Assert.Single(EngineStorage.messagesToUI.OfType<MsgVoteRequest>(), m => m.voterId == small.id);
+		new MsgVote(null).send();
+		EngineStorage.ProcessNextMessageToEngine();
+		Assert.True(election.Wait(TimeSpan.FromSeconds(5)));
+		Assert.Equal([human.id], gameData.unitedNations.awaitedElection.awaited);
+
+		human.defeated = true;
+		EngineStorage.messagesToUI.Clear();
+		Assert.True(UnitedNations.CastAwaitedVote(gameData, small).IsCompleted);
+		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgVoteRequest>());
+		Assert.Equal(4, Assert.Single(EngineStorage.messagesToUI.OfType<MsgElectionResults>()).votes.Count);
+	}
+
 	[Fact]
 	public void AnInconclusiveElectionChangesNothing() {
 		Like(small, founder, 5);

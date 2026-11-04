@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using C7Engine.AI;
 using C7GameData;
 using Serilog;
 
@@ -19,6 +20,46 @@ namespace C7Engine {
 		// Before the engine asks a human something and waits for the answer:
 		// with several humans (hotseat) it may not be their turn, so they're
 		// given control first, and MsgHandOver lets the UI change players.
+		// Play by email: an AI talks to a human only at the start of that
+		// human's turn, on their computer (HearFromAIs), never on its own
+		// turn, when no one would be there to answer. `onlyWith` is the human
+		// it's talking to then.
+		public static bool TalksTo(GameData gameData, Player them, Player onlyWith) {
+			return onlyWith != null ? them == onlyWith : !(gameData.playByEmail && them.isHuman);
+		}
+
+		// Play by email: once the human whose turn it is has given their
+		// password, the news they missed while away, then, once a turn, what
+		// the AIs have to say to them: an election to call or a vote, offers
+		// of peace, agreements, demands and trades, as on the AIs' turns
+		// (trades as often too). Then their turn begins (MsgTurnReady).
+		public static async Task HearFromAIs(Player human) {
+			GameData gameData = EngineStorage.gameData;
+			if (human.newsWhileAway.Count > 0) {
+				new MsgNewsWhileAway(human.id, new(human.newsWhileAway)).send();
+				human.newsWhileAway.Clear();
+				await EngineStorage.WaitForMessageToEngine<MsgNewsRead>();
+			}
+			if (human.heardFromAIsOnTurn != gameData.turn) {
+				human.heardFromAIsOnTurn = gameData.turn;
+				await UnitedNations.MaybeCallElection(gameData, human);
+				await UnitedNations.CastAwaitedVote(gameData, human);
+				foreach (Player ai in gameData.players.Where(p => !p.isHuman && !p.isBarbarians && !p.defeated && p.isIncludedInGame).ToList()) {
+					if (human.defeated || gameData.gameOver) {
+						break;
+					}
+					await PeaceAI.OfferPeace(ai, gameData, human);
+					await AgreementAI.ProposeAgreements(ai, gameData, human);
+					await TributeAI.MakeDemands(ai, gameData, human);
+					if (GameData.rng.Next(100) < 25) {
+						await PlayerAI.AttemptTrading(ai, human);
+						await TradeAI.SwapGoods(ai, gameData, human);
+					}
+				}
+			}
+			new MsgTurnReady(human.id).send();
+		}
+
 		public static void HandControlTo(Player human) {
 			if (human.id == EngineStorage.uiControllerID) {
 				return;
@@ -169,8 +210,9 @@ namespace C7Engine {
 					continue;
 				}
 
-				// The United Nations' owner may call an election before its turn.
-				if (!player.isBarbarians && !player.defeated) {
+				// The United Nations' owner may call an election before its turn
+				// (a human playing by email, once at their computer: HearFromAIs).
+				if (!player.isBarbarians && !player.defeated && !(gameData.playByEmail && player.isHuman)) {
 					await UnitedNations.MaybeCallElection(gameData, player);
 				}
 

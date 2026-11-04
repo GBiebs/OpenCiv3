@@ -90,8 +90,8 @@ namespace C7Engine.AI {
 		// On `us`'s turn: offer peace to each civ we're at war with that we'd
 		// make peace with and that will talk to us. An AI decides at once; a
 		// human sees the offer.
-		public static async Task OfferPeace(Player us, GameData gameData) {
-			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated).ToList()) {
+		public static async Task OfferPeace(Player us, GameData gameData, Player onlyWith = null) {
+			foreach (Player them in gameData.players.Where(p => p != us && !p.isBarbarians && !p.defeated && TurnHandling.TalksTo(gameData, p, onlyWith)).ToList()) {
 				if (!PlayerRelationship.TryGetRelationship(us, them, out PlayerRelationship relationship) || !relationship.AtWar()) {
 					continue;
 				}

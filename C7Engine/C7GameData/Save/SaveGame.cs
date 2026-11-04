@@ -66,6 +66,7 @@ namespace C7GameData.Save {
 				Plague = data.plague,
 				UnitedNations = data.unitedNations,
 				NukesUsed = data.nukesUsed,
+				PlayByEmail = data.playByEmail,
 				BarbarianInfo = data.barbarianInfo,
 				Units = data.mapUnits.ConvertAll(unit => new SaveUnit(unit)),
 				UnitPrototypes = data.unitPrototypes.ConvertAll(proto => new SaveUnitPrototype(proto)),
@@ -300,6 +301,7 @@ namespace C7GameData.Save {
 				plague = Plague ?? new(),
 				unitedNations = UnitedNations ?? new(),
 				nukesUsed = NukesUsed,
+				playByEmail = PlayByEmail,
 				Codex = Codex,
 			};
 
@@ -561,6 +563,7 @@ namespace C7GameData.Save {
 		public PlagueState Plague = new();
 		public UnitedNationsState UnitedNations = new();
 		public int NukesUsed;
+		public bool PlayByEmail;
 		public List<SavePlayer> Players = new List<SavePlayer>();
 		public List<SaveCity> Cities = new List<SaveCity>();
 		public BarbarianInfo BarbarianInfo = new BarbarianInfo();
