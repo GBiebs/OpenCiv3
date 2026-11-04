@@ -23,6 +23,8 @@ public partial class PlayerSetup : Control {
 	List<OptionButton> opponentSelectors = new();
 	// Hotseat: whether each rival is another human at this computer.
 	List<CheckBox> humanToggles = new();
+	// With another human: play by email instead of at this computer.
+	CheckBox playByEmail;
 
 	[Export] GridContainer rulesContainer;
 
@@ -176,6 +178,7 @@ public partial class PlayerSetup : Control {
 			human.AddThemeFontSizeOverride("font_size", 12);
 			slot.AddChild(human);
 			humanToggles.Add(human);
+			human.Toggled += (_) => UpdatePlayByEmail();
 
 			container.CustomMinimumSize = new Vector2(312.0f / columns, 312.0f / rows);
 			optionButton.CustomMinimumSize = new Vector2(290.0f / columns - 70, optionButton.CustomMinimumSize.Y);
@@ -226,6 +229,25 @@ public partial class PlayerSetup : Control {
 		Civ3MenuButton allRandom = new() { Text = "All Random" };
 		allRandom.Pressed += () => SetAllOpponents(SelectedOpponent.RANDOM);
 		container.AddChild(allRandom);
+
+		// Shown once a rival is human.
+		playByEmail = new() {
+			Text = "Play by email",
+			TooltipText = "Each human plays their turn on their own computer and emails the save to the next",
+			FocusMode = FocusModeEnum.None,
+			Position = new Vector2(630, 461),
+			Size = new Vector2(321, 24),
+			Visible = false,
+		};
+		playByEmail.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
+		playByEmail.AddThemeColorOverride("font_pressed_color", Color.Color8(33, 25, 14));
+		playByEmail.AddThemeColorOverride("font_hover_color", Color.Color8(33, 25, 14));
+		playByEmail.AddThemeFontSizeOverride("font_size", 12);
+		background.AddChild(playByEmail);
+	}
+
+	private void UpdatePlayByEmail() {
+		playByEmail.Visible = humanToggles.Any(t => t.ButtonPressed);
 	}
 
 	private void SetAllOpponents(string name) {
@@ -308,7 +330,8 @@ public partial class PlayerSetup : Control {
 			difficulty = selectedDifficulty,
 			worldCharacteristics = global.WorldCharacteristics,
 			opponents = opponents,
-			victoryConditions = victoryConditions
+			victoryConditions = victoryConditions,
+			playByEmail = playByEmail.Visible && playByEmail.ButtonPressed,
 		};
 
 		PersistGameSettings(gameSetup);

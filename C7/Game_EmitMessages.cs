@@ -907,7 +907,9 @@ public partial class Game {
 			.Append(new ButtonAction() { message = "Call off the attack.", action = () => new MsgStealthTarget(null).send() })
 			.ToList();
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
-			new OptionsPopUp(controller.id, "Stealth Attack", $"Which unit should our {msg.attacker.unitType.name} attack?", options, Advisor.Military, Mood.Happy)
+			new OptionsPopUp(controller.id, "Stealth Attack", $"Which unit should our {msg.attacker.unitType.name} attack?", options, Advisor.Military, Mood.Happy) {
+				cancelAction = () => new MsgStealthTarget(null).send(),
+			}
 		));
 	}
 
@@ -955,7 +957,9 @@ public partial class Game {
 				"No.",
 				yesAction: () => new MsgCallElection(true).send(),
 				noAction: () => new MsgCallElection(false).send()
-			)
+			) {
+				cancelAction = () => new MsgCallElection(false).send(),
+			}
 		));
 	}
 
@@ -968,7 +972,20 @@ public partial class Game {
 			.Append(new ButtonAction() { message = "We abstain.", action = () => new MsgVote(null).send() })
 			.ToList();
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
-			new OptionsPopUp(controller.id, "Vote for the UN Secretary-General...", "Whom do we vote for?", options, Advisor.Foreign, Mood.Happy)
+			new OptionsPopUp(controller.id, "Vote for the UN Secretary-General...", "Whom do we vote for?", options, Advisor.Foreign, Mood.Happy) {
+				cancelAction = () => new MsgVote(null).send(),
+			}
+		));
+	}
+
+	// Play by email: what happened to us while the others played.
+	private void EmitNewsWhileAwaySignal(MsgNewsWhileAway msg) {
+		List<ButtonAction> options = [new ButtonAction { message = "Very well.", action = () => new MsgNewsRead().send() }];
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "While you were away...", string.Join("\n", msg.news.Select(n => $"• {n}")), options,
+				Advisor.Domestic, Mood.Surprised, 520) {
+				cancelAction = () => new MsgNewsRead().send(),
+			}
 		));
 	}
 
@@ -1003,7 +1020,9 @@ public partial class Game {
 				yesAction: () => new MsgTributeAnswer(msg.demander.id, msg.victim.id, msg.demand, pay: true).send(),
 				noAction: () => new MsgTributeAnswer(msg.demander.id, msg.victim.id, msg.demand, pay: false).send(),
 				hSize: 450
-			)
+			) {
+				cancelAction = () => new MsgTributeAnswer(msg.demander.id, msg.victim.id, msg.demand, pay: false).send(),
+			}
 		));
 	}
 

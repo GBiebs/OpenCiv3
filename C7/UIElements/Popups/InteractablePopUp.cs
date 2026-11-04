@@ -24,6 +24,10 @@ public class InteractablePopUp {
 	public List<ButtonAction> buttonActions { get; init; }
 	public bool hasConfirm { get; init; }
 	public bool hasCancel { get; init; }
+	// What closing it without choosing (its X, or Escape) means: for a
+	// question the engine waits on, the answer it gets then (else it would
+	// wait forever). Null: nothing.
+	public Action cancelAction { get; init; }
 
 	protected InteractablePopUp(ID controllerId, string header, LayoutPreset layoutPreset, Margins margins) {
 		this.controllerId = controllerId;

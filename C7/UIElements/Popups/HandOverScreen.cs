@@ -8,16 +8,16 @@ using Godot;
 // player whose turn it is, until they say they're there, so no one sees
 // another's empire. A player with a password gives it first; one without
 // may choose one (Civ3's optional hotseat password). The leader's portrait
-// on Civ3's popup art; the wording is ours.
+// on Civ3's popup art; the wording is ours. Playing by email, it also
+// covers the map once a turn is sent (TurnSentPanel).
 public partial class HandOverScreen : Control {
-	private readonly Player player;
-	private readonly string message;
-	private readonly Action onReady;
+	private readonly Control panel;
 
-	public HandOverScreen(Player player, string message, Action onReady) {
-		this.player = player;
-		this.message = message;
-		this.onReady = onReady;
+	public HandOverScreen(Player player, string message, Action onMainMenu, Action onReady)
+		: this(new HandOverPanel(player, message, onMainMenu, onReady)) { }
+
+	public HandOverScreen(Control panel) {
+		this.panel = panel;
 	}
 
 	public override void _Ready() {
@@ -31,29 +31,24 @@ public partial class HandOverScreen : Control {
 		CenterContainer center = new() { MouseFilter = MouseFilterEnum.Ignore };
 		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		AddChild(center);
-		center.AddChild(new HandOverPanel(player, message, onReady));
+		center.AddChild(panel);
 	}
 }
 
-public partial class HandOverPanel : Popup {
-	private const int Width = 440;
-	private const int Height = 340;
-	// The portrait stands above the parchment, as advisors do on popups.
-	private const int PortraitHeight = 115;
+// A leader's portrait above a parchment, as advisors stand on popups.
+public abstract partial class LeaderPanel : Popup {
+	protected const int Width = 440;
+	protected const int Height = 340;
+	protected const int PortraitHeight = 115;
+	protected const int Top = PortraitHeight - 10;
 	private static readonly Color Ink = new(0.13f, 0.10f, 0.05f);
 
-	private readonly Player player;
-	private readonly string message;
-	private readonly Action onReady;
-	private LineEdit password;
-	private Label wrong;
+	protected readonly Player player;
 
-	public HandOverPanel(Player player, string message, Action onReady) {
+	protected LeaderPanel(Player player) {
 		alignment = BoxContainer.AlignmentMode.Center;
 		margins = new Margins();
 		this.player = player;
-		this.message = message;
-		this.onReady = onReady;
 	}
 
 	public override void _Ready() {
@@ -66,31 +61,10 @@ public partial class HandOverPanel : Popup {
 			Position = new Vector2((Width - PortraitHeight) / 2, 0),
 		};
 		AddChild(portrait);
-
-		int top = PortraitHeight - 10;
-		AddBackground(Width, Height - top, top);
-		AddHeader($"{player.civilization.leader} of the {player.civilization.noun}", top + 12);
-		AddChild(TextLabel(message, top + 58, 16));
-
-		bool hasPassword = player.HasPassword();
-		AddChild(TextLabel(hasPassword ? "Password:" : "Choose a password if you like (none to leave it open):", top + 92, 13));
-		password = new LineEdit {
-			Secret = true,
-			Position = new Vector2((Width - 220) / 2, top + 116),
-			Size = new Vector2(220, 30),
-			MaxLength = 40,
-		};
-		password.TextSubmitted += _ => Begin();
-		AddChild(password);
-		wrong = TextLabel("", top + 150, 13);
-		wrong.AddThemeColorOverride("font_color", new Color(0.6f, 0.08f, 0.05f));
-		AddChild(wrong);
-		password.CallDeferred(Control.MethodName.GrabFocus);
-
-		AddButton("Begin", Height - 52, Begin);
+		AddBackground(Width, Height - Top, Top);
 	}
 
-	private Label TextLabel(string text, int y, int size) {
+	protected Label TextLabel(string text, int y, int size) {
 		Label label = new() {
 			Text = text,
 			HorizontalAlignment = HorizontalAlignment.Center,
@@ -102,6 +76,48 @@ public partial class HandOverPanel : Popup {
 		label.AddThemeColorOverride("font_color", Ink);
 		label.AddThemeFontSizeOverride("font_size", size);
 		return label;
+	}
+}
+
+public partial class HandOverPanel : LeaderPanel {
+	private readonly string message;
+	private readonly Action onMainMenu;
+	private readonly Action onReady;
+	private LineEdit password;
+	private Label wrong;
+
+	public HandOverPanel(Player player, string message, Action onMainMenu, Action onReady) : base(player) {
+		this.message = message;
+		this.onMainMenu = onMainMenu;
+		this.onReady = onReady;
+	}
+
+	public override void _Ready() {
+		base._Ready();
+		AddHeader($"{player.civilization.leader} of the {player.civilization.noun}", Top + 12);
+		AddChild(TextLabel(message, Top + 58, 16));
+
+		bool hasPassword = player.HasPassword();
+		AddChild(TextLabel(hasPassword ? "Password:" : "Choose a password if you like (none to leave it open):", Top + 92, 13));
+		password = new LineEdit {
+			Secret = true,
+			Position = new Vector2((Width - 220) / 2, Top + 116),
+			Size = new Vector2(220, 30),
+			MaxLength = 40,
+		};
+		password.TextSubmitted += _ => Begin();
+		AddChild(password);
+		wrong = TextLabel("", Top + 150, 13);
+		wrong.AddThemeColorOverride("font_color", new Color(0.6f, 0.08f, 0.05f));
+		AddChild(wrong);
+		password.CallDeferred(Control.MethodName.GrabFocus);
+
+		if (onMainMenu != null) {
+			AddButton("Begin", Height - 66, Begin);
+			AddButton("Main Menu", Height - 40, onMainMenu);
+		} else {
+			AddButton("Begin", Height - 52, Begin);
+		}
 	}
 
 	private void Begin() {
@@ -115,5 +131,53 @@ public partial class HandOverPanel : Popup {
 			new MsgSetPassword(player.id, password.Text).send();
 		}
 		onReady();
+	}
+}
+
+// Play by email: a turn is over, and the game is saved for the next human,
+// whose leader this shows, to play on their computer; once the game is
+// over, the last save, for the others to hear how it ended.
+public partial class TurnSentPanel : LeaderPanel {
+	private readonly string fileName;
+	private readonly string folder;
+	private readonly string error;
+	private readonly bool gameOver;
+	private readonly Action onMainMenu;
+	private readonly Action onBackToTheGame;
+
+	public TurnSentPanel(Player next, string fileName, string folder, string error, bool gameOver, Action onMainMenu, Action onBackToTheGame)
+		: base(next) {
+		this.fileName = fileName;
+		this.folder = folder;
+		this.error = error;
+		this.gameOver = gameOver;
+		this.onMainMenu = onMainMenu;
+		this.onBackToTheGame = onBackToTheGame;
+	}
+
+	public override void _Ready() {
+		base._Ready();
+		AddHeader(gameOver ? "The game is over" : "Your turn is over", Top + 12);
+		string them = $"{player.civilization.leader} of the {player.civilization.noun}";
+		int y = Height - 40;
+		if (error != null) {
+			AddChild(TextLabel($"The game couldn't be saved for {them}: {error}", Top + 50, 14));
+		} else {
+			AddChild(TextLabel(gameOver
+				? $"Send this last save to the other players, starting with {them}, so they see how it ended:"
+				: $"Send this save to the player of {them}, who plays next:", Top + 50, 14));
+			AddChild(TextLabel(fileName, Top + 104, 13));
+			// (Room for one more button once the game is over.)
+			if (!gameOver) {
+				AddChild(TextLabel("It's in your Saves folder. They load it with Load Game.", Top + 128, 13));
+			}
+			y -= 26;
+			AddButton("Open the Saves Folder", y, () => OS.ShellOpen(folder));
+		}
+		if (onBackToTheGame != null) {
+			y -= 26;
+			AddButton("Back to the Game", y, onBackToTheGame);
+		}
+		AddButton("Main Menu", Height - 40, onMainMenu);
 	}
 }

@@ -43,6 +43,7 @@ public partial class InteractablePopUpController : Control {
 	private LayoutPreset layoutPreset = DEFAULT_LAYOUT_PRESET;
 
 	private LineEditComponent lineEditComponent;
+	private Action cancelAction;
 
 	private float defaultOffsetTop;
 	private float defaultOffsetBottom;
@@ -113,6 +114,7 @@ public partial class InteractablePopUpController : Control {
 		}
 
 		this.headerLabel.Text = value.header;
+		this.cancelAction = value.cancelAction;
 
 		this.mainTextContainer.Visible = true;
 		this.mainTextLabel.Visible = true;
@@ -273,10 +275,19 @@ public partial class InteractablePopUpController : Control {
 	}
 
 	private void OnCancel() {
+		Action cancelled = this.cancelAction;
 		this.audioManager.PlayUIAudio("buttons.button_cancel");
 		this.Hide();
 		this.CloseAndDelete();
+		cancelled?.Invoke();
 		new MsgUiDisengaged().send();
+	}
+
+	// Escape: as its X.
+	public void Cancel() {
+		if (this.Visible) {
+			this.OnCancel();
+		}
 	}
 
 	private void CloseAndDelete() {
@@ -297,6 +308,7 @@ public partial class InteractablePopUpController : Control {
 		this.advisorTextureRect.Texture = null;
 		this.lineEditContainer.Hide();
 		this.lineEditComponent = null;
+		this.cancelAction = null;
 
 		foreach (var child in buttonContainer.GetChildren()) {
 			buttonContainer.RemoveChild(child);

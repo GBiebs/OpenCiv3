@@ -314,12 +314,14 @@ public partial class Game : Node {
 			await EngineStorage.WaitForMessageToEngine<MsgUiDisengaged>();
 		}
 
-		// Hotseat: starting or loading the game, whoever's turn it is gives
-		// their password (or may choose one) before their empire shows.
-		if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1) {
+		// Hotseat and play by email: starting or loading the game, whoever's
+		// turn it is gives their password (or may choose one) before their
+		// empire shows. Playing by email, the AIs then have their say.
+		if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1 || EngineStorage.gameData.playByEmail) {
 			startedATurn = true;
 			GameData gameData = EngineStorage.gameData;
-			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", null);
+			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.",
+				gameData.playByEmail ? HearFromAIs : null);
 		}
 
 		try {
@@ -463,10 +465,10 @@ public partial class Game : Node {
 	// until they say they're there; then the news held for them, then `then`.
 	private void HandOverTo(ID playerId, string message, Action then) {
 		EngineStorage.ReadGameData(gameData => controller = gameData.GetPlayer(playerId));
-		cityScreen.Hide();
-		advisor.Hide();
-		gameViews.Hide();
-		handOverScreen = new HandOverScreen(controller, message, () => {
+		HideScreensOverTheMap();
+		// Playing by email, whoever loaded the game may not be this player.
+		Action mainMenu = EngineStorage.gameData.playByEmail ? OnRetire : null;
+		handOverScreen = new HandOverScreen(controller, message, mainMenu, () => {
 			handOverScreen.QueueFree();
 			handOverScreen = null;
 			CenterOnControllersEmpire();
@@ -482,9 +484,53 @@ public partial class Game : Node {
 		popupOverlay.GetParent().AddChild(handOverScreen);
 	}
 
+	// Play by email: the human is at their computer, so the AIs say what
+	// they have to say to them (their turn starts after: MsgTurnReady).
+	private void HearFromAIs() {
+		CurrentState = GameState.ComputerTurn;
+		new MsgHearFromAIs().send();
+	}
+
+	private void HideScreensOverTheMap() {
+		cityScreen.Hide();
+		advisor.Hide();
+		gameViews.Hide();
+	}
+
+	// Play by email: this human's turn is over and the next human's begins,
+	// on their own computer. The game is saved for them (Civ3's "Save &
+	// Exit"), and this one goes back to the main menu.
+	private void SendTurnByEmail(ID nextId) {
+		GameData gameData = EngineStorage.gameData;
+		Player next = gameData.GetPlayer(nextId);
+		string folder = SaveNameGenerator.GetSaveDirectory();
+		string fileName = SaveNameGenerator.PlayByEmailFileName(gameData, next);
+		string error = null;
+		try {
+			System.IO.Directory.CreateDirectory(folder);
+			SaveManager.Save(System.IO.Path.Combine(folder, fileName));
+		} catch (Exception e) {
+			log.Error(e, "Couldn't save the turn to send");
+			error = e.Message;
+		}
+		HideScreensOverTheMap();
+		// Once the game is over, the last save goes to the others so they
+		// hear how it ended, and the victory screen is still to be seen.
+		Action backToTheGame = null;
+		if (gameData.gameOver) {
+			backToTheGame = () => {
+				handOverScreen.QueueFree();
+				handOverScreen = null;
+			};
+		}
+		handOverScreen = new HandOverScreen(new TurnSentPanel(next, fileName, folder, error, gameData.gameOver, OnRetire, backToTheGame));
+		popupOverlay.GetParent().AddChild(handOverScreen);
+	}
+
 	public void HandleEngineMessage(MessageToUI msg) {
-		// Hotseat: a copy of the news for each other human, for their turn.
-		if (controller != null) {
+		// Hotseat: a copy of the news for each other human, for their turn
+		// (playing by email, the engine writes it down: NewsWhileAway).
+		if (controller != null && !EngineStorage.gameData.playByEmail) {
 			foreach (ID id in MessageRecipients.HeldFor(msg, EngineStorage.gameData, controller.id)) {
 				if (!heldMessages.TryGetValue(id, out List<MessageToUI> held)) {
 					heldMessages[id] = held = new();
@@ -508,7 +554,16 @@ public partial class Game : Node {
 				// (or can be chosen) before anyone's empire shows.
 				bool firstHotseatStart = !startedATurn && gameData.players.Count(p => p.isHuman && !p.defeated) > 1;
 				startedATurn = true;
-				if (mST.playerId != null && (mST.playerId != controller.id || firstHotseatStart)) {
+				if (gameData.playByEmail && mST.playerId != null) {
+					// Playing by email: another human's turn is theirs to play
+					// at their computer; this one's again (the only human
+					// left) begins with what the AIs have to say.
+					if (mST.playerId != controller.id) {
+						SendTurnByEmail(mST.playerId);
+					} else {
+						HearFromAIs();
+					}
+				} else if (mST.playerId != null && (mST.playerId != controller.id || firstHotseatStart)) {
 					HandOverTo(mST.playerId, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", OnPlayerStartTurn);
 				} else {
 					OnPlayerStartTurn();
@@ -516,6 +571,16 @@ public partial class Game : Node {
 				break;
 			case MsgHandOver mHO:
 				HandOverTo(mHO.playerId, "Your advisors have urgent business for you.", null);
+				break;
+			case MsgNewsWhileAway mNWA:
+				if (mNWA.playerId == controller.id) {
+					EmitNewsWhileAwaySignal(mNWA);
+				}
+				break;
+			case MsgTurnReady mTR:
+				if (mTR.playerId == controller.id) {
+					OnPlayerStartTurn();
+				}
 				break;
 			case MsgGameMainMenu mMM:
 				EmitGameMainMenuSignal();
@@ -1609,7 +1674,7 @@ public partial class Game : Node {
 
 	private void ProcessAction(string currentAction) {
 		if (currentAction == C7Action.Escape && interactablePopUpController.Visible) {
-			interactablePopUpController.Visible = false;
+			interactablePopUpController.Cancel();
 			return;
 		}
 
