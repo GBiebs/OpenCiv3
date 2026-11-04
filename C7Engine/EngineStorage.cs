@@ -28,10 +28,25 @@ namespace C7Engine {
 		internal static readonly Dictionary<Guid, TaskCompletionSource<bool>> pendingAnimations = new();
 		static readonly Dictionary<Type, TaskCompletionSource<MessageToEngine>> pendingEngineWaiters = new();
 
+		// Orders whose work goes on after they're processed (a move's
+		// animation, a turn of AIs), until it's done.
+		private static readonly List<Task> working = new();
+		private static readonly Serilog.ILogger log = Serilog.Log.ForContext(typeof(EngineStorage));
+
+		// Whether every order's work is done.
+		public static bool OrdersDone() {
+			working.RemoveAll(t => t.IsCompleted);
+			return working.Count == 0;
+		}
+
 		public static void ProcessNextMessageToEngine() {
 			if (pendingMessages.Count > 0) {
 				var msg = pendingMessages.Dequeue();
-				msg.process();
+				Task work = msg.ProcessAsync();
+				if (!work.IsCompleted) {
+					working.Add(work);
+				}
+				work.ContinueWith(t => log.Error(t.Exception, "{Order} failed", msg.GetType().Name), TaskContinuationOptions.OnlyOnFaulted);
 
 				if (msg.IsPlayerAction && gameData != null) {
 					Player controller = gameData.GetPlayer(uiControllerID);

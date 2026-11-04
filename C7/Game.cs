@@ -646,6 +646,9 @@ public partial class Game : Node {
 			case MsgShowCityScreen mSCS:
 				ShowCityScreenForCity(gameData, mSCS.city);
 				break;
+			case MsgCityChanged mCCh:
+				cityScreen.Refresh(mCCh.cityId);
+				break;
 			case MsgCityCreated mCC:
 				ShowCityScreenForCity(gameData, mCC.city);
 				break;
@@ -1895,7 +1898,7 @@ public partial class Game : Node {
 		if (!IsMapUnitValid(CurrentlySelectedUnit)) return;
 
 		if (currentAction == C7Action.UnitHold) {
-			new ActionToEngineMsg(() => CurrentlySelectedUnit?.SkipTurn()).send();
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Hold).send();
 		}
 
 		if (currentAction == C7Action.UnitWait) {
@@ -1919,11 +1922,11 @@ public partial class Game : Node {
 		}
 
 		if (currentAction == C7Action.UnitExplore) {
-			new ActionToEngineMsg(() => CurrentlySelectedUnit.Explore()).send();
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Explore).send();
 		}
 
 		if (currentAction == C7Action.UnitAutomate && SelectedUnitCan(currentAction)) {
-			new ActionToEngineMsg(() => CurrentlySelectedUnit.Automate()).send();
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Automate).send();
 		}
 
 		if (currentAction == C7Action.UnitSentry) {

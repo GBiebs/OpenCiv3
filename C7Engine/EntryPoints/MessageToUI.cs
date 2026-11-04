@@ -186,6 +186,16 @@ namespace C7Engine {
 	public class MsgScienceGuidance : MessageToUI { }
 	public class MsgShowScienceAdvisor : MessageToUI { }
 
+	// An order changed the city (its tiles, specialists or production): the
+	// city screen shows it again if it's open on it.
+	public class MsgCityChanged : MessageToUI {
+		public readonly ID cityId;
+
+		public MsgCityChanged(ID cityId) {
+			this.cityId = cityId;
+		}
+	}
+
 	// Asks the player to pick a tech, or to spend a free tech advance.
 	public class MsgPromptResearch : MessageToUI { }
 

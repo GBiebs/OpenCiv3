@@ -108,7 +108,10 @@ public partial class UnitSelector : Node {
 
 		// Also emit the signal for a new unit being selected, so other areas such as Game Status and Unit Buttons can update
 		if (CurrentlySelectedUnit != MapUnit.NONE) {
-			unit.Wake();
+			// (An order: it changes the game.)
+			if (unit.isFortified || unit.airSuperiority) {
+				new MsgSetFortification(unit.id, false).send();
+			}
 			NoMoreAutoselectableUnitsEmitted = false;
 			ParameterWrapper<MapUnit> wrappedUnit = new(CurrentlySelectedUnit);
 			PreLoadUnitAnimationThumbnail(wrappedUnit.Value);

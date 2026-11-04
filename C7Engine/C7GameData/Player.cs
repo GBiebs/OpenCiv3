@@ -509,7 +509,7 @@ namespace C7GameData {
 			// elapsed. The exact civ3 mechanism here is unknown, so we just
 			// pick some reasonable random number. To penalize sneak attacks we
 			// use a higher upper bound.
-			int refuseContactUntilTurn = currentTurn + new Random().Next(5, isSneakAttack ? 16 : 12);
+			int refuseContactUntilTurn = currentTurn + GameData.rng.Next(5, isSneakAttack ? 16 : 12);
 
 			DeclareWar(this, other, isSneakAttack, currentTurn, refuseContactUntilTurn);
 

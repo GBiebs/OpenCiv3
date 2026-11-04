@@ -10,6 +10,15 @@ namespace C7Engine {
 	public abstract class MessageToEngine {
 		public abstract void process();
 
+		// The order's work, done when it's done: an order whose work goes on
+		// after process() returns (a move's animation, a turn of AIs)
+		// overrides this, and process() starts it. Online play waits for it
+		// before the next order, so every game does the same in the same order.
+		public virtual Task ProcessAsync() {
+			process();
+			return Task.CompletedTask;
+		}
+
 		// Whether this is a command the player gives (moves, orders, builds,
 		// research, sliders), counted as a game action in the statistics, rather
 		// than UI housekeeping.
@@ -64,7 +73,9 @@ namespace C7Engine {
 			this.dir = dir;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			MapUnit unit = EngineStorage.gameData.GetUnit(unitID);
 			if (unit == null) return;
 
@@ -83,7 +94,9 @@ namespace C7Engine {
 			this.path = path;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			MapUnit unit = EngineStorage.gameData.GetUnit(unitID);
 			if (unit == null) return;
 
@@ -105,7 +118,9 @@ namespace C7Engine {
 			this.tileY = tile.YCoordinate;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			MapUnit unit = EngineStorage.gameData.GetUnit(unitID);
 			Tile tile = EngineStorage.gameData.map.tileAt(tileX, tileY);
 			if (unit == null || tile == null) return;
@@ -128,7 +143,9 @@ namespace C7Engine {
 			(tileX, tileY) = target == null ? (-1, -1) : (target.XCoordinate, target.YCoordinate);
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			GameData gameData = EngineStorage.gameData;
 			if (gameData.GetUnit(unitId) is MapUnit plane) {
 				await Air.Fly(gameData, plane, mission, tileX < 0 ? null : gameData.map.tileAt(tileX, tileY));
@@ -214,22 +231,87 @@ namespace C7Engine {
 	//
 	// Actions that require more than a 1 or 2 line lambda should probably use
 	// a custom subclass.
-	public class ActionToEngineMsg : MessageToEngine {
-		// The UI's unit orders: hold, explore, automate, disband.
+	// The UI's unit orders: hold, explore, automate, disband.
+	public class MsgUnitOrder : MessageToEngine {
+		public enum Order { Hold, Explore, Automate, Disband }
+
 		public override bool IsPlayerAction => true;
-		private Func<Task> action;
-		public ActionToEngineMsg(Func<Task> action) {
-			this.action = action;
+
+		private readonly ID unitId;
+		private readonly Order order;
+
+		public MsgUnitOrder(ID unitId, Order order) {
+			this.unitId = unitId;
+			this.order = order;
 		}
-		public ActionToEngineMsg(Action action) {
-			this.action = () => {
-				action();
-				return Task.CompletedTask;
-			};
+
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
+			MapUnit unit = EngineStorage.gameData.GetUnit(unitId);
+			if (unit == null) {
+				return;
+			}
+			switch (order) {
+				case Order.Hold:
+					unit.SkipTurn();
+					break;
+				case Order.Explore:
+					unit.Explore();
+					break;
+				case Order.Automate:
+					unit.Automate();
+					break;
+				case Order.Disband:
+					await unit.Disband();
+					break;
+			}
+		}
+	}
+
+	// The city screen: a click on one of the city's tiles (see
+	// CityInteractions.WorkTile).
+	public class MsgWorkTile : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID cityId;
+		private readonly int tileX;
+		private readonly int tileY;
+
+		public MsgWorkTile(ID cityId, Tile tile) {
+			this.cityId = cityId;
+			tileX = tile.XCoordinate;
+			tileY = tile.YCoordinate;
 		}
 
 		public override void process() {
-			action();
+			GameData gameData = EngineStorage.gameData;
+			City city = gameData.cities.Find(c => c.id == cityId);
+			Tile tile = gameData.map.tileAt(tileX, tileY);
+			if (city != null && tile != null && CityInteractions.WorkTile(gameData, city, tile)) {
+				new MsgCityChanged(city.id).send();
+			}
+		}
+	}
+
+	// The city screen: a specialist becomes the next kind of specialist.
+	public class MsgCycleSpecialist : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID cityId;
+		private readonly int resident;
+
+		public MsgCycleSpecialist(ID cityId, int resident) {
+			this.cityId = cityId;
+			this.resident = resident;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			City city = gameData.cities.Find(c => c.id == cityId);
+			if (city != null && CityInteractions.CycleSpecialist(gameData, city, resident)) {
+				new MsgCityChanged(city.id).send();
+			}
 		}
 	}
 
@@ -499,6 +581,7 @@ namespace C7Engine {
 				foreach (IProducible producible in city.ListProductionOptions(EngineStorage.gameData)) {
 					if (producible.name == producibleName) {
 						city.SetItemBeingProduced(producible);
+						new MsgCityChanged(city.id).send();
 						break;
 					}
 				}
@@ -696,7 +779,9 @@ namespace C7Engine {
 	// (has given their password), so the other humans' deals and (by email)
 	// the AIs can reach them (TurnHandling.HearFromOthers).
 	public class MsgHearFromOthers : MessageToEngine {
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			if (EngineStorage.gameData.GetPlayer(EngineStorage.uiControllerID) is Player human) {
 				await TurnHandling.HearFromOthers(human);
 			}
@@ -762,7 +847,9 @@ namespace C7Engine {
 			this.newAdminPassword = newAdminPassword;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			GameData gameData = EngineStorage.gameData;
 			Player playing = gameData.GetPlayer(EngineStorage.uiControllerID);
 			bool wasHuman = playing?.isHuman == true;
@@ -783,7 +870,9 @@ namespace C7Engine {
 	public class MsgEndTurn : MessageToEngine {
 		private ILogger log = Log.ForContext<MsgEndTurn>();
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			Player controller = EngineStorage.gameData.GetPlayer(EngineStorage.uiControllerID);
 
 			TurnHandling.OnEndTurn(controller);
@@ -805,7 +894,9 @@ namespace C7Engine {
 			this.unit = unit;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			await unit.PerformBusyAction();
 		}
 	}
@@ -872,7 +963,9 @@ namespace C7Engine {
 			this.name = name;
 		}
 
-		public override async void process() {
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
 			City? city = await unit.BuildCity(name);
 			if (city != null) {
 				new MsgCityCreated(city).send();

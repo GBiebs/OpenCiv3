@@ -1195,7 +1195,7 @@ public partial class Game {
 				"Yes, we need to!",
 				"No. Maybe you are right, advisor.",
 				() => {
-					new ActionToEngineMsg(async () => await CurrentlySelectedUnit.Disband()).send();
+					new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Disband).send();
 				},
 				hSize: 500
 			)

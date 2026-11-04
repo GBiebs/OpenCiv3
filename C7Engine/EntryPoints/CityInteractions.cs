@@ -335,5 +335,75 @@ namespace C7Engine {
 			log.Information($"{owner.civilization?.name} lost its capital; the palace moves to {newCapital.name}");
 			return newCapital;
 		}
+
+		// The city screen's click on a tile of the city: a citizen working
+		// it becomes a specialist; an unworked one takes the citizen on the
+		// poorest tile; the city's own tile has the governor's way of placing
+		// every worker again (moods managed with entertainers). Citizens keep
+		// their nationality, resisters keep resisting. False if nothing
+		// changed (a tile the city can't work).
+		public static bool WorkTile(GameData gameData, City city, Tile tile) {
+			if (!city.GetWorkableTiles().Contains(tile) && tile != city.location) {
+				return false;
+			}
+			if (tile.cityAtTile != null && tile.cityAtTile != city) {
+				return false;
+			}
+			if (tile.personWorkingTile != null && tile.personWorkingTile.city != city) {
+				return false;
+			}
+			CitizenType defaultCitizen = gameData.citizenTypes.Find(x => x.IsDefaultCitizen);
+
+			if (tile.personWorkingTile != null) {
+				CityResident resident = tile.personWorkingTile;
+				tile.personWorkingTile = null;
+				resident.tileWorked = Tile.NONE;
+				resident.citizenType = city.owner.GetKnownSpecialists(gameData)[0];
+			} else if (tile.cityAtTile == null) {
+				CityResident worst = null;
+				int worstYield = int.MaxValue;
+				foreach (CityResident cr in city.residents.Where(r => !r.resisting)) {
+					int tileYield = cr.tileWorked.FoodYield(city.owner).yield
+						+ cr.tileWorked.ProductionYield(city.owner).yield
+						+ cr.tileWorked.CommerceYield(city.owner).yield;
+					if (tileYield < worstYield) {
+						worstYield = tileYield;
+						worst = cr;
+					}
+				}
+				if (worst == null) {
+					return false;
+				}
+				worst.tileWorked.personWorkingTile = null;
+				worst.tileWorked = tile;
+				tile.personWorkingTile = worst;
+				worst.citizenType = defaultCitizen;
+			} else {
+				List<CityResident> workers = city.residents.Where(r => !r.resisting).ToList();
+				foreach (CityResident resident in workers) {
+					resident.tileWorked.personWorkingTile = null;
+					resident.tileWorked = Tile.NONE;
+					resident.citizenType = defaultCitizen;
+				}
+				foreach (CityResident resident in workers) {
+					CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident, manageMoods: true);
+				}
+			}
+			city.RecalculateCitizenMoods(gameData);
+			return true;
+		}
+
+		// The city screen's click on a specialist (the `resident`th of the
+		// city's residents): the next kind of specialist the owner knows.
+		public static bool CycleSpecialist(GameData gameData, City city, int resident) {
+			if (resident < 0 || resident >= city.residents.Count || city.residents[resident].citizenType.IsDefaultCitizen) {
+				return false;
+			}
+			CityResident cr = city.residents[resident];
+			List<CitizenType> kinds = city.owner.GetKnownSpecialists(gameData);
+			int index = kinds.FindIndex(x => x.Id == cr.citizenType.Id);
+			cr.citizenType = kinds[(index + 1) % kinds.Count];
+			return true;
+		}
 	}
 }
