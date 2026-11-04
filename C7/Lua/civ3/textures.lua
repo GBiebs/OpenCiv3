@@ -488,6 +488,17 @@ textures.city_screen = {
 textures.world_setup = require "textures.world_setup"
 textures.player_setup = require "textures.player_setup"
 
+-- Multiplayer setup (Play the World's art; Conquests' background).
+local MULTIPLAYER = "Art/Multiplayer/"
+local MULTIPLAYER_BUTTONS = MULTIPLAYER .. "x_all buttons.pcx"
+textures.multiplayer = {
+  setup_background = MULTIPLAYER .. "x_setup background.pcx",
+  not_ready = { path = MULTIPLAYER_BUTTONS, crop_region = { 0, 188, 24, 23 } },
+  ready = { path = MULTIPLAYER_BUTTONS, crop_region = { 0, 212, 24, 23 } },
+  kick = { path = MULTIPLAYER_BUTTONS, crop_region = { 24, 236, 24, 23 } },
+  kick_hover = { path = MULTIPLAYER_BUTTONS, crop_region = { 0, 236, 24, 23 } },
+}
+
 textures.diplomacy = {
   deal = "Art/Diplomacy/counter.pcx",
   offer = "Art/Diplomacy/talk_offer.pcx",

@@ -21,15 +21,6 @@ public partial class PlayerSetup : Control {
 
 	[Export] GridContainer opponentListContainer;
 	List<OptionButton> opponentSelectors = new();
-	// Hotseat: whether each rival is another human at this computer.
-	List<CheckBox> humanToggles = new();
-	// With another human: play by email or online instead of at this
-	// computer, and the administrator's password (Administration).
-	HBoxContainer humansRow;
-	CheckBox playByEmail;
-	CheckBox online;
-	HBoxContainer adminPasswordRow;
-	LineEdit adminPassword;
 
 	[Export] GridContainer rulesContainer;
 
@@ -171,22 +162,10 @@ public partial class PlayerSetup : Control {
 
 			CenterContainer container = new();
 			opponentListContainer.AddChild(container);
-			HBoxContainer slot = new();
-			container.AddChild(slot);
-			slot.AddChild(optionButton);
-
-			// Hotseat: this rival is another human, taking turns at this computer.
-			CheckBox human = new() { Text = "Human", TooltipText = "Another human: at this computer (hotseat), by email or online", FocusMode = FocusModeEnum.None };
-			human.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
-			human.AddThemeColorOverride("font_pressed_color", Color.Color8(33, 25, 14));
-			human.AddThemeColorOverride("font_hover_color", Color.Color8(33, 25, 14));
-			human.AddThemeFontSizeOverride("font_size", 12);
-			slot.AddChild(human);
-			humanToggles.Add(human);
-			human.Toggled += (_) => UpdatePlayByEmail();
+			container.AddChild(optionButton);
 
 			container.CustomMinimumSize = new Vector2(312.0f / columns, 312.0f / rows);
-			optionButton.CustomMinimumSize = new Vector2(290.0f / columns - 70, optionButton.CustomMinimumSize.Y);
+			optionButton.CustomMinimumSize = new Vector2(290.0f / columns, optionButton.CustomMinimumSize.Y);
 
 			optionButton.AddItem(SelectedOpponent.NONE);
 			optionButton.AddItem(SelectedOpponent.RANDOM);
@@ -234,59 +213,6 @@ public partial class PlayerSetup : Control {
 		Civ3MenuButton allRandom = new() { Text = "All Random" };
 		allRandom.Pressed += () => SetAllOpponents(SelectedOpponent.RANDOM);
 		container.AddChild(allRandom);
-
-		// Shown once a rival is human: by email, or online (this computer
-		// hosts; the other humans join it). One or the other.
-		humansRow = new() {
-			Position = new Vector2(630, 461),
-			Size = new Vector2(321, 24),
-			Alignment = BoxContainer.AlignmentMode.Center,
-			Visible = false,
-		};
-		background.AddChild(humansRow);
-		playByEmail = HumansCheckBox("Play by email", "Each human plays their turn on their own computer and emails the save to the next");
-		online = HumansCheckBox("Host online", "This computer hosts the game; the other humans join it over the network");
-		playByEmail.Toggled += on => { if (on) online.ButtonPressed = false; };
-		online.Toggled += on => { if (on) playByEmail.ButtonPressed = false; };
-
-		// Civ3's "Password for Administration": whoever knows it can hand a
-		// human who leaves to the AI or another player, or clear a forgotten
-		// password. Optional.
-		adminPasswordRow = new() {
-			Position = new Vector2(630, 486),
-			Size = new Vector2(321, 24),
-			Alignment = BoxContainer.AlignmentMode.Center,
-			Visible = false,
-		};
-		Label label = new() { Text = "Admin password:" };
-		label.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
-		label.AddThemeFontSizeOverride("font_size", 12);
-		adminPasswordRow.AddChild(label);
-		adminPassword = new() {
-			Secret = true,
-			MaxLength = 40,
-			PlaceholderText = "none",
-			TooltipText = "Lets whoever knows it replace a player who leaves, or clear a forgotten password (leave blank for none)",
-			CustomMinimumSize = new Vector2(150, 0),
-		};
-		adminPassword.AddThemeFontSizeOverride("font_size", 12);
-		adminPasswordRow.AddChild(adminPassword);
-		background.AddChild(adminPasswordRow);
-	}
-
-	private CheckBox HumansCheckBox(string text, string tooltip) {
-		CheckBox box = new() { Text = text, TooltipText = tooltip, FocusMode = FocusModeEnum.None };
-		box.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
-		box.AddThemeColorOverride("font_pressed_color", Color.Color8(33, 25, 14));
-		box.AddThemeColorOverride("font_hover_color", Color.Color8(33, 25, 14));
-		box.AddThemeFontSizeOverride("font_size", 12);
-		humansRow.AddChild(box);
-		return box;
-	}
-
-	private void UpdatePlayByEmail() {
-		humansRow.Visible = humanToggles.Any(t => t.ButtonPressed);
-		adminPasswordRow.Visible = humansRow.Visible;
 	}
 
 	private void SetAllOpponents(string name) {
@@ -341,15 +267,13 @@ public partial class PlayerSetup : Control {
 	private List<SelectedOpponent> CollectSelectedOpponents() {
 		List<SelectedOpponent> opponents = [];
 
-		for (int i = 0; i < opponentSelectors.Count; i++) {
-			OptionButton ob = opponentSelectors[i];
+		foreach (OptionButton ob in opponentSelectors) {
 			string selectedName = ob.GetItemText(ob.Selected);
-			bool human = humanToggles[i].ButtonPressed;
 
 			opponents.Add(selectedName switch {
 				SelectedOpponent.NONE => new SelectedOpponent { isNone = true },
-				SelectedOpponent.RANDOM => new SelectedOpponent { isRandom = true, isHuman = human },
-				_ => new SelectedOpponent { Name = selectedName, isHuman = human },
+				SelectedOpponent.RANDOM => new SelectedOpponent { isRandom = true },
+				_ => new SelectedOpponent { Name = selectedName },
 			});
 		}
 
@@ -358,7 +282,6 @@ public partial class PlayerSetup : Control {
 
 	private void CreateGame() {
 		List<SelectedOpponent> opponents = CollectSelectedOpponents();
-		bool hostOnline = humansRow.Visible && online.ButtonPressed;
 
 		loadingLabel.Text = "Loading...";
 		loadingLabel.Visible = true;
@@ -370,9 +293,7 @@ public partial class PlayerSetup : Control {
 			difficulty = selectedDifficulty,
 			worldCharacteristics = global.WorldCharacteristics,
 			opponents = opponents,
-			victoryConditions = victoryConditions,
-			playByEmail = humansRow.Visible && playByEmail.ButtonPressed,
-			adminPassword = adminPasswordRow.Visible ? adminPassword.Text : "",
+			victoryConditions = victoryConditions
 		};
 
 		PersistGameSettings(gameSetup);
@@ -382,8 +303,8 @@ public partial class PlayerSetup : Control {
 		Thread thread = new(() => {
 			gameSetup.Populate(save);
 
-			log.Information(hostOnline ? "opening the online lobby" : "opening map");
-			CallDeferred(hostOnline ? nameof(HostOnline) : nameof(StartGame));
+			log.Information("opening map");
+			CallDeferred(nameof(StartGame));
 		});
 		thread.Start();
 	}
@@ -424,11 +345,5 @@ public partial class PlayerSetup : Control {
 
 	private void StartGame() {
 		GetTree().ChangeSceneToFile("res://C7Game.tscn");
-	}
-
-	// Online play: the lobby, where the other humans join this computer.
-	private void HostOnline() {
-		GetNode<GlobalSingleton>("/root/GlobalSingleton").HostingOnline = true;
-		GetTree().ChangeSceneToFile("res://UIElements/Online/online_game.tscn");
 	}
 }

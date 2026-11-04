@@ -82,7 +82,7 @@ public partial class MainMenu : Node {
 		ButtonContainer.Tutorial.Visible = false;
 		ButtonContainer.LoadGame.Pressed += LoadGame;
 		ButtonContainer.LoadScenario.Pressed += LoadScenario;
-		ButtonContainer.JoinOnline.Pressed += JoinOnline;
+		ButtonContainer.MultiplayerGame.Pressed += OpenMultiplayer;
 		ButtonContainer.HallOfFame.Pressed += HallOfFame;
 		ButtonContainer.HallOfFame.Visible = false;
 		ButtonContainer.Preferences.Pressed += ShowPreferences;
@@ -156,12 +156,11 @@ public partial class MainMenu : Node {
 		LoadScenarioDialog.Popup();
 	}
 
-	// Online play: a host's invite and password (hosting starts on the
-	// player setup screen).
-	public void JoinOnline() {
+	// Everything with other humans (Civ3's "Choose Multiplayer Game Type"):
+	// hosting or joining online, hotseat, play by email.
+	public void OpenMultiplayer() {
 		PlayButtonPressedSound();
-		Global.HostingOnline = false;
-		GetTree().ChangeSceneToFile("res://UIElements/Online/online_game.tscn");
+		GetTree().ChangeSceneToFile("res://UIElements/Multiplayer/multiplayer.tscn");
 	}
 
 	public void showCredits() {

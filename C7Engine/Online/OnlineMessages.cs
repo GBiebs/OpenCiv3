@@ -18,6 +18,10 @@ namespace C7Engine.Online {
 	[JsonDerivedType(typeof(TakeSeat), "takeSeat")]
 	[JsonDerivedType(typeof(LeaveSeat), "leaveSeat")]
 	[JsonDerivedType(typeof(LobbyNotice), "notice")]
+	[JsonDerivedType(typeof(ChooseCiv), "chooseCiv")]
+	[JsonDerivedType(typeof(SetReady), "setReady")]
+	[JsonDerivedType(typeof(Chat), "chat")]
+	[JsonDerivedType(typeof(ChatLine), "chatLine")]
 	public abstract class OnlineMessage {
 		public const int MaxNameLength = 32;
 		public const int MaxTextLength = 500;
@@ -41,6 +45,7 @@ namespace C7Engine.Online {
 			}
 		}
 
+		public static bool IsCivName(string text) => !string.IsNullOrWhiteSpace(text) && text.Length <= 60 && !text.Any(char.IsControl);
 		protected static bool IsName(string text) => !string.IsNullOrWhiteSpace(text) && text.Length <= MaxNameLength && !text.Any(char.IsControl);
 		protected static bool IsText(string text, int max = MaxTextLength) => text == null || (text.Length <= max && !text.Any(c => char.IsControl(c) && c != '\n'));
 	}
@@ -81,29 +86,45 @@ namespace C7Engine.Online {
 		public override bool IsValid() => IsText(reason);
 	}
 
-	// Before the game: the civs humans play, who has taken which, and who's
-	// connected (the host is player 0).
+	// Before the game, Civ3's multiplayer setup: the game's settings (to
+	// show), its slots and who's connected (the host is player 0). A slot is
+	// "open" (for a player to take), "closed", "computer" or "human" (the
+	// player in it, if they joined; a hotseat human has none), with its civ
+	// ("Random" or one of `civs`) and whether its player is ready.
 	public sealed class LobbyState : OnlineMessage {
-		public const int MaxSeats = 32;
+		public const int MaxSlots = 8;
 
-		public List<LobbySeat> seats { get; set; } = new();
+		public List<LobbySetting> settings { get; set; } = new();
+		public List<LobbySlot> slots { get; set; } = new();
 		public List<LobbyPlayer> players { get; set; } = new();
+		public List<string> civs { get; set; } = new();
 
-		public override bool IsValid() => seats != null && players != null && seats.Count <= MaxSeats && players.Count <= 64
-			&& seats.All(s => s != null && s.IsValid()) && players.All(p => p != null && p.IsValid());
+		public override bool IsValid() => settings != null && slots != null && players != null && civs != null
+			&& settings.Count <= 32 && slots.Count <= MaxSlots && players.Count <= 64 && civs.Count <= 200
+			&& settings.All(s => s != null && s.IsValid()) && slots.All(s => s != null && s.IsValid())
+			&& players.All(p => p != null && p.IsValid()) && civs.All(IsCivName);
 	}
 
-	public sealed class LobbySeat {
-		public int seat { get; set; }
+	public sealed class LobbySetting {
+		public string name { get; set; }
+		public string value { get; set; }
+
+		public bool IsValid() => !string.IsNullOrEmpty(name) && name.Length <= 60 && value != null && value.Length <= 100;
+	}
+
+	public sealed class LobbySlot {
+		public static readonly string[] Kinds = { "open", "closed", "computer", "human" };
+
+		public int slot { get; set; }
+		public string kind { get; set; }
+		public int? player { get; set; }
 		public string civ { get; set; }
-		public string leader { get; set; }
+		public bool ready { get; set; }
 		// A loaded game's civ with a password: whoever takes it gives it.
 		public bool password { get; set; }
-		// The player in it, if any.
-		public int? player { get; set; }
 
-		public bool IsValid() => seat >= 0 && seat < LobbyState.MaxSeats && !string.IsNullOrEmpty(civ) && civ.Length <= 100
-			&& (leader == null || leader.Length <= 100) && (player == null || player >= 0);
+		public bool IsValid() => slot >= 0 && slot < LobbyState.MaxSlots && Kinds.Contains(kind) && (player == null || player >= 0)
+			&& OnlineMessage.IsCivName(civ);
 	}
 
 	public sealed class LobbyPlayer {
@@ -113,18 +134,46 @@ namespace C7Engine.Online {
 		public bool IsValid() => player >= 0 && !string.IsNullOrWhiteSpace(name) && name.Length <= OnlineMessage.MaxNameLength && !name.Any(char.IsControl);
 	}
 
-	// A player asks for a seat (with the civ's password, if it has one).
+	// A player takes an open slot (with the civ's password, if it has one).
 	public sealed class TakeSeat : OnlineMessage {
 		public int seat { get; set; }
 		public string password { get; set; }
 
-		public override bool IsValid() => seat >= 0 && seat < LobbyState.MaxSeats && IsText(password, 100);
+		public override bool IsValid() => seat >= 0 && seat < LobbyState.MaxSlots && IsText(password, 100);
 	}
 
-	// A player gives their seat up.
+	// A player gives their slot up (it's open again).
 	public sealed class LeaveSeat : OnlineMessage { }
 
-	// The host tells one player something (a seat they couldn't have).
+	// A player picks the civ for their slot.
+	public sealed class ChooseCiv : OnlineMessage {
+		public string civ { get; set; }
+
+		public override bool IsValid() => IsCivName(civ);
+	}
+
+	// A player is ready for the game to begin (Civ3's "Make Ready"), or not.
+	public sealed class SetReady : OnlineMessage {
+		public bool ready { get; set; }
+	}
+
+	// A player says something to everyone (Civ3's messages box).
+	public sealed class Chat : OnlineMessage {
+		public const int MaxLength = 200;
+
+		public string text { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrWhiteSpace(text) && IsText(text, MaxLength);
+	}
+
+	// A line for everyone's messages box: who said what, who joined or left.
+	public sealed class ChatLine : OnlineMessage {
+		public string text { get; set; }
+
+		public override bool IsValid() => IsText(text);
+	}
+
+	// The host tells one player something (a slot they couldn't have).
 	public sealed class LobbyNotice : OnlineMessage {
 		public string text { get; set; }
 
