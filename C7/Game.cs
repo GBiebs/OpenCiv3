@@ -529,32 +529,38 @@ public partial class Game : Node {
 	}
 
 	// Play by email: this human's turn is over and the next human's begins,
-	// on their own computer. The game is saved for them (Civ3's "Save &
-	// Exit"), and this one goes back to the main menu.
+	// on their own computer. The game is saved for them under the name the
+	// player gives it (Civ3's "Save & Exit"), and this one goes back to the
+	// main menu.
 	private void SendTurnByEmail(ID nextId) {
 		GameData gameData = EngineStorage.gameData;
 		Player next = gameData.GetPlayer(nextId);
 		string folder = SaveNameGenerator.GetSaveDirectory();
-		string fileName = SaveNameGenerator.PlayByEmailFileName(gameData, next);
-		string error = null;
-		try {
-			System.IO.Directory.CreateDirectory(folder);
-			SaveManager.Save(System.IO.Path.Combine(folder, fileName));
-		} catch (Exception e) {
-			log.Error(e, "Couldn't save the turn to send");
-			error = e.Message;
-		}
 		HideScreensOverTheMap();
-		// Once the game is over, the last save goes to the others so they
-		// hear how it ended, and the victory screen is still to be seen.
-		Action backToTheGame = null;
-		if (gameData.gameOver) {
-			backToTheGame = () => {
-				handOverScreen.QueueFree();
-				handOverScreen = null;
-			};
+		string Save(string fileName) {
+			try {
+				System.IO.Directory.CreateDirectory(folder);
+				SaveManager.Save(System.IO.Path.Combine(folder, fileName));
+			} catch (Exception e) {
+				log.Error(e, "Couldn't save the turn to send");
+				return e.Message;
+			}
+			// Once the game is over, the last save goes to the others so they
+			// hear how it ended, and the victory screen is still to be seen.
+			Action backToTheGame = null;
+			if (gameData.gameOver) {
+				backToTheGame = () => {
+					handOverScreen.QueueFree();
+					handOverScreen = null;
+				};
+			}
+			handOverScreen.QueueFree();
+			handOverScreen = new HandOverScreen(new TurnSentPanel(next, fileName, folder, gameData.gameOver, OnRetire, backToTheGame));
+			popupOverlay.GetParent().AddChild(handOverScreen);
+			return null;
 		}
-		handOverScreen = new HandOverScreen(new TurnSentPanel(next, fileName, folder, error, gameData.gameOver, OnRetire, backToTheGame));
+		handOverScreen = new HandOverScreen(new SaveTurnPanel(next, SaveNameGenerator.PlayByEmailFileName(gameData, next), folder,
+			gameData.gameOver, Save, OnRetire));
 		popupOverlay.GetParent().AddChild(handOverScreen);
 	}
 

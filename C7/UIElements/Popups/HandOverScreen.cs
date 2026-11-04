@@ -145,21 +145,92 @@ public partial class HandOverPanel : LeaderPanel {
 }
 
 // Play by email: a turn is over, and the game is saved for the next human,
-// whose leader this shows, to play on their computer; once the game is
-// over, the last save, for the others to hear how it ended.
+// whose leader this shows, to play on their computer (once the game is
+// over, the last save, for the others to hear how it ended). The player
+// names the save; the name it starts with is the next player's.
+public partial class SaveTurnPanel : LeaderPanel {
+	private static readonly Color Warning = new(0.6f, 0.08f, 0.05f);
+
+	private readonly string suggestedName;
+	private readonly string folder;
+	private readonly bool gameOver;
+	// Saves under the file name given: null once saved, else what went wrong.
+	private readonly Func<string, string> save;
+	private readonly Action onMainMenu;
+	private LineEdit name;
+	private Label problem;
+	private Civ3MenuButton mainMenu;
+	// A save of this name is there, and the player was told.
+	private string replacing;
+
+	public SaveTurnPanel(Player next, string suggestedName, string folder, bool gameOver, Func<string, string> save, Action onMainMenu)
+		: base(next) {
+		this.suggestedName = suggestedName;
+		this.folder = folder;
+		this.gameOver = gameOver;
+		this.save = save;
+		this.onMainMenu = onMainMenu;
+	}
+
+	public override void _Ready() {
+		base._Ready();
+		AddHeader(gameOver ? "The game is over" : "Your turn is over", Top + 12);
+		AddChild(TextLabel(gameOver
+			? "Name the last save, for the other players to see how it ended:"
+			: $"Name the save for {player.civilization.leader} of the {player.civilization.noun}, who plays next:", Top + 50, 14));
+		name = new LineEdit {
+			Text = System.IO.Path.GetFileNameWithoutExtension(suggestedName),
+			Position = new Vector2(40, Top + 98),
+			Size = new Vector2(Width - 80, 30),
+			MaxLength = 120,
+		};
+		name.TextSubmitted += _ => Save();
+		name.TextChanged += _ => problem.Text = "";
+		AddChild(name);
+		name.CallDeferred(Control.MethodName.GrabFocus);
+		name.CallDeferred(LineEdit.MethodName.SelectAll);
+		problem = TextLabel("", Top + 134, 13);
+		problem.AddThemeColorOverride("font_color", Warning);
+		AddChild(problem);
+
+		AddButton("Save", Height - 40, Save);
+		// Leaving without the save loses the turn: only once saving failed.
+		mainMenu = new() { Text = "Main Menu", FontSize = 14, Position = new Vector2(Width - 120, Height - 40), Visible = false };
+		mainMenu.Pressed += onMainMenu;
+		AddChild(mainMenu);
+	}
+
+	private void Save() {
+		string fileName = SaveNameGenerator.FileNameTyped(name.Text);
+		if (fileName == null) {
+			problem.Text = $"A save needs a name, without any of these: {string.Join(" ", SaveNameGenerator.CharactersNotInAName.ToCharArray())}";
+			return;
+		}
+		if (System.IO.File.Exists(System.IO.Path.Combine(folder, fileName)) && replacing != fileName) {
+			replacing = fileName;
+			problem.Text = "There's a save of that name already. Save again to replace it.";
+			return;
+		}
+		string error = save(fileName);
+		if (error != null) {
+			problem.Text = $"The game couldn't be saved: {error}";
+			mainMenu.Visible = true;
+		}
+	}
+}
+
+// Play by email: the turn is saved for the next human to play.
 public partial class TurnSentPanel : LeaderPanel {
 	private readonly string fileName;
 	private readonly string folder;
-	private readonly string error;
 	private readonly bool gameOver;
 	private readonly Action onMainMenu;
 	private readonly Action onBackToTheGame;
 
-	public TurnSentPanel(Player next, string fileName, string folder, string error, bool gameOver, Action onMainMenu, Action onBackToTheGame)
+	public TurnSentPanel(Player next, string fileName, string folder, bool gameOver, Action onMainMenu, Action onBackToTheGame)
 		: base(next) {
 		this.fileName = fileName;
 		this.folder = folder;
-		this.error = error;
 		this.gameOver = gameOver;
 		this.onMainMenu = onMainMenu;
 		this.onBackToTheGame = onBackToTheGame;
@@ -170,20 +241,16 @@ public partial class TurnSentPanel : LeaderPanel {
 		AddHeader(gameOver ? "The game is over" : "Your turn is over", Top + 12);
 		string them = $"{player.civilization.leader} of the {player.civilization.noun}";
 		int y = Height - 40;
-		if (error != null) {
-			AddChild(TextLabel($"The game couldn't be saved for {them}: {error}", Top + 50, 14));
-		} else {
-			AddChild(TextLabel(gameOver
-				? $"Send this last save to the other players, starting with {them}, so they see how it ended:"
-				: $"Send this save to the player of {them}, who plays next:", Top + 50, 14));
-			AddChild(TextLabel(fileName, Top + 104, 13));
-			// (Room for one more button once the game is over.)
-			if (!gameOver) {
-				AddChild(TextLabel("It's in your Saves folder. They load it with Load Game.", Top + 128, 13));
-			}
-			y -= 26;
-			AddButton("Open the Saves Folder", y, () => OS.ShellOpen(folder));
+		AddChild(TextLabel(gameOver
+			? $"Send this last save to the other players, starting with {them}, so they see how it ended:"
+			: $"Send this save to the player of {them}, who plays next:", Top + 50, 14));
+		AddChild(TextLabel(fileName, Top + 104, 13));
+		// (Room for one more button once the game is over.)
+		if (!gameOver) {
+			AddChild(TextLabel("It's in your Saves folder. They load it with Load Game.", Top + 128, 13));
 		}
+		y -= 26;
+		AddButton("Open the Saves Folder", y, () => OS.ShellOpen(folder));
 		if (onBackToTheGame != null) {
 			y -= 26;
 			AddButton("Back to the Game", y, onBackToTheGame);

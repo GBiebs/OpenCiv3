@@ -49,6 +49,23 @@ namespace C7Engine {
 			return string.Join("_", name.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
 		}
 
+		// What Windows won't have in a file name, wherever the save is made:
+		// it travels to the other players' computers.
+		public const string CharactersNotInAName = "\\/:*?\"<>|";
+
+		// A name the player typed for a save, as its file name (".json"
+		// added unless it's there); null if it can't be one.
+		public static string FileNameTyped(string typed) {
+			string name = typed?.Trim() ?? "";
+			if (name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) {
+				name = name[..^".json".Length].TrimEnd();
+			}
+			if (name == "" || name.Any(c => c < ' ' || CharactersNotInAName.Contains(c))) {
+				return null;
+			}
+			return name + ".json";
+		}
+
 		public static string GetSaveDirectory() {
 			return C7Settings.GetSaveFolder();
 		}

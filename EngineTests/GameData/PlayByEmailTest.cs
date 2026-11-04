@@ -211,6 +211,27 @@ public class PlayByEmailTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.EndsWith(".json", name);
 	}
 
+	// Or the player names it: a name any of their computers can keep.
+	[Theory]
+	[InlineData("Game with Bob - Turn 12", "Game with Bob - Turn 12.json")]
+	[InlineData("  spaces around  ", "spaces around.json")]
+	[InlineData("named.json", "named.json")]
+	[InlineData("named.JSON", "named.json")]
+	[InlineData("1.5 AD", "1.5 AD.json")]
+	[InlineData("", null)]
+	[InlineData("   ", null)]
+	[InlineData(".json", null)]
+	[InlineData(null, null)]
+	[InlineData("Rome/Maya", null)]
+	[InlineData("Rome\\Maya", null)]
+	[InlineData("Turn 5: Maya", null)]
+	[InlineData("what?", null)]
+	[InlineData("a \"quote\"", null)]
+	[InlineData("tab\there", null)]
+	public void ThePlayerCanNameTheSave(string typed, string fileName) {
+		Assert.Equal(fileName, SaveNameGenerator.FileNameTyped(typed));
+	}
+
 	// The United Nations' human owner calls an election once at their
 	// computer (the turn order leaves it to them).
 	[Fact]
