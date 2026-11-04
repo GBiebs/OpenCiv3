@@ -31,7 +31,7 @@ public partial class TradingTree : Tree {
 						List<Tech> tradeableTechs,
 						TradeOffer currentOffer, bool requiresPeaceTreaty,
 						List<(Agreement agreement, string text)> agreements,
-						List<DealGood> goods) {
+						List<DealGood> goods, bool showsGoods = true) {
 		this.tradeableTechs = tradeableTechs;
 		this.currentOffer = currentOffer;
 		this.playerGold = playerGold;
@@ -59,6 +59,15 @@ public partial class TradingTree : Tree {
 		}
 		allianceHeader = AddAgreementHeader(root, "Military Alliances", agreements, DealSubType.MilitaryAlliance);
 		embargoHeader = AddAgreementHeader(root, "Trade Embargos", agreements, DealSubType.TradeEmbargo);
+		// Another human's goods are theirs to put on the table: we don't see
+		// them (Civ3's multiplayer diplomacy).
+		if (!showsGoods) {
+			TreeItem hidden = this.CreateItem(root);
+			hidden.SetText(0, "(Their goods are hidden)");
+			hidden.SetSelectable(0, false);
+			RefreshUiForOffer();
+			return;
+		}
 		AddGoods(root, goods, DealGood.HeadingsBeforeGold);
 
 		// Gold
@@ -236,7 +245,15 @@ public partial class TradingTree : Tree {
 	public void RefreshUiForOffer() {
 		bool needsPeaceTreaty = peaceTreaty != null && !currentOffer.partOfPeaceTreaty;
 
-		if (needsPeaceTreaty) {
+		if (goldHeader == null) {
+			// (Another human's: nothing but agreements.)
+			foreach ((TreeItem ti, Agreement agreement) in agreementItems) {
+				ti.Visible = !currentOffer.agreements.Any(a => a.SameAs(agreement));
+			}
+			if (peaceTreaty != null) {
+				peaceTreaty.Visible = !currentOffer.partOfPeaceTreaty;
+			}
+		} else if (needsPeaceTreaty) {
 			goldHeader.Visible = false;
 			peaceTreaty.Visible = true;
 			foreach (TreeItem header in goodHeaders) {

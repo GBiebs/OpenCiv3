@@ -989,6 +989,27 @@ public partial class Game {
 		));
 	}
 
+	// Another human's envoy, with a new deal (Civ3's MP_DIPLOCONTACT).
+	// Closing it refuses to hear them, this time.
+	private void EmitEnvoyArrivesSignal(MsgEnvoyArrives msg) {
+		string noun = EngineStorage.gameData.GetPlayer(msg.fromId).civilization.noun;
+		int turns = EngineStorage.gameData.rules.EnvoyRefusalTurns;
+		List<ButtonAction> options = [
+			new ButtonAction { message = "Accept the envoy.", action = () => new MsgEnvoyAnswer(msg.fromId, EnvoyAnswer.Hear).send() },
+			new ButtonAction { message = "Refuse to hear the envoy.", action = () => new MsgEnvoyAnswer(msg.fromId, EnvoyAnswer.Refuse).send() },
+			new ButtonAction {
+				message = $"Refuse the envoy, and do not contact me for {turns} turns.",
+				action = () => new MsgEnvoyAnswer(msg.fromId, EnvoyAnswer.RefuseForAWhile).send(),
+			},
+		];
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "Foreign Advisor", $"The {noun} wish to trade with us. Should we attempt to trade with them?",
+				options, Advisor.Foreign, Mood.Surprised, 450) {
+				cancelAction = () => new MsgEnvoyAnswer(msg.fromId, EnvoyAnswer.Refuse).send(),
+			}
+		));
+	}
+
 	private void EmitElectionResultsSignal(MsgElectionResults msg) {
 		string results = string.Join("\n", msg.votes.Select(v => $"{v.voter.civilization.noun}: {(v.candidate == null ? "abstained" : v.candidate.civilization.noun)}"));
 		string outcome = msg.winner == null

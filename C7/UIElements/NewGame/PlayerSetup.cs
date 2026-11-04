@@ -23,8 +23,11 @@ public partial class PlayerSetup : Control {
 	List<OptionButton> opponentSelectors = new();
 	// Hotseat: whether each rival is another human at this computer.
 	List<CheckBox> humanToggles = new();
-	// With another human: play by email instead of at this computer.
+	// With another human: play by email instead of at this computer, and
+	// the administrator's password (Administration).
 	CheckBox playByEmail;
+	HBoxContainer adminPasswordRow;
+	LineEdit adminPassword;
 
 	[Export] GridContainer rulesContainer;
 
@@ -244,10 +247,35 @@ public partial class PlayerSetup : Control {
 		playByEmail.AddThemeColorOverride("font_hover_color", Color.Color8(33, 25, 14));
 		playByEmail.AddThemeFontSizeOverride("font_size", 12);
 		background.AddChild(playByEmail);
+
+		// Civ3's "Password for Administration": whoever knows it can hand a
+		// human who leaves to the AI or another player, or clear a forgotten
+		// password. Optional.
+		adminPasswordRow = new() {
+			Position = new Vector2(630, 486),
+			Size = new Vector2(321, 24),
+			Alignment = BoxContainer.AlignmentMode.Center,
+			Visible = false,
+		};
+		Label label = new() { Text = "Admin password:" };
+		label.AddThemeColorOverride("font_color", Color.Color8(33, 25, 14));
+		label.AddThemeFontSizeOverride("font_size", 12);
+		adminPasswordRow.AddChild(label);
+		adminPassword = new() {
+			Secret = true,
+			MaxLength = 40,
+			PlaceholderText = "none",
+			TooltipText = "Lets whoever knows it replace a player who leaves, or clear a forgotten password (leave blank for none)",
+			CustomMinimumSize = new Vector2(150, 0),
+		};
+		adminPassword.AddThemeFontSizeOverride("font_size", 12);
+		adminPasswordRow.AddChild(adminPassword);
+		background.AddChild(adminPasswordRow);
 	}
 
 	private void UpdatePlayByEmail() {
 		playByEmail.Visible = humanToggles.Any(t => t.ButtonPressed);
+		adminPasswordRow.Visible = playByEmail.Visible;
 	}
 
 	private void SetAllOpponents(string name) {
@@ -332,6 +360,7 @@ public partial class PlayerSetup : Control {
 			opponents = opponents,
 			victoryConditions = victoryConditions,
 			playByEmail = playByEmail.Visible && playByEmail.ButtonPressed,
+			adminPassword = adminPasswordRow.Visible ? adminPassword.Text : "",
 		};
 
 		PersistGameSettings(gameSetup);

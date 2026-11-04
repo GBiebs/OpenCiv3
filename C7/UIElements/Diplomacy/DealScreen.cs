@@ -45,11 +45,25 @@ public partial class DealScreen : TextureRect {
 	TradeOffer opponentOffer = new();
 	TradeOffer humanOffer = new();
 
+	// Hotseat and play by email: the opponent is another human
+	// (HumanDiplomacy), whose goods we don't see; the deal on the table
+	// between us, if any, and whether some of it had to come off.
+	bool withHuman;
+	HumanDeal pending;
+	bool tableChanged;
+
 	public DealScreen(ID humanPlayer, ID opponentPlayer, TradeOffer humanGives, TradeOffer humanWants) {
 		this.humanPlayerId = humanPlayer;
 		this.opponentPlayerId = opponentPlayer;
 		this.humanOffer = humanGives;
 		this.opponentOffer = humanWants;
+	}
+
+	public DealScreen(ID humanPlayer, ID opponentPlayer, TradeOffer humanGives, TradeOffer humanWants, HumanDeal pending, bool tableChanged)
+		: this(humanPlayer, opponentPlayer, humanGives, humanWants) {
+		this.withHuman = true;
+		this.pending = pending;
+		this.tableChanged = tableChanged;
 	}
 
 	public override void _Ready() {
@@ -94,7 +108,7 @@ public partial class DealScreen : TextureRect {
 
 			// Left hand side UI components.
 			opponentTree = new TradingTree(fontTheme, opponentPlayer.gold, techsOpponentCanTrade, opponentOffer,
-				playersAtWar, agreements, opponentGoods);
+				playersAtWar, agreements, opponentGoods, showsGoods: !withHuman);
 			AddChild(opponentTree);
 			opponentTree.Position = new Vector2(45, 220);
 
@@ -151,6 +165,11 @@ public partial class DealScreen : TextureRect {
 				UpdateText();
 			});
 
+			if (withHuman) {
+				AddHumanButtons(opponentPlayer);
+				return;
+			}
+
 			// Add the buttons at the bottom.
 			acceptDeal = new();
 			acceptDeal.Text = "\"Will you accept this deal?\"";
@@ -187,6 +206,81 @@ public partial class DealScreen : TextureRect {
 			opponentResponse.Theme = fontTheme;
 			AddChild(opponentResponse);
 		});
+	}
+
+	// With another human: agree to the table (done if they agreed to it
+	// too, otherwise sent to them), send it without agreeing yet, turn it
+	// down (or take ours back), or leave it as it is for now.
+	private void AddHumanButtons(Player opponentPlayer) {
+		acceptDeal = new();
+		acceptDeal.SetPosition(new Vector2(512 - 205, 650));
+		acceptDeal.Theme = fontTheme;
+		acceptDeal.Pressed += () => AnswerHuman(HumanDealAnswer.Accept);
+		AddChild(acceptDeal);
+
+		Button send = new();
+		send.Text = "\"What do you say to this?\"";
+		send.SetPosition(new Vector2(512 + 20, 650));
+		send.Theme = fontTheme;
+		send.Pressed += () => AnswerHuman(HumanDealAnswer.Send);
+		AddChild(send);
+
+		Button goodbye = new();
+		goodbye.Text = "\"Never mind...\"";
+		goodbye.SetPosition(new Vector2(512 - 205, 670));
+		goodbye.Theme = fontTheme;
+		goodbye.Pressed += () => { GetParent<Diplomacy>().Hide(); };
+		AddChild(goodbye);
+
+		if (pending != null) {
+			Button decline = new();
+			decline.Text = pending.to == humanPlayerId ? "\"We do not accept.\"" : "\"We withdraw our offer.\"";
+			decline.SetPosition(new Vector2(512 + 20, 670));
+			decline.Theme = fontTheme;
+			decline.Pressed += () => AnswerHuman(HumanDealAnswer.Decline);
+			AddChild(decline);
+		}
+
+		opponentNoun = opponentPlayer.civilization.noun;
+		opponentResponse = new();
+		// (Wrapping before the size, or the label doesn't wrap.)
+		opponentResponse.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		opponentResponse.SetPosition(new Vector2(512 - 205, 368));
+		opponentResponse.Size = new Vector2(410, 70);
+		opponentResponse.Theme = fontTheme;
+		AddChild(opponentResponse);
+		UpdateHumanAcceptText();
+	}
+
+	private string opponentNoun;
+
+	// "We accept." once it's the table they agreed to: the trade is done.
+	// What the table is, for us.
+	private void UpdateHumanAcceptText() {
+		bool asTheySentIt = pending != null && !tableChanged
+			&& pending.fromGives.SameAs(DealTerms.Of(pending.from == humanPlayerId ? humanOffer : opponentOffer))
+			&& pending.toGives.SameAs(DealTerms.Of(pending.from == humanPlayerId ? opponentOffer : humanOffer));
+		bool completes = asTheySentIt && pending.to == humanPlayerId && pending.fromAccepted;
+		acceptDeal.Text = completes ? "\"We accept.\"" : "\"Will you accept this deal?\"";
+		opponentResponse.Text = pending == null
+			? $"What the {opponentNoun} have is hidden from us. We put our offer on the table, and they can add to their side: they will see it on their turn."
+			: !asTheySentIt && pending.from != humanPlayerId
+			? $"We have changed the deal: it goes back to the {opponentNoun} for their answer."
+				+ (tableChanged ? " (Some of it was no longer possible, and was taken off the table.)" : "")
+			: pending.from == humanPlayerId
+			? $"Our offer is on its way to the {opponentNoun}. They haven't answered yet."
+			: pending.fromAccepted
+			? $"The {opponentNoun} have accepted this deal."
+			: $"The {opponentNoun} haven't accepted this deal yet: change it, or accept it and send it back.";
+	}
+
+	private void AnswerHuman(HumanDealAnswer answer) {
+		if (answer != HumanDealAnswer.Decline && humanOffer.IsEmpty() && opponentOffer.IsEmpty()) {
+			opponentResponse.Text = "There is nothing on the table.";
+			return;
+		}
+		new MsgHumanDeal(opponentPlayerId, answer, humanOffer, opponentOffer).send();
+		GetParent<Diplomacy>().Hide();
 	}
 
 	private void AttemptDeal() {
@@ -238,6 +332,10 @@ public partial class DealScreen : TextureRect {
 	}
 
 	private void UpdateText() {
+		if (withHuman) {
+			UpdateHumanAcceptText();
+			return;
+		}
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);

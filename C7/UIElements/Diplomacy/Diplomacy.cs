@@ -45,6 +45,26 @@ public partial class Diplomacy : CenterContainer {
 		this.Show();
 	}
 
+	// Hotseat and play by email: the deal on the table with another human
+	// (HumanDiplomacy), what's no longer possible taken off, or a new one.
+	public void ShowHumanDealScreen(ID humanPlayer, ID opponentPlayer) {
+		RemoveOtherScreens();
+
+		GameData gd = EngineStorage.gameData;
+		Player us = gd.GetPlayer(humanPlayer);
+		Player them = gd.GetPlayer(opponentPlayer);
+		HumanDeal pending = HumanDiplomacy.Between(gd, us, them);
+		TradeOffer weGive = new();
+		TradeOffer theyGive = new();
+		bool changed = false;
+		if (pending != null) {
+			(weGive, theyGive) = HumanDiplomacy.Tables(gd, pending, us, them, out changed);
+		}
+		dealScreen = new DealScreen(humanPlayer, opponentPlayer, weGive, theyGive, pending, changed);
+		AddChild(dealScreen);
+		this.Show();
+	}
+
 	public void ShowTalkScreenForPlayer(ID humanPlayer, ID opponentPlayer) {
 		RemoveOtherScreens();
 
@@ -52,7 +72,15 @@ public partial class Diplomacy : CenterContainer {
 
 		Player opponent = gd.players.Find(x => x.id == opponentPlayer);
 		Player human = gd.players.Find(x => x.id == humanPlayer);
-		if (!opponent.WillAcceptCommunicationFrom(human, gd.turn)) {
+		if (opponent.isHuman) {
+			// Another human may have asked our envoys to stay away (though
+			// their own deal can still be answered).
+			int refused = HumanDiplomacy.EnvoysRefusedFor(gd, human, opponent);
+			if (refused > 0 && HumanDiplomacy.Between(gd, human, opponent)?.to != human.id) {
+				new MsgDiplomacyNews(human.id, $"The {opponent.civilization.noun} have asked us not to send envoys for {refused} more turns.", good: false).send();
+				return;
+			}
+		} else if (!opponent.WillAcceptCommunicationFrom(human, gd.turn)) {
 			new MsgRefuseContact(opponentPlayer).send();
 			return;
 		}
@@ -76,7 +104,10 @@ public partial class Diplomacy : CenterContainer {
 		leaderHead.SetPosition(new Vector2(512 - (115 * 1.7f) / 2, 59 + 120 - (115 * 1.7f) / 2));
 		node.AddChild(leaderHead);
 
-		string civNameText = $"{player.civilization.name} ({Attitude.Of(EngineStorage.gameData, player, towards)})";
+		// (A human's attitude is theirs to show.)
+		string civNameText = player.isHuman
+			? player.civilization.name
+			: $"{player.civilization.name} ({Attitude.Of(EngineStorage.gameData, player, towards)})";
 		Label civName = new();
 		civName.SetPosition(new Vector2(0, 330));
 		node.AddChild(civName);

@@ -30,11 +30,17 @@ public partial class TalkScreen : TextureRect {
 		this.Texture = TextureLoader.Load("diplomacy.offer");
 
 		string leaderName = "";
+		// Hotseat and play by email: another human, and the deal on the
+		// table between us (HumanDiplomacy).
+		bool withHuman = false;
+		bool dealOnTheTable = false;
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, humanPlayer, fontTheme);
 			leaderName = opponentPlayer.civilization.leader;
+			withHuman = opponentPlayer.isHuman;
+			dealOnTheTable = withHuman && HumanDiplomacy.Between(gD, humanPlayer, opponentPlayer) != null;
 
 			// What our embassy tells us.
 			if (Embassies.Has(humanPlayer, opponentPlayer)) {
@@ -51,11 +57,15 @@ public partial class TalkScreen : TextureRect {
 
 		Button proposeDeal = new();
 		proposeDeal.FocusMode = Control.FocusModeEnum.None;
-		proposeDeal.Text = "We would like to propose a deal...";
+		proposeDeal.Text = dealOnTheTable ? "About the deal on the table..." : "We would like to propose a deal...";
 		proposeDeal.SetPosition(new Vector2(512 - 205, offset));
 		proposeDeal.Theme = fontTheme;
 		proposeDeal.Pressed += () => {
-			GetParent<Diplomacy>().ShowDealScreenForPlayer(humanPlayerId, opponentPlayerId);
+			if (withHuman) {
+				GetParent<Diplomacy>().ShowHumanDealScreen(humanPlayerId, opponentPlayerId);
+			} else {
+				GetParent<Diplomacy>().ShowDealScreenForPlayer(humanPlayerId, opponentPlayerId);
+			}
 		};
 		AddChild(proposeDeal);
 		offset += gap;
@@ -100,6 +110,10 @@ public partial class TalkScreen : TextureRect {
 	}
 
 	private void TradeWorldMaps() {
+		if (EngineStorage.gameData.GetPlayer(opponentPlayerId).isHuman) {
+			GetParent<Diplomacy>().ShowHumanDealScreen(humanPlayerId, opponentPlayerId);
+			return;
+		}
 		var weGive = new TradeOffer();
 		var theyGive = new TradeOffer();
 		// TODO: make maps tradeable, and (pre)add them to this deal/ call the method that adds them

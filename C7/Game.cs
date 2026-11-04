@@ -316,12 +316,12 @@ public partial class Game : Node {
 
 		// Hotseat and play by email: starting or loading the game, whoever's
 		// turn it is gives their password (or may choose one) before their
-		// empire shows. Playing by email, the AIs then have their say.
+		// empire shows. Then the deals other humans sent them, and by email
+		// what the AIs have to say.
 		if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1 || EngineStorage.gameData.playByEmail) {
 			startedATurn = true;
 			GameData gameData = EngineStorage.gameData;
-			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.",
-				gameData.playByEmail ? HearFromAIs : null);
+			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", HearFromOthers, administrable: true);
 		}
 
 		try {
@@ -463,12 +463,16 @@ public partial class Game : Node {
 	// Hotseat: another human takes the UI, for their turn or to answer what
 	// the engine asks them next. Their map hides behind the hand-over screen
 	// until they say they're there; then the news held for them, then `then`.
-	private void HandOverTo(ID playerId, string message, Action then) {
+	// At the start of a turn the administrator can step in first
+	// (`administrable`, with an admin password).
+	private void HandOverTo(ID playerId, string message, Action then, bool administrable = false) {
 		EngineStorage.ReadGameData(gameData => controller = gameData.GetPlayer(playerId));
 		HideScreensOverTheMap();
 		// Playing by email, whoever loaded the game may not be this player.
 		Action mainMenu = EngineStorage.gameData.playByEmail ? OnRetire : null;
-		handOverScreen = new HandOverScreen(controller, message, mainMenu, () => {
+		Action administration = administrable && EngineStorage.gameData.HasAdminPassword()
+			? () => Administer(playerId, message, then) : null;
+		handOverScreen = new HandOverScreen(controller, message, mainMenu, administration, () => {
 			handOverScreen.QueueFree();
 			handOverScreen = null;
 			CenterOnControllersEmpire();
@@ -484,11 +488,38 @@ public partial class Game : Node {
 		popupOverlay.GetParent().AddChild(handOverScreen);
 	}
 
-	// Play by email: the human is at their computer, so the AIs say what
-	// they have to say to them (their turn starts after: MsgTurnReady).
-	private void HearFromAIs() {
+	// The administrator's password, then their changes (Administration).
+	// Handing the player whose turn it is to the AI plays it for them, and
+	// the next human's turn comes; otherwise it's back to their hand-over.
+	private void Administer(ID playerId, string message, Action then) {
+		handOverScreen.QueueFree();
+		handOverScreen = new HandOverScreen(new AdminPanel(EngineStorage.gameData, playerId,
+			onDone: (password, changes, newPassword) => {
+				handOverScreen.QueueFree();
+				handOverScreen = null;
+				new MsgAdministerGame(password, changes, newPassword).send();
+				// At once, so the hand-over shows what changed.
+				EngineStorage.ProcessNextMessageToEngine();
+				if (changes.Any(c => c.playerId == playerId && !c.human)) {
+					CurrentState = GameState.ComputerTurn;
+				} else {
+					HandOverTo(playerId, message, then, administrable: true);
+				}
+			},
+			onCancel: () => {
+				handOverScreen.QueueFree();
+				handOverScreen = null;
+				HandOverTo(playerId, message, then, administrable: true);
+			}));
+		popupOverlay.GetParent().AddChild(handOverScreen);
+	}
+
+	// Hotseat and play by email: the human is at the computer, so the deals
+	// other humans sent them and (by email) what the AIs have to say reach
+	// them (their turn starts after: MsgTurnReady).
+	private void HearFromOthers() {
 		CurrentState = GameState.ComputerTurn;
-		new MsgHearFromAIs().send();
+		new MsgHearFromOthers().send();
 	}
 
 	private void HideScreensOverTheMap() {
@@ -561,16 +592,31 @@ public partial class Game : Node {
 					if (mST.playerId != controller.id) {
 						SendTurnByEmail(mST.playerId);
 					} else {
-						HearFromAIs();
+						HearFromOthers();
 					}
 				} else if (mST.playerId != null && (mST.playerId != controller.id || firstHotseatStart)) {
-					HandOverTo(mST.playerId, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", OnPlayerStartTurn);
+					HandOverTo(mST.playerId, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", HearFromOthers, administrable: true);
 				} else {
 					OnPlayerStartTurn();
 				}
 				break;
 			case MsgHandOver mHO:
 				HandOverTo(mHO.playerId, "Your advisors have urgent business for you.", null);
+				break;
+			case MsgEnvoyArrives mEA:
+				if (mEA.playerId == controller.id) {
+					EmitEnvoyArrivesSignal(mEA);
+				}
+				break;
+			case MsgShowHumanDeal mSHD:
+				if (mSHD.playerId == controller.id) {
+					diplomacy.ShowHumanDealScreen(controller.id, mSHD.fromId);
+				}
+				break;
+			case MsgDiplomacyNews mDN:
+				if (mDN.playerId == controller.id) {
+					EmitForeignAdvisorSignal(mDN.text, mDN.good ? Mood.Happy : Mood.Sad);
+				}
 				break;
 			case MsgNewsWhileAway mNWA:
 				if (mNWA.playerId == controller.id) {

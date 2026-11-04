@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using C7Engine;
 using C7GameData;
 using Godot;
@@ -13,8 +15,8 @@ using Godot;
 public partial class HandOverScreen : Control {
 	private readonly Control panel;
 
-	public HandOverScreen(Player player, string message, Action onMainMenu, Action onReady)
-		: this(new HandOverPanel(player, message, onMainMenu, onReady)) { }
+	public HandOverScreen(Player player, string message, Action onMainMenu, Action onAdministration, Action onReady)
+		: this(new HandOverPanel(player, message, onMainMenu, onAdministration, onReady)) { }
 
 	public HandOverScreen(Control panel) {
 		this.panel = panel;
@@ -82,13 +84,15 @@ public abstract partial class LeaderPanel : Popup {
 public partial class HandOverPanel : LeaderPanel {
 	private readonly string message;
 	private readonly Action onMainMenu;
+	private readonly Action onAdministration;
 	private readonly Action onReady;
 	private LineEdit password;
 	private Label wrong;
 
-	public HandOverPanel(Player player, string message, Action onMainMenu, Action onReady) : base(player) {
+	public HandOverPanel(Player player, string message, Action onMainMenu, Action onAdministration, Action onReady) : base(player) {
 		this.message = message;
 		this.onMainMenu = onMainMenu;
+		this.onAdministration = onAdministration;
 		this.onReady = onReady;
 	}
 
@@ -117,6 +121,12 @@ public partial class HandOverPanel : LeaderPanel {
 			AddButton("Main Menu", Height - 40, onMainMenu);
 		} else {
 			AddButton("Begin", Height - 52, Begin);
+		}
+		// The administrator's way in (Administration).
+		if (onAdministration != null) {
+			Civ3MenuButton administration = new() { Text = "Administration...", FontSize = 14, Position = new Vector2(Width - 170, onMainMenu != null ? Height - 40 : Height - 52) };
+			administration.Pressed += onAdministration;
+			AddChild(administration);
 		}
 	}
 
@@ -179,5 +189,158 @@ public partial class TurnSentPanel : LeaderPanel {
 			AddButton("Back to the Game", y, onBackToTheGame);
 		}
 		AddButton("Main Menu", Height - 40, onMainMenu);
+	}
+}
+
+// The administrator (Administration), from a hand-over screen: their
+// password first (Civ3's "Password for Administration"), then who plays
+// each civ, whose forgotten password to clear, and a new admin password.
+public partial class AdminPanel : Popup {
+	private const int Width = 520;
+	private const int Height = 470;
+	private static readonly Color Ink = new(0.13f, 0.10f, 0.05f);
+
+	private readonly GameData gameData;
+	// Whose turn it is.
+	private readonly ID playing;
+	private readonly Action<string, List<Administration.Change>, string> onDone;
+	private readonly Action onCancel;
+	// What the current step shows.
+	private readonly List<Control> shown = new();
+
+	public AdminPanel(GameData gameData, ID playing, Action<string, List<Administration.Change>, string> onDone, Action onCancel) {
+		alignment = BoxContainer.AlignmentMode.Center;
+		margins = new Margins();
+		this.gameData = gameData;
+		this.playing = playing;
+		this.onDone = onDone;
+		this.onCancel = onCancel;
+	}
+
+	public override void _Ready() {
+		base._Ready();
+		AddTexture(Width, Height);
+		CustomMinimumSize = new Vector2(Width, Height);
+		AddBackground(Width, Height);
+		AddHeader("Administration", 14);
+		AskPassword();
+	}
+
+	private T Show<T>(T control) where T : Control {
+		AddChild(control);
+		shown.Add(control);
+		return control;
+	}
+
+	private void ClearStep() {
+		foreach (Control control in shown) {
+			control.QueueFree();
+		}
+		shown.Clear();
+	}
+
+	private Label Text(string text, int y, int size, Color? color = null) {
+		Label label = new() {
+			Text = text,
+			HorizontalAlignment = HorizontalAlignment.Center,
+			AutowrapMode = TextServer.AutowrapMode.WordSmart,
+			Position = new Vector2(30, y),
+			Size = new Vector2(Width - 60, 24),
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		label.AddThemeColorOverride("font_color", color ?? Ink);
+		label.AddThemeFontSizeOverride("font_size", size);
+		return Show(label);
+	}
+
+	private void Button(string text, Vector2 position, Action action) {
+		Civ3MenuButton button = Show(new Civ3MenuButton { Text = text, FontSize = 14, Position = position });
+		button.Pressed += action;
+	}
+
+	private LineEdit PasswordField(int y) {
+		return Show(new LineEdit { Secret = true, Position = new Vector2((Width - 220) / 2, y), Size = new Vector2(220, 30), MaxLength = 40 });
+	}
+
+	private void AskPassword() {
+		ClearStep();
+		Text("Password for Administration:", 70, 14);
+		LineEdit field = PasswordField(96);
+		Label wrong = Text("", 132, 13, new Color(0.6f, 0.08f, 0.05f));
+		void Check() {
+			if (!gameData.CheckAdminPassword(field.Text)) {
+				wrong.Text = "That isn't the password.";
+				field.Clear();
+				return;
+			}
+			ShowChanges(field.Text);
+		}
+		field.TextSubmitted += _ => Check();
+		field.CallDeferred(Control.MethodName.GrabFocus);
+		Button("Continue", new Vector2(30, Height - 40), Check);
+		Button("Cancel", new Vector2(Width - 120, Height - 40), onCancel);
+	}
+
+	private void ShowChanges(string password) {
+		ClearStep();
+		Text("A human who has left can be handed to the AI, or a new player can take over a civilization. "
+			+ "A cleared password is chosen again on that player's turn.", 52, 13);
+
+		ScrollContainer scroll = Show(new ScrollContainer {
+			Position = new Vector2(30, 128),
+			Size = new Vector2(Width - 60, Height - 268),
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+		});
+		VBoxContainer rows = new();
+		scroll.AddChild(rows);
+		List<Player> civs = Administration.Civs(gameData);
+		Dictionary<ID, CheckBox> humans = new();
+		HashSet<ID> cleared = new();
+		foreach (Player civ in civs) {
+			HBoxContainer row = new();
+			Label name = new() {
+				Text = $"{civ.civilization.leader} of the {civ.civilization.noun}" + (civ.id == playing ? " (this turn)" : ""),
+				CustomMinimumSize = new Vector2(240, 0),
+				ClipText = true,
+			};
+			name.AddThemeColorOverride("font_color", Ink);
+			name.AddThemeFontSizeOverride("font_size", 13);
+			row.AddChild(name);
+
+			CheckBox human = new() { Text = "Human", ButtonPressed = civ.isHuman, FocusMode = FocusModeEnum.None };
+			foreach (string colorName in new[] { "font_color", "font_pressed_color", "font_hover_color" }) {
+				human.AddThemeColorOverride(colorName, Ink);
+			}
+			human.AddThemeFontSizeOverride("font_size", 13);
+			row.AddChild(human);
+			humans[civ.id] = human;
+
+			Button clear = new() { Text = civ.HasPassword() ? "Clear password" : "No password", Disabled = !civ.HasPassword(), FocusMode = FocusModeEnum.None };
+			clear.AddThemeFontSizeOverride("font_size", 12);
+			clear.Pressed += () => {
+				cleared.Add(civ.id);
+				clear.Text = "Password cleared";
+				clear.Disabled = true;
+			};
+			row.AddChild(clear);
+			rows.AddChild(row);
+		}
+
+		Text("New admin password (leave it blank to keep the old one):", Height - 132, 13);
+		LineEdit newPassword = PasswordField(Height - 108);
+		Label problem = Text("", Height - 72, 13, new Color(0.6f, 0.08f, 0.05f));
+		Button("Done", new Vector2(30, Height - 40), () => {
+			List<Administration.Change> changes = civs.Select(c => new Administration.Change {
+				playerId = c.id,
+				human = humans[c.id].ButtonPressed,
+				clearPassword = cleared.Contains(c.id),
+			}).ToList();
+			if (!changes.Any(c => c.human)) {
+				problem.Text = "At least one civilization must be played by a human.";
+				return;
+			}
+			onDone(password, changes, newPassword.Text);
+		});
+		Button("Cancel", new Vector2(Width - 120, Height - 40), onCancel);
 	}
 }
