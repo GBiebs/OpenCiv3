@@ -215,6 +215,106 @@ public class OnlineLobbyTest : IDisposable {
 		Assert.Equal(Kind.Open, loaded.slots[1].kind);
 	}
 
+	// A saved game: Babylon and Rome human (Rome's with a password), Maya
+	// a computer, the Celts defeated, and the barbarians.
+	private static readonly ID babylon = new("Player", 1), rome = new("Player", 2), maya = new("Player", 3), celts = new("Player", 4), barbarians = new("Player", 5);
+
+	private static C7GameData.Save.SaveGame Saved() {
+		C7GameData.Save.SaveGame save = new() { PlayByEmail = true };
+		save.Civilizations = [.. Civs.Select(c => new Civilization(c)), new Civilization("Barbarians") { isBarbarian = true }];
+		save.Players = [
+			new C7GameData.Save.SavePlayer { id = babylon, civilization = "Babylon", human = true },
+			new C7GameData.Save.SavePlayer { id = rome, civilization = "Rome", human = true, passwordHash = Passwords.Hash("wolf") },
+			new C7GameData.Save.SavePlayer { id = maya, civilization = "Maya" },
+			new C7GameData.Save.SavePlayer { id = celts, civilization = "Celts", defeated = true },
+			new C7GameData.Save.SavePlayer { id = barbarians, civilization = "Barbarians" },
+		];
+		return save;
+	}
+
+	// Civ3's "Load Game": the saved game's civs as they were, its humans'
+	// open for players, the host's first; the defeated and the barbarians
+	// left out.
+	[Fact]
+	public void ASavedGamesCivsAreItsSlots() {
+		C7GameData.Save.SaveGame save = Saved();
+		Assert.Equal([babylon, rome], HumanCivs(save).Select(p => p.id));
+		List<Slot> slots = LoadedSlots(save, hostCiv: rome);
+		Assert.Equal([Kind.Human, Kind.Open, Kind.Computer, Kind.Closed], slots.Take(4).Select(s => s.kind));
+		Assert.Equal(["Rome", "Babylon", "Maya"], slots.Take(3).Select(s => s.civ));
+		Assert.Equal(Host, slots[0].player);
+		Assert.Equal([true, false, false], slots.Take(3).Select(s => s.password));
+		Assert.Equal([rome, babylon, maya], slots.Take(3).Select(s => s.loadedPlayer));
+
+		Assert.True(SavedPasswords(save)(rome, "wolf"));
+		Assert.False(SavedPasswords(save)(rome, "lion"));
+		Assert.True(SavedPasswords(save)(babylon, ""));
+
+		// (No more than a game online holds.)
+		for (int i = 0; i < LobbyState.MaxSlots; i++) {
+			save.Players.Add(new C7GameData.Save.SavePlayer { id = new ID("Player", 10 + i), civilization = "Maya" });
+		}
+		Assert.Null(LoadedSlots(save, hostCiv: rome));
+	}
+
+	// The civs stay as they are: none picked, a freed slot keeps its civ;
+	// a human civ is a player's or the computer's, a computer's stays so.
+	[Fact]
+	public async Task ASavedGamesCivsStayAsTheyAre() {
+		C7GameData.Save.SaveGame save = Saved();
+		OnlineLobby loaded = new(host, LoadedSlots(save, hostCiv: babylon), ["Babylon", "Rome", "Maya"], SavedPasswords(save), loaded: true);
+		Assert.Equal("The civilizations of a saved game stay as they are.", loaded.SetCiv(2, "Celts"));
+		loaded.SetKind(2, Kind.Open);
+		Assert.Equal(Kind.Computer, loaded.slots[2].kind);
+		loaded.SetKind(1, Kind.Closed);
+		Assert.Equal(Kind.Open, loaded.slots[1].kind);
+
+		using OnlineClient sargon = await Join(host, "Sargon");
+		async Task<LobbyState> Next(Func<LobbyState, bool> where) {
+			for (int i = 0; i < 300; i++) {
+				while (host.TryNextEvent(out HostEvent hostEvent)) {
+					loaded.Handle(hostEvent);
+				}
+				while (sargon.TryNextMessage(out OnlineMessage message)) {
+					if (message is LobbyState state && where(state)) {
+						return state;
+					}
+				}
+				await Task.Delay(10);
+			}
+			throw new TimeoutException();
+		}
+		sargon.Send(new TakeSeat { seat = 1, password = "wolf" });
+		LobbyState taken = await Next(s => s.slots[1].player == sargon.playerId);
+		Assert.True(taken.loaded);
+		sargon.Send(new LeaveSeat());
+		LobbyState left = await Next(s => s.slots[1].kind == "open");
+		Assert.Equal("Rome", left.slots[1].civ);
+
+		Assert.Equal("Some civilizations still have no player: wait for players, or give them to the computer.", loaded.LaunchProblem());
+		loaded.SetKind(1, Kind.Computer);
+		Assert.Null(loaded.LaunchProblem());
+	}
+
+	// Launched: the saved game's humans are the slots' players, a human civ
+	// nobody took is the computer's, and it's no longer played by email.
+	[Fact]
+	public void ASavedGameIsPlayedAsTheSlotsSay() {
+		C7GameData.Save.SaveGame save = Saved();
+		OnlineLobby loaded = new(host, LoadedSlots(save, hostCiv: babylon), ["Babylon", "Rome", "Maya"], SavedPasswords(save), loaded: true);
+		loaded.slots[1].kind = Kind.Human;
+		loaded.slots[1].player = 7;
+		Assert.Equal(new Dictionary<int, ID> { [7] = rome }, loaded.PlayersOf());
+		loaded.ApplyTo(save);
+		Assert.Equal([true, true, false], save.Players.Take(3).Select(p => p.human));
+		Assert.False(save.PlayByEmail);
+
+		loaded.SetKind(1, Kind.Computer);
+		loaded.ApplyTo(save);
+		Assert.Equal([true, false, false], save.Players.Take(3).Select(p => p.human));
+		Assert.Empty(loaded.PlayersOf());
+	}
+
 	// A player's lobby messages out of bounds drop them, as any other.
 	[Theory]
 	[InlineData("{\"kind\":\"chat\",\"text\":\"\"}")]

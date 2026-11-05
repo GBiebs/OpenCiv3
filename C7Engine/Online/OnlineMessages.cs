@@ -103,6 +103,8 @@ namespace C7Engine.Online {
 		public List<LobbySlot> slots { get; set; } = new();
 		public List<LobbyPlayer> players { get; set; } = new();
 		public List<string> civs { get; set; } = new();
+		// A saved game resumed: the civs stay as they are.
+		public bool loaded { get; set; }
 
 		public override bool IsValid() => settings != null && slots != null && players != null && civs != null
 			&& settings.Count <= 32 && slots.Count <= MaxSlots && players.Count <= 64 && civs.Count <= 200
@@ -191,6 +193,8 @@ namespace C7Engine.Online {
 		public string save { get; set; }
 		public string you { get; set; }
 		public long seq { get; set; }
+		// A game going on (loaded, or begun again): no new-game welcome.
+		public bool resumed { get; set; }
 
 		public override bool IsValid() => !string.IsNullOrEmpty(save) && save.Length <= 64 * 1024 * 1024 && IsText(you, 60) && seq >= 0;
 	}

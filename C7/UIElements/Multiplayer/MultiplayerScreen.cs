@@ -57,6 +57,10 @@ public partial class MultiplayerScreen : Control {
 	private Difficulty difficulty;
 	private VictoryConditions victoryConditions;
 	private OnlineLobby lobby;
+	// Civ3's "Load Game" (online): the saved game to go on with, and its
+	// file's name; null for a new game.
+	private SaveGame loadedSave;
+	private string loadedName;
 	private OnlineHost host;
 	private string gamePassword;
 	private int messagesShown;
@@ -73,6 +77,7 @@ public partial class MultiplayerScreen : Control {
 	private ScrollContainer messageScroll;
 	private Button launch;
 	private Label loading;
+	private Label hint;
 
 	private sealed record Setting(string name, List<string> values, int selected, Action<int> set);
 
@@ -452,7 +457,7 @@ public partial class MultiplayerScreen : Control {
 			}
 			chat.TextSubmitted += _ => Send();
 			Add(BarButton("Send", new Vector2(862, 618), new Vector2(90, 30), Send));
-			Add(TextAt(mode == Mode.Host ? "When every slot is filled and every player is ready, launch the game."
+			hint = Add(TextAt(mode == Mode.Host ? "When every slot is filled and every player is ready, launch the game."
 				: "Take an open slot, pick your civilization, then Make Ready. The host launches the game.",
 				new Vector2(372, 656), new Vector2(580, 40), 12, Light));
 		} else {
@@ -543,11 +548,32 @@ public partial class MultiplayerScreen : Control {
 
 	private string ModeName() => mode switch { Mode.Hotseat => "Hotseat", Mode.PlayByEmail => "Play By Email", _ => "Turn Based" };
 
-	// Civ3's eleven, in its order.
+	// Civ3's eleven, in its order (a saved game's own instead).
 	private List<Setting> Settings() {
 		List<WorldCharacteristics.OceanCoverage> oceans = [WorldCharacteristics.OceanCoverage.Percent_60, WorldCharacteristics.OceanCoverage.Percent_70, WorldCharacteristics.OceanCoverage.Percent_80];
+		// Online, the host may go on with a saved game.
+		Setting gameType = mode == Mode.Host
+			? new("Game Type", ["Standard", "Load Game"], loadedSave != null ? 1 : 0, i => {
+				if (i == 1) {
+					ChooseSavedGame();
+				} else if (loadedSave != null) {
+					UseNewGame();
+				}
+			})
+			: new("Game Type", ["Standard"], 0, null);
+		if (loadedSave != null) {
+			return [
+				gameType,
+				new("Game Mode", [ModeName()], 0, null),
+				new("Turn Timer", ["None"], 0, null),
+				new("Saved Game", [loadedName], 0, null),
+				// (Its date needs the game's scripts, which aren't loaded here.)
+				new("Turn", [loadedSave.TurnNumber.ToString()], 0, null),
+				new("Difficulty", [loadedSave.GameDifficulty?.Name ?? "?"], 0, null),
+			];
+		}
 		return [
-			new("Game Type", ["Standard"], 0, null),
+			gameType,
 			new("Game Mode", [ModeName()], 0, null),
 			new("Turn Timer", ["None"], 0, null),
 			new("World Size", save.WorldSizes.Select(w => w.name).ToList(), save.WorldSizes.IndexOf(worldSize), i => {
@@ -569,9 +595,14 @@ public partial class MultiplayerScreen : Control {
 	// What players are told: the settings, then the rules.
 	private List<LobbySetting> LobbySettings() {
 		return Settings().Select(s => new LobbySetting { name = s.name, value = s.values[s.selected] })
-			.Concat(VictoryConditions.Options.Select(o => new LobbySetting { name = o.label, value = o.get(victoryConditions) ? "Yes" : "No" }))
+			.Concat(VictoryConditions.Options.Select(o => new LobbySetting { name = o.label, value = o.get(Rules) ? "Yes" : "No" }))
 			.ToList();
 	}
+
+	// The victory conditions: a saved game's as they were.
+	private VictoryConditions Rules => loadedSave?.VictoryConditions ?? victoryConditions;
+
+	private static bool IsRule(LobbySetting setting) => VictoryConditions.Options.Any(o => o.label == setting.name);
 
 	private static bool SameSettings(LobbyState a, LobbyState b) {
 		return a.settings.Count == b.settings.Count && a.settings.Zip(b.settings).All(p => p.First.name == p.Second.name && p.First.value == p.Second.value);
@@ -582,17 +613,21 @@ public partial class MultiplayerScreen : Control {
 			shown.QueueFree();
 		}
 		settingsShown.Clear();
+		List<Setting> settings = mode == Mode.Join ? null : Settings();
 		for (int i = 0; i < 11; i++) {
 			Vector2 position = new(SettingsX, SettingY(i));
 			Vector2 size = new(SettingsWidth, 24);
 			if (mode == Mode.Join) {
 				LobbySetting setting = state?.settings.ElementAtOrDefault(i);
-				if (setting != null) {
+				if (setting != null && !IsRule(setting)) {
 					settingsShown.Add(Add(FieldText($"{setting.name}: {setting.value}", position, size)));
 				}
 				continue;
 			}
-			Setting choice = Settings()[i];
+			if (i >= settings.Count) {
+				break;
+			}
+			Setting choice = settings[i];
 			settingsShown.Add(Add(FieldText(choice.name + ":", position, size)));
 			if (choice.set == null) {
 				settingsShown.Add(Add(TextAt(choice.values[choice.selected], position + new Vector2(130, 0), size - new Vector2(160, 0), 13, Ink)));
@@ -623,6 +658,8 @@ public partial class MultiplayerScreen : Control {
 			if (mode == Mode.Join) {
 				string value = state?.settings.FirstOrDefault(s => s.name == option.label)?.value ?? "?";
 				panel.Text($"{option.label}: {value}", y, 14, left: true);
+			} else if (loadedSave != null) {
+				panel.Text($"{option.label}: {(option.get(Rules) ? "Yes" : "No")}", y, 14, left: true);
 			} else {
 				CheckBox box = panel.Show(new CheckBox { Text = option.label, ButtonPressed = option.get(victoryConditions), Position = new Vector2(40, y - 2), FocusMode = FocusModeEnum.None });
 				foreach (string colorName in new[] { "font_color", "font_pressed_color", "font_hover_color" }) {
@@ -660,7 +697,8 @@ public partial class MultiplayerScreen : Control {
 			int y = SlotY(number);
 			Vector2 playerAt = new(PlayerX, y);
 			Vector2 playerSize = new(PlayerWidth, 22);
-			bool playable = mode == Mode.Join || number < MaxCivs();
+			bool playable = mode == Mode.Join || (lobby.loaded ? lobby.slots[number].loadedPlayer != null : number < MaxCivs());
+			bool fixedCivs = mode == Mode.Join ? shownState.loaded : lobby.loaded;
 
 			// Who plays it.
 			if (number == 0 && mode != Mode.Join) {
@@ -688,10 +726,19 @@ public partial class MultiplayerScreen : Control {
 						_ => "Closed",
 					}, playerAt, playerSize)));
 				}
+			} else if (lobby.loaded && !lobby.slots[number].loadedHuman) {
+				slotsShown.Add(Add(FieldText(slot.kind == "computer" ? "Computer" : "", playerAt, playerSize)));
 			} else {
 				List<string> items;
 				List<Kind> kinds;
-				if (mode == Mode.Host) {
+				if (lobby.loaded) {
+					kinds = [Kind.Open, Kind.Computer];
+					items = ["Open", "Computer"];
+					if (slot.kind == "human") {
+						kinds.Insert(0, Kind.Human);
+						items.Insert(0, NameOf(slot.player));
+					}
+				} else if (mode == Mode.Host) {
 					kinds = [Kind.Open, Kind.Computer, Kind.Closed];
 					items = ["Open", "Computer", "Closed"];
 					if (slot.kind == "human") {
@@ -719,7 +766,11 @@ public partial class MultiplayerScreen : Control {
 			Vector2 civSize = new(CivWidth, 22);
 			bool mine2 = mode == Mode.Join ? slot.kind == "human" && slot.player == me
 				: slot.kind != "closed" && (mode != Mode.Host || number == 0 || slot.kind == "computer");
-			if (slot.kind == "closed" || slot.kind == "open" && mode != Mode.Join) {
+			if (fixedCivs) {
+				if (slot.kind != "closed") {
+					slotsShown.Add(Add(FieldText(slot.civ, civAt, civSize)));
+				}
+			} else if (slot.kind == "closed" || slot.kind == "open" && mode != Mode.Join) {
 				if (slot.kind == "open") {
 					slotsShown.Add(Add(FieldText(slot.civ, civAt, civSize)));
 				}
@@ -753,6 +804,8 @@ public partial class MultiplayerScreen : Control {
 			}
 		}
 		if (mode == Mode.Join) {
+			hint.Text = shownState.loaded ? "Take the slot of the civilization you play in this saved game, then Make Ready. The host launches the game."
+				: "Take an open slot, pick your civilization, then Make Ready. The host launches the game.";
 			LobbySlot mine = shownState.slots.FirstOrDefault(s => s.kind == "human" && s.player == me);
 			launch.Text = mine?.ready == true ? "MAKE NOT READY" : "MAKE READY";
 			launch.Disabled = mine == null;
@@ -835,7 +888,11 @@ public partial class MultiplayerScreen : Control {
 			return;
 		}
 		if (mode == Mode.Host) {
-			BeginOnline();
+			if (loadedSave != null) {
+				BeginSavedOnline();
+			} else {
+				BeginOnline();
+			}
 			return;
 		}
 		AskAdminPassword();
@@ -894,7 +951,7 @@ public partial class MultiplayerScreen : Control {
 		}
 		string packed = OnlineGame.Pack(save);
 		HostGame game = new(host, civs[0].id, players);
-		game.SendGame(packed);
+		game.SendGame(packed, resumed: false);
 		GlobalSingleton global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
 		global.Online = game;
 		global.OnlineSeq = 0;
@@ -903,6 +960,161 @@ public partial class MultiplayerScreen : Control {
 		host = null;
 		lobby = null;
 		OpenMap();
+	}
+
+	// Online, a saved game going on: as the slots say (a human civ nobody
+	// took is the computer's), sent to every player and opened here from
+	// the same bytes.
+	private void BeginSavedOnline() {
+		host.SendToAll(new ChatLine { text = "The host is starting the game..." });
+		lobby.ApplyTo(loadedSave);
+		string packed = OnlineGame.Pack(loadedSave);
+		HostGame game = new(host, lobby.slots[0].loadedPlayer, lobby.PlayersOf());
+		game.SendGame(packed, resumed: true);
+		GlobalSingleton global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
+		global.ResetLoadGameFields();
+		global.Online = game;
+		global.OnlineSeq = 0;
+		global.SaveGame = OnlineGame.Unpack(packed);
+		global.OnlineResumed = true;
+		host = null;
+		lobby = null;
+		loading.Visible = true;
+		launch.Disabled = true;
+		OpenMap();
+	}
+
+	// ---- Civ3's "Load Game" ----
+
+	private void ChooseSavedGame() {
+		FileDialog dialog = new() {
+			Title = "Load Game",
+			FileMode = FileDialog.FileModeEnum.OpenFile,
+			Access = FileDialog.AccessEnum.Filesystem,
+			Filters = ["*.json, *.SAV ; Saved games"],
+		};
+		try {
+			dialog.CurrentDir = C7Settings.GetSaveFolder();
+		} catch (Exception) {
+		}
+		AddChild(dialog);
+		// (Back to what the settings were.)
+		dialog.Canceled += () => {
+			dialog.QueueFree();
+			ShowSettings();
+		};
+		dialog.FileSelected += path => {
+			dialog.QueueFree();
+			ReadSavedGame(path);
+		};
+		dialog.PopupCentered(new Vector2I(900, 600));
+	}
+
+	// (Reading a save can take a while: not on the UI thread.)
+	private void ReadSavedGame(string path) {
+		loading.Visible = true;
+		new Thread(() => {
+			SaveGame read = null;
+			try {
+				read = SaveManager.LoadSave(path, GamePaths.DefaultBicPath, MediaPath("Text/PediaIcons.txt"), MediaPath("Text/Civilopedia.txt"));
+			} catch (Exception e) {
+				log.Warning(e, "Couldn't read {Path}", path);
+			}
+			Callable.From(() => SavedGameRead(path, read)).CallDeferred();
+		}).Start();
+	}
+
+	private static Func<string, string> MediaPath(string file) => scenarioSearchPath => {
+		Util.setModPath(scenarioSearchPath);
+		return Util.Civ3MediaPath(file);
+	};
+
+	private void SavedGameRead(string path, SaveGame read) {
+		if (!IsInsideTree() || host == null) {
+			return;
+		}
+		loading.Visible = false;
+		List<SavePlayer> humans = read == null ? [] : HumanCivs(read);
+		string problem = read == null ? "That saved game couldn't be read."
+			: humans.Count == 0 ? "That saved game has no human civilization to play."
+			: LoadedSlots(read, humans[0].id) == null ? $"A game online has at most {LobbyState.MaxSlots} civilizations."
+			: null;
+		if (problem != null) {
+			AddMessage(problem, warning: true);
+			ShowSettings();
+			return;
+		}
+		string name = System.IO.Path.GetFileNameWithoutExtension(path);
+		if (humans.Count == 1) {
+			TakeSavedCiv(read, name, humans[0]);
+			return;
+		}
+		// Which of its humans the host plays.
+		OnlinePanel panel = OpenPopup(420, 120 + 36 * humans.Count);
+		panel.Header("Load Game");
+		panel.Text("Which civilization do you play?", 56, 15);
+		for (int i = 0; i < humans.Count; i++) {
+			SavePlayer civ = humans[i];
+			panel.Button(civ.civilization, new Vector2(110, 92 + 36 * i), () => TakeSavedCiv(read, name, civ));
+		}
+		panel.Button("Cancel", new Vector2(110, 92 + 36 * humans.Count), () => {
+			ClosePopup();
+			ShowSettings();
+		});
+	}
+
+	// The host's civ in the saved game: its password first, if it has one.
+	private void TakeSavedCiv(SaveGame read, string name, SavePlayer civ) {
+		if (string.IsNullOrEmpty(civ.passwordHash)) {
+			UseSavedGame(read, name, civ.id);
+			return;
+		}
+		OnlinePanel panel = OpenPopup(420, 220);
+		panel.Header("Password");
+		panel.Text($"Enter Password for the {civ.civilization}:", 56, 14);
+		LineEdit field = panel.Show(OnlinePanel.Field(new Vector2(60, 88), 300));
+		field.Secret = true;
+		Label wrong = panel.Text("", 124, 13);
+		wrong.AddThemeColorOverride("font_color", OnlinePanel.Warning);
+		void Done() {
+			if (!SavedPasswords(read)(civ.id, field.Text)) {
+				wrong.Text = "That isn't the civ's password.";
+				return;
+			}
+			UseSavedGame(read, name, civ.id);
+		}
+		field.TextSubmitted += _ => Done();
+		field.CallDeferred(Control.MethodName.GrabFocus);
+		panel.Button("OK", new Vector2(30, 180), Done);
+		panel.Button("Cancel", new Vector2(300, 180), () => {
+			ClosePopup();
+			ShowSettings();
+		});
+	}
+
+	private void UseSavedGame(SaveGame read, string name, ID hostCiv) {
+		ClosePopup();
+		loadedSave = read;
+		loadedName = name;
+		List<string> civs = read.Civilizations.Where(c => !c.isBarbarian).Select(c => c.name).ToList();
+		ReplaceLobby(new OnlineLobby(host, LoadedSlots(read, hostCiv), civs, SavedPasswords(read), loaded: true));
+		AddMessage($"Going on with {name}: each player takes their civilization (with its password, if it has one); "
+			+ "a civilization nobody takes can be given to the computer.");
+	}
+
+	private void UseNewGame() {
+		loadedSave = null;
+		loadedName = null;
+		ReplaceLobby(new OnlineLobby(host, NewSlots(MaxCivs(), humans: 2, online: true), CivNames()));
+	}
+
+	// (The players who joined stay, without a slot.)
+	private void ReplaceLobby(OnlineLobby replacement) {
+		lobby = replacement;
+		messagesShown = 0;
+		lobby.SetSettings(LobbySettings());
+		ShowSettings();
+		ShowSlots();
 	}
 
 	// A joining player: the host's game, and this one's player in it.
@@ -922,6 +1134,8 @@ public partial class MultiplayerScreen : Control {
 		global.Online = new ClientGame(client, you);
 		global.OnlineSeq = start.seq;
 		global.SaveGame = received;
+		// (A saved game going on: no new-game welcome.)
+		global.OnlineResumed = start.resumed;
 		client = null;
 		OpenMap();
 	}

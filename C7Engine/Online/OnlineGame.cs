@@ -110,9 +110,9 @@ namespace C7Engine.Online {
 
 		// The game to send each player, from the save this game was begun
 		// from (the host begins from the same bytes).
-		public void SendGame(string packedSave) {
+		public void SendGame(string packedSave, bool resumed = true) {
 			foreach ((int connection, ID player) in players) {
-				host.Send(connection, new GameStart { save = packedSave, you = player.ToString(), seq = seq });
+				host.Send(connection, new GameStart { save = packedSave, you = player.ToString(), seq = seq, resumed = resumed });
 			}
 		}
 

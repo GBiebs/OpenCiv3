@@ -1301,6 +1301,12 @@ public partial class Game : Node {
 	}
 
 	public void OnSaveGame() {
+		// Online, a save goes on from whose turn it is: not while orders or
+		// the computers' turns are still being played.
+		if (online != null && (!EngineStorage.OrdersDone() || EngineStorage.OrdersWaiting > 0)) {
+			chat?.Add("Wait until the game is done playing the last orders (and the computers' turns) to save.");
+			return;
+		}
 		string saveDir = C7Engine.C7Settings.GetSaveFolder();
 		try {
 			if (!System.IO.Directory.Exists(saveDir)) {
@@ -1323,6 +1329,12 @@ public partial class Game : Node {
 	}
 
 	public void OnLoadGame() {
+		// (Every game must play the same game.)
+		if (online != null) {
+			chat?.Add("A game can't be loaded during an online game. To go on with a saved game, the host chooses Load Game "
+				+ "as the Game Type on the Multiplayer Setup screen.");
+			return;
+		}
 		try {
 			FileDialog.SetupForLoadWithLatestSave();
 		} catch {

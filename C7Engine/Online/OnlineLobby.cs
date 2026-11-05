@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using C7GameData;
+using C7GameData.Save;
 
 namespace C7Engine.Online {
 	// Before a multiplayer game, Civ3's multiplayer setup: up to 8 slots,
@@ -27,9 +28,11 @@ namespace C7Engine.Online {
 			public int? player;
 			public string civ = Random;
 			public bool ready;
-			// A loaded game's civ with a password, and its player.
+			// A loaded game's civ with a password, and its player (a human
+			// one's slot is for a player, or the computer).
 			public bool password;
 			public ID loadedPlayer;
+			public bool loadedHuman;
 		}
 
 		private readonly OnlineHost host;
@@ -39,13 +42,66 @@ namespace C7Engine.Online {
 		public List<LobbySetting> settings = new();
 		// The messages box, for the host's own screen (players get each line).
 		public readonly List<string> messages = new();
+		// A saved game resumed (Civ3's "Load Game"): its civs stay as they are.
+		public readonly bool loaded;
 
-		public OnlineLobby(OnlineHost host, List<Slot> slots, List<string> civs, Func<ID, string, bool> checkPassword = null) {
+		public OnlineLobby(OnlineHost host, List<Slot> slots, List<string> civs, Func<ID, string, bool> checkPassword = null, bool loaded = false) {
 			this.host = host;
 			this.slots = slots;
 			this.civs = civs;
 			this.checkPassword = checkPassword ?? ((_, _) => true);
+			this.loaded = loaded;
 		}
+
+		// A saved game's civs: its humans' for players (`hostCiv` the host's,
+		// in the first slot), its computers' as they were, the rest closed.
+		// Null if it has more than a game online holds.
+		public static List<Slot> LoadedSlots(SaveGame save, ID hostCiv) {
+			List<SavePlayer> civs = save.Players.Where(p => !IsBarbarian(save, p) && p.isIncludedInGame && !p.defeated)
+				.OrderBy(p => p.id != hostCiv).ToList();
+			if (civs.Count > LobbyState.MaxSlots) {
+				return null;
+			}
+			List<Slot> made = new();
+			for (int i = 0; i < LobbyState.MaxSlots; i++) {
+				Slot slot = new() { number = i, kind = Kind.Closed };
+				if (i < civs.Count) {
+					SavePlayer civ = civs[i];
+					slot.civ = civ.civilization;
+					slot.loadedPlayer = civ.id;
+					slot.loadedHuman = civ.human;
+					slot.password = civ.human && !string.IsNullOrEmpty(civ.passwordHash);
+					slot.kind = !civ.human ? Kind.Computer : civ.id == hostCiv ? Kind.Human : Kind.Open;
+					if (civ.id == hostCiv) {
+						slot.player = Host;
+					}
+				}
+				made.Add(slot);
+			}
+			return made;
+		}
+
+		private static bool IsBarbarian(SaveGame save, SavePlayer player) => save.Civilizations.FirstOrDefault(c => c.name == player.civilization)?.isBarbarian ?? false;
+
+		// The saved game's human civs (whose players may take them).
+		public static List<SavePlayer> HumanCivs(SaveGame save) => save.Players.Where(p => p.human && !p.defeated && p.isIncludedInGame && !IsBarbarian(save, p)).ToList();
+
+		// Whether `password` is the saved civ's.
+		public static Func<ID, string, bool> SavedPasswords(SaveGame save) => (id, password) =>
+			save.Players.FirstOrDefault(p => p.id == id) is SavePlayer player && Passwords.Check(player.passwordHash ?? "", password, legacySalt: id.ToString());
+
+		// The saved game as the slots say: a human civ nobody plays goes to
+		// the computer; and it's played online now, not by email.
+		public void ApplyTo(SaveGame save) {
+			foreach (Slot slot in slots.Where(s => s.loadedPlayer != null)) {
+				save.Players.First(p => p.id == slot.loadedPlayer).human = slot.kind == Kind.Human;
+			}
+			save.PlayByEmail = false;
+		}
+
+		// Each joined player's civ in the saved game.
+		public Dictionary<int, ID> PlayersOf() => slots.Where(s => s.kind == Kind.Human && s.player is int p && p != Host && s.loadedPlayer != null)
+			.ToDictionary(s => s.player.Value, s => s.loadedPlayer);
 
 		// The usual start: the host's slot, then human slots (open online),
 		// then computers, the rest closed.
@@ -75,6 +131,11 @@ namespace C7Engine.Online {
 		public void SetKind(int number, Kind kind) {
 			Slot slot = slots.First(s => s.number == number);
 			if (slot.player == Host || slot.kind == kind) {
+				return;
+			}
+			// A saved game's human civ is a player's or the computer's; its
+			// computers' stay so.
+			if (loaded && (!slot.loadedHuman || kind is not (Kind.Open or Kind.Computer))) {
 				return;
 			}
 			slot.kind = kind;
@@ -182,6 +243,9 @@ namespace C7Engine.Online {
 		}
 
 		private string CivProblem(Slot slot, string civ) {
+			if (loaded && civ != slot.civ) {
+				return "The civilizations of a saved game stay as they are.";
+			}
 			if (civ != Random && !civs.Contains(civ)) {
 				return "There's no such civilization.";
 			}
@@ -225,7 +289,9 @@ namespace C7Engine.Online {
 				slot.kind = Kind.Open;
 				slot.player = null;
 				slot.ready = false;
-				slot.civ = Random;
+				if (!loaded) {
+					slot.civ = Random;
+				}
 			}
 		}
 
@@ -233,7 +299,8 @@ namespace C7Engine.Online {
 		public string LaunchProblem() {
 			List<Slot> playing = slots.Where(s => s.kind != Kind.Closed).ToList();
 			if (playing.Any(s => s.kind == Kind.Open)) {
-				return "Some slots are still open: wait for players, or make them computers or close them.";
+				return loaded ? "Some civilizations still have no player: wait for players, or give them to the computer."
+					: "Some slots are still open: wait for players, or make them computers or close them.";
 			}
 			if (playing.Count < 2) {
 				return "A game needs at least two civilizations.";
@@ -262,6 +329,7 @@ namespace C7Engine.Online {
 				players = new[] { new LobbyPlayer { player = Host, name = NameOf(Host) } }
 					.Concat((host?.Players ?? []).Select(p => new LobbyPlayer { player = p.id, name = p.name })).ToList(),
 				civs = civs,
+				loaded = loaded,
 			};
 		}
 

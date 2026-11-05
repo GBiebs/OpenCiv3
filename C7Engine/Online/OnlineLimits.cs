@@ -3,7 +3,7 @@ using System;
 namespace C7Engine.Online {
 	public static class OnlineProtocol {
 		// Both sides must speak the same version of these messages.
-		public const int Version = 2;
+		public const int Version = 3;
 		public const int DefaultPort = 47300;
 	}
 
