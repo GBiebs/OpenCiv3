@@ -142,7 +142,7 @@ namespace C7Engine.Online {
 			talks = new LiveTalks(SendTo, WhyNotTalk, (a, aTerms, b, bTerms) => {
 				GameData gameData = EngineStorage.gameData;
 				Sequence(localPlayer, new MsgHumansTrade(a, b, LiveTalks.Read(aTerms, gameData), LiveTalks.Read(bTerms, gameData)));
-			});
+			}, (refuser, refused) => Sequence(localPlayer, new MsgRefuseEnvoys(refuser, refused)));
 		}
 
 		// To a civ's player: this computer's, or one who joined.
@@ -166,6 +166,10 @@ namespace C7Engine.Online {
 			}
 			if (them != gameData.GetPlayer(localPlayer) && !players.ContainsValue(to)) {
 				return $"The {them.civilization.noun} aren't here right now.";
+			}
+			int refused = HumanDiplomacy.EnvoysRefusedFor(gameData, us, them);
+			if (refused > 0) {
+				return $"The {them.civilization.noun} have asked us not to send envoys for {refused} more turns.";
 			}
 			if (!HumanDiplomacy.CanContact(gameData, us, them)) {
 				return $"We can't contact the {them.civilization.noun} now.";

@@ -710,7 +710,11 @@ public partial class Game : Node {
 				break;
 			case MsgDiplomacyNews mDN:
 				if (mDN.playerId == controller.id) {
-					EmitForeignAdvisorSignal(mDN.text, mDN.good ? Mood.Happy : Mood.Sad);
+					if (mDN.inChat && chat != null) {
+						chat.Add(mDN.text);
+					} else {
+						EmitForeignAdvisorSignal(mDN.text, mDN.good ? Mood.Happy : Mood.Sad);
+					}
 				}
 				break;
 			case MsgNewsWhileAway mNWA:
@@ -1316,7 +1320,7 @@ public partial class Game : Node {
 				string noun = them.civilization.noun;
 				string news = end.reason switch {
 					TalkEnd.Refused => $"The {noun} refused to hear our envoy.",
-					TalkEnd.Later => $"The {noun} ask us to contact them later.",
+					TalkEnd.RefusedForAWhile => $"The {noun} refused our envoy, and asked us not to come back for {gameData.rules.EnvoyRefusalTurns} turns.",
 					TalkEnd.Busy => $"The {noun} are in another negotiation: try again later.",
 					TalkEnd.Cancelled => $"The {noun} have left the table.",
 					TalkEnd.Left => $"The {noun}' player has left the game.",
@@ -1331,14 +1335,15 @@ public partial class Game : Node {
 		}
 	}
 
-	// Civ3's envoy from another human: hear them, refuse, or later (its X
-	// refuses).
+	// Civ3's envoy from another human: hear them, refuse, or refuse for the
+	// rules' envoy refusal turns (its X refuses).
 	private void EmitLiveEnvoySignal(Player them) {
 		void Answer(string answer) => online?.Talk(new TalkAnswer { with = them.id.ToString(), answer = answer });
+		int turns = EngineStorage.gameData.rules.EnvoyRefusalTurns;
 		List<ButtonAction> options = [
 			new ButtonAction { message = "Accept the envoy.", action = () => Answer(TalkAnswer.Hear) },
 			new ButtonAction { message = "Refuse to hear the envoy.", action = () => Answer(TalkAnswer.Refuse) },
-			new ButtonAction { message = "Contact me later.", action = () => Answer(TalkAnswer.Later) },
+			new ButtonAction { message = $"Refuse the envoy, and do not contact me for {turns} turns.", action = () => Answer(TalkAnswer.RefuseForAWhile) },
 		];
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new OptionsPopUp(controller.id, "Foreign Advisor", $"The {them.civilization.noun} wish to talk with us. Shall we hear their envoy?",

@@ -1006,6 +1006,26 @@ namespace C7Engine {
 		}
 	}
 
+	// Online: a human refused another's envoy and asked them not to come
+	// back for a while (LiveTalks): every game records it.
+	public class MsgRefuseEnvoys : MessageToEngine {
+		public override bool HostOnly => true;
+		public readonly ID refuserId;
+		public readonly ID refusedId;
+
+		public MsgRefuseEnvoys(ID refuserId, ID refusedId) {
+			this.refuserId = refuserId;
+			this.refusedId = refusedId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(refuserId) is Player refuser && gameData.GetPlayer(refusedId) is Player refused && refuser != refused) {
+				HumanDiplomacy.RefuseEnvoys(gameData, refuser, refused);
+			}
+		}
+	}
+
 	// The human in control demands the table's goods of a computer player
 	// (the deal screen's "Give me this, or else!"), which gives in if it's
 	// outmatched (TributeAI) and minds being asked either way.

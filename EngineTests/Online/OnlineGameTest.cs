@@ -300,6 +300,39 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.True(trade.HostOnly);
 	}
 
+	// Refusing an envoy for a while: in sequence for every game, and the
+	// next envoy from them is turned away until it's over.
+	[Fact]
+	public async Task AnEnvoyRefusedForAWhile() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		hostPlayer.EnsureRelationshipExists(remotePlayer);
+		List<OnlineMessage> hostHeard = new();
+		game.TalkHeard += hostHeard.Add;
+		client.Send(new TalkEnvoy { with = hostPlayer.id.ToString() });
+		for (int i = 0; i < 300 && hostHeard.Count == 0; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Assert.IsType<TalkEnvoy>(Assert.Single(hostHeard));
+		game.Talk(new TalkAnswer { with = remotePlayer.id.ToString(), answer = TalkAnswer.RefuseForAWhile });
+		Assert.Equal(TalkEnd.RefusedForAWhile, (await Until<TalkEnd>(game, client)).reason);
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		MsgRefuseEnvoys refusal = Assert.IsType<MsgRefuseEnvoys>(order);
+		Assert.True(refusal.HostOnly);
+		Assert.Equal(0, HumanDiplomacy.EnvoysRefusedFor(gameData, remotePlayer, hostPlayer));
+
+		// (As every game plays it.)
+		refusal.process();
+		Assert.Equal(gameData.rules.EnvoyRefusalTurns, HumanDiplomacy.EnvoysRefusedFor(gameData, remotePlayer, hostPlayer));
+		client.Send(new TalkEnvoy { with = hostPlayer.id.ToString() });
+		TalkEnd turnedAway = await Until<TalkEnd>(game, client);
+		Assert.Equal(TalkEnd.Unable, turnedAway.reason);
+		Assert.Contains($"for {gameData.rules.EnvoyRefusalTurns} more turns", turnedAway.text);
+		Assert.Single(hostHeard);
+		// (The one who refused may still send theirs.)
+		Assert.Equal(0, HumanDiplomacy.EnvoysRefusedFor(gameData, hostPlayer, remotePlayer));
+	}
+
 	// Civ3's turn timer: when a human's turn begins, everyone is told its
 	// time; once it's up (and the game is settled) every game ends it, once.
 	[Fact]

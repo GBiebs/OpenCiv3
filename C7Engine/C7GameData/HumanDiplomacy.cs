@@ -242,13 +242,20 @@ namespace C7GameData {
 			}
 			gameData.humanDeals.Remove(pending);
 			if (answer == EnvoyAnswer.RefuseForAWhile) {
-				int turns = gameData.rules.EnvoyRefusalTurns;
-				us.EnsureRelationshipExists(them);
-				us.playerRelationships[them.id].refuseEnvoysUntilTurn = gameData.turn + turns;
+				int turns = RefuseEnvoys(gameData, us, them);
 				new MsgDiplomacyNews(them.id, $"The {us.civilization.noun} have refused our envoy, and asked us not to come back for {turns} turns.", good: false).send();
 			} else {
 				new MsgDiplomacyNews(them.id, $"The {us.civilization.noun} have refused our envoy!", good: false).send();
 			}
+		}
+
+		// `us` asks `them` not to send envoys for the rules' envoy refusal
+		// turns; returns those turns.
+		public static int RefuseEnvoys(GameData gameData, Player us, Player them) {
+			int turns = gameData.rules.EnvoyRefusalTurns;
+			us.EnsureRelationshipExists(them);
+			us.playerRelationships[them.id].refuseEnvoysUntilTurn = gameData.turn + turns;
+			return turns;
 		}
 
 		// At the start of `human`'s turn, the deals other humans have sent
@@ -292,13 +299,17 @@ namespace C7GameData {
 			}
 			Prune(gameData, a, b, aGives);
 			Prune(gameData, b, a, bGives);
+			// (A line in the two players' chats, not a popup: they saw it
+			// done at the table.)
 			if (aGives.IsEmpty() && bGives.IsEmpty()) {
+				new MsgDiplomacyNews(a.id, $"The trade with the {b.civilization.noun} fell through: nothing on the table can still be given.", good: false) { inChat = true }.send();
+				new MsgDiplomacyNews(b.id, $"The trade with the {a.civilization.noun} fell through: nothing on the table can still be given.", good: false) { inChat = true }.send();
 				return false;
 			}
 			log.Information($"{a} and {b} make a deal at the table");
 			a.ExecuteDeal(gameData, b, bGives, aGives);
-			new MsgDiplomacyNews(a.id, $"The trade with the {b.civilization.noun} is done.", good: true).send();
-			new MsgDiplomacyNews(b.id, $"The trade with the {a.civilization.noun} is done.", good: true).send();
+			new MsgDiplomacyNews(a.id, $"The trade with the {b.civilization.noun} is done.", good: true) { inChat = true }.send();
+			new MsgDiplomacyNews(b.id, $"The trade with the {a.civilization.noun} is done.", good: true) { inChat = true }.send();
 			return true;
 		}
 

@@ -197,12 +197,13 @@ namespace C7Engine.Online {
 	public sealed class TalkAnswer : OnlineMessage {
 		public const string Hear = "hear";
 		public const string Refuse = "refuse";
-		public const string Later = "later";
+		// Refuse, and don't come back for the rules' envoy refusal turns.
+		public const string RefuseForAWhile = "refuseForAWhile";
 
 		public string with { get; set; }
 		public string answer { get; set; }
 
-		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && answer is Hear or Refuse or Later;
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && answer is Hear or Refuse or RefuseForAWhile;
 	}
 
 	// A player's half of the table (what they give), whether they accept
@@ -241,7 +242,7 @@ namespace C7Engine.Online {
 	public sealed class TalkEnd : OnlineMessage {
 		public const string Cancelled = "cancelled";
 		public const string Refused = "refused";
-		public const string Later = "later";
+		public const string RefusedForAWhile = "refusedForAWhile";
 		public const string Busy = "busy";
 		public const string Left = "left";
 		public const string Done = "done";

@@ -6,8 +6,9 @@ using C7GameData;
 
 namespace C7Engine.Online {
 	// Live diplomacy between humans online (Civ3's multiplayer diplomacy):
-	// one sends an envoy, which the other hears (or refuses, or asks to be
-	// contacted later); then both sit at the table, each putting up what
+	// one sends an envoy, which the other hears or refuses (for a while:
+	// every game records it, MsgRefuseEnvoys); then both sit at the table,
+	// each putting up what
 	// they give (the other's goods aren't shown), every change shown to the
 	// other at once, with a face (pleased, neutral or angry) and a private
 	// chat; each may accept the table as it stands, and take that back while
@@ -40,13 +41,16 @@ namespace C7Engine.Online {
 		private readonly Action<ID, OnlineMessage> send;
 		private readonly Func<ID, ID, string> whyNot;
 		private readonly Action<ID, string, ID, string> trade;
+		private readonly Action<ID, ID> refuse;
 
 		// `send` a message to a civ's player; `whyNot` a civ may talk to
-		// another (null if it may); `trade` the table both accepted.
-		public LiveTalks(Action<ID, OnlineMessage> send, Func<ID, ID, string> whyNot, Action<ID, string, ID, string> trade) {
+		// another (null if it may); `trade` the table both accepted;
+		// `refuse` a civ's refusal of another's envoys for a while.
+		public LiveTalks(Action<ID, OnlineMessage> send, Func<ID, ID, string> whyNot, Action<ID, string, ID, string> trade, Action<ID, ID> refuse) {
 			this.send = send;
 			this.whyNot = whyNot;
 			this.trade = trade;
+			this.refuse = refuse;
 		}
 
 		private Talk Of(ID civ) => talks.FirstOrDefault(t => t.from == civ || t.to == civ);
@@ -120,7 +124,12 @@ namespace C7Engine.Online {
 				return;
 			}
 			talks.Remove(talk);
-			send(with, new TalkEnd { with = civ.ToString(), reason = answer == TalkAnswer.Later ? TalkEnd.Later : TalkEnd.Refused });
+			if (answer == TalkAnswer.RefuseForAWhile) {
+				refuse(civ, with);
+				send(with, new TalkEnd { with = civ.ToString(), reason = TalkEnd.RefusedForAWhile });
+				return;
+			}
+			send(with, new TalkEnd { with = civ.ToString(), reason = TalkEnd.Refused });
 		}
 
 		private void Table(ID civ, ID with, TalkTable table) {

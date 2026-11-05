@@ -20,12 +20,13 @@ public class LiveTalksTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	private readonly List<(ID to, OnlineMessage message)> sent = new();
 	private readonly List<(ID a, string aTerms, ID b, string bTerms)> traded = new();
+	private readonly List<(ID refuser, ID refused)> refusals = new();
 	private readonly LiveTalks talks;
 	private string whyNot;
 
 	public LiveTalksTest(SaveGameFixture fixture) {
 		this.fixture = fixture;
-		talks = new LiveTalks((to, message) => sent.Add((to, message)), (_, _) => whyNot, (x, xTerms, y, yTerms) => traded.Add((x, xTerms, y, yTerms)));
+		talks = new LiveTalks((to, message) => sent.Add((to, message)), (_, _) => whyNot, (x, xTerms, y, yTerms) => traded.Add((x, xTerms, y, yTerms)), (x, y) => refusals.Add((x, y)));
 	}
 
 	public void Dispose() {
@@ -42,8 +43,10 @@ public class LiveTalksTest : IClassFixture<SaveGameFixture>, IDisposable {
 		sent.Clear();
 	}
 
+	// Civ3's three answers: hear, refuse, refuse for a while (which every
+	// game records).
 	[Fact]
-	public void AnEnvoyIsHeardRefusedOrPutOff() {
+	public void AnEnvoyIsHeardOrRefused() {
 		talks.Handle(a, new TalkEnvoy { with = b.ToString() });
 		Assert.Equal(a.ToString(), Last<TalkEnvoy>(b).with);
 		talks.Handle(b, new TalkAnswer { with = a.ToString(), answer = TalkAnswer.Hear });
@@ -57,9 +60,11 @@ public class LiveTalksTest : IClassFixture<SaveGameFixture>, IDisposable {
 		talks.Handle(a, new TalkEnvoy { with = b.ToString() });
 		talks.Handle(b, new TalkAnswer { with = a.ToString(), answer = TalkAnswer.Refuse });
 		Assert.Equal(TalkEnd.Refused, Last<TalkEnd>(a).reason);
+		Assert.Empty(refusals);
 		talks.Handle(a, new TalkEnvoy { with = b.ToString() });
-		talks.Handle(b, new TalkAnswer { with = a.ToString(), answer = TalkAnswer.Later });
-		Assert.Equal(TalkEnd.Later, Last<TalkEnd>(a).reason);
+		talks.Handle(b, new TalkAnswer { with = a.ToString(), answer = TalkAnswer.RefuseForAWhile });
+		Assert.Equal(TalkEnd.RefusedForAWhile, Last<TalkEnd>(a).reason);
+		Assert.Equal([(b, a)], refusals);
 		// (Closing the envoy's popup refuses it.)
 		talks.Handle(a, new TalkEnvoy { with = b.ToString() });
 		talks.Handle(b, new TalkEnd { with = a.ToString() });
@@ -148,11 +153,22 @@ public class LiveTalksTest : IClassFixture<SaveGameFixture>, IDisposable {
 		us.EnsureRelationshipExists(them);
 		us.gold = 40;
 		them.gold = 0;
+		EngineStorage.messagesToUI.Clear();
 		Assert.True(HumanDiplomacy.TradeAtTheTable(gameData, us, them, new TradeOffer { gold = 30 }, new TradeOffer()));
 		Assert.Equal(10, us.gold);
 		Assert.Equal(30, them.gold);
+		// (Each hears of it in their chat, not in a popup.)
+		List<MsgDiplomacyNews> news = EngineStorage.messagesToUI.OfType<MsgDiplomacyNews>().ToList();
+		Assert.Equal([us.id, them.id], news.Select(n => n.playerId));
+		Assert.All(news, n => Assert.True(n.inChat));
+		Assert.Contains("is done", news[0].text);
+
 		// (More than they have: off the table, so nothing is left.)
+		EngineStorage.messagesToUI.Clear();
 		Assert.False(HumanDiplomacy.TradeAtTheTable(gameData, us, them, new TradeOffer { gold = 500 }, new TradeOffer()));
 		Assert.Equal(10, us.gold);
+		news = EngineStorage.messagesToUI.OfType<MsgDiplomacyNews>().ToList();
+		Assert.Equal(2, news.Count);
+		Assert.All(news, n => Assert.True(n.inChat && n.text.Contains("fell through")));
 	}
 }

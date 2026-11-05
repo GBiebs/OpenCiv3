@@ -155,6 +155,8 @@ namespace C7Engine {
 		public ID playerId;
 		public string text;
 		public bool good;
+		// Online, a line in the game chat instead of a popup.
+		public bool inChat;
 
 		public MsgDiplomacyNews(ID playerId, string text, bool good) {
 			this.playerId = playerId;
