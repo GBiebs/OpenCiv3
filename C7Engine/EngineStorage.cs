@@ -38,11 +38,19 @@ namespace C7Engine {
 		private static readonly List<Task> working = new();
 		private static readonly Serilog.ILogger log = Serilog.Log.ForContext(typeof(EngineStorage));
 
-		// Whether every order's work is done.
-		public static bool OrdersDone() {
+		// Whether every order's work is done (a civ whose player has left
+		// taken out too).
+		public static bool OrdersDone() => WorkDone() && leaving.Count == 0;
+
+		private static bool WorkDone() {
 			working.RemoveAll(t => t.IsCompleted);
 			return working.Count == 0;
 		}
+
+		// Online: players who have left (MsgPlayerLeftGame), whose civs go
+		// once the work going on is done; until then what the engine asks
+		// them is answered for them.
+		internal static readonly List<ID> leaving = new();
 
 		// Online play (OnlineGame): where this game's orders go instead of the
 		// queue (to the host), and the orders as the host put them in
@@ -66,8 +74,22 @@ namespace C7Engine {
 			sequencedOrders.Enqueue((seq, seed, from, order));
 		}
 
+		// A game begun again from the host's copy (online): nothing of the
+		// last one's work goes on (its tasks are left waiting for good, so no
+		// AI carries on in the new copy), and none of its messages are left.
+		public static void AbandonWork() {
+			working.Clear();
+			pendingEngineWaiters.Clear();
+			pendingAnimations.Clear();
+			pendingMessages.Clear();
+			messagesToUI.Clear();
+			animationMessages.Clear();
+			ResetSequence();
+		}
+
 		public static void ResetSequence(long seq = 0) {
 			sequencedOrders.Clear();
+			leaving.Clear();
 			lastSequenced = seq;
 			endTurnGoing = false;
 		}
@@ -76,7 +98,7 @@ namespace C7Engine {
 		// work done, or the engine waiting for this very answer; no animation
 		// going. So every game plays each order at the same point.
 		private static bool ReadyFor(MessageToEngine next) {
-			return !HasPendingAnimations() && (OrdersDone() || pendingEngineWaiters.ContainsKey(next.GetType()));
+			return !HasPendingAnimations() && (next.HostOnly || OrdersDone() || pendingEngineWaiters.ContainsKey(next.GetType()));
 		}
 
 		public static void ProcessNextMessageToEngine() {
@@ -84,10 +106,24 @@ namespace C7Engine {
 				endTurnGoing = false;
 				onEndTurnDone?.Invoke(lastSequenced);
 			}
+			if (leaving.Count > 0 && !HasPendingAnimations()) {
+				if (leaving.Contains(uiControllerID) && LeavingPlayers.AnswerFor(pendingEngineWaiters.Keys) is MessageToEngine answer) {
+					Process(answer);
+					return;
+				}
+				if (WorkDone()) {
+					ID gone = leaving[0];
+					leaving.RemoveAt(0);
+					Run(LeavingPlayers.TakeOut(gameData, gone), nameof(LeavingPlayers));
+					// (The games compare once it's done, as after an End Turn.)
+					endTurnGoing = true;
+					return;
+				}
+			}
 			if (pendingMessages.Count == 0 && sequencedOrders.Count > 0 && ReadyFor(sequencedOrders.Peek().order)) {
 				(long seq, int seed, ID from, MessageToEngine order) = sequencedOrders.Dequeue();
 				lastSequenced = seq;
-				if (from != uiControllerID) {
+				if (from != uiControllerID && !order.HostOnly) {
 					log.Information("Order {Seq} ({Kind}) from {From}, not in control: not played", seq, order.GetType().Name, from);
 					return;
 				}
@@ -102,11 +138,7 @@ namespace C7Engine {
 		}
 
 		private static void Process(MessageToEngine msg) {
-			Task work = msg.ProcessAsync();
-			if (!work.IsCompleted) {
-				working.Add(work);
-			}
-			work.ContinueWith(t => log.Error(t.Exception, "{Order} failed", msg.GetType().Name), TaskContinuationOptions.OnlyOnFaulted);
+			Run(msg.ProcessAsync(), msg.GetType().Name);
 
 			if (msg.IsPlayerAction && gameData != null) {
 				Player controller = gameData.GetPlayer(uiControllerID);
@@ -118,6 +150,13 @@ namespace C7Engine {
 				tcs.TrySetResult(msg);
 				pendingEngineWaiters.Remove(type);
 			}
+		}
+
+		private static void Run(Task work, string what) {
+			if (!work.IsCompleted) {
+				working.Add(work);
+			}
+			work.ContinueWith(t => log.Error(t.Exception, "{Order} failed", what), TaskContinuationOptions.OnlyOnFaulted);
 		}
 
 		public static bool HasPendingAnimations() {

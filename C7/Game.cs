@@ -1274,6 +1274,8 @@ public partial class Game : Node {
 	private void OnOnlineRestart(GameStart start) => BeginAgain(start.save, start.seq);
 
 	private void BeginAgain(string packed, long seq) {
+		// (This game may still have been playing the last orders.)
+		EngineStorage.AbandonWork();
 		Global.SaveGame = OnlineGame.Unpack(packed);
 		Global.LoadGamePath = null;
 		Global.OnlineSeq = seq;

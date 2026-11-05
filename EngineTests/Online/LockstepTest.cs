@@ -24,7 +24,7 @@ public class LockstepTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	public void Dispose() {
-		EngineStorage.ResetSequence();
+		EngineStorage.AbandonWork();
 		EngineStorage.sendOrder = null;
 		EngineStorage.onEndTurnDone = null;
 		EngineStorage.messagesToUI.Clear();
@@ -36,8 +36,7 @@ public class LockstepTest : IClassFixture<SaveGameFixture>, IDisposable {
 		C7GameData.GameData gameData = SaveGame.FromJson(save).ToGameData(fixture.behaviors);
 		EngineStorage.InitializeGameDataForTests(gameData);
 		EngineStorage.animationsEnabled = false;
-		EngineStorage.messagesToUI.Clear();
-		EngineStorage.ResetSequence();
+		EngineStorage.AbandonWork();
 		EngineStorage.uiControllerID = gameData.players.First(p => p.isHuman).id;
 		return gameData;
 	}
@@ -133,6 +132,27 @@ public class LockstepTest : IClassFixture<SaveGameFixture>, IDisposable {
 		PlayAll();
 		EngineStorage.ProcessNextMessageToEngine();
 		Assert.Equal([2, 3], done);
+	}
+
+	// A game begun again from the host's copy: the last one's unfinished
+	// work (an AI waiting for an answer, an animation) is dropped, so the
+	// new copy's orders play.
+	[Fact]
+	public void AGameBegunAgainDropsTheLastOnesWork() {
+		C7GameData.GameData gameData = Load();
+		Player human = gameData.players.First(p => p.isHuman);
+		EngineStorage.EnqueueSequenced(1, 1, human.id, new SlowOrder(new TaskCompletionSource<bool>().Task));
+		EngineStorage.ProcessNextMessageToEngine();
+		_ = EngineStorage.WaitForMessageToEngine<MsgVote>();
+		Assert.False(EngineStorage.OrdersDone());
+
+		EngineStorage.AbandonWork();
+		Assert.True(EngineStorage.OrdersDone());
+		Assert.False(EngineStorage.IsWaitingForMessageToEngine<MsgVote>());
+		MapUnit unit = human.units[0];
+		EngineStorage.EnqueueSequenced(1, 2, human.id, new MsgSetFortification(unit.id, true));
+		PlayAll();
+		Assert.True(unit.isFortified);
 	}
 
 	// Online, an order that changes the game goes to the host; the screens'

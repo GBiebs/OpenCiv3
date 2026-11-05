@@ -138,7 +138,7 @@ namespace C7Engine.Online {
 							MessageToEngine order = OrderCodec.Read(request.orderType, request.order, gameData);
 							if (order == null) {
 								log.Warning("Couldn't read {Kind} from {Name}", request.orderType, from.player.name);
-							} else if (!Allowed(player)) {
+							} else if (order.HostOnly || !Allowed(player)) {
 								log.Information("{Kind} from {Name}, not in control: turned down", request.orderType, from.player.name);
 							} else {
 								Sequence(player, order);
@@ -159,9 +159,12 @@ namespace C7Engine.Online {
 					case PlayerJoined joined:
 						host.Drop(joined.player.id, "The game has already begun.");
 						break;
-					case PlayerLeft left when players.ContainsKey(left.player.id):
+					case PlayerLeft left when players.TryGetValue(left.player.id, out ID gone):
+						players.Remove(left.player.id);
 						Tell($"{left.player.name} has left the game.");
 						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game." });
+						// Every game takes their civilization out, at the same point.
+						Sequence(localPlayer, new MsgPlayerLeftGame(gone));
 						break;
 				}
 			}

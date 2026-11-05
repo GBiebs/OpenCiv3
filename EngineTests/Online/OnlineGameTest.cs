@@ -28,8 +28,7 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		this.fixture = fixture;
 		gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
 		EngineStorage.InitializeGameDataForTests(gameData);
-		EngineStorage.messagesToUI.Clear();
-		EngineStorage.pendingMessages.Clear();
+		EngineStorage.AbandonWork();
 		hostPlayer = gameData.players.First(p => p.isHuman);
 		remotePlayer = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
 		remotePlayer.isHuman = true;
@@ -40,11 +39,9 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		foreach (IDisposable d in toDispose) {
 			d.Dispose();
 		}
-		EngineStorage.ResetSequence();
+		EngineStorage.AbandonWork();
 		EngineStorage.sendOrder = null;
 		EngineStorage.onEndTurnDone = null;
-		EngineStorage.pendingMessages.Clear();
-		EngineStorage.messagesToUI.Clear();
 		EngineStorage.uiControllerID = controller;
 	}
 
@@ -137,6 +134,31 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 			await Task.Delay(10);
 		}
 		Assert.Contains("Sargon has left the game.", notices);
+	}
+
+	// A player who leaves: every game takes their civilization out, in
+	// sequence, whoever is in control.
+	[Fact]
+	public async Task APlayerLeavingTakesTheirCivilizationOutInEveryGame() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		client.Dispose();
+		for (int i = 0; i < 300 && EngineStorage.sequencedOrders.Count == 0; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		Assert.Equal(remotePlayer.id, Assert.IsType<MsgPlayerLeftGame>(order).playerId);
+		Assert.Equal(hostPlayer.id, from);
+	}
+
+	// Only the host says who has left.
+	[Fact]
+	public async Task APlayerCantSayAnotherHasLeft() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		EngineStorage.uiControllerID = remotePlayer.id;
+		client.Send(new OrderRequest { orderType = "MsgPlayerLeftGame", order = OrderCodec.Write(new MsgPlayerLeftGame(hostPlayer.id)) });
+		Assert.Null(await Until<SequencedOrder>(game, client, milliseconds: 500));
+		Assert.Empty(EngineStorage.sequencedOrders);
 	}
 
 	// A player's game: its orders go to the host, the host's in sequence

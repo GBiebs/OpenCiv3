@@ -295,6 +295,10 @@ namespace C7GameData {
 		}
 
 		public void CheckForCivDestructionAndNotifyUi(Player player) {
+			// (Destroyed already: RemoveCivilization.)
+			if (player.defeated) {
+				return;
+			}
 			if (this.CheckForCivDestruction(player)) {
 				this.CivDestructionCallback(player);
 
@@ -322,6 +326,19 @@ namespace C7GameData {
 			}
 
 			return true;
+		}
+
+		// A civilization taken out of the game whole (online, its player has
+		// left): its units and cities go, and everyone hears it's destroyed.
+		public void RemoveCivilization(Player player) {
+			if (player.defeated) {
+				return;
+			}
+			CivDestructionCallback(player);
+			foreach (City city in player.cities.ToList()) {
+				CityInteractions.DestroyCity(city);
+			}
+			new MsgCivilizationDestroyed(EngineStorage.uiControllerID, player.civilization).send();
 		}
 
 		private void CivDestructionCallback(Player player) {

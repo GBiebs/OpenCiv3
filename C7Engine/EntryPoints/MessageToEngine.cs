@@ -24,6 +24,12 @@ namespace C7Engine {
 		// than UI housekeeping.
 		public virtual bool IsPlayerAction => false;
 
+		// Online: an order only the host gives (a player has left). Every
+		// game plays it whoever is in control, as soon as it comes (even
+		// while the engine waits for an answer); the host turns it down from
+		// a player.
+		public virtual bool HostOnly => false;
+
 		// (Online, an order that changes the game goes to the host, and comes
 		// back in sequence: EngineStorage.sendOrder.)
 		public void send() {
@@ -878,6 +884,25 @@ namespace C7Engine {
 			}
 			if (wasHuman && !playing.isHuman) {
 				await TurnHandling.AdvanceTurn();
+			}
+		}
+	}
+
+	// Online: a player has left the game (or lost their connection). What
+	// the engine asks them is answered as closing its popup would, and once
+	// the work going on is done their civilization is taken out of the game
+	// (LeavingPlayers).
+	public class MsgPlayerLeftGame : MessageToEngine {
+		public override bool HostOnly => true;
+		public readonly ID playerId;
+
+		public MsgPlayerLeftGame(ID playerId) {
+			this.playerId = playerId;
+		}
+
+		public override void process() {
+			if (EngineStorage.gameData.GetPlayer(playerId) is Player player && !player.defeated && !EngineStorage.leaving.Contains(player.id)) {
+				EngineStorage.leaving.Add(player.id);
 			}
 		}
 	}
