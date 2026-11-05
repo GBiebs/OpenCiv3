@@ -321,9 +321,15 @@ textures.icons = {
 	  path = CITY_SCREEN_ICONS,
 	  crop_region = { 64, 2, 29, 29 },
   },
+  -- The tile yields on the city screen's map (commerce, shield, food and
+  -- the red ones the despotism penalty takes): the art alone, no padding.
   commerce = {
     path = CITY_SCREEN_ICONS,
-    crop_region = { 67, 1, 21, 30 },
+    crop_region = { 67, 5, 23, 22 },
+  },
+  penalty_commerce = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 98, 5, 23, 22 },
   },
   wasted_gold = {
     path = CITY_SCREEN_ICONS,
@@ -335,7 +341,11 @@ textures.icons = {
   },
   shield = {
     path = CITY_SCREEN_ICONS,
-    crop_region = { 133, 1, 16, 30 },
+    crop_region = { 133, 10, 14, 16 },
+  },
+  penalty_shield = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 164, 10, 14, 16 },
   },
   wasted_shield = {
 	  path = CITY_SCREEN_ICONS,
@@ -347,7 +357,7 @@ textures.icons = {
   },
   food = {
 	  path = CITY_SCREEN_ICONS,
-	  crop_region = { 195, 1, 21, 30 },
+	  crop_region = { 193, 9, 18, 17 },
   },
   eaten_food = {
 	  path = CITY_SCREEN_ICONS,
