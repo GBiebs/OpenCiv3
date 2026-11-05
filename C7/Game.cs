@@ -352,7 +352,7 @@ public partial class Game : Node {
 		// wait for theirs.
 		if (online != null) {
 			startedATurn = true;
-			if (EngineStorage.uiControllerID == controller.id) {
+			if (TurnHandling.IsTurnOf(EngineStorage.gameData, controller.id)) {
 				HearFromOthers();
 			} else {
 				CurrentState = GameState.ComputerTurn;
@@ -642,10 +642,11 @@ public partial class Game : Node {
 				EmitDawnOfCivilizationSignal(mNGP);
 				break;
 			case MsgStartTurn mST when online != null && mST.playerId != null:
-				// Online: each plays their own turn on their own computer.
+				// Online: each plays their own turn on their own computer (with
+				// simultaneous moves, the others' at the same time).
 				if (mST.playerId == controller.id) {
 					HearFromOthers();
-				} else {
+				} else if (!gameData.simultaneousMoves) {
 					CurrentState = GameState.ComputerTurn;
 				}
 				break;

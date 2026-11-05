@@ -32,8 +32,9 @@ public class GameSetup {
 	// With other humans: the administrator's password (none for no
 	// administrator). See Administration.
 	public string adminPassword { get; set; }
-	// Online: Civ3's turn timer.
+	// Online: Civ3's turn timer, and simultaneous moves.
 	public TurnTimer turnTimer { get; set; }
+	public bool simultaneousMoves { get; set; }
 
 	ID.Factory ids;
 
@@ -44,6 +45,9 @@ public class GameSetup {
 		bool otherHumans = opponents.Any(o => o.isHuman && !o.isNone);
 		save.PlayByEmail = playByEmail && otherHumans;
 		save.TurnTimer = turnTimer;
+		save.SimultaneousMoves = simultaneousMoves;
+		// (The first turn's humans all begin at once.)
+		save.SimultaneousTurnStarted = simultaneousMoves ? 0 : -1;
 		save.AdminPasswordHash = otherHumans ? Passwords.Hash(adminPassword) : "";
 
 		if (save.Map.tiles.Count == 0) {

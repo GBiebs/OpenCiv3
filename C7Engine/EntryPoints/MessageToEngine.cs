@@ -929,9 +929,11 @@ namespace C7Engine {
 		public override async Task ProcessAsync() {
 			GameData gameData = EngineStorage.gameData;
 			Player player = gameData.GetPlayer(playerId);
-			if (player == null || player.id != EngineStorage.uiControllerID || gameData.turn != turn || player.hasPlayedThisTurn || player.defeated) {
+			if (player == null || !TurnHandling.MayGiveOrders(gameData, player.id) || gameData.turn != turn || player.hasPlayedThisTurn || player.defeated) {
 				return;
 			}
+			// (With simultaneous moves, theirs whoever played last.)
+			EngineStorage.uiControllerID = player.id;
 			await new MsgEndTurn().ProcessAsync();
 		}
 	}

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using C7GameData;
 using Serilog;
@@ -264,15 +266,13 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 
 			// Online, during another's turn: whose (in place of the unit, as
 			// "Please wait...").
-			bool waiting = EngineStorage.localPlayerID != null && EngineStorage.uiControllerID != EngineStorage.localPlayerID;
+			bool waiting = EngineStorage.localPlayerID != null && !TurnHandling.IsTurnOf(gD, EngineStorage.localPlayerID);
 			if (waiting) {
 				if (!waitingOnline) {
 					StopToggling();
 					HideUnitInfo();
 				}
-				Player playing = gD.GetPlayer(EngineStorage.uiControllerID);
-				suggestion.Text = playing == null || playing.hasPlayedThisTurn ? "Please wait..."
-					: $"Waiting for {playing.civilization.leader} of the {playing.civilization.noun}...";
+				suggestion.Text = WaitingFor(gD);
 				suggestion.Visible = true;
 			} else if (waitingOnline) {
 				suggestion.Visible = false;
@@ -281,6 +281,18 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 		});
 
 		base._Process(delta);
+	}
+
+	// Online, whom this computer waits for: whose turn it is, or with
+	// simultaneous moves the humans still playing; the computers'.
+	private static string WaitingFor(GameData gD) {
+		if (gD.simultaneousMoves) {
+			List<string> playing = gD.players.Where(p => TurnHandling.PlayingAtOnce(gD, p.id)).Select(p => p.civilization.leader).ToList();
+			return playing.Count == 0 ? "Please wait..." : $"Waiting for {string.Join(", ", playing)}...";
+		}
+		Player playing1 = gD.GetPlayer(EngineStorage.uiControllerID);
+		return playing1 == null || playing1.hasPlayedThisTurn ? "Please wait..."
+			: $"Waiting for {playing1.civilization.leader} of the {playing1.civilization.noun}...";
 	}
 
 	private void OnNewUnitSelected(ParameterWrapper<MapUnit> wrappedMapUnit) {

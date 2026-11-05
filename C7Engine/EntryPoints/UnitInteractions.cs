@@ -12,8 +12,8 @@ namespace C7Engine {
 
 		public static MapUnit getNextSelectedUnit() {
 			// The units of the human whose turn it is (with several humans,
-			// only theirs).
-			foreach (Player player in EngineStorage.gameData.players.Where(p => p.isHuman && p.id == EngineStorage.uiControllerID)) {
+			// only theirs; online, this computer's).
+			foreach (Player player in EngineStorage.gameData.players.Where(p => p.isHuman && p.id == EngineStorage.viewerID)) {
 				foreach (MapUnit unit in player.units.Where(u => u.movementPoints.canMove)) {
 					if (unit.isFortified) {
 						continue;

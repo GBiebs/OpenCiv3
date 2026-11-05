@@ -43,7 +43,7 @@ namespace C7Engine {
 			if (player == null || player.defeated) {
 				return;
 			}
-			bool theirTurn = player.id == EngineStorage.uiControllerID && !player.hasPlayedThisTurn;
+			bool theirTurn = TurnHandling.IsTurnOf(gameData, player.id) && !player.hasPlayedThisTurn;
 			log.Information($"{player} has left the game: their civilization is taken out");
 			HumanDiplomacy.Forget(gameData, player);
 			gameData.RemoveCivilization(player);

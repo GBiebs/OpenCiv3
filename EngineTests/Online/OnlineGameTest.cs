@@ -180,6 +180,24 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Empty(EngineStorage.sequencedOrders);
 	}
 
+	// Simultaneous moves: the timer times the round; once it's up, every
+	// turn still going ends.
+	[Fact]
+	public async Task TheTurnTimerTimesTheRound() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		gameData.turnTimer = TurnTimer.Fast;
+		gameData.simultaneousMoves = true;
+		gameData.simultaneousTurnStarted = gameData.turn;
+		int seconds = Math.Max(TurnTimes.Seconds(gameData, hostPlayer), TurnTimes.Seconds(gameData, remotePlayer));
+		DateTime start = DateTime.UtcNow;
+		game.WatchTheClock(gameData, start);
+		TurnTimerStarted told = await Until<TurnTimerStarted>(game, client);
+		Assert.True(told.round);
+		Assert.Equal(seconds, told.seconds);
+		game.WatchTheClock(gameData, start.AddSeconds(seconds));
+		Assert.Equal([hostPlayer.id, remotePlayer.id], EngineStorage.sequencedOrders.Select(o => Assert.IsType<MsgTurnTimeUp>(o.order).playerId));
+	}
+
 	// No timer, or a computer playing: nothing is timed.
 	[Fact]
 	public async Task OnlyAHumansTurnIsTimed() {

@@ -123,9 +123,13 @@ namespace C7Engine {
 			if (pendingMessages.Count == 0 && sequencedOrders.Count > 0 && ReadyFor(sequencedOrders.Peek().order)) {
 				(long seq, int seed, ID from, MessageToEngine order) = sequencedOrders.Dequeue();
 				lastSequenced = seq;
-				if (from != uiControllerID && !order.HostOnly) {
+				if (!order.HostOnly && !TurnHandling.MayGiveOrders(gameData, from)) {
 					log.Information("Order {Seq} ({Kind}) from {From}, not in control: not played", seq, order.GetType().Name, from);
 					return;
+				}
+				// (Simultaneous moves: each human's order is theirs.)
+				if (TurnHandling.PlayingAtOnce(gameData, from)) {
+					uiControllerID = from;
 				}
 				GameData.rng = new Random(seed);
 				endTurnGoing |= order is MsgEndTurn or MsgTurnTimeUp;

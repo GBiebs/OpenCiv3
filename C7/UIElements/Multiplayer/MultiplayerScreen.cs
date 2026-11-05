@@ -57,6 +57,7 @@ public partial class MultiplayerScreen : Control {
 	private Difficulty difficulty;
 	private VictoryConditions victoryConditions;
 	private TurnTimer turnTimer = TurnTimer.None;
+	private bool simultaneous;
 	private OnlineLobby lobby;
 	// Civ3's "Load Game" (online): the saved game to go on with, and its
 	// file's name; null for a new game.
@@ -567,10 +568,13 @@ public partial class MultiplayerScreen : Control {
 		Setting timer = mode == Mode.Host
 			? new("Turn Timer", timers.Select(t => t.ToString()).ToList(), timers.IndexOf(turnTimer), i => turnTimer = timers[i])
 			: new("Turn Timer", ["None"], 0, null);
+		Setting gameMode = mode == Mode.Host
+			? new("Game Mode", ["Turn Based", "Simultaneous Moves"], simultaneous ? 1 : 0, i => simultaneous = i == 1)
+			: new("Game Mode", [ModeName()], 0, null);
 		if (loadedSave != null) {
 			return [
 				gameType,
-				new("Game Mode", [ModeName()], 0, null),
+				new("Game Mode", [loadedSave.SimultaneousMoves ? "Simultaneous Moves" : "Turn Based"], 0, null),
 				new("Turn Timer", [loadedSave.TurnTimer.ToString()], 0, null),
 				new("Saved Game", [loadedName], 0, null),
 				// (Its date needs the game's scripts, which aren't loaded here.)
@@ -580,7 +584,7 @@ public partial class MultiplayerScreen : Control {
 		}
 		return [
 			gameType,
-			new("Game Mode", [ModeName()], 0, null),
+			gameMode,
 			timer,
 			new("World Size", save.WorldSizes.Select(w => w.name).ToList(), save.WorldSizes.IndexOf(worldSize), i => {
 				worldSize = save.WorldSizes[i];
@@ -1179,6 +1183,7 @@ public partial class MultiplayerScreen : Control {
 			playByEmail = mode == Mode.PlayByEmail,
 			adminPassword = adminPassword,
 			turnTimer = mode == Mode.Host ? turnTimer : TurnTimer.None,
+			simultaneousMoves = mode == Mode.Host && simultaneous,
 		};
 		RememberSettings();
 		loading.Visible = true;

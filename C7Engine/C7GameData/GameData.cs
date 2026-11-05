@@ -36,8 +36,12 @@ namespace C7GameData {
 		// Play by email: each human plays their turn from the save the one
 		// before sent them (TurnHandling.HearFromOthers).
 		public bool playByEmail;
-		// Online: the turn timer chosen (TurnTimes).
+		// Online: the turn timer chosen (TurnTimes); and Civ3's simultaneous
+		// moves: every human plays at once, then the computers (the turn whose
+		// humans' turns have begun, TurnHandling.PlayingAtOnce).
 		public TurnTimer turnTimer;
+		public bool simultaneousMoves;
+		public int simultaneousTurnStarted = -1;
 		// Hotseat and play by email: the deals humans have sent each other,
 		// waiting for an answer (HumanDiplomacy).
 		public List<HumanDeal> humanDeals = new();

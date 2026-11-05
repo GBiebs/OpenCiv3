@@ -139,7 +139,7 @@ namespace C7Engine.Online {
 		// Orders come from the player whose turn it is, or who the engine is
 		// asking something (TurnHandling.HandControlTo makes them the one in
 		// control); every game checks again when it plays one.
-		private static bool Allowed(ID player) => player == EngineStorage.uiControllerID;
+		private static bool Allowed(ID player) => TurnHandling.MayGiveOrders(EngineStorage.gameData, player);
 
 		private void Sequence(ID from, MessageToEngine order) {
 			seq++;
@@ -193,12 +193,41 @@ namespace C7Engine.Online {
 			Compare(seq);
 		}
 
+		// Simultaneous moves: the turn timer times the round, as long as the
+		// biggest empire's turn, and once it's up ends every turn still going.
+		private void WatchTheRound(GameData gameData, DateTime now) {
+			List<Player> playing = gameData.turnTimer == TurnTimer.None ? []
+				: gameData.players.Where(p => TurnHandling.PlayingAtOnce(gameData, p.id)).ToList();
+			if (playing.Count == 0) {
+				timed = null;
+				return;
+			}
+			if (timed == null || timedTurn != gameData.turn) {
+				timed = playing[0].id;
+				timedTurn = gameData.turn;
+				timeUpSent = false;
+				int seconds = playing.Max(p => TurnTimes.Seconds(gameData, p));
+				timeUp = now.AddSeconds(seconds);
+				host.SendToAll(new TurnTimerStarted { round = true, seconds = seconds });
+				Timed(null, seconds);
+				return;
+			}
+			if (!timeUpSent && now >= timeUp && EngineStorage.OrdersDone() && EngineStorage.OrdersWaiting == 0) {
+				timeUpSent = true;
+				log.Information("Time's up for the round");
+				foreach (Player player in playing) {
+					Sequence(localPlayer, new MsgTurnTimeUp(player.id, gameData.turn));
+				}
+			}
+		}
+
 		// (Begun again from this copy: the turn timer goes on, told again.)
 		protected override void Begun() {
 			if (timed != null) {
 				int seconds = Math.Max(0, (int)Math.Ceiling((timeUp - DateTime.UtcNow).TotalSeconds));
-				host.SendToAll(new TurnTimerStarted { player = timed.ToString(), seconds = seconds });
-				Timed(timed, seconds);
+				bool round = EngineStorage.gameData?.simultaneousMoves == true;
+				host.SendToAll(new TurnTimerStarted { player = round ? null : timed.ToString(), round = round, seconds = seconds });
+				Timed(round ? null : timed, seconds);
 			}
 		}
 
@@ -206,6 +235,10 @@ namespace C7Engine.Online {
 		// told), and once it's up and the game is settled, every game ends
 		// that turn.
 		internal void WatchTheClock(GameData gameData, DateTime now) {
+			if (gameData.simultaneousMoves) {
+				WatchTheRound(gameData, now);
+				return;
+			}
 			Player acting = gameData.turnTimer == TurnTimer.None ? null : gameData.GetPlayer(EngineStorage.uiControllerID);
 			if (acting == null || !acting.isHuman || acting.hasPlayedThisTurn || acting.defeated) {
 				timed = null;
@@ -290,7 +323,7 @@ namespace C7Engine.Online {
 						Tell(line.text);
 						break;
 					case TurnTimerStarted started:
-						Timed(ID.FromString(started.player), started.seconds);
+						Timed(started.round ? null : ID.FromString(started.player), started.seconds);
 						break;
 					case Goodbye goodbye:
 						Ended?.Invoke(goodbye.reason);

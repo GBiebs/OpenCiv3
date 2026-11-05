@@ -63,6 +63,31 @@ namespace C7Engine {
 			new MsgTurnReady(human.id).send();
 		}
 
+		// Simultaneous moves: whether `player` is one of the humans playing
+		// this turn at once (their turns have begun, and they haven't ended
+		// theirs).
+		public static bool PlayingAtOnce(GameData gameData, ID player) {
+			return gameData != null && gameData.simultaneousMoves && gameData.simultaneousTurnStarted == gameData.turn
+				&& gameData.GetPlayer(player) is Player p && p.isHuman && !p.defeated && !p.hasPlayedThisTurn;
+		}
+
+		// Whether it's `player`'s turn (with simultaneous moves, every human's
+		// until they end it).
+		public static bool IsTurnOf(GameData gameData, ID player) {
+			return gameData != null && gameData.simultaneousMoves ? PlayingAtOnce(gameData, player) : player == EngineStorage.uiControllerID;
+		}
+
+		// Whether an order from `player` is played: the player in control's
+		// (whose turn it is, or who the engine is asking), or with
+		// simultaneous moves any human's who is playing (and while they are,
+		// only theirs: the last one in control may have ended their turn).
+		public static bool MayGiveOrders(GameData gameData, ID player) {
+			if (PlayingAtOnce(gameData, player)) {
+				return true;
+			}
+			return player == EngineStorage.uiControllerID && !(gameData?.players.Any(p => PlayingAtOnce(gameData, p.id)) ?? false);
+		}
+
 		public static void HandControlTo(Player human) {
 			if (human.id == EngineStorage.uiControllerID) {
 				return;
@@ -203,6 +228,28 @@ namespace C7Engine {
 			// observer mode), the UI controller still gets its turn, so control
 			// returns to the UI and the loop stops.
 			bool anyHumanLeft = gameData.players.Any(p => p.isHuman && !p.defeated);
+
+			// Simultaneous moves: every human plays at once; the computers once
+			// they all have.
+			if (gameData.simultaneousMoves) {
+				List<Player> humans = orderedPlayers.Where(p => p.isHuman && !p.defeated && !p.hasPlayedThisTurn).ToList();
+				if (humans.Count > 0) {
+					if (gameData.simultaneousTurnStarted != gameData.turn) {
+						foreach (Player human in humans) {
+							await UnitedNations.MaybeCallElection(gameData, human);
+						}
+						gameData.simultaneousTurnStarted = gameData.turn;
+						UnitInteractions.ClearWaitQueue();
+						EngineStorage.uiControllerID = humans[0].id;
+						foreach (Player human in humans) {
+							PlayerRelationship.CheckForObsoleteDeals(human, gameData.players, gameData.turn);
+							new MsgStartTurn(human.id).send();
+						}
+					}
+					return true;
+				}
+			}
+
 			foreach (Player player in orderedPlayers) {
 				bool takesControl = (player.isHuman && !player.defeated) || (!anyHumanLeft && player.id == EngineStorage.uiControllerID);
 				if (player.hasPlayedThisTurn || (player.defeated && !takesControl)) {

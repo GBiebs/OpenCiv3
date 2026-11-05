@@ -1,13 +1,17 @@
+using System.Linq;
 using C7Engine;
 using C7GameData;
 using Godot;
 
 // Online, at the top right: the turn timer's time left for whoever is
-// playing ("Your turn" here), red at the end; gone once their turn is.
+// playing ("Your turn" here), or with simultaneous moves the round's; red
+// at the end; gone once their turn (or the round) is.
 public partial class TurnClock : Label {
 	private const double RedSeconds = 15;
 
+	// (None: the round's.)
 	private ID player;
+	private bool round;
 	private double left;
 
 	public override void _Ready() {
@@ -33,18 +37,22 @@ public partial class TurnClock : Label {
 
 	public void Start(ID player, int seconds) {
 		this.player = player;
+		round = player == null;
 		left = seconds;
 	}
 
 	public override void _Process(double delta) {
 		GameData gameData = EngineStorage.gameData;
-		if (player == null || gameData == null || EngineStorage.uiControllerID != player) {
+		bool going = gameData != null && (round ? gameData.players.Any(p => TurnHandling.PlayingAtOnce(gameData, p.id))
+			: player != null && EngineStorage.uiControllerID == player);
+		if (!going) {
 			Visible = false;
 			return;
 		}
 		left = System.Math.Max(0, left - delta);
 		int seconds = (int)System.Math.Ceiling(left);
-		string whose = player == EngineStorage.localPlayerID ? "Your turn" : gameData.GetPlayer(player)?.civilization.leader ?? "?";
+		string whose = round ? (TurnHandling.PlayingAtOnce(gameData, EngineStorage.localPlayerID) ? "Your turn" : "The turn")
+			: player == EngineStorage.localPlayerID ? "Your turn" : gameData.GetPlayer(player)?.civilization.leader ?? "?";
 		Text = $"{whose}: {seconds / 60}:{seconds % 60:00}";
 		AddThemeColorOverride("font_color", left <= RedSeconds ? new Color(1f, 0.45f, 0.35f) : Colors.White);
 		Visible = true;

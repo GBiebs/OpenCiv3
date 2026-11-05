@@ -15,7 +15,13 @@ namespace C7Engine {
 		// whom they concern.
 		public bool fromScreens { get; private set; }
 
+		// The player in control when it was sent (with simultaneous moves,
+		// whose order it came from, though another's may be played by the
+		// time it's shown).
+		public ID sentFor { get; private set; }
+
 		public void send() {
+			sentFor = EngineStorage.uiControllerID;
 			NewsWhileAway.Record(this);
 			EngineStorage.messagesToUI.Enqueue(this);
 		}

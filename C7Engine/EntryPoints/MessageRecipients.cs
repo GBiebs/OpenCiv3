@@ -91,7 +91,7 @@ namespace C7Engine {
 			if (recipients.Count > 0) {
 				return recipients.Contains(local);
 			}
-			return acting == local;
+			return (msg.sentFor ?? acting) == local;
 		}
 	}
 }
