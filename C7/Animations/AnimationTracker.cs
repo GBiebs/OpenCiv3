@@ -133,7 +133,24 @@ public partial class AnimationTracker {
 			activeAnims.Remove(key);
 	}
 
+	// Civ3's worker job animations.
+	private static bool IsJobAnimation(MapUnit.AnimatedAction action) {
+		return action is MapUnit.AnimatedAction.ROAD or MapUnit.AnimatedAction.MINE or MapUnit.AnimatedAction.IRRIGATE
+			or MapUnit.AnimatedAction.FORTRESS or MapUnit.AnimatedAction.JUNGLE or MapUnit.AnimatedAction.FOREST or MapUnit.AnimatedAction.PLANT;
+	}
+
+	// A job's animation (the building one, Civ3's fortress, for a job
+	// without its own: clearing pollution, a colony or other structure).
+	private static MapUnit.AnimatedAction? JobAnimation(MapUnit unit) {
+		return unit.WorkerJob == null ? null : unit.WorkerJob.Animation ?? MapUnit.AnimatedAction.FORTRESS;
+	}
+
 	public MapUnit.Appearance getUnitAppearance(MapUnit unit) {
+		// (The job's animation started with the job ends with it.)
+		if (activeAnims.TryGetValue(unit.id, out ActiveAnimation current) && current.ending == AnimationEnding.Repeat
+			&& IsJobAnimation(current.anim.action) && JobAnimation(unit) != current.anim.action) {
+			endAnimation(unit);
+		}
 		if (hasCurrentAction(unit)) {
 			var (action, progress, ending) = getCurrentActionAndProgress(unit);
 
@@ -155,6 +172,18 @@ public partial class AnimationTracker {
 				offsetX = offsetX,
 				offsetY = offsetY,
 				ending = ending,
+			};
+		} else if (JobAnimation(unit) is MapUnit.AnimatedAction job) {
+			// A worker at a job keeps at it, its animation over and over, so
+			// the ones at work stand out from the idle ones (each at its own
+			// point of the loop, so a crew doesn't move as one).
+			double duration = Math.Max(1, civ3AnimData.forUnit(unit, job).getDuration());
+			double loops = (getCurrentTimeMS() + (unit.id.GetHashCode() & 0xffff)) / duration;
+			return new MapUnit.Appearance {
+				action = job,
+				direction = unit.facingDirection,
+				progress = (float)(loops - Math.Floor(loops)),
+				ending = AnimationEnding.Repeat,
 			};
 		} else {
 			return new MapUnit.Appearance {

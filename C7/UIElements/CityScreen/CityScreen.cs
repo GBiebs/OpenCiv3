@@ -74,6 +74,13 @@ public partial class CityScreen : Control {
 		public Label lost;
 	}
 	private CommerceRow taxesRow, scienceRow, luxuriesRow;
+
+	// The production box (the scene's grid's place): every shield the same
+	// size, in columns of up to ShieldBoxRows, the columns closer together
+	// (overlapping in the end) as the cost grows.
+	private Control shieldBox;
+	private const int ShieldBoxRows = 5;
+	private static readonly Vector2 ShieldBoxSpacing = new(18, 20);
 	private ImageTexture taxTexture, scienceTexture, luxuryTexture, corruptGoldTexture;
 
 	// Civ3's city screen shows the city at one zoom every time; the map
@@ -195,6 +202,9 @@ public partial class CityScreen : Control {
 			{CONSTRUCTION,  goodShieldTexture}
 		};
 
+		shieldBox = new Control { Position = new Vector2(904, 626), Size = new Vector2(116, 138), MouseFilter = MouseFilterEnum.Ignore };
+		background.AddChild(shieldBox);
+		shieldsInBoxContainer.Visible = false;
 		RenderShieldBox(shieldCost: 30, shieldsInBox: 15);
 		RenderShieldRow(goodShields: 10, corruptShields: 3);
 		RenderFoodBox(foodNeededToGrow: 20, foodStored: 10, foodLostPerTurn: 2, hasGranary: true);
@@ -739,35 +749,28 @@ public partial class CityScreen : Control {
 		}
 	}
 
+	// The shields in the box, then the empty ones, down each column and
+	// across, centered in the box.
 	private void RenderShieldBox(int shieldCost, int shieldsInBox) {
-		foreach (Node child in shieldsInBoxContainer.GetChildren()) {
-			shieldsInBoxContainer.RemoveChild(child);
+		foreach (Node child in shieldBox.GetChildren()) {
+			shieldBox.RemoveChild(child);
 			child.QueueFree();
 		}
-
-		int itemsPerColumn = (int)Math.Ceiling((float)shieldCost / shieldsInBoxContainer.Columns);
-		if (itemsPerColumn == 0) return;
-
-		int width = (int)shieldsInBoxContainer.GetParent<CenterContainer>().Size.X;
-		int height = (int)shieldsInBoxContainer.GetParent<CenterContainer>().Size.Y;
-
-		shieldsInBoxContainer.Columns = (int)Math.Ceiling(Math.Sqrt(shieldCost));
-		int iconSize = Math.Min(height / itemsPerColumn, width / shieldsInBoxContainer.Columns);
-
-		for (int i = 0; i < Math.Min(shieldCost, shieldsInBox); ++i) {
-			shieldsInBoxContainer.AddChild(new TextureRect() {
-				Texture = shieldTexture,
-				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-				StretchMode = TextureRect.StretchModeEnum.KeepAspect,
-				CustomMinimumSize = new Vector2(iconSize, iconSize),
-			});
+		if (shieldCost <= 0) {
+			return;
 		}
-		for (int i = 0; i < shieldCost - shieldsInBox; ++i) {
-			shieldsInBoxContainer.AddChild(new TextureRect() {
-				Texture = emptyShieldTexture,
-				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-				StretchMode = TextureRect.StretchModeEnum.KeepAspect,
-				CustomMinimumSize = new Vector2(iconSize, iconSize)
+
+		Vector2 icon = shieldTexture.GetSize();
+		int rows = Math.Min(ShieldBoxRows, shieldCost);
+		int columns = (shieldCost + rows - 1) / rows;
+		float across = columns == 1 ? 0 : Math.Min(ShieldBoxSpacing.X, (shieldBox.Size.X - icon.X) / (columns - 1));
+		Vector2 used = new((columns - 1) * across + icon.X, (rows - 1) * ShieldBoxSpacing.Y + icon.Y);
+		Vector2 start = ((shieldBox.Size - used) / 2).Floor();
+		for (int i = 0; i < shieldCost; ++i) {
+			shieldBox.AddChild(new TextureRect {
+				Texture = i < shieldsInBox ? shieldTexture : emptyShieldTexture,
+				Position = start + new Vector2(i / rows * across, i % rows * ShieldBoxSpacing.Y),
+				MouseFilter = MouseFilterEnum.Ignore,
 			});
 		}
 	}
