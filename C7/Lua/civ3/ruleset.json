@@ -13092,8 +13092,7 @@
     "ageOfScienceDuration": 20,
     "ageOfScienceResearchBonus": 25,
     "goodyHutGold": [
-      25,
-      50
+      25
     ],
     "goodyHutMapRadius": 5,
     "goodyHutBarbarians": 3,

@@ -93,10 +93,11 @@ namespace C7GameData {
 		public int RadarTileVisibility; // how many tiles, a unit with the Radar ability, can see ahead
 
 		// What goody huts give (GoodyHuts); Civ3's amounts aren't documented,
-		// so these follow players' reports: gold of 25 or 50 ("50 gp is the
-		// max"), a map of the tiles within 5, and three angry tribesmen ("three
-		// barbarians spawn often"). Not in Civ3's BIQ.
-		public List<int> GoodyHutGold = [25, 50];
+		// so these follow players' reports: gold, one of the amounts listed
+		// (25, the user's choice; players report 25 or 50, "50 gp is the
+		// max"), a map of the tiles within 5, and three angry tribesmen
+		// ("three barbarians spawn often"). Not in Civ3's BIQ.
+		public List<int> GoodyHutGold = [25];
 		public int GoodyHutMapRadius = 5;
 		public int GoodyHutBarbarians = 3;
 
