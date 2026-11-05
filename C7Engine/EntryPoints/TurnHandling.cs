@@ -234,6 +234,8 @@ namespace C7Engine {
 						UnitInteractions.ClearWaitQueue();
 					}
 					EngineStorage.uiControllerID = player.id;
+					// (Here, not on their screen: online every game does it.)
+					PlayerRelationship.CheckForObsoleteDeals(player, gameData.players, gameData.turn);
 					new MsgStartTurn(player.id).send();
 					return true;
 				}

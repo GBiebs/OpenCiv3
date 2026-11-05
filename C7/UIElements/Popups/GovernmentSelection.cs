@@ -41,7 +41,7 @@ public partial class GovernmentSelection : Popup {
 
 	public override void _ExitTree() {
 		// Restart the turn once a selection has been made.
-		new MsgStartTurn().send();
+		new MsgStartTurn().sendFromScreens();
 	}
 
 }

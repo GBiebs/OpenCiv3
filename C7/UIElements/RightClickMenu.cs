@@ -270,7 +270,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 				this.CloseAndDelete();
 				EngineStorage.ReadGameData((GameData gameData) => {
 					City.HurryProductionDetails details = tile.cityAtTile.GetHurryProductionDetails();
-					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
+					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).sendFromScreens();
 				});
 			});
 			AddItem("Contact Governor", () => {
@@ -286,7 +286,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 				EngineStorage.ReadGameData((GameData gameData) => {
 					// TODO: perhaps add some conditions as to when we are able to do that,
 					// and if not add a popup message to explain why not (eg last city)
-					new MsgDisplayAbandonCityPopup(tile.cityAtTile).send();
+					new MsgDisplayAbandonCityPopup(tile.cityAtTile).sendFromScreens();
 				});
 			});
 
@@ -363,7 +363,7 @@ public partial class RightClickTileMenu : RightClickMenu {
 					if (!hasSelectedUnit && !isFortify) {
 						bool canMove = game.unitSelector.SetSelectedUnit(unit);
 						if (!canMove) {
-							new MsgShowTemporaryPopup("This unit has already moved.", tile).send();
+							new MsgShowTemporaryPopup("This unit has already moved.", tile).sendFromScreens();
 						}
 					}
 				}
@@ -412,7 +412,7 @@ public partial class RightClickCityMenu : RightClickMenu {
 				this.CloseAndDelete();
 				EngineStorage.ReadGameData((GameData gameData) => {
 					City.HurryProductionDetails details = tile.cityAtTile.GetHurryProductionDetails();
-					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
+					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).sendFromScreens();
 				});
 			});
 			AddItem("Contact Governor", () => {
@@ -424,7 +424,7 @@ public partial class RightClickCityMenu : RightClickMenu {
 				EngineStorage.ReadGameData((GameData gameData) => {
 					// TODO: perhaps add some conditions as to when we are able to do that,
 					// and if not add a popup message to explain why not (eg last city)
-					new MsgDisplayAbandonCityPopup(tile.cityAtTile).send();
+					new MsgDisplayAbandonCityPopup(tile.cityAtTile).sendFromScreens();
 				});
 			});
 		}

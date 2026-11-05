@@ -153,6 +153,9 @@ public partial class MultiplayerScreen : Control {
 					LeaveHost();
 					ShowJoin(goodbye.reason);
 					break;
+				case GameStart start:
+					BeginJoinedGame(start);
+					return;
 			}
 		}
 	}
@@ -832,7 +835,7 @@ public partial class MultiplayerScreen : Control {
 			return;
 		}
 		if (mode == Mode.Host) {
-			AddMessage("Everyone is ready. Playing the game online is the next step of this work.", warning: true);
+			BeginOnline();
 			return;
 		}
 		AskAdminPassword();
@@ -857,11 +860,81 @@ public partial class MultiplayerScreen : Control {
 	// civ is picked here, from those no slot has), then the map opens.
 	private void BeginHere(string adminPassword) {
 		ClosePopup();
-		List<Slot> playing = lobby.slots.Where(s => s.kind != Kind.Closed).ToList();
+		GameSetup gameSetup = Setup(adminPassword, out _);
+		// World generation can take a while: not on the UI thread.
+		new Thread(() => {
+			gameSetup.Populate(save);
+			CallDeferred(nameof(OpenMap));
+		}).Start();
+	}
+
+	// Online: the host makes the game, then sends it to every player and
+	// opens it from the same bytes they do.
+	private List<Slot> playingOnline;
+
+	private void BeginOnline() {
+		host.SendToAll(new ChatLine { text = "The host is starting the game..." });
+		lobby.messages.Add("Starting the game...");
+		GameSetup gameSetup = Setup("", out playingOnline);
+		new Thread(() => {
+			gameSetup.Populate(save);
+			CallDeferred(nameof(SendOnlineGame));
+		}).Start();
+	}
+
+	private void SendOnlineGame() {
+		// GameSetup adds the barbarians, then the host's civ, then the other
+		// slots' in order.
+		List<SavePlayer> civs = save.Players.Where(p => !save.Civilizations.First(c => c.name == p.civilization).isBarbarian).ToList();
+		Dictionary<int, ID> players = new();
+		for (int i = 0; i < playingOnline.Count; i++) {
+			if (playingOnline[i].kind == Kind.Human && playingOnline[i].player is int player && player != Host) {
+				players[player] = civs[i].id;
+			}
+		}
+		string packed = OnlineGame.Pack(save);
+		HostGame game = new(host, civs[0].id, players);
+		game.SendGame(packed);
+		GlobalSingleton global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
+		global.Online = game;
+		global.OnlineSeq = 0;
+		global.SaveGame = OnlineGame.Unpack(packed);
+		// (The game has the host now.)
+		host = null;
+		lobby = null;
+		OpenMap();
+	}
+
+	// A joining player: the host's game, and this one's player in it.
+	private void BeginJoinedGame(GameStart start) {
+		ID you;
+		SaveGame received;
+		try {
+			you = ID.FromString(start.you);
+			received = OnlineGame.Unpack(start.save);
+		} catch (Exception e) {
+			log.Warning(e, "Couldn't read the host's game");
+			AddMessage("The host's game couldn't be read.", warning: true);
+			return;
+		}
+		GlobalSingleton global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
+		global.ResetLoadGameFields();
+		global.Online = new ClientGame(client, you);
+		global.OnlineSeq = start.seq;
+		global.SaveGame = received;
+		client = null;
+		OpenMap();
+	}
+
+	// The game the slots say (a Random civ picked here, from those no slot
+	// has).
+	private GameSetup Setup(string adminPassword, out List<Slot> playing) {
+		playing = lobby.slots.Where(s => s.kind != Kind.Closed).ToList();
 		HashSet<string> taken = playing.Select(s => s.civ).Where(c => c != OnlineLobby.Random).ToHashSet();
 		Random random = new();
 		Queue<string> free = new(lobby.civs.Where(c => !taken.Contains(c)).OrderBy(_ => random.Next()));
 		List<string> chosen = playing.Select(s => s.civ != OnlineLobby.Random ? s.civ : free.Dequeue()).ToList();
+		List<Slot> slots = playing;
 
 		GlobalSingleton global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
 		global.ResetLoadGameFields();
@@ -881,7 +954,7 @@ public partial class MultiplayerScreen : Control {
 			playerCivilization = save.Civilizations.First(c => c.name == chosen[0]),
 			difficulty = difficulty,
 			worldCharacteristics = world,
-			opponents = playing.Skip(1).Select((s, i) => new SelectedOpponent { Name = chosen[i + 1], isHuman = s.kind == Kind.Human }).ToList(),
+			opponents = slots.Skip(1).Select((s, i) => new SelectedOpponent { Name = chosen[i + 1], isHuman = s.kind == Kind.Human }).ToList(),
 			victoryConditions = victoryConditions,
 			playByEmail = mode == Mode.PlayByEmail,
 			adminPassword = adminPassword,
@@ -889,11 +962,7 @@ public partial class MultiplayerScreen : Control {
 		RememberSettings();
 		loading.Visible = true;
 		launch.Disabled = true;
-		// World generation can take a while: not on the UI thread.
-		new Thread(() => {
-			gameSetup.Populate(save);
-			CallDeferred(nameof(OpenMap));
-		}).Start();
+		return gameSetup;
 	}
 
 	private void OpenMap() {

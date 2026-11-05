@@ -56,7 +56,7 @@ public partial class MilitaryAdvisor : Control {
 			child.QueueFree();
 		}
 		EngineStorage.ReadGameData(gameData => {
-			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
+			Player us = gameData.GetPlayer(EngineStorage.viewerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Military, AdvisorAdvice.Military(gameData, us), us.EraIndex());
 			advisorList.Refresh(us.EraIndex());
 			AddSummary(gameData, us);
@@ -149,7 +149,7 @@ public partial class MilitaryAdvisor : Control {
 		}
 		AddButton("Open City", new Rect2(591, 656, 175, 30), selectedCity != null, () => {
 			GetParent<Advisors>().Hide();
-			new MsgShowCityScreen(selectedCity).send();
+			new MsgShowCityScreen(selectedCity).sendFromScreens();
 		});
 		List<MapUnit> there = places.Find(p => p.city == selectedCity).units ?? [];
 		AddButton("Show a Unit", new Rect2(776, 656, 155, 30), there.Count > 0, () => ShowUnit(there));

@@ -156,7 +156,10 @@ namespace C7Engine.Online {
 						host.SendToAll(new ChatLine { text = $"{from.player.name}: {chat.text.Trim()}" });
 						Tell($"{from.player.name}: {chat.text.Trim()}");
 						break;
-					case PlayerLeft left:
+					case PlayerJoined joined:
+						host.Drop(joined.player.id, "The game has already begun.");
+						break;
+					case PlayerLeft left when players.ContainsKey(left.player.id):
 						Tell($"{left.player.name} has left the game.");
 						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game." });
 						break;

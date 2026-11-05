@@ -247,7 +247,7 @@ public partial class CityScreen : Control {
 	}
 
 	private void OnShowCityScreenLocked(GameData gameData, ParameterWrapper<City> city) {
-		readOnly = city.Value.owner.id != EngineStorage.uiControllerID;
+		readOnly = city.Value.owner.id != EngineStorage.viewerID;
 		productionButton.Disabled = readOnly;
 		previousCity.Visible = !readOnly;
 		nextCity.Visible = !readOnly;
@@ -351,7 +351,7 @@ public partial class CityScreen : Control {
 				Disabled = readOnly,
 			};
 			Building b = building.building;
-			button.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).send();
+			button.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).sendFromScreens();
 			existingBuildings.AddChild(button);
 		}
 	}

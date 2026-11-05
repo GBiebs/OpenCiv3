@@ -239,7 +239,8 @@ namespace C7Engine {
 	// a custom subclass.
 	// The UI's unit orders: hold, explore, automate, disband.
 	public class MsgUnitOrder : MessageToEngine {
-		public enum Order { Hold, Explore, Automate, Disband }
+		// (Cancel: its go-to and automation, as a click on it does.)
+		public enum Order { Hold, Explore, Automate, Disband, Cancel }
 
 		public override bool IsPlayerAction => true;
 
@@ -270,6 +271,11 @@ namespace C7Engine {
 					break;
 				case Order.Disband:
 					await unit.Disband();
+					break;
+				case Order.Cancel:
+					unit.path = TilePath.NONE;
+					unit.isAutomated = false;
+					unit.currentAI = null;
 					break;
 			}
 		}
@@ -649,6 +655,14 @@ namespace C7Engine {
 	/// <summary>
 	/// Spends a free tech advance on the given tech, then asks what to research next.
 	/// </summary>
+	// The player who doesn't want to be asked (Preferences): research picked
+	// for them, as for an AI.
+	public class MsgPickResearch : MessageToEngine {
+		public override void process() {
+			PlayerAI.MaybePickTechToResearch(EngineStorage.GetUIController(), EngineStorage.gameData.techs);
+		}
+	}
+
 	public class MsgClaimFreeTech : MessageToEngine {
 		public override bool IsPlayerAction => true;
 

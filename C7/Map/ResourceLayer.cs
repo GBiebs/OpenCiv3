@@ -29,7 +29,7 @@ namespace C7.Map {
 			if (gameData.observerMode) {
 				return true;
 			}
-			return EngineStorage.GetUIController().KnowsAboutResource(t.Resource);
+			return EngineStorage.GetViewer().KnowsAboutResource(t.Resource);
 		}
 	}
 }

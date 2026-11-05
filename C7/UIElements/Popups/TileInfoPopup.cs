@@ -109,7 +109,7 @@ public partial class TileInfoPopup : Popup {
 	}
 
 	private void SetTileInfoContent(Tile tile, GameData gameData) {
-		var player = EngineStorage.GetUIController();
+		var player = EngineStorage.GetViewer();
 		var isObserverMode = gameData.observerMode;
 
 		if (player.tileKnowledge.isTileKnown(tile) || isObserverMode) {

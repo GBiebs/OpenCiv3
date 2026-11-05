@@ -55,7 +55,7 @@ public partial class TradeAdvisor : Control {
 			child.QueueFree();
 		}
 		EngineStorage.ReadGameData(gameData => {
-			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
+			Player us = gameData.GetPlayer(EngineStorage.viewerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Trade, AdvisorAdvice.Trade(gameData, us), us.EraIndex());
 			advisorList.Refresh(us.EraIndex());
 			AddResources(gameData, us);

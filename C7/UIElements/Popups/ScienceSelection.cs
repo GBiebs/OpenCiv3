@@ -50,7 +50,7 @@ public partial class ScienceSelection : Popup {
 			if (claimingFreeTech) {
 				GetParent<PopupOverlay>().SetAdvisorCloseAction(ClaimFreeTechFromCurrentResearch);
 			}
-			new MsgShowScienceAdvisor().send();
+			new MsgShowScienceAdvisor().sendFromScreens();
 			GetParent().EmitSignal(PopupOverlay.SignalName.HidePopup);
 		});
 

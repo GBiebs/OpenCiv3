@@ -77,23 +77,20 @@ public partial class UnitSelector : Node {
 	 * Returns whether the selected unit has remaining moves.
 	 **/
 	public bool SetSelectedUnit(MapUnit unit) {
-		if ((unit.path?.PathLength() ?? -1) > 0) {
+		// A click on a unit with a go-to or automation cancels them (an
+		// order: it changes the game).
+		if ((unit.path?.PathLength() ?? -1) > 0 || unit.isAutomated) {
 			log.Debug("cancelling path for " + unit);
-			unit.path = TilePath.NONE;
+			new MsgUnitOrder(unit.id, MsgUnitOrder.Order.Cancel).send();
 		}
 
 		// Ask for confirmation to cancel an active worker's job by clicking on the unit.
 		if (unit.WorkerJob != null) {
 			var turnsToFinish = unit.TurnsToCompleteTerraform(unit.WorkerJob);
-			new MsgDisplayStopWorkerActionPopup(unit, unit.WorkerJob, turnsToFinish).send();
+			new MsgDisplayStopWorkerActionPopup(unit, unit.WorkerJob, turnsToFinish).sendFromScreens();
 			return unit.WorkerJob == null && unit.movementPoints.remaining >= 1.0f;
 		}
 
-		// Allow cancellation automation via clicking on the unit.
-		if (unit.isAutomated) {
-			unit.isAutomated = false;
-			unit.currentAI = null;
-		}
 
 		if (unit != MapUnit.NONE && !unit.movementPoints.canMove) {
 			return false;

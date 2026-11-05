@@ -23,7 +23,7 @@ namespace C7.Map {
 			Tile east = tile.neighbors[TileDirection.NORTHEAST];
 			Tile west = tile.neighbors[TileDirection.NORTHWEST];
 
-			var tk = EngineStorage.GetUIController().tileKnowledge;
+			var tk = EngineStorage.GetViewer().tileKnowledge;
 			var ti = looseView.mapView.game.tileInfo;
 
 			(bool, bool, bool) Status(Tile tile) {

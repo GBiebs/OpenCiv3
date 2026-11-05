@@ -52,7 +52,7 @@ public partial class CulturalAdvisor : Control {
 			child.QueueFree();
 		}
 		EngineStorage.ReadGameData(gameData => {
-			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
+			Player us = gameData.GetPlayer(EngineStorage.viewerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Culture, AdvisorAdvice.Culture(gameData, us), us.EraIndex());
 			advisorList.Refresh(us.EraIndex());
 

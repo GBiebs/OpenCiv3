@@ -84,7 +84,7 @@ public partial class DomesticAdvisor : Control {
 		changeGovernment.Pressed += ChangeGovernments;
 
 		TextureLoader.SetButtonTextures(mobilize, "advisors.domestic.button");
-		mobilize.Pressed += () => new MsgChangeMobilization(playerController.id).send();
+		mobilize.Pressed += () => new MsgChangeMobilization(playerController.id).sendFromScreens();
 
 		ImageTexture scienceSliderTexture = TextureLoader.Load("icons.science");
 		ImageTexture luxurySliderTexture = TextureLoader.Load("icons.luxury");
@@ -208,7 +208,7 @@ public partial class DomesticAdvisor : Control {
 		Show();
 
 		EngineStorage.ReadGameData((GameData gameData) => {
-			playerController = gameData.players.First(p => p.id == EngineStorage.uiControllerID);
+			playerController = gameData.players.First(p => p.id == EngineStorage.viewerID);
 			PlayerCommerceBreakdown totalIncome = playerController.AggregateFlows();
 
 			int scienceRate = playerController.scienceRate;
@@ -275,14 +275,14 @@ public partial class DomesticAdvisor : Control {
 
 	private void ChangeGovernments() {
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 
 			if (player.government.transitionType) {
-				new MsgAlreadyInRevolution(playerController.id).send();
+				new MsgAlreadyInRevolution(playerController.id).sendFromScreens();
 				return;
 			}
 
-			new MsgConfirmStartRevolution(playerController.id).send();
+			new MsgConfirmStartRevolution(playerController.id).sendFromScreens();
 		});
 	}
 
@@ -302,7 +302,7 @@ public partial class DomesticAdvisor : Control {
 		cityName.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
 		cityName.Pressed += () => {
 			GetParent<Advisors>().Hide();
-			new MsgShowCityScreen(city).send();
+			new MsgShowCityScreen(city).sendFromScreens();
 		};
 		hboxContainer.AddChild(cityName);
 

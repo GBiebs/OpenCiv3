@@ -8,7 +8,8 @@ namespace C7Engine {
 	// message for no one in particular is part of what the player in
 	// control is doing (a confirmation, a map update) and is never held;
 	// a prompt that waits for an answer hands its human the UI first
-	// instead (TurnHandling.HandControlTo).
+	// instead (TurnHandling.HandControlTo). Online, the same says which
+	// computers show it (ForComputerOf).
 	public static class MessageRecipients {
 		// News for every player: each one's UI decides whether it concerns
 		// them (whether they know the civs involved, for instance).
@@ -69,6 +70,28 @@ namespace C7Engine {
 			}
 			return gameData.players.Where(p => p.isHuman && !p.defeated && p.id != controller && (recipients == null || recipients.Contains(p.id)))
 				.Select(p => p.id).ToList();
+		}
+
+		// Online: whether `msg` is for the computer `local` plays at while
+		// `acting` plays: what that computer's own screens sent, news for
+		// its player or for everyone, and what the player in control does
+		// when that's its player.
+		public static bool ForComputerOf(MessageToUI msg, ID local, ID acting) {
+			if (msg.fromScreens) {
+				return true;
+			}
+			// (The UI checks whose each of these is.)
+			if (msg is MsgStartTurn or MsgHandOver or MsgTurnReady or MsgEnvoyArrives or MsgShowHumanDeal or MsgDiplomacyNews or MsgNewsWhileAway) {
+				return true;
+			}
+			if (ForEveryone(msg)) {
+				return true;
+			}
+			List<ID> recipients = Of(msg);
+			if (recipients.Count > 0) {
+				return recipients.Contains(local);
+			}
+			return acting == local;
 		}
 	}
 }

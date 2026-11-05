@@ -79,7 +79,7 @@ public partial class ForeignAdvisor : Control {
 			child.QueueFree();
 		}
 		EngineStorage.ReadGameData(gameData => {
-			Player us = gameData.GetPlayer(EngineStorage.uiControllerID);
+			Player us = gameData.GetPlayer(EngineStorage.viewerID);
 			AdvisorUtils.ShowAdvice(advisorHead, advice, AdvisorHead.Advisor.Foreign, AdvisorAdvice.Foreign(gameData, us), us.EraIndex());
 			advisorList.Refresh(us.EraIndex());
 

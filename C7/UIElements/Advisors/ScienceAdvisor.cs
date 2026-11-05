@@ -118,7 +118,7 @@ public partial class ScienceAdvisor : Control {
 	private void LoadTechTree() {
 		EngineStorage.ReadGameData((GameData gameData) => {
 			List<Tech> allTechs = gameData.techs;
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 			// ShowAdvisor runs before Show(), so Visible means we're already open
 			// and shouldn't throw away selections made so far.
 			if (!Visible) {
@@ -199,7 +199,7 @@ public partial class ScienceAdvisor : Control {
 	// Records a click locally and redraws; the player is untouched until the advisor closes.
 	private void ChoosePendingTech(Tech tech, SelectionMode mode) {
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 
 			// Mirror the checks MsgChooseResearch will make when we replay this click.
 			bool isTechEraBeyondPlayerEra = GetEraIndex(tech.EraCivilopediaName) > GetEraIndex(player.eraCivilopediaName);
@@ -240,7 +240,7 @@ public partial class ScienceAdvisor : Control {
 
 		bool asked = false;
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 			ID current = player.currentlyResearchedTech;
 			// With nothing spent there's nothing to lose, so no need to ask.
 			if (current == null || selectedTech == current || player.beakers == 0) {
@@ -284,7 +284,7 @@ public partial class ScienceAdvisor : Control {
 
 		EngineStorage.ReadGameData((GameData gameData) => {
 			List<Tech> allTechs = gameData.techs;
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 			eraName = string.IsNullOrEmpty(lastOpenedEra)
 				? EraIndexToEra(GetEraIndex(eraName) + delta)
 				: EraIndexToEra(GetEraIndex(lastOpenedEra) + delta);
@@ -299,7 +299,7 @@ public partial class ScienceAdvisor : Control {
 		Show();
 
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 			advisorList.Refresh(player.EraIndex());
 
 			// TODO: Choose advisor head

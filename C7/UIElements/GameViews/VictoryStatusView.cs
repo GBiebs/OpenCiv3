@@ -51,7 +51,7 @@ public partial class VictoryStatusView : Control {
 			Visible = false,
 		};
 		_launch.Pressed += () => {
-			new MsgLaunchSpaceship(EngineStorage.uiControllerID).send();
+			new MsgLaunchSpaceship(EngineStorage.viewerID).send();
 			this.GetParent<GameViews>().Hide();
 		};
 		background.AddChild(_launch);
@@ -76,7 +76,7 @@ public partial class VictoryStatusView : Control {
 	private void DrawGrid(GameData gameData) {
 		ClearGrid();
 
-		Player player = EngineStorage.GetUIController();
+		Player player = EngineStorage.GetViewer();
 		List<Player> rivals = gameData.GetKnownRivals(player);
 
 		// Render

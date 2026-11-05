@@ -38,6 +38,7 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 
 	private Timer blinkingTimer = new Timer();
 	private bool timerStarted = false;  //This "isStopped" returns false if it's never been started.  So we need this to know if we've ever started it.
+	private bool waitingOnline = false;
 
 	private float extraXOffset = 7;
 
@@ -242,7 +243,7 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 		// Update our information each time we're drawn, just like the tile and
 		// city scenes.
 		EngineStorage.ReadGameData((GameData gD) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 
 			// Gold per turn and turn indicator.
 			{
@@ -260,6 +261,23 @@ public partial class LowerRightInfoBox : Civ3TextureRect {
 
 			// Civ and government.
 			civAndGovt.SetTextAndCenterLabel($"{player.civilization.name} - {player.government.name} (5.5.0)").AddXOffset(extraXOffset);
+
+			// Online, during another's turn: whose (in place of the unit, as
+			// "Please wait...").
+			bool waiting = EngineStorage.localPlayerID != null && EngineStorage.uiControllerID != EngineStorage.localPlayerID;
+			if (waiting) {
+				if (!waitingOnline) {
+					StopToggling();
+					HideUnitInfo();
+				}
+				Player playing = gD.GetPlayer(EngineStorage.uiControllerID);
+				suggestion.Text = playing == null || playing.hasPlayedThisTurn ? "Please wait..."
+					: $"Waiting for {playing.civilization.leader} of the {playing.civilization.noun}...";
+				suggestion.Visible = true;
+			} else if (waitingOnline) {
+				suggestion.Visible = false;
+			}
+			waitingOnline = waiting;
 		});
 
 		base._Process(delta);

@@ -77,11 +77,11 @@ public partial class Diplomacy : CenterContainer {
 			// their own deal can still be answered).
 			int refused = HumanDiplomacy.EnvoysRefusedFor(gd, human, opponent);
 			if (refused > 0 && HumanDiplomacy.Between(gd, human, opponent)?.to != human.id) {
-				new MsgDiplomacyNews(human.id, $"The {opponent.civilization.noun} have asked us not to send envoys for {refused} more turns.", good: false).send();
+				new MsgDiplomacyNews(human.id, $"The {opponent.civilization.noun} have asked us not to send envoys for {refused} more turns.", good: false).sendFromScreens();
 				return;
 			}
 		} else if (!opponent.WillAcceptCommunicationFrom(human, gd.turn)) {
-			new MsgRefuseContact(opponentPlayer).send();
+			new MsgRefuseContact(opponentPlayer).sendFromScreens();
 			return;
 		}
 

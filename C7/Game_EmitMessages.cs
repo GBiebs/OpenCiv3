@@ -1099,7 +1099,7 @@ public partial class Game {
 				"Yes. You know it's gonna be alright.",
 				"No. You can count me out.",
 				yesAction: () => {
-					new MsgDescendIntoAnarchy(controller.id, controllerGov).send();
+					new MsgDescendIntoAnarchy(controller.id, controllerGov).sendFromScreens();
 				},
 				yesCallback: async () => {
 					await EngineStorage.WaitForMessageToEngine<MsgUiDisengaged>();

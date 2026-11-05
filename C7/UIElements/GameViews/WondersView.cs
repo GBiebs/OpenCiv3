@@ -31,7 +31,7 @@ public partial class WondersView : Control {
 		Show();
 
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 
 		});
 	}

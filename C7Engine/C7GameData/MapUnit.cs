@@ -192,7 +192,7 @@ namespace C7GameData {
 			string hPDesc = ((type.attack > 0) || (type.defense > 0)) ? $" ({this.hitPointsRemaining}/{this.maxHitPoints})" : "";
 			string displayName = this.IsCaptive() ? $" ({this.nationality.adjective}) {this.name}" : $" {this.name}";
 			string attackDesc = (type.bombard > 0) ? $"{type.attack}({type.bombard})" : type.attack.ToString();
-			string stats = $" ({attackDesc}.{type.defense}.{(EngineStorage.uiControllerID == this.owner.id ? $"{this.movementPoints.getMixedNumber()}/" : "")}{type.movement})";
+			string stats = $" ({attackDesc}.{type.defense}.{(EngineStorage.viewerID == this.owner.id ? $"{this.movementPoints.getMixedNumber()}/" : "")}{type.movement})";
 			return $"{exp}{hPDesc}{displayName}{stats}".Trim();
 		}
 
@@ -201,7 +201,7 @@ namespace C7GameData {
 		private string DescribeArmy() {
 			List<MapUnit> members = Passengers();
 			string contents = members.Count > 0 ? $" of {string.Join(", ", members.Select(m => m.name))}" : " (empty)";
-			string moves = EngineStorage.uiControllerID == owner.id ? $"{movementPoints.getMixedNumber()}/" : "";
+			string moves = EngineStorage.viewerID == owner.id ? $"{movementPoints.getMixedNumber()}/" : "";
 			string stats = $"({BaseCombatStrength(CombatRole.Attack)}.{BaseCombatStrength(CombatRole.Defense)}.{moves}{MovementPerTurn()})";
 			return $"({hitPointsRemaining}/{maxHitPoints}) {name}{contents} {stats}";
 		}

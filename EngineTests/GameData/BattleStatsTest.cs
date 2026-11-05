@@ -220,7 +220,9 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 			// A hotseat password isn't a move in the game, nor arriving for a
 			// turn played by email and reading the news, nor the
 			// administrator's changes.
-			typeof(MsgSetPassword), typeof(MsgHearFromOthers), typeof(MsgNewsRead), typeof(MsgAdministerGame)];
+			typeof(MsgSetPassword), typeof(MsgHearFromOthers), typeof(MsgNewsRead), typeof(MsgAdministerGame),
+			// Research picked for a player who doesn't want to be asked.
+			typeof(MsgPickResearch)];
 		List<Type> messages = typeof(MessageToEngine).Assembly.GetTypes()
 			.Where(t => t.IsSubclassOf(typeof(MessageToEngine)) && !t.IsAbstract).ToList();
 		Assert.True(messages.Count > 40);

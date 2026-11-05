@@ -27,8 +27,8 @@ public static class Autosave {
 			GameData gameData = EngineStorage.gameData;
 			if (gameData == null) return;
 			Player player = null;
-			if (EngineStorage.GetUIController() != null) {
-				player = EngineStorage.GetUIController();
+			if (EngineStorage.GetViewer() != null) {
+				player = EngineStorage.GetViewer();
 			} else if (gameData.players != null) {
 				player = gameData.players.FirstOrDefault(p => !p.isBarbarians);
 			}

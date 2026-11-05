@@ -2,6 +2,7 @@ using Godot;
 using System;
 using System.Diagnostics;
 using C7Engine;
+using C7Engine.Online;
 using C7GameData;
 using Serilog;
 using C7.UIElements;
@@ -190,6 +191,12 @@ public partial class Game : Node {
 
 	public Player controller; // Player that's controlling the UI.
 
+	// Online: this game's side of it (kept from scene to scene), and the
+	// host wanting every game begun again from its copy (once its own is
+	// settled).
+	private OnlineGame online => Global?.Online;
+	private bool resyncWanted;
+
 	// Hotseat: news held for each other human until they next take the UI
 	// (see MessageRecipients), what runs once a human has taken it (one a
 	// frame, as engine messages are), and the screen hiding the map until
@@ -277,6 +284,20 @@ public partial class Game : Node {
 
 		await CreateGameAndAssignPlayerController(options);
 
+		// Online: this computer plays its own player; its orders go to the
+		// host and come back in sequence.
+		EngineStorage.localPlayerID = online?.localPlayer;
+		if (online != null) {
+			controller = EngineStorage.gameData.GetPlayer(online.localPlayer);
+			online.Notice += OnOnlineNotice;
+			online.OutOfSync += OnOutOfSync;
+			if (online is ClientGame client) {
+				client.Restart += OnOnlineRestart;
+				client.Ended += OnOnlineEnded;
+			}
+			online.Begin(Global.OnlineSeq);
+		}
+
 		foreach (var gameDataPlayer in EngineStorage.gameData.players) {
 			if (TurnHandling.GetTurnNumber() == 0)
 				if (gameDataPlayer.SitsOutFirstTurn())
@@ -309,23 +330,32 @@ public partial class Game : Node {
 			StatisticsCapture.Run(this, gameViews);
 		}
 
-		if (Global.LoadGamePath == null) {
-			new MsgNewGame(controller.id).send();
+		if (Global.LoadGamePath == null && !Global.OnlineResumed) {
+			new MsgNewGame(controller.id).sendFromScreens();
 			await EngineStorage.WaitForMessageToEngine<MsgUiDisengaged>();
 		}
 
-		// Hotseat and play by email: starting or loading the game, whoever's
-		// turn it is gives their password (or may choose one) before their
-		// empire shows. Then the deals other humans sent them, and by email
-		// what the AIs have to say.
-		if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1 || EngineStorage.gameData.playByEmail) {
+		// Online: each plays their own turn on their own computer; the others
+		// wait for theirs.
+		if (online != null) {
+			startedATurn = true;
+			if (EngineStorage.uiControllerID == controller.id) {
+				HearFromOthers();
+			} else {
+				CurrentState = GameState.ComputerTurn;
+			}
+		} else if (EngineStorage.gameData.players.Count(p => p.isHuman && !p.defeated) > 1 || EngineStorage.gameData.playByEmail) {
+			// Hotseat and play by email: starting or loading the game, whoever's
+			// turn it is gives their password (or may choose one) before their
+			// empire shows. Then the deals other humans sent them, and by email
+			// what the AIs have to say.
 			startedATurn = true;
 			GameData gameData = EngineStorage.gameData;
 			HandOverTo(controller.id, $"It's your turn: {gameData.timeOptions.GetDisplayTime(gameData.turn)}.", HearFromOthers, administrable: true);
 		}
 
 		try {
-			if (Global.LoadGamePath == null) {
+			if (Global.LoadGamePath == null && !Global.OnlineResumed) {
 				try {
 					Autosave.ClearAutosaveDirectory();
 				} catch {
@@ -565,6 +595,19 @@ public partial class Game : Node {
 	}
 
 	public void HandleEngineMessage(MessageToUI msg) {
+		// Online: only what concerns this computer's player, though every
+		// computer's map shows what happened.
+		if (online != null) {
+			if (msg is MsgCivilizationDestroyed mCivD && mCivD.civilization == controller.civilization) {
+				// Destroyed in another's turn: this player's game is over.
+				DispatchEngineMessage(new MsgPlayerDefeated(controller.id));
+			} else if (MessageRecipients.ForComputerOf(msg, controller.id, EngineStorage.uiControllerID)) {
+				DispatchEngineMessage(msg);
+			} else {
+				UpdateMapFor(msg);
+			}
+			return;
+		}
 		// Hotseat: a copy of the news for each other human, for their turn
 		// (playing by email, the engine writes it down: NewsWhileAway).
 		if (controller != null && !EngineStorage.gameData.playByEmail) {
@@ -584,6 +627,17 @@ public partial class Game : Node {
 		switch (msg) {
 			case MsgNewGame mNGP:
 				EmitDawnOfCivilizationSignal(mNGP);
+				break;
+			case MsgStartTurn mST when online != null && mST.playerId != null:
+				// Online: each plays their own turn on their own computer.
+				if (mST.playerId == controller.id) {
+					HearFromOthers();
+				} else {
+					CurrentState = GameState.ComputerTurn;
+				}
+				break;
+			case MsgHandOver when online != null:
+				// (The one asked is at their own computer.)
 				break;
 			case MsgStartTurn mST:
 				// Another human's turn; and in a hotseat game the first turn
@@ -984,6 +1038,10 @@ public partial class Game : Node {
 	}
 
 	public override void _Process(double delta) {
+		online?.Poll(EngineStorage.gameData);
+		if (resyncWanted) {
+			TryResync();
+		}
 		ProcessActions();
 		UpdateMovePress();
 		EdgeScroll(delta);
@@ -1063,7 +1121,7 @@ public partial class Game : Node {
 		if (promptForResearch) {
 			popupOverlay.ShowPopup(new ScienceSelection(controller), PopupOverlay.PopupCategory.Info);
 		} else {
-			PlayerAI.MaybePickTechToResearch(controller, EngineStorage.gameData.techs);
+			new MsgPickResearch().send();
 		}
 	}
 
@@ -1079,17 +1137,15 @@ public partial class Game : Node {
 
 			log.Information("Starting player turn");
 
-			// TODO: Before we call this method to automatically end obsolete deals, we could make this more versatile.
-			// For example unless we have a good reason, as a human, receiving luxuries, gpt,
-			// or having an active RoP, doesn't hurt us.
-			PlayerRelationship.CheckForObsoleteDeals(controller, gameData.players, gameData.turn);
+			// (Obsolete deals end in the engine, at the start of the turn:
+			// TurnHandling.PlayPlayerTurns.)
 
 			// If the player can now pick a new government, force them to do so.
 			// When the popup is closed we call OnPlayerStartTurn again. This isn't
 			// ideal, but we don't yet have a general purpose "show a popup and
 			// wait for the player to acknowledge it" system.
 			if (controller.government.transitionType && TurnHandling.GetTurnNumber() >= controller.inAnarchyUntilTurn) {
-				new MsgSelectGovernment(this.controller.id).send();
+				new MsgSelectGovernment(this.controller.id).sendFromScreens();
 			}
 
 			// If the player can pick a new tech to research, prompt them to do so
@@ -1130,7 +1186,7 @@ public partial class Game : Node {
 
 				City.Mood cityMood = city.RecalculateCitizenMoods(gameData);
 				if (cityMood == City.Mood.Unhappy) {
-					new MsgCityRiotWarning(this.controller.id, city).send();
+					new MsgCityRiotWarning(this.controller.id, city).sendFromScreens();
 					doEndTurn = false;
 					return;
 				}
@@ -1152,7 +1208,84 @@ public partial class Game : Node {
 
 	public void OnRetire() {
 		// Quit to main menu, freeing previous scene data
+		LeaveOnline();
 		GetTree().ChangeSceneToFile("res://UIElements/MainMenu/main_menu.tscn");
+	}
+
+	private void LeaveOnline() {
+		Global.Online?.Dispose();
+		Global.Online = null;
+		EngineStorage.localPlayerID = null;
+	}
+
+	// Online: the map's side of news for another player (cities drawn
+	// anew), as DispatchEngineMessage does it with the news.
+	private void UpdateMapFor(MessageToUI msg) {
+		switch (msg) {
+			case MsgCityDestroyed mCD:
+				mapView.cityLayer.UpdateAfterCityDestruction(mCD.city);
+				break;
+			case MsgCityRazed mCR:
+				mapView.cityLayer.UpdateAfterCityDestruction(mCR.city);
+				break;
+			case MsgCityFlipped mCF:
+				mapView.cityLayer.UpdateAfterCityCaptured(mCF.city);
+				break;
+			case MsgCityRebuffed mCRb:
+				mapView.cityLayer.UpdateAfterCityCaptured(mCRb.city);
+				break;
+			case MsgCityCaptured mCC:
+				mapView.cityLayer.UpdateAfterCityCaptured(mCC.city);
+				break;
+		}
+	}
+
+	private void OnOnlineNotice(string text) {
+		log.Information("Online: {Text}", text);
+		if (text.EndsWith("has left the game.")) {
+			EmitForeignAdvisorSignal(text, Mood.Sad);
+		}
+	}
+
+	// The host: a game went its own way. Every game, this one too, begins
+	// again from this one's copy, once it's settled (an order's work done).
+	private void OnOutOfSync() {
+		if (online is HostGame) {
+			resyncWanted = true;
+		}
+	}
+
+	private void TryResync() {
+		if (!EngineStorage.OrdersDone() || EngineStorage.HasPendingAnimations() || EngineStorage.OrdersWaiting > 0) {
+			return;
+		}
+		resyncWanted = false;
+		HostGame host = (HostGame)online;
+		log.Warning("Out of sync: every game begins again from the host's copy");
+		string packed = OnlineGame.Pack(C7GameData.Save.SaveGame.FromGameData(EngineStorage.gameData));
+		host.SendGame(packed);
+		BeginAgain(packed, host.Seq);
+	}
+
+	private void OnOnlineRestart(GameStart start) => BeginAgain(start.save, start.seq);
+
+	private void BeginAgain(string packed, long seq) {
+		Global.SaveGame = OnlineGame.Unpack(packed);
+		Global.LoadGamePath = null;
+		Global.OnlineSeq = seq;
+		Global.OnlineResumed = true;
+		GetTree().ChangeSceneToFile("res://C7Game.tscn");
+	}
+
+	private void OnOnlineEnded(string reason) {
+		LeaveOnline();
+		HideScreensOverTheMap();
+		OnlinePanel panel = new(460, 200);
+		handOverScreen = new HandOverScreen(panel);
+		popupOverlay.GetParent().AddChild(handOverScreen);
+		panel.Header("Multiplayer");
+		panel.Text(reason ?? "The game has ended.", 70, 15);
+		panel.Button("Main Menu", new Vector2(170, 150), OnRetire);
 	}
 
 	public void OnSaveGame() {
@@ -1345,6 +1478,15 @@ public partial class Game : Node {
 
 	public override void _ExitTree() {
 		Input.MouseMode = Input.MouseModeEnum.Visible;
+		// (The game's side of it goes on in the next scene, begun again.)
+		if (online != null) {
+			online.Notice -= OnOnlineNotice;
+			online.OutOfSync -= OnOutOfSync;
+			if (online is ClientGame client) {
+				client.Restart -= OnOnlineRestart;
+				client.Ended -= OnOnlineEnded;
+			}
+		}
 	}
 
 	// Scrolls the map while the mouse rests at an edge of the window.
@@ -1443,7 +1585,7 @@ public partial class Game : Node {
 		Tile tile = PositionToTile(screenPosition);
 
 		if (!canMove) {
-			new MsgShowTemporaryPopup("This unit has already moved.", tile).send();
+			new MsgShowTemporaryPopup("This unit has already moved.", tile).sendFromScreens();
 		}
 	}
 
@@ -1604,6 +1746,10 @@ public partial class Game : Node {
 	}
 
 	private void ToggleObserverMode() {
+		// (Not online: every game must play the same game.)
+		if (online != null) {
+			return;
+		}
 		EngineStorage.ReadGameData((GameData gameData) => {
 			gameData.observerMode = !gameData.observerMode;
 			if (gameData.observerMode) {
@@ -1636,6 +1782,9 @@ public partial class Game : Node {
 	}
 
 	private void ToggleGridCoordinates() {
+		if (online != null) {
+			return;
+		}
 		EngineStorage.ReadGameData((GameData gameData) => {
 			gameData.showGridCoordinates = !gameData.showGridCoordinates;
 		});
@@ -1911,7 +2060,7 @@ public partial class Game : Node {
 		}
 
 		if (currentAction == C7Action.UnitDisband) {
-			new MsgDisbandUnitConfirmation(CurrentlySelectedUnit).send();
+			new MsgDisbandUnitConfirmation(CurrentlySelectedUnit).sendFromScreens();
 		}
 
 		// unit_goto's behavior is more complicated than other actions - it
@@ -1941,7 +2090,7 @@ public partial class Game : Node {
 			EngineStorage.ReadGameData((GameData gameData) => {
 				MapUnit currentUnit = gameData.GetUnit(CurrentlySelectedUnit.id);
 				log.Debug(currentUnit.Describe());
-				new MsgNameCity(controller.id, controller.GetNextCityName()).send();
+				new MsgNameCity(controller.id, controller.GetNextCityName()).sendFromScreens();
 			});
 		}
 
@@ -1992,7 +2141,7 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.UnitLoad) {
 			EngineStorage.ReadGameData((GameData gameData) => {
-				new MsgSelectTransport(CurrentlySelectedUnit, CurrentlySelectedUnit.GetTransportsToBoard(CurrentlySelectedUnit.location)).send();
+				new MsgSelectTransport(CurrentlySelectedUnit, CurrentlySelectedUnit.GetTransportsToBoard(CurrentlySelectedUnit.location)).sendFromScreens();
 			});
 		}
 		if (currentAction == C7Action.UnitUnload) {
@@ -2014,7 +2163,7 @@ public partial class Game : Node {
 
 		TerrainImprovement replacementTarget = CurrentlySelectedUnit.location.overlays.GetReplacementTarget(terraform);
 		if (replacementTarget != null) {
-			new MsgReplaceTerrainImprovementConfirmation(replacementTarget, terraform).send();
+			new MsgReplaceTerrainImprovementConfirmation(replacementTarget, terraform).sendFromScreens();
 			return;
 		}
 		new MsgStartWorkerJob(CurrentlySelectedUnit.id, terraform).send();
@@ -2046,19 +2195,19 @@ public partial class Game : Node {
 		log.Debug($"Resolve movement intent: {info.intent}");
 
 		if (info.intent == Intent.NoticeUnit) {
-			new MsgShowTemporaryPopup($"Non-combat units may not attack.", info.destinationTile).send();
+			new MsgShowTemporaryPopup($"Non-combat units may not attack.", info.destinationTile).sendFromScreens();
 			return;
 		}
 		if (info.intent == Intent.NoticeCity) {
-			new MsgShowTemporaryPopup($"Only combat units can capture cities and improvements.", info.destinationTile).send();
+			new MsgShowTemporaryPopup($"Only combat units can capture cities and improvements.", info.destinationTile).sendFromScreens();
 			return;
 		}
 		if (info.intent == Intent.NoticeAlliance) {
-			new MsgShowTemporaryPopup($"No aggression against alliance.", info.destinationTile).send();
+			new MsgShowTemporaryPopup($"No aggression against alliance.", info.destinationTile).sendFromScreens();
 			return;
 		}
 		if (info.intent == Intent.NoticeAttacked) {
-			new MsgShowTemporaryPopup($"This unit has already attacked this turn.", info.destinationTile).send();
+			new MsgShowTemporaryPopup($"This unit has already attacked this turn.", info.destinationTile).sendFromScreens();
 			return;
 		}
 
@@ -2084,7 +2233,7 @@ public partial class Game : Node {
 	}
 
 	private void MaybeDeclareWar(Player player, Action callback) {
-		new MsgWarDeclarationConfirmation(controller.id, player.id, callback).send();
+		new MsgWarDeclarationConfirmation(controller.id, player.id, callback).sendFromScreens();
 	}
 
 	private Tile lastTile = null;

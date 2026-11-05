@@ -9,9 +9,20 @@ namespace C7Engine {
 	}
 
 	public class MessageToUI : IMessageToUI {
+		// Sent by this computer's own screens (a menu, an advisor, a
+		// confirmation), not by the engine. Online, it's for whoever is at
+		// this computer, whoever's turn it is; the engine's messages are for
+		// whom they concern.
+		public bool fromScreens { get; private set; }
+
 		public void send() {
 			NewsWhileAway.Record(this);
 			EngineStorage.messagesToUI.Enqueue(this);
+		}
+
+		public void sendFromScreens() {
+			fromScreens = true;
+			send();
 		}
 	}
 

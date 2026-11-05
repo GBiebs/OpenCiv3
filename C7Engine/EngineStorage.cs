@@ -19,6 +19,11 @@ namespace C7Engine {
 		public static GameData gameData { get; set; }
 
 		public static ID uiControllerID;
+		// Online: this computer's player, whose view the screens show (the
+		// others play on their own computers). Null in a game at one
+		// computer, where the screens show the player in control.
+		public static ID localPlayerID;
+		public static ID viewerID => localPlayerID ?? uiControllerID;
 		internal static bool animationsEnabled = true;
 
 		internal static readonly Queue<MessageToEngine> pendingMessages = new();
@@ -55,6 +60,8 @@ namespace C7Engine {
 		// `from`: the player whose order it is; every game plays it only if
 		// they're the one in control then (whose turn it is, or who the
 		// engine is asking), so all turn down the same orders.
+		public static int OrdersWaiting => sequencedOrders.Count;
+
 		public static void EnqueueSequenced(long seq, int seed, ID from, MessageToEngine order) {
 			sequencedOrders.Enqueue((seq, seed, from, order));
 		}
@@ -166,6 +173,11 @@ namespace C7Engine {
 		/// Returns the player that either controls the UI, and if that somehow doesn't exist, it returns the first human player 
 		/// </summary>
 		/// <returns></returns>
+		// The player whose view the screens show.
+		public static Player GetViewer() {
+			return gameData.players.FirstOrDefault(p => p.id == viewerID) ?? gameData.GetFirstHumanPlayer();
+		}
+
 		public static Player GetUIController() {
 			return gameData.players.FirstOrDefault(p => p.id == uiControllerID) ?? gameData.GetFirstHumanPlayer();
 		}

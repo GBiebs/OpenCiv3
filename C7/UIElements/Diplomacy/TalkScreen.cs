@@ -102,7 +102,7 @@ public partial class TalkScreen : TextureRect {
 
 	private void DeclareWar() {
 		new MsgDiplomacyWarDeclarationConfirmation(
-			EngineStorage.uiControllerID,
+			EngineStorage.viewerID,
 			opponentPlayerId,
 			() => {
 				GetParent<Diplomacy>().Hide();

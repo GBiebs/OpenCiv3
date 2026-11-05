@@ -31,7 +31,7 @@ public static class StatisticsCapture {
 		EngineStorage.ReadGameData((GameData gameData) => {
 			civs = gameData.players
 				.Where(p => !p.isBarbarians && p.stats.TurnCount > 0)
-				.Select(p => StatisticsView.ForPlayer(p, p.id == EngineStorage.uiControllerID))
+				.Select(p => StatisticsView.ForPlayer(p, p.id == EngineStorage.viewerID))
 				.ToList();
 		});
 

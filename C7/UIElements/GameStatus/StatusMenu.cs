@@ -30,7 +30,7 @@ public partial class StatusMenu : Control {
 				return;
 			}
 
-			Player player = EngineStorage.GetUIController();
+			Player player = EngineStorage.GetViewer();
 
 			// Only show the diplomacy button if we have civs to talk to.
 			if (player.playerRelationships.Count > 0) {
@@ -52,6 +52,6 @@ public partial class StatusMenu : Control {
 	}
 
 	private void OpenDiplomacyPopup() {
-		new MsgDiplomacyPopUp().send();
+		new MsgDiplomacyPopUp().sendFromScreens();
 	}
 }

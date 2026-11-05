@@ -98,10 +98,10 @@ public partial class Advisors : CenterContainer {
 
 			Player controller = null;
 			EngineStorage.ReadGameData(data => {
-				controller = data.players.First(p => p.id == EngineStorage.uiControllerID);
+				controller = data.players.First(p => p.id == EngineStorage.viewerID);
 			});
 			if (!researchChosen && controller.currentlyResearchedTech == null) {
-				new MsgScienceGuidance().send();
+				new MsgScienceGuidance().sendFromScreens();
 				return;
 			}
 		}

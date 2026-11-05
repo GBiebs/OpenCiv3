@@ -11,7 +11,7 @@ public partial class MenuButton : Civ3TextureButton {
 	}
 
 	public override void _Pressed() {
-		new MsgGameMainMenu().send();
+		new MsgGameMainMenu().sendFromScreens();
 		this.FocusMode = FocusModeEnum.None;
 	}
 

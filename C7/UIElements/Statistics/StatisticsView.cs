@@ -63,7 +63,7 @@ public partial class StatisticsView : CenterContainer {
 		List<CivStats> shown = new();
 		List<CivStats> met = new();
 		EngineStorage.ReadGameData((GameData gameData) => {
-			Player controller = gameData.GetPlayer(EngineStorage.uiControllerID);
+			Player controller = gameData.GetPlayer(EngineStorage.viewerID);
 			IEnumerable<Player> players = gameData.gameOver
 				? gameData.players.Where(p => !p.isBarbarians && p.stats.TurnCount > 0)
 				: [controller];

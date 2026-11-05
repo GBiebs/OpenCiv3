@@ -43,9 +43,18 @@ public partial class GlobalSingleton : Node {
 		C7.UIElements.PreferencesSettings.ApplyWindowMode();
 	}
 
+	// Online play: the game's side of it, kept from the lobby into the game
+	// and from scene to scene; the place in the sequence of orders the save
+	// it's begun from has; and whether it's begun again (no new-game
+	// popup).
+	public C7Engine.Online.OnlineGame Online;
+	public long OnlineSeq;
+	public bool OnlineResumed;
+
 	public void ResetLoadGameFields() {
 		LoadGamePath = null;
 		SaveGame = null;
+		OnlineResumed = false;
 	}
 
 	public void ActivateGameMode(GameMode.Config config) {
