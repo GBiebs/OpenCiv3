@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -22,6 +23,10 @@ namespace C7Engine.Online {
 	[JsonDerivedType(typeof(SetReady), "setReady")]
 	[JsonDerivedType(typeof(Chat), "chat")]
 	[JsonDerivedType(typeof(ChatLine), "chatLine")]
+	[JsonDerivedType(typeof(GameStart), "gameStart")]
+	[JsonDerivedType(typeof(OrderRequest), "order")]
+	[JsonDerivedType(typeof(SequencedOrder), "sequenced")]
+	[JsonDerivedType(typeof(Checksum), "checksum")]
 	public abstract class OnlineMessage {
 		public const int MaxNameLength = 32;
 		public const int MaxTextLength = 500;
@@ -178,5 +183,46 @@ namespace C7Engine.Online {
 		public string text { get; set; }
 
 		public override bool IsValid() => IsText(text);
+	}
+	// The game begins, or begins again from the host's copy (it went its
+	// own way somewhere): the save (gzip, base64), the player this game
+	// plays, and the last order in sequence the save already has.
+	public sealed class GameStart : OnlineMessage {
+		public string save { get; set; }
+		public string you { get; set; }
+		public long seq { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(save) && save.Length <= 64 * 1024 * 1024 && IsText(you, 60) && seq >= 0;
+	}
+
+	// A player's order, for the host to put in sequence.
+	public sealed class OrderRequest : OnlineMessage {
+		// (Not "kind": that names the message.)
+		public string orderType { get; set; }
+		public string order { get; set; }
+
+		public override bool IsValid() => IsText(orderType, 60) && !string.IsNullOrEmpty(orderType) && order != null && order.Length <= 60 * 1024;
+	}
+
+	// An order in sequence, with its dice: every game plays it.
+	public sealed class SequencedOrder : OnlineMessage {
+		public long seq { get; set; }
+		public int seed { get; set; }
+		// Whose order it is.
+		public string from { get; set; }
+		// (Not "kind": that names the message.)
+		public string orderType { get; set; }
+		public string order { get; set; }
+
+		public override bool IsValid() => seq > 0 && !string.IsNullOrEmpty(from) && IsText(from, 60) && IsText(orderType, 60) && !string.IsNullOrEmpty(orderType) && order != null && order.Length <= 1024 * 1024;
+	}
+
+	// A player's fingerprint of the game once the work of order `seq` (an
+	// End Turn) was done.
+	public sealed class Checksum : OnlineMessage {
+		public long seq { get; set; }
+		public string hash { get; set; }
+
+		public override bool IsValid() => seq > 0 && hash != null && hash.Length == 64 && hash.All(Uri.IsHexDigit);
 	}
 }

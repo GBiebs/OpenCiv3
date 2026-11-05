@@ -24,7 +24,13 @@ namespace C7Engine {
 		// than UI housekeeping.
 		public virtual bool IsPlayerAction => false;
 
+		// (Online, an order that changes the game goes to the host, and comes
+		// back in sequence: EngineStorage.sendOrder.)
 		public void send() {
+			if (EngineStorage.sendOrder != null && !Online.OrderCodec.IsLocal(this)) {
+				EngineStorage.sendOrder(this);
+				return;
+			}
 			EngineStorage.pendingMessages.Enqueue(this);
 		}
 	}

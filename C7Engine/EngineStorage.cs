@@ -39,25 +39,77 @@ namespace C7Engine {
 			return working.Count == 0;
 		}
 
+		// Online play (OnlineGame): where this game's orders go instead of the
+		// queue (to the host), and the orders as the host put them in
+		// sequence, each with its dice (a seed for GameData.rng). Null and
+		// empty in a game at one computer.
+		public static Action<MessageToEngine> sendOrder;
+		internal static readonly Queue<(long seq, int seed, ID from, MessageToEngine order)> sequencedOrders = new();
+		// The last of them played; and called once an End Turn's work (the
+		// turn's AIs) is done, with its place in the sequence (the games
+		// compare their fingerprints then).
+		public static long lastSequenced { get; private set; }
+		public static Action<long> onEndTurnDone;
+		private static bool endTurnGoing;
+
+		// `from`: the player whose order it is; every game plays it only if
+		// they're the one in control then (whose turn it is, or who the
+		// engine is asking), so all turn down the same orders.
+		public static void EnqueueSequenced(long seq, int seed, ID from, MessageToEngine order) {
+			sequencedOrders.Enqueue((seq, seed, from, order));
+		}
+
+		public static void ResetSequence(long seq = 0) {
+			sequencedOrders.Clear();
+			lastSequenced = seq;
+			endTurnGoing = false;
+		}
+
+		// Whether the next order in sequence may be played: the last one's
+		// work done, or the engine waiting for this very answer; no animation
+		// going. So every game plays each order at the same point.
+		private static bool ReadyFor(MessageToEngine next) {
+			return !HasPendingAnimations() && (OrdersDone() || pendingEngineWaiters.ContainsKey(next.GetType()));
+		}
+
 		public static void ProcessNextMessageToEngine() {
+			if (endTurnGoing && OrdersDone() && !HasPendingAnimations()) {
+				endTurnGoing = false;
+				onEndTurnDone?.Invoke(lastSequenced);
+			}
+			if (pendingMessages.Count == 0 && sequencedOrders.Count > 0 && ReadyFor(sequencedOrders.Peek().order)) {
+				(long seq, int seed, ID from, MessageToEngine order) = sequencedOrders.Dequeue();
+				lastSequenced = seq;
+				if (from != uiControllerID) {
+					log.Information("Order {Seq} ({Kind}) from {From}, not in control: not played", seq, order.GetType().Name, from);
+					return;
+				}
+				GameData.rng = new Random(seed);
+				endTurnGoing |= order is MsgEndTurn;
+				Process(order);
+				return;
+			}
 			if (pendingMessages.Count > 0) {
-				var msg = pendingMessages.Dequeue();
-				Task work = msg.ProcessAsync();
-				if (!work.IsCompleted) {
-					working.Add(work);
-				}
-				work.ContinueWith(t => log.Error(t.Exception, "{Order} failed", msg.GetType().Name), TaskContinuationOptions.OnlyOnFaulted);
+				Process(pendingMessages.Dequeue());
+			}
+		}
 
-				if (msg.IsPlayerAction && gameData != null) {
-					Player controller = gameData.GetPlayer(uiControllerID);
-					controller?.stats.RecordAction(controller, gameData);
-				}
+		private static void Process(MessageToEngine msg) {
+			Task work = msg.ProcessAsync();
+			if (!work.IsCompleted) {
+				working.Add(work);
+			}
+			work.ContinueWith(t => log.Error(t.Exception, "{Order} failed", msg.GetType().Name), TaskContinuationOptions.OnlyOnFaulted);
 
-				var type = msg.GetType();
-				if (pendingEngineWaiters.TryGetValue(type, out var tcs)) {
-					tcs.TrySetResult(msg);
-					pendingEngineWaiters.Remove(type);
-				}
+			if (msg.IsPlayerAction && gameData != null) {
+				Player controller = gameData.GetPlayer(uiControllerID);
+				controller?.stats.RecordAction(controller, gameData);
+			}
+
+			var type = msg.GetType();
+			if (pendingEngineWaiters.TryGetValue(type, out var tcs)) {
+				tcs.TrySetResult(msg);
+				pendingEngineWaiters.Remove(type);
 			}
 		}
 

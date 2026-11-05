@@ -1,0 +1,209 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using C7Engine;
+using C7Engine.Online;
+using C7GameData;
+using C7GameData.Save;
+using EngineTests.Utils;
+using Xunit;
+using static EngineTests.Online.OnlineTestKit;
+
+namespace EngineTests.Online;
+
+// A game in progress online, over this computer's network: the host puts
+// orders in sequence, a player's game sends its orders and plays the
+// host's, and the games compare their fingerprints.
+public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
+	private readonly SaveGameFixture fixture;
+	private readonly C7GameData.GameData gameData;
+	private readonly Player hostPlayer;
+	private readonly Player remotePlayer;
+	private readonly ID controller = EngineStorage.uiControllerID;
+	private readonly List<IDisposable> toDispose = new();
+
+	public OnlineGameTest(SaveGameFixture fixture) {
+		this.fixture = fixture;
+		gameData = fixture.saveGame.Clone().ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		EngineStorage.messagesToUI.Clear();
+		EngineStorage.pendingMessages.Clear();
+		hostPlayer = gameData.players.First(p => p.isHuman);
+		remotePlayer = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		remotePlayer.isHuman = true;
+		EngineStorage.uiControllerID = hostPlayer.id;
+	}
+
+	public void Dispose() {
+		foreach (IDisposable d in toDispose) {
+			d.Dispose();
+		}
+		EngineStorage.ResetSequence();
+		EngineStorage.sendOrder = null;
+		EngineStorage.onEndTurnDone = null;
+		EngineStorage.pendingMessages.Clear();
+		EngineStorage.messagesToUI.Clear();
+		EngineStorage.uiControllerID = controller;
+	}
+
+	private async Task<(HostGame, OnlineClient)> HostWithAPlayer() {
+		OnlineHost host = StartHost();
+		OnlineClient client = await Join(host);
+		await Next<PlayerJoined>(host);
+		HostGame game = new(host, hostPlayer.id, new Dictionary<int, ID> { [client.playerId] = remotePlayer.id });
+		game.Begin();
+		toDispose.Add(client);
+		toDispose.Add(game);
+		return (game, client);
+	}
+
+	private async Task<T> Until<T>(HostGame game, OnlineClient client, Func<T, bool> where = null, int milliseconds = 3000) where T : OnlineMessage {
+		for (int waited = 0; waited < milliseconds; waited += 10) {
+			game.Poll(gameData);
+			while (client.TryNextMessage(out OnlineMessage message)) {
+				if (message is T found && (where == null || where(found))) {
+					return found;
+				}
+			}
+			await Task.Delay(10);
+		}
+		return null;
+	}
+
+	[Fact]
+	public async Task TheHostsOwnOrdersGoInSequenceToEveryGame() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		MapUnit unit = hostPlayer.units[0];
+		new MsgSetFortification(unit.id, true).send();
+		SequencedOrder sent = await Until<SequencedOrder>(game, client);
+		Assert.Equal(1, sent.seq);
+		Assert.Equal(hostPlayer.id.ToString(), sent.from);
+		Assert.Equal("MsgSetFortification", sent.orderType);
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		Assert.Equal(sent.seed, seed);
+		Assert.Equal(hostPlayer.id, from);
+	}
+
+	// A player's order: in sequence when they're in control, else not.
+	[Fact]
+	public async Task APlayersOrderGoesInSequenceOnlyInTheirTurn() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		MapUnit unit = remotePlayer.units[0];
+		OrderRequest request = new() { orderType = "MsgSetFortification", order = OrderCodec.Write(new MsgSetFortification(unit.id, true)) };
+		client.Send(request);
+		Assert.Null(await Until<SequencedOrder>(game, client, milliseconds: 500));
+		Assert.Empty(EngineStorage.sequencedOrders);
+
+		EngineStorage.uiControllerID = remotePlayer.id;
+		client.Send(new OrderRequest { orderType = "MsgSetFortification", order = "{\"nonsense\":1}" });
+		client.Send(request);
+		SequencedOrder sent = await Until<SequencedOrder>(game, client);
+		Assert.Equal(remotePlayer.id.ToString(), sent.from);
+		Assert.Equal(1, sent.seq);
+		Assert.Single(EngineStorage.sequencedOrders);
+	}
+
+	// Each game's fingerprint after an End Turn: the host sees a game that
+	// went its own way.
+	[Fact]
+	public async Task TheHostSeesAGameThatWentItsOwnWay() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		bool outOfSync = false;
+		game.OutOfSync += () => outOfSync = true;
+		string ours = GameChecksum.Of(gameData);
+		EngineStorage.onEndTurnDone(5);
+		client.Send(new Checksum { seq = 5, hash = ours });
+		await Until<ChatLine>(game, client, milliseconds: 300);
+		Assert.False(outOfSync);
+
+		EngineStorage.onEndTurnDone(6);
+		client.Send(new Checksum { seq = 6, hash = new string('0', 64) });
+		await Until<ChatLine>(game, client, milliseconds: 300);
+		Assert.True(outOfSync);
+	}
+
+	[Fact]
+	public async Task EveryoneHearsWhoSaysWhatAndWhoLeaves() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		List<string> notices = new();
+		game.Notice += notices.Add;
+		client.Send(new Chat { text = "Your move" });
+		Assert.Equal("Sargon: Your move", (await Until<ChatLine>(game, client)).text);
+		client.Dispose();
+		for (int i = 0; i < 300 && !notices.Contains("Sargon has left the game."); i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Assert.Contains("Sargon has left the game.", notices);
+	}
+
+	// A player's game: its orders go to the host, the host's in sequence
+	// are played, and a new start comes when the host sends one.
+	[Fact]
+	public async Task APlayersGameSendsItsOrdersAndPlaysTheHosts() {
+		using OnlineHost host = StartHost();
+		OnlineClient client = await Join(host);
+		RemotePlayer remote = (await Next<PlayerJoined>(host)).player;
+		ClientGame game = new(client, remotePlayer.id);
+		toDispose.Add(game);
+		game.Begin();
+		GameStart restarted = null;
+		string ended = null;
+		game.Restart += start => restarted = start;
+		game.Ended += reason => ended = reason;
+
+		MapUnit unit = remotePlayer.units[0];
+		new MsgSetFortification(unit.id, true).send();
+		OrderRequest request = Assert.IsType<OrderRequest>((await Next<MessageFrom>(host)).message);
+		Assert.Equal("MsgSetFortification", request.orderType);
+		Assert.Empty(EngineStorage.sequencedOrders);
+
+		host.Send(remote.id, new SequencedOrder { seq = 1, seed = 9, from = remotePlayer.id.ToString(), orderType = request.orderType, order = request.order });
+		host.Send(remote.id, new GameStart { save = OnlineGame.Pack(fixture.saveGame), you = remotePlayer.id.ToString(), seq = 1 });
+		for (int i = 0; i < 300 && (EngineStorage.sequencedOrders.Count == 0 || restarted == null); i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		Assert.Equal((1, 9), (seq, seed));
+		Assert.Equal(remotePlayer.id, from);
+		Assert.IsType<MsgSetFortification>(order);
+		Assert.Equal(remotePlayer.id.ToString(), restarted.you);
+
+		host.Dispose();
+		for (int i = 0; i < 300 && ended == null; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Assert.Equal("The host has stopped the game.", ended);
+	}
+
+	// The game's messages are ones the other side reads.
+	[Fact]
+	public void TheGamesMessagesAreRead() {
+		OnlineMessage[] messages = [
+			new SequencedOrder { seq = 1, seed = 9, from = remotePlayer.id.ToString(), orderType = "MsgEndTurn", order = "{}" },
+			new OrderRequest { orderType = "MsgEndTurn", order = "{}" },
+			new Checksum { seq = 3, hash = new string('A', 64) },
+			new GameStart { save = "abc", you = remotePlayer.id.ToString(), seq = 0 },
+		];
+		foreach (OnlineMessage message in messages) {
+			Assert.True(OnlineMessage.Read(OnlineMessage.Write(message)) != null, message.GetType().Name + ": " + System.Text.Encoding.UTF8.GetString(OnlineMessage.Write(message)));
+		}
+	}
+
+	// The game as it goes over the network: the same save back, without the
+	// host's scenario folders; and nothing too big once unpacked.
+	[Fact]
+	public void TheGameGoesOverTheNetworkWhole() {
+		SaveGame save = fixture.saveGame.Clone();
+		save.ScenarioSearchPath = "C:/the host's folders";
+		SaveGame back = OnlineGame.Unpack(OnlineGame.Pack(save));
+		Assert.Null(back.ScenarioSearchPath);
+		back.ScenarioSearchPath = save.ScenarioSearchPath;
+		Assert.Equal(save.ToJson(), back.ToJson());
+		Assert.Throws<InvalidDataException>(() => OnlineGame.Unpack(OnlineGame.Pack(save), limit: 1000));
+	}
+}

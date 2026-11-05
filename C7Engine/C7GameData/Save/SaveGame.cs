@@ -610,6 +610,11 @@ namespace C7GameData.Save {
 
 		public GameMode.Config GameModeConfig = new("civ3");
 
+		// The save as its file would hold it.
+		public byte[] ToJson() => JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);
+
+		public static SaveGame FromJson(byte[] json) => JsonSerializer.Deserialize<SaveGame>(json, JsonOptions);
+
 		public void Save(string path) {
 			byte[] json = JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);
 			File.WriteAllBytes(path, json);
