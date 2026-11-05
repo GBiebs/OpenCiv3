@@ -284,16 +284,14 @@ public partial class DealScreen : TextureRect {
 	}
 
 	private void AttemptDeal() {
-		// TODO: This seems to be only usage of UIGameDataAccess that mutates
-		// state - can this be a message instead?
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 
-			// If the deal is acceptable, execute it and go back to the previous
-			// screen.
+			// If the deal is acceptable, make it (an order: every game makes
+			// it) and go back to the previous screen.
 			if (opponentPlayer.WouldAcceptDealFrom(gD, humanPlayer, humanOffer, opponentOffer)) {
-				opponentPlayer.ExecuteDeal(gD, humanPlayer, humanOffer, opponentOffer);
+				new MsgTradeWithComputer(opponentPlayerId, humanOffer, opponentOffer).send();
 
 				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId);
 			} else if (humanOffer.partOfPeaceTreaty && PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) is null) {

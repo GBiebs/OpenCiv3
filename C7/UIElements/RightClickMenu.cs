@@ -299,10 +299,17 @@ public partial class RightClickTileMenu : RightClickMenu {
 		// are in a city. We can see the full list of units outside of a city, but in a city
 		// we can only see the top defender.
 		if (nonPlayerUnits.Count > 0) {
-			Action contactCiv = () => {
+			Action contactCiv = async () => {
 				this.CloseAndDelete();
-				game.controller.EnsureRelationshipExists(nonPlayerUnits[0].owner);
-				game.OnDiplomacySelected(new ParameterWrapper<ID>(nonPlayerUnits[0].owner.id));
+				// (An order: every game makes contact; the talk screen once it's
+				// made.)
+				ID them = nonPlayerUnits[0].owner.id;
+				if (!game.controller.playerRelationships.ContainsKey(them)) {
+					System.Threading.Tasks.Task<MsgMakeContact> made = EngineStorage.WaitForMessageToEngine<MsgMakeContact>();
+					new MsgMakeContact(them).send();
+					await made;
+				}
+				game.OnDiplomacySelected(new ParameterWrapper<ID>(them));
 			};
 
 			if (tile.cityAtTile == null) {

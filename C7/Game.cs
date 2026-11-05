@@ -798,7 +798,7 @@ public partial class Game : Node {
 			case MsgUpdateUiAfterDomesticChange mUUASC:
 				// Ensure the citizen moods are correct before displaying them.
 				foreach (City c in controller.cities) {
-					c.RecalculateCitizenMoods(gameData);
+					RefreshMoods(c, gameData);
 				}
 				EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowDomesticAdvisor);
 				break;
@@ -1220,7 +1220,7 @@ public partial class Game : Node {
 					continue;
 				}
 
-				City.Mood cityMood = city.RecalculateCitizenMoods(gameData);
+				City.Mood cityMood = online != null ? city.CurrentMood() : city.RecalculateCitizenMoods(gameData);
 				if (cityMood == City.Mood.Unhappy) {
 					new MsgCityRiotWarning(this.controller.id, city).sendFromScreens();
 					doEndTurn = false;
@@ -2458,8 +2458,17 @@ public partial class Game : Node {
 			new MsgBuildCity(CurrentlySelectedUnit, name).send();
 	}
 
+	// The screens bring a city's citizens' moods up to date before showing
+	// them; online the engine does that in every game alike, and a screen
+	// changing them here only would make this copy of the game differ.
+	public static void RefreshMoods(City city, GameData gameData) {
+		if (EngineStorage.localPlayerID == null) {
+			city.RecalculateCitizenMoods(gameData);
+		}
+	}
+
 	public void ShowCityScreenForCity(GameData gameData, City city) {
-		city.RecalculateCitizenMoods(gameData);
+		RefreshMoods(city, gameData);
 		EmitSignal(SignalName.ShowCityScreen, new ParameterWrapper<City>(city));
 	}
 

@@ -403,6 +403,8 @@ namespace C7Engine {
 			List<CitizenType> kinds = city.owner.GetKnownSpecialists(gameData);
 			int index = kinds.FindIndex(x => x.Id == cr.citizenType.Id);
 			cr.citizenType = kinds[(index + 1) % kinds.Count];
+			// (An entertainer more or less.)
+			city.RecalculateCitizenMoods(gameData);
 			return true;
 		}
 	}

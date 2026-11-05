@@ -816,7 +816,7 @@ public partial class CityScreen : Control {
 			City currentCity = tileAssignmentLayer.city;
 			List<City> cities = currentCity.owner.cities;
 			City nextCity = cities[(cities.IndexOf(currentCity) + 1) % cities.Count];
-			nextCity.RecalculateCitizenMoods(gameData);
+			Game.RefreshMoods(nextCity, gameData);
 			OnShowCityScreenLocked(gameData, new ParameterWrapper<City>(nextCity));
 		});
 	}
@@ -826,7 +826,7 @@ public partial class CityScreen : Control {
 			City currentCity = tileAssignmentLayer.city;
 			List<City> cities = currentCity.owner.cities;
 			City previousCity = cities[(cities.IndexOf(currentCity) + cities.Count - 1) % cities.Count];
-			previousCity.RecalculateCitizenMoods(gameData);
+			Game.RefreshMoods(previousCity, gameData);
 			OnShowCityScreenLocked(gameData, new ParameterWrapper<City>(previousCity));
 		});
 	}

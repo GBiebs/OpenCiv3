@@ -610,7 +610,8 @@ public partial class Game {
 			message = $"Sir, this will cause war with the {opponent.civilization.adjective} people.\nAre you sure?";
 
 			yesAction = () => {
-				aggressor.DeclareWarOn(opponent, currentTurn);
+				// (An order: every game declares it, before the attack.)
+				new MsgDeclareWar(opponent.id).send();
 				msg.callback();
 			};
 		});
@@ -651,7 +652,8 @@ public partial class Game {
 			message = $"Let us destroy them, sir!";
 
 			yesAction = () => {
-				aggressor.DeclareWarOn(opponent, currentTurn);
+				// (An order: every game declares it, before the attack.)
+				new MsgDeclareWar(opponent.id).send();
 				msg.callback();
 			};
 		});

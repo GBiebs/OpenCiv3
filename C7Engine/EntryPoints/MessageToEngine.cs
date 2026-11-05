@@ -731,6 +731,9 @@ namespace C7Engine {
 					throw new ArgumentOutOfRangeException();
 			}
 
+			// The citizens' moods follow the luxury rate (here, in every game).
+			EngineStorage.ReadGameData(data => player.RecalculateCitizenMoods(data));
+
 			// Update the ui to reflect our changes.
 			new MsgUpdateUiAfterDomesticChange().send();
 		}
@@ -935,6 +938,65 @@ namespace C7Engine {
 			// (With simultaneous moves, theirs whoever played last.)
 			EngineStorage.uiControllerID = player.id;
 			await new MsgEndTurn().ProcessAsync();
+		}
+	}
+
+	// The human in control declares war on `opponentId` (confirmed on the
+	// screen: an attack, or the talk screen).
+	public class MsgDeclareWar : MessageToEngine {
+		public override bool IsPlayerAction => true;
+		public readonly ID opponentId;
+
+		public MsgDeclareWar(ID opponentId) {
+			this.opponentId = opponentId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is Player us && gameData.GetPlayer(opponentId) is Player them && us != them) {
+				us.DeclareWarOn(them, gameData.turn);
+			}
+		}
+	}
+
+	// The human in control trades with a computer player, which takes the
+	// deal if it would (the deal screen asked it first).
+	public class MsgTradeWithComputer : MessageToEngine {
+		public override bool IsPlayerAction => true;
+		public readonly ID computerId;
+		public readonly TradeOffer weGive;
+		public readonly TradeOffer theyGive;
+
+		public MsgTradeWithComputer(ID computerId, TradeOffer weGive, TradeOffer theyGive) {
+			this.computerId = computerId;
+			this.weGive = weGive;
+			this.theyGive = theyGive;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is Player us && gameData.GetPlayer(computerId) is Player them && !them.isHuman
+				&& them.WouldAcceptDealFrom(gameData, us, weGive ?? new(), theyGive ?? new())) {
+				them.ExecuteDeal(gameData, us, weGive ?? new(), theyGive ?? new());
+			}
+		}
+	}
+
+	// The human in control contacts a civ whose unit they found (the map's
+	// right-click menu), before talking to them.
+	public class MsgMakeContact : MessageToEngine {
+		public override bool IsPlayerAction => true;
+		public readonly ID otherId;
+
+		public MsgMakeContact(ID otherId) {
+			this.otherId = otherId;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is Player us && gameData.GetPlayer(otherId) is Player them && us != them) {
+				us.EnsureRelationshipExists(them);
+			}
 		}
 	}
 

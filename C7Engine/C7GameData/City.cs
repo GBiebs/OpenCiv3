@@ -1570,6 +1570,12 @@ namespace C7GameData {
 				}
 			}
 
+			return CurrentMood();
+		}
+
+		// The city's mood as its citizens' moods stand (not worked out again;
+		// online, the screens only read it: every game must change alike).
+		public Mood CurrentMood() {
 			int happyCount = 0;
 			int unhappyCount = 0;
 			foreach (CityResident cr in residents.Where(HasMood)) {
