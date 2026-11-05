@@ -1540,7 +1540,8 @@ public partial class Game : Node {
 	}
 
 	private void AdjustZoom(float delta) {
-		if (interactablePopUpController.Visible) return;
+		// (The city screen shows the city at its own zoom, as Civ3's does.)
+		if (interactablePopUpController.Visible || cityScreen.Visible) return;
 
 		float newScale = mapView.cameraZoom + delta;
 		mapView.setCameraZoom(newScale, GetViewport().GetMousePosition());
@@ -1942,6 +1943,9 @@ public partial class Game : Node {
 	}
 
 	private void HandleMagnifyGesture(InputEventMagnifyGesture magnifyGesture) {
+		if (cityScreen.Visible) {
+			return;
+		}
 		double newScale = mapView.cameraZoom * magnifyGesture.Factor;
 
 		mapView.setCameraZoom((float)newScale, magnifyGesture.Position);
@@ -2184,7 +2188,7 @@ public partial class Game : Node {
 			EmitQuitGameSignal();
 		}
 
-		if (currentAction == C7Action.ToggleZoom) {
+		if (currentAction == C7Action.ToggleZoom && !cityScreen.Visible) {
 			if (mapView.cameraZoom != 1) {
 				mapView.setCameraZoomFromMiddle(1.0f);
 			} else {

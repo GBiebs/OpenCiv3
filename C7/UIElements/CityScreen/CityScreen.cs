@@ -61,10 +61,25 @@ public partial class CityScreen : Control {
 
 	private Label foodDetails;
 	private Label productionDetails;
-	private Label commerceTaxesDetails;
-	private Label commerceScienceDetails;
-	private Label commerceHappinessDetails;
-	private Button draftButton;
+	private BaseButton draftButton;
+	private BaseButton governorButton;
+
+	// Civ3's commerce on the three green bars, each with its count beside
+	// it: taxes, science (and at its end, in red, what corruption takes),
+	// luxuries.
+	private sealed class CommerceRow {
+		public Control row;
+		public Control icons;
+		public Label count;
+		public Label lost;
+	}
+	private CommerceRow taxesRow, scienceRow, luxuriesRow;
+	private ImageTexture taxTexture, scienceTexture, luxuryTexture, corruptGoldTexture;
+
+	// Civ3's city screen shows the city at one zoom every time; the map
+	// goes back to the player's own view (zoom and place) on leaving.
+	private const float CityZoom = 1.0f;
+	private (float zoom, Vector2 location)? viewBefore;
 
 	private ImageTexture shieldTexture;
 	private ImageTexture emptyShieldTexture;
@@ -125,38 +140,31 @@ public partial class CityScreen : Control {
 		};
 		background.AddChild(productionDetails);
 
-		commerceTaxesDetails = new Label() {
-			OffsetLeft = 290,
-			OffsetTop = 620,
-			Theme = yieldDetailsFontTheme,
-		};
-		background.AddChild(commerceTaxesDetails);
-
-		commerceScienceDetails = new Label() {
-			OffsetLeft = 290,
-			OffsetTop = 653,
-			Theme = yieldDetailsFontTheme,
-		};
-		background.AddChild(commerceScienceDetails);
-
-		commerceHappinessDetails = new Label() {
-			OffsetLeft = 290,
-			OffsetTop = 685,
-			Theme = yieldDetailsFontTheme,
-		};
-		background.AddChild(commerceHappinessDetails);
+		taxTexture = TextureLoader.Load("icons.commerce");
+		scienceTexture = TextureLoader.Load("icons.commerce_science");
+		luxuryTexture = TextureLoader.Load("icons.commerce_luxury");
+		corruptGoldTexture = TextureLoader.Load("icons.penalty_commerce");
+		// (The green bars' tops in the background.)
+		taxesRow = AddCommerceRow(626);
+		scienceRow = AddCommerceRow(657);
+		luxuriesRow = AddCommerceRow(690);
 
 		TextureLoader.SetButtonTextures(productionButton, "city_screen.buttons.production");
 		productionButton.Pressed += () => { this.productionMenu.Visible = !this.productionMenu.Visible; };
 
-		// Civ3's "Draft" button: drafts a citizen into a conscript unit.
-		draftButton = new Button() {
-			Text = "Draft",
-			OffsetLeft = 838,
-			OffsetTop = 515,
-			OffsetRight = 900,
-			OffsetBottom = 541,
+		// Civ3's governor and draft buttons at the end of the production
+		// bar, each saying what it does when hovered.
+		governorButton = ArtButton("city_screen.buttons.governor", "Gov", new Vector2(838, 520));
+		governorButton.Pressed += () => {
+			City city = tileAssignmentLayer.city;
+			if (city != null) {
+				mapView.game.ShowGovernor(city);
+			}
 		};
+		background.AddChild(governorButton);
+
+		// Drafts a citizen into a conscript unit.
+		draftButton = ArtButton("city_screen.buttons.draft", "Draft", new Vector2(869, 524));
 		draftButton.Pressed += () => {
 			City city = tileAssignmentLayer.city;
 			if (city != null) {
@@ -252,6 +260,9 @@ public partial class CityScreen : Control {
 		previousCity.Visible = !readOnly;
 		nextCity.Visible = !readOnly;
 		this.Show();
+		// (Kept from the first city shown, not the next or previous one.)
+		viewBefore ??= (mapView.cameraZoom, mapView.cameraLocation);
+		mapView.cameraZoom = CityZoom;
 		mapView.centerCameraOnTile(city.Value.location.neighbors[TileDirection.SOUTH]);
 		tileAssignmentLayer.city = city.Value;
 		cityName.Text = city.Value.name;
@@ -262,6 +273,7 @@ public partial class CityScreen : Control {
 		RenderProductionDetails(gameData, city.Value);
 		RenderExistingBuildings(city.Value);
 		RenderDraftButton(gameData, city.Value);
+		RenderGovernorButton(city.Value);
 		RenderStrategicResources(gameData, city.Value);
 		RenderLuxuries(gameData, city.Value);
 	}
@@ -269,6 +281,29 @@ public partial class CityScreen : Control {
 	private void OnExit() {
 		productionMenu.Hide();
 		tileAssignmentLayer.city = null;
+		if (viewBefore is (float zoom, Vector2 location)) {
+			mapView.cameraZoom = zoom;
+			mapView.cameraLocation = location;
+			viewBefore = null;
+		}
+	}
+
+	// A button with Civ3's art, or a small labeled one where the art isn't
+	// there (the standalone art has none).
+	private static BaseButton ArtButton(string art, string text, Vector2 position) {
+		try {
+			TextureButton button = new() { Position = position };
+			TextureLoader.SetButtonTextures(button, art);
+			return button;
+		} catch (Exception) {
+			return new Button { Text = text, Position = position };
+		}
+	}
+
+	// (A disabled button keeps its art: dimmed, its tooltip saying why.)
+	private static void Enable(BaseButton button, bool enabled) {
+		button.Disabled = !enabled;
+		button.Modulate = enabled ? Colors.White : new Color(1, 1, 1, 0.45f);
 	}
 
 	private void RenderStrategicResources(GameData gameData, City city) {
@@ -332,8 +367,14 @@ public partial class CityScreen : Control {
 	// can't draft.
 	private void RenderDraftButton(GameData gameData, City city) {
 		string reason = readOnly ? "Not our city" : city.WhyCannotDraft(gameData);
-		draftButton.Disabled = reason != null;
-		draftButton.TooltipText = reason ?? $"Draft a citizen into a conscript {city.DraftableUnit(gameData).name}";
+		Enable(draftButton, reason == null);
+		draftButton.TooltipText = reason == null ? $"Draft a citizen into a conscript {city.DraftableUnit(gameData).name}" : $"Draft: {reason}";
+	}
+
+	private void RenderGovernorButton(City city) {
+		bool ours = !readOnly && city.owner.isHuman;
+		Enable(governorButton, ours);
+		governorButton.TooltipText = ours ? $"Governor: how {city.name} is run (citizens, moods, production)" : "Governor: not our city";
 	}
 
 	private void RenderExistingBuildings(City city) {
@@ -557,9 +598,56 @@ public partial class CityScreen : Control {
 
 	private void RenderCommerceDetails(City city) {
 		CommerceBreakdown breakdown = city.CurrentCommerceYield();
-		commerceTaxesDetails.Text = $"{breakdown.taxes} gold/turn to taxes";
-		commerceScienceDetails.Text = $"{breakdown.beakers} gold/turn to science  ({breakdown.corrupted} corrupt)";
-		commerceHappinessDetails.Text = $"{breakdown.happiness} gold/turn to happiness";
+		RenderCommerceRow(taxesRow, taxTexture, breakdown.taxes, $"Taxes: {breakdown.taxes} gold a turn");
+		RenderCommerceRow(scienceRow, scienceTexture, breakdown.beakers, $"Science: {breakdown.beakers} beakers a turn"
+			+ (breakdown.corrupted > 0 ? $"\nCorruption: {breakdown.corrupted} commerce lost a turn (in red)" : ""), breakdown.corrupted);
+		RenderCommerceRow(luxuriesRow, luxuryTexture, breakdown.happiness, $"Luxuries: {breakdown.happiness} a turn");
+	}
+
+	// A green bar (`top` its top edge): its icons and count, and the
+	// tooltip over both.
+	private CommerceRow AddCommerceRow(int top) {
+		CommerceRow row = new() {
+			row = new Control { Position = new Vector2(289, top - 4), Size = new Vector2(479, 29), MouseFilter = MouseFilterEnum.Stop },
+			icons = new Control { Size = new Vector2(385, 29), MouseFilter = MouseFilterEnum.Ignore },
+			count = new Label { Theme = yieldDetailsFontTheme, MouseFilter = MouseFilterEnum.Ignore },
+			lost = new Label { Theme = yieldDetailsFontTheme, MouseFilter = MouseFilterEnum.Ignore },
+		};
+		row.lost.AddThemeColorOverride("font_color", new Color(0.75f, 0.05f, 0.05f));
+		HBoxContainer counts = new() { Position = new Vector2(401, 0), MouseFilter = MouseFilterEnum.Ignore };
+		counts.AddThemeConstantOverride("separation", 10);
+		counts.AddChild(row.count);
+		counts.AddChild(row.lost);
+		row.row.AddChild(row.icons);
+		row.row.AddChild(counts);
+		background.AddChild(row.row);
+		return row;
+	}
+
+	// `amount` icons left to right (then `lost` red coins), squeezed
+	// together when they wouldn't fit the bar, as the food and shield rows.
+	private void RenderCommerceRow(CommerceRow row, ImageTexture icon, int amount, string tooltip, int lost = 0) {
+		foreach (Node child in row.icons.GetChildren()) {
+			row.icons.RemoveChild(child);
+			child.QueueFree();
+		}
+		List<ImageTexture> icons = [.. Enumerable.Repeat(icon, amount), .. Enumerable.Repeat(corruptGoldTexture, lost)];
+		float room = row.icons.Size.X - 10;
+		float width = icons.Sum(i => i.GetWidth());
+		float squeeze = icons.Count > 1 && width > room ? (width - room) / (icons.Count - 1) : 0;
+		float x = 0;
+		foreach (ImageTexture texture in icons) {
+			row.icons.AddChild(new TextureRect {
+				Texture = texture,
+				Position = new Vector2(x, (row.icons.Size.Y - texture.GetHeight()) / 2),
+				MouseFilter = MouseFilterEnum.Ignore,
+			});
+			x += texture.GetWidth() - squeeze;
+		}
+		row.count.Text = amount.ToString();
+		row.lost.Text = lost.ToString();
+		row.lost.Visible = lost > 0;
+		row.row.TooltipText = tooltip;
 	}
 
 	private void RenderProductionDetails(GameData gameData, City city) {

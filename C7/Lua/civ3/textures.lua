@@ -331,6 +331,16 @@ textures.icons = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 98, 5, 23, 22 },
   },
+  -- The city screen's commerce rows: taxes are the coins above, science
+  -- a beaker, luxuries a glass (corruption the red coins).
+  commerce_science = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 39, 3, 16, 28 },
+  },
+  commerce_luxury = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 7, 2, 18, 27 },
+  },
   wasted_gold = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 95, 2, 30, 30 },
@@ -475,6 +485,35 @@ textures.city_screen = {
       pressed = {
         path = CITY_BUTTONS,
         crop_region = { 42, 99, 48, 48 },
+      },
+    },
+    -- Civ3's draft button, and PTW's governor button (civ3PTW/Art).
+    draft = {
+      normal = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 1, 1, 19, 20 },
+      },
+      hover = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 41, 1, 19, 20 },
+      },
+      pressed = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 21, 1, 19, 20 },
+      },
+    },
+    governor = {
+      normal = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 1, 0, 28, 28 },
+      },
+      hover = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 59, 0, 28, 28 },
+      },
+      pressed = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 30, 0, 28, 28 },
       },
     },
     production = {

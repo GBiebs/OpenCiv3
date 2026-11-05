@@ -79,21 +79,19 @@ namespace C7.Map {
 			DrawYieldRow(looseView, tileCenter, icons);
 		}
 
-		// One row of icons across the tile, each the size the city info
-		// shows it on screen whatever the map's zoom, squeezed together
-		// when they wouldn't fit the tile.
+		// One row of icons across the tile, squeezed together when they
+		// wouldn't fit it. (The city screen always shows the map at its own
+		// zoom, so they're the city info's size.)
 		private static void DrawYieldRow(LooseView looseView, Vector2 tileCenter, List<ImageTexture> icons) {
 			if (icons.Count == 0) {
 				return;
 			}
-			float scale = 1 / looseView.mapView.cameraZoom;
-			float width = icons.Sum(icon => icon.GetWidth()) * scale;
+			float width = icons.Sum(icon => icon.GetWidth());
 			float squeeze = icons.Count > 1 && width > yieldRowWidth ? (width - yieldRowWidth) / (icons.Count - 1) : 0;
 			float x = -Math.Min(width, yieldRowWidth) / 2;
 			foreach (ImageTexture icon in icons) {
-				Vector2 size = icon.GetSize() * scale;
-				looseView.DrawTextureRect(icon, new Rect2(tileCenter + new Vector2(x, -size.Y / 2), size), false);
-				x += size.X - squeeze;
+				looseView.DrawTexture(icon, tileCenter + new Vector2(x, -icon.GetHeight() / 2));
+				x += icon.GetWidth() - squeeze;
 			}
 		}
 
