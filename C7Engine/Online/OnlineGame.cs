@@ -115,6 +115,17 @@ namespace C7Engine.Online {
 
 		public long Seq => seq;
 
+		// Players who lost their connection (Civ3's "Waiting on Player"):
+		// their civ and the nickname they played with, until they rejoin
+		// with it or the host drops them; and those who rejoined, until
+		// every game begins again from this one's copy (they get it then).
+		private readonly Dictionary<ID, string> away = new();
+		private readonly HashSet<ID> rejoining = new();
+		public IReadOnlyDictionary<ID, string> Away => away;
+		public event Action AwayChanged;
+		// Someone rejoined: every game begins again from this copy.
+		public event Action Rejoined;
+
 		// The turn timer: whose turn it times (a human's, until they've
 		// played), and when it's up.
 		private ID timed;
@@ -125,6 +136,7 @@ namespace C7Engine.Online {
 		// The game to send each player, from the save this game was begun
 		// from (the host begins from the same bytes).
 		public void SendGame(string packedSave, bool resumed = true) {
+			rejoining.Clear();
 			foreach ((int connection, ID player) in players) {
 				host.Send(connection, new GameStart { save = packedSave, you = player.ToString(), seq = seq, resumed = resumed });
 			}
@@ -150,6 +162,7 @@ namespace C7Engine.Online {
 
 		public override void Poll(GameData gameData) {
 			WatchTheClock(gameData, DateTime.UtcNow);
+			AnswerForTheAway();
 			while (host.TryNextEvent(out HostEvent hostEvent)) {
 				switch (hostEvent) {
 					case MessageFrom { message: OrderRequest request } from when players.TryGetValue(from.player.id, out ID player): {
@@ -175,14 +188,14 @@ namespace C7Engine.Online {
 						Tell($"{from.player.name}: {chat.text.Trim()}");
 						break;
 					case PlayerJoined joined:
-						host.Drop(joined.player.id, "The game has already begun.");
+						Rejoin(joined.player);
 						break;
 					case PlayerLeft left when players.TryGetValue(left.player.id, out ID gone):
 						players.Remove(left.player.id);
+						away[gone] = left.player.name;
 						Tell($"{left.player.name} has left the game.");
-						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game." });
-						// Every game takes their civilization out, at the same point.
-						Sequence(localPlayer, new MsgPlayerLeftGame(gone));
+						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game. The game waits for them to reconnect, unless the host drops them." });
+						AwayChanged?.Invoke();
 						break;
 				}
 			}
@@ -191,6 +204,52 @@ namespace C7Engine.Online {
 		protected override void Checked(long seq, string hash) {
 			hashes[seq] = hash;
 			Compare(seq);
+		}
+
+		// One who left joins again, with the nickname they played with: their
+		// civ is theirs again (each game begins again from this copy, so
+		// theirs is the same). Anyone else is turned away.
+		private void Rejoin(RemotePlayer player) {
+			ID civ = away.FirstOrDefault(a => a.Value == player.name).Key;
+			if (civ == null) {
+				host.Drop(player.id, away.Count > 0 ? "The game has already begun. To take your seat again, join with the nickname you played with."
+					: "The game has already begun.");
+				return;
+			}
+			away.Remove(civ);
+			rejoining.Add(civ);
+			players[player.id] = civ;
+			Tell($"{player.name} has rejoined the game.");
+			host.SendToAll(new ChatLine { text = $"{player.name} has rejoined the game." });
+			host.Send(player.id, new LobbyNotice { text = "Rejoining the game..." });
+			AwayChanged?.Invoke();
+			Rejoined?.Invoke();
+		}
+
+		// The host gives up waiting for one who left: every game takes their
+		// civilization out, at the same point.
+		public void Drop(ID civ) {
+			if (!away.Remove(civ, out string name)) {
+				return;
+			}
+			Tell($"{name} has been dropped from the game.");
+			host.SendToAll(new ChatLine { text = $"{name} has been dropped from the game." });
+			Sequence(localPlayer, new MsgPlayerLeftGame(civ));
+			AwayChanged?.Invoke();
+		}
+
+		// What the engine asks a player who's away (or hasn't the game back
+		// yet) is answered for them as closing its popup would, so the game
+		// doesn't wait on them for it.
+		private void AnswerForTheAway() {
+			ID asked = EngineStorage.uiControllerID;
+			if (asked == null || !(away.ContainsKey(asked) || rejoining.Contains(asked)) || EngineStorage.OrdersWaiting > 0) {
+				return;
+			}
+			if (LeavingPlayers.AnswerFor(EngineStorage.WaitedFor) is MessageToEngine answer) {
+				log.Information("Answering {Kind} for {Player}, who's away", answer.GetType().Name, asked);
+				Sequence(asked, answer);
+			}
 		}
 
 		// Simultaneous moves: the turn timer times the round, as long as the

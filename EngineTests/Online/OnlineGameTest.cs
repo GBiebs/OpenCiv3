@@ -23,6 +23,8 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 	private readonly Player remotePlayer;
 	private readonly ID controller = EngineStorage.uiControllerID;
 	private readonly List<IDisposable> toDispose = new();
+	// (The one HostWithAPlayer starts.)
+	private OnlineHost host;
 
 	public OnlineGameTest(SaveGameFixture fixture) {
 		this.fixture = fixture;
@@ -46,7 +48,7 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	private async Task<(HostGame, OnlineClient)> HostWithAPlayer() {
-		OnlineHost host = StartHost();
+		host = StartHost();
 		OnlineClient client = await Join(host);
 		await Next<PlayerJoined>(host);
 		HostGame game = new(host, hostPlayer.id, new Dictionary<int, ID> { [client.playerId] = remotePlayer.id });
@@ -136,19 +138,85 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains("Sargon has left the game.", notices);
 	}
 
-	// A player who leaves: every game takes their civilization out, in
-	// sequence, whoever is in control.
-	[Fact]
-	public async Task APlayerLeavingTakesTheirCivilizationOutInEveryGame() {
-		(HostGame game, OnlineClient client) = await HostWithAPlayer();
-		client.Dispose();
-		for (int i = 0; i < 300 && EngineStorage.sequencedOrders.Count == 0; i++) {
+	private async Task UntilAway(HostGame game) {
+		for (int i = 0; i < 300 && game.Away.Count == 0; i++) {
 			game.Poll(gameData);
 			await Task.Delay(10);
 		}
+	}
+
+	// A player who loses their connection (Civ3's "Waiting on Player"): the
+	// game waits for them; once the host drops them, every game takes their
+	// civilization out, in sequence, whoever is in control.
+	[Fact]
+	public async Task APlayerWhoLeavesIsWaitedForUntilTheHostDropsThem() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		int changed = 0;
+		game.AwayChanged += () => changed++;
+		client.Dispose();
+		await UntilAway(game);
+		Assert.Equal("Sargon", game.Away[remotePlayer.id]);
+		Assert.Equal(1, changed);
+		Assert.Empty(EngineStorage.sequencedOrders);
+
+		game.Drop(remotePlayer.id);
+		Assert.Empty(game.Away);
 		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
 		Assert.Equal(remotePlayer.id, Assert.IsType<MsgPlayerLeftGame>(order).playerId);
 		Assert.Equal(hostPlayer.id, from);
+		Assert.Equal(2, changed);
+	}
+
+	// They join again with the nickname they played with: their civ is
+	// theirs again, and every game begins again from the host's copy (they
+	// get it then). Anyone else is turned away.
+	[Fact]
+	public async Task APlayerWhoLeftRejoins() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		bool rejoined = false;
+		game.Rejoined += () => rejoined = true;
+		client.Dispose();
+		await UntilAway(game);
+
+		using OnlineClient stranger = await Join(host, "Ur-Nammu");
+		for (int i = 0; i < 100; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Goodbye refused = await Next<Goodbye>(stranger);
+		Assert.Equal("The game has already begun. To take your seat again, join with the nickname you played with.", refused.reason);
+		Assert.False(rejoined);
+
+		using OnlineClient back = await Join(host, "Sargon");
+		for (int i = 0; i < 300 && !rejoined; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Assert.True(rejoined);
+		Assert.Empty(game.Away);
+		Assert.Equal("Rejoining the game...", (await Next<LobbyNotice>(back)).text);
+		game.SendGame(OnlineGame.Pack(SaveGame.FromGameData(gameData)));
+		GameStart start = await Next<GameStart>(back);
+		Assert.Equal(remotePlayer.id.ToString(), start.you);
+		Assert.True(start.resumed);
+	}
+
+	// While they're away, what the engine asks them is answered for them,
+	// so the game doesn't wait on them for it.
+	[Fact]
+	public async Task WhatTheEngineAsksOneAwayIsAnswered() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		client.Dispose();
+		await UntilAway(game);
+		EngineStorage.uiControllerID = remotePlayer.id;
+		_ = EngineStorage.WaitForMessageToEngine<MsgVote>();
+		game.Poll(gameData);
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		Assert.Null(Assert.IsType<MsgVote>(order).candidateId);
+		Assert.Equal(remotePlayer.id, from);
+		// (Once.)
+		game.Poll(gameData);
+		Assert.Single(EngineStorage.sequencedOrders);
 	}
 
 	// Civ3's turn timer: when a human's turn begins, everyone is told its

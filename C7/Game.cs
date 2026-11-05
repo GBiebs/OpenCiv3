@@ -200,6 +200,8 @@ public partial class Game : Node {
 	// turn timer's time left.
 	private GameChat chat;
 	private TurnClock turnClock;
+	// The host's: who it waits for (Drop Player).
+	private AwayPanel awayPanel;
 
 	// Hotseat: news held for each other human until they next take the UI
 	// (see MessageRecipients), what runs once a human has taken it (one a
@@ -302,6 +304,16 @@ public partial class Game : Node {
 			popupOverlay.GetParent().AddChild(turnClock);
 			popupOverlay.GetParent().MoveChild(turnClock, popupOverlay.GetIndex());
 			online.TimerStarted += OnTimerStarted;
+			if (online is HostGame hosting) {
+				awayPanel = new AwayPanel();
+				popupOverlay.GetParent().AddChild(awayPanel);
+				popupOverlay.GetParent().MoveChild(awayPanel, popupOverlay.GetIndex());
+				awayPanel.DropPlayer += hosting.Drop;
+				hosting.AwayChanged += OnAwayChanged;
+				hosting.Rejoined += OnRejoined;
+				// (Still waiting for someone, in a game begun again.)
+				Callable.From(OnAwayChanged).CallDeferred();
+			}
 			online.Notice += OnOnlineNotice;
 			online.OutOfSync += OnOutOfSync;
 			if (online is ClientGame client) {
@@ -1260,6 +1272,16 @@ public partial class Game : Node {
 
 	private void OnTimerStarted(ID player, int seconds) => turnClock?.Start(player, seconds);
 
+	private void OnAwayChanged() {
+		if (online is HostGame hosting && IsInstanceValid(awayPanel)) {
+			awayPanel.ShowWaiting(hosting.Away, EngineStorage.gameData);
+		}
+	}
+
+	// One who left is back: every game, theirs too, begins again from this
+	// copy once it's settled.
+	private void OnRejoined() => resyncWanted = true;
+
 	// What's said, and who left (their civ's destruction follows as news).
 	private void OnOnlineNotice(string text) {
 		log.Information("Online: {Text}", text);
@@ -1280,7 +1302,7 @@ public partial class Game : Node {
 		}
 		resyncWanted = false;
 		HostGame host = (HostGame)online;
-		log.Warning("Out of sync: every game begins again from the host's copy");
+		log.Warning("Every game begins again from the host's copy (out of sync, or someone rejoined)");
 		string packed = OnlineGame.Pack(C7GameData.Save.SaveGame.FromGameData(EngineStorage.gameData));
 		host.SendGame(packed);
 		BeginAgain(packed, host.Seq);
@@ -1515,6 +1537,10 @@ public partial class Game : Node {
 		if (online != null) {
 			online.Notice -= OnOnlineNotice;
 			online.TimerStarted -= OnTimerStarted;
+			if (online is HostGame hosting) {
+				hosting.AwayChanged -= OnAwayChanged;
+				hosting.Rejoined -= OnRejoined;
+			}
 			online.OutOfSync -= OnOutOfSync;
 			if (online is ClientGame client) {
 				client.Restart -= OnOnlineRestart;
