@@ -65,7 +65,7 @@ public partial class CityScreen : Control {
 	private BaseButton governorButton;
 
 	// Civ3's commerce on the three green bars, each with its count beside
-	// it: taxes, science (and at its end, in red, what corruption takes),
+	// it: taxes, science (and at its start, in red, what corruption takes),
 	// luxuries.
 	private sealed class CommerceRow {
 		public Control row;
@@ -260,6 +260,8 @@ public partial class CityScreen : Control {
 		previousCity.Visible = !readOnly;
 		nextCity.Visible = !readOnly;
 		this.Show();
+		// The production list only when the production box is clicked.
+		productionMenu.Hide();
 		// (Kept from the first city shown, not the next or previous one.)
 		viewBefore ??= (mapView.cameraZoom, mapView.cameraLocation);
 		mapView.cameraZoom = CityZoom;
@@ -600,7 +602,7 @@ public partial class CityScreen : Control {
 		CommerceBreakdown breakdown = city.CurrentCommerceYield();
 		RenderCommerceRow(taxesRow, taxTexture, breakdown.taxes, $"Taxes: {breakdown.taxes} gold a turn");
 		RenderCommerceRow(scienceRow, scienceTexture, breakdown.beakers, $"Science: {breakdown.beakers} beakers a turn"
-			+ (breakdown.corrupted > 0 ? $"\nCorruption: {breakdown.corrupted} commerce lost a turn (in red)" : ""), breakdown.corrupted);
+			+ (breakdown.corrupted > 0 ? $"\nCorruption: {breakdown.corrupted} commerce lost a turn (in red, on the left)" : ""), breakdown.corrupted);
 		RenderCommerceRow(luxuriesRow, luxuryTexture, breakdown.happiness, $"Luxuries: {breakdown.happiness} a turn");
 	}
 
@@ -624,25 +626,29 @@ public partial class CityScreen : Control {
 		return row;
 	}
 
-	// `amount` icons left to right (then `lost` red coins), squeezed
-	// together when they wouldn't fit the bar, as the food and shield rows.
+	// As Civ3's, and the shield row: `lost` red coins from the bar's left
+	// end, `amount` icons up to its tip, squeezed together when they
+	// wouldn't fit.
 	private void RenderCommerceRow(CommerceRow row, ImageTexture icon, int amount, string tooltip, int lost = 0) {
 		foreach (Node child in row.icons.GetChildren()) {
 			row.icons.RemoveChild(child);
 			child.QueueFree();
 		}
-		List<ImageTexture> icons = [.. Enumerable.Repeat(icon, amount), .. Enumerable.Repeat(corruptGoldTexture, lost)];
 		float room = row.icons.Size.X - 10;
-		float width = icons.Sum(i => i.GetWidth());
-		float squeeze = icons.Count > 1 && width > room ? (width - room) / (icons.Count - 1) : 0;
-		float x = 0;
-		foreach (ImageTexture texture in icons) {
+		float width = lost * corruptGoldTexture.GetWidth() + amount * icon.GetWidth();
+		float squeeze = lost + amount > 1 && width > room ? (width - room) / (lost + amount - 1) : 0;
+		void Place(ImageTexture texture, float x) {
 			row.icons.AddChild(new TextureRect {
 				Texture = texture,
 				Position = new Vector2(x, (row.icons.Size.Y - texture.GetHeight()) / 2),
 				MouseFilter = MouseFilterEnum.Ignore,
 			});
-			x += texture.GetWidth() - squeeze;
+		}
+		for (int i = 0; i < lost; ++i) {
+			Place(corruptGoldTexture, i * (corruptGoldTexture.GetWidth() - squeeze));
+		}
+		for (int i = 1; i <= amount; ++i) {
+			Place(icon, room - icon.GetWidth() - (i - 1) * (icon.GetWidth() - squeeze));
 		}
 		row.count.Text = amount.ToString();
 		row.lost.Text = lost.ToString();
@@ -699,6 +705,8 @@ public partial class CityScreen : Control {
 		productionButtonLabel.SetTextAndCenterLabel($"{city.itemBeingProduced.name}");
 
 		productionMenu.AddItems(gameData, city, (IProducible p) => {
+			// (Chosen: the list goes until the production box is clicked.)
+			productionMenu.Hide();
 			new MsgChooseProduction(city.id, p.name).send();
 		});
 	}

@@ -162,9 +162,13 @@ public partial class TileInfoPopup : Popup {
 	}
 
 	public override void _GuiInput(InputEvent @event) {
-		// ignore clicks inside box
+		// A left click on the box closes it too (as one anywhere else
+		// does); other clicks on it don't reach the map below.
 		if (Visible && @event is InputEventMouseButton ev && ev.Pressed) {
 			GetViewport().SetInputAsHandled();
+			if (ev.ButtonIndex == MouseButton.Left) {
+				Close();
+			}
 		}
 	}
 }

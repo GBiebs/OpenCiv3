@@ -321,8 +321,25 @@ textures.icons = {
 	  path = CITY_SCREEN_ICONS,
 	  crop_region = { 64, 2, 29, 29 },
   },
-  -- The tile yields on the city screen's map (commerce, shield, food and
-  -- the red ones the despotism penalty takes): the art alone, no padding.
+  -- Civ3's small yields, for the tiles on the city screen's map (the red
+  -- coins for commerce the despotism penalty takes): the art alone.
+  tile_food = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 691, 10, 16, 15 },
+  },
+  tile_shield = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 629, 11, 13, 14 },
+  },
+  tile_commerce = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 660, 10, 15, 15 },
+  },
+  tile_lost_commerce = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 536, 10, 15, 15 },
+  },
+  -- The yields' full-size art alone, no padding (and the red coins).
   commerce = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 67, 5, 23, 22 },
@@ -352,10 +369,6 @@ textures.icons = {
   shield = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 133, 10, 14, 16 },
-  },
-  penalty_shield = {
-    path = CITY_SCREEN_ICONS,
-    crop_region = { 164, 10, 14, 16 },
   },
   wasted_shield = {
 	  path = CITY_SCREEN_ICONS,

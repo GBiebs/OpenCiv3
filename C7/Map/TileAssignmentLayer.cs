@@ -6,17 +6,17 @@ using Godot;
 
 namespace C7.Map {
 	public partial class TileAssignmentLayer : LooseLayer {
-		// The yields' icons, and in red what the despotism penalty takes
-		// (Civ3's red shield and coins; its art has no red food, so the
-		// food's is made red here).
-		ImageTexture foodTexture = TextureLoader.Load("icons.food");
-		ImageTexture shieldTexture = TextureLoader.Load("icons.shield");
-		ImageTexture wastedShieldTexture = TextureLoader.Load("icons.wasted_shield");
-		ImageTexture goldTexture = TextureLoader.Load("icons.commerce");
-		ImageTexture lostShieldTexture = TextureLoader.Load("icons.penalty_shield");
-		ImageTexture lostGoldTexture = TextureLoader.Load("icons.penalty_commerce");
+		// Civ3's small yield icons, and in red what the despotism penalty
+		// takes (Civ3's small red coins; its art has no small red shield or
+		// food, so those are made red here). Pollution shows a red shield.
+		ImageTexture foodTexture = TextureLoader.Load("icons.tile_food");
+		ImageTexture shieldTexture = TextureLoader.Load("icons.tile_shield");
+		ImageTexture goldTexture = TextureLoader.Load("icons.tile_commerce");
+		ImageTexture lostGoldTexture = TextureLoader.Load("icons.tile_lost_commerce");
 		private ImageTexture lostFoodTexture;
 		private ImageTexture LostFoodTexture => lostFoodTexture ??= Reddened(foodTexture);
+		private ImageTexture lostShieldTexture;
+		private ImageTexture LostShieldTexture => lostShieldTexture ??= Reddened(shieldTexture);
 
 		private const int tileWidth = 128;
 		private const int tileHeight = 64;
@@ -63,7 +63,7 @@ namespace C7.Map {
 			}
 
 			if (tile.HasPollution()) {
-				DrawYieldRow(looseView, tileCenter, [wastedShieldTexture]);
+				DrawYieldRow(looseView, tileCenter, [LostShieldTexture]);
 				return;
 			}
 
@@ -73,7 +73,7 @@ namespace C7.Map {
 
 			List<ImageTexture> icons = [
 				.. Enumerable.Repeat(foodTexture, food.yield), .. Enumerable.Repeat(LostFoodTexture, food.penalty),
-				.. Enumerable.Repeat(shieldTexture, shields.yield), .. Enumerable.Repeat(lostShieldTexture, shields.penalty),
+				.. Enumerable.Repeat(shieldTexture, shields.yield), .. Enumerable.Repeat(LostShieldTexture, shields.penalty),
 				.. Enumerable.Repeat(goldTexture, gold.yield), .. Enumerable.Repeat(lostGoldTexture, gold.penalty),
 			];
 			DrawYieldRow(looseView, tileCenter, icons);
@@ -95,8 +95,7 @@ namespace C7.Map {
 			}
 		}
 
-		// A red copy of an icon, as Civ3's red shield and coins are of
-		// theirs.
+		// A red copy of an icon, as Civ3's red coins are of its coins.
 		private static ImageTexture Reddened(ImageTexture texture) {
 			Image image = texture.GetImage();
 			for (int x = 0; x < image.GetWidth(); ++x) {
