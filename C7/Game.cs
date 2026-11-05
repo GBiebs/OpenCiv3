@@ -196,6 +196,8 @@ public partial class Game : Node {
 	// settled).
 	private OnlineGame online => Global?.Online;
 	private bool resyncWanted;
+	// Online: what's said and the game's notices, over the map.
+	private GameChat chat;
 
 	// Hotseat: news held for each other human until they next take the UI
 	// (see MessageRecipients), what runs once a human has taken it (one a
@@ -289,6 +291,11 @@ public partial class Game : Node {
 		EngineStorage.localPlayerID = online?.localPlayer;
 		if (online != null) {
 			controller = EngineStorage.gameData.GetPlayer(online.localPlayer);
+			chat = new GameChat();
+			popupOverlay.GetParent().AddChild(chat);
+			// (Below the popups.)
+			popupOverlay.GetParent().MoveChild(chat, popupOverlay.GetIndex());
+			chat.Said += online.Say;
 			online.Notice += OnOnlineNotice;
 			online.OutOfSync += OnOutOfSync;
 			if (online is ClientGame client) {
@@ -1244,11 +1251,10 @@ public partial class Game : Node {
 		}
 	}
 
+	// What's said, and who left (their civ's destruction follows as news).
 	private void OnOnlineNotice(string text) {
 		log.Information("Online: {Text}", text);
-		if (text.EndsWith("has left the game.")) {
-			EmitForeignAdvisorSignal(text, Mood.Sad);
-		}
+		chat?.Add(text);
 	}
 
 	// The host: a game went its own way. Every game, this one too, begins
@@ -1805,7 +1811,7 @@ public partial class Game : Node {
 	private void ProcessActions() {
 		// Nothing behind the hand-over screen: not even keys typed into its
 		// password field.
-		if (handOverScreen != null) {
+		if (handOverScreen != null || chat?.Busy == true) {
 			return;
 		}
 		Godot.Collections.Array<StringName> actions = InputMap.GetActions();
@@ -1883,6 +1889,11 @@ public partial class Game : Node {
 	}
 
 	private void ProcessAction(string currentAction) {
+		if (currentAction == C7Action.OpenChat) {
+			chat?.Open();
+			return;
+		}
+
 		if (currentAction == C7Action.Escape && interactablePopUpController.Visible) {
 			interactablePopUpController.Cancel();
 			return;

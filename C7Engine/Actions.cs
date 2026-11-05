@@ -29,6 +29,7 @@ public static class C7Action {
 	public const string LoadGame = "load_game"; // Ctrl-L
 	public const string Retire = "retire"; // Ctrl-Q
 	public const string ChangeMobilization = "change_mobilization"; // Shift-M
+	public const string OpenChat = "open_chat"; // ~ (online)
 
 	public const string ShowDomesticAdvisor = "show_domestic_advisor"; // F1
 	public const string ShowTradeAdvisor = "show_trade_advisor";

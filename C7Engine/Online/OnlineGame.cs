@@ -50,6 +50,9 @@ namespace C7Engine.Online {
 
 		protected abstract void Checked(long seq, string hash);
 
+		// Said to everyone (the in-game chat); it comes back as a Notice.
+		public abstract void Say(string text);
+
 		protected void Tell(string text) => Notice?.Invoke(text);
 
 		protected void WentOutOfSync() => OutOfSync?.Invoke();
@@ -186,7 +189,7 @@ namespace C7Engine.Online {
 			}
 		}
 
-		public void Say(string text) {
+		public override void Say(string text) {
 			string name = host.hostName;
 			host.SendToAll(new ChatLine { text = $"{name}: {text}" });
 			Tell($"{name}: {text}");
@@ -247,7 +250,7 @@ namespace C7Engine.Online {
 			client.Send(new Checksum { seq = seq, hash = hash });
 		}
 
-		public void Say(string text) => client.Send(new Chat { text = text });
+		public override void Say(string text) => client.Send(new Chat { text = text });
 
 		public override void Dispose() {
 			base.Dispose();
