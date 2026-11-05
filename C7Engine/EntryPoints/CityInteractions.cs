@@ -39,6 +39,7 @@ namespace C7Engine {
 			// accurate. We do this after adding the resident though, because
 			// cities with zero residents are considered destroyed.
 			gameData.UpdateTileOwners();
+			GoodyHuts.FindInTerritory(gameData);
 
 			// Now that the city exists and its borders have been established,
 			// invalidate the trade network so it can be recomputed with this

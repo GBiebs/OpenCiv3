@@ -239,4 +239,70 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal((us.id, hut), (told.playerId, told.tile));
 		Assert.NotEmpty(told.text);
 	}
+
+	// Our home city, a hut at `rank` from it outside every border, and no
+	// unit near it.
+	private (City home, Tile hut) HutNearHome(int rank) {
+		HomeCity();
+		City home = us.cities.Single();
+		Tile hut = home.location.GetTilesWithinRankDistance(rank)
+			.First(t => t.RankDistanceTo(home.location) == rank && t.IsLand() && t.owningCity == null && t.unitsOnTile.Count == 0 && !t.HasCity());
+		hut.hasGoodyHut = true;
+		EngineStorage.messagesToUI.Clear();
+		return (home, hut);
+	}
+
+	private void FoundBy(Player player, Tile hut) {
+		Assert.False(hut.hasGoodyHut);
+		// (The map's own huts may be in the new borders too.)
+		MsgGoodyHut told = Assert.Single(EngineStorage.messagesToUI.OfType<MsgGoodyHut>(), m => m.tile == hut);
+		Assert.Equal(player.id, told.playerId);
+		Assert.NotEqual(GoodyHuts.Outcome.Barbarians, told.outcome);
+	}
+
+	// A city founded next to a hut finds it (Civ3's "cultural pop").
+	[Fact]
+	public void ACityFoundedByAHutFindsIt() {
+		(City home, Tile hut) = HutNearHome(2);
+		Tile site = hut.neighbors.Values.First(n => n.IsAllowCities() && !n.HasCityCloserThan(gameData.rules.MinimumCityDistance) && n.unitsOnTile.Count == 0);
+		CityInteractions.BuildCity(site, us, "Next door");
+		FoundBy(us, hut);
+	}
+
+	// So do borders growing over it, at the turn's end.
+	[Fact]
+	public void BordersGrowingOverAHutFindIt() {
+		(City home, Tile hut) = HutNearHome(2);
+		Assert.True(home.GetCulturePerTurn() > 0);
+		Assert.Null(hut.OwningPlayer());
+		home.perPlayerCulture[us] = 9;
+		us.HandleCityUpdates(gameData);
+		Assert.Equal(us, hut.OwningPlayer());
+		FoundBy(us, hut);
+	}
+
+	// Never angry tribesmen in our own land: at Creator a unit only meets
+	// those, our borders find a deserted village.
+	[Fact]
+	public void BordersNeverFindBarbarians() {
+		(Tile hut, MapUnit warrior) = Hut();
+		HomeCity();
+		Difficulty("Creator");
+		Assert.Contains(GoodyHuts.Outcome.Barbarians, GoodyHuts.OutcomeChances(gameData, warrior, hut).Keys);
+		Assert.DoesNotContain(GoodyHuts.Outcome.Barbarians, GoodyHuts.OutcomeChances(gameData, us, hut, byBorders: true).Keys);
+	}
+
+	// Loading a game finds nothing (a save may hold a hut in someone's
+	// borders: it stays until borders next change).
+	[Fact]
+	public void LoadingAGameFindsNoHuts() {
+		HomeCity();
+		Tile hut = us.cities.Single().location.neighbors.Values.First(t => t.IsLand() && t.unitsOnTile.Count == 0);
+		hut.hasGoodyHut = true;
+		EngineStorage.messagesToUI.Clear();
+		Assert.Equal(us, hut.OwningPlayer());
+		C7GameData.GameData reloaded = SaveGame.FromGameData(gameData).Clone().ToGameData(fixture.behaviors);
+		Assert.True(reloaded.map.tileAt(hut.XCoordinate, hut.YCoordinate).hasGoodyHut);
+		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgGoodyHut>());
+	}
 }

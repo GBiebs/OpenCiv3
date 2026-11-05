@@ -13,7 +13,10 @@ namespace C7GameData {
 	// recomputes the table the same way). The tables are rules
 	// (Rules.GoodyHutOdds, ExpansionistGoodyHutOdds). Messages are Civ3's
 	// (script.txt GOODY_*), $BARBARIAN0 a name from the barbarian
-	// civilization's list.
+	// civilization's list. A village that comes inside a civ's borders (a
+	// city founded, or its borders growing) is found by that civ, as in
+	// Civ3, whose players report gold, advances, settlers and even cities
+	// from these "cultural pops"; never angry barbarians (in its own land).
 	public static class GoodyHuts {
 		private static ILogger log = Log.ForContext(typeof(GoodyHuts));
 
@@ -59,16 +62,25 @@ namespace C7GameData {
 		// The chance of each outcome for this unit entering this hut, once the
 		// impossible ones are out; they add up to 1 (or nothing is possible).
 		public static Dictionary<Outcome, double> OutcomeChances(GameData gameData, MapUnit unit, Tile tile) {
-			GoodyHutOdds odds = Odds(gameData, unit.owner);
+			return OutcomeChances(gameData, unit.owner, tile, byBorders: false);
+		}
+
+		// The same for `player` finding it, by a unit or (`byBorders`) by
+		// their borders reaching it.
+		public static Dictionary<Outcome, double> OutcomeChances(GameData gameData, Player player, Tile tile, bool byBorders) {
+			GoodyHutOdds odds = Odds(gameData, player);
 			Dictionary<Outcome, double> chances = Enum.GetValues<Outcome>()
-				.Where(o => odds != null && Chance(odds, o) > 0 && IsPossible(o, gameData, unit, tile))
+				.Where(o => odds != null && Chance(odds, o) > 0 && IsPossible(o, gameData, player, tile, byBorders))
 				.ToDictionary(o => o, o => Chance(odds, o));
 			double total = chances.Values.Sum();
 			return chances.ToDictionary(kv => kv.Key, kv => kv.Value / total);
 		}
 
 		public static bool IsPossible(Outcome outcome, GameData gameData, MapUnit unit, Tile tile) {
-			Player player = unit.owner;
+			return IsPossible(outcome, gameData, unit.owner, tile, byBorders: false);
+		}
+
+		public static bool IsPossible(Outcome outcome, GameData gameData, Player player, Tile tile, bool byBorders) {
 			switch (outcome) {
 				case Outcome.City:
 					// Not in an elimination game (Conquests readme: "City goodie
@@ -94,7 +106,7 @@ namespace C7GameData {
 				case Outcome.Nothing:
 					return true;
 				case Outcome.Barbarians:
-					return !IsExpansionist(player)
+					return !byBorders && !IsExpansionist(player)
 						&& gameData.barbarianInfo.barbarianActivity != BarbarianActivity.None
 						&& !tile.HasCity() && tile.neighbors.Values.All(n => !n.HasCity())
 						&& player.cities.Count > 0 && player.units.Any(u => u.IsCombatUnit())
@@ -132,8 +144,23 @@ namespace C7GameData {
 
 		// The unit enters the village: it's gone, and something happens.
 		public static Outcome Enter(GameData gameData, MapUnit unit, Tile tile) {
+			return Find(gameData, unit.owner, tile, byBorders: false);
+		}
+
+		// The villages now inside a civ's borders: each found by that civ,
+		// in the map's order (so every game online finds them alike). Called
+		// when a city is founded and when borders grow, not on loading.
+		public static void FindInTerritory(GameData gameData) {
+			foreach (Tile tile in gameData.map.tiles.Where(t => t.hasGoodyHut).ToList()) {
+				if (tile.hasGoodyHut && tile.OwningPlayer() is Player owner && !owner.isBarbarians) {
+					Find(gameData, owner, tile, byBorders: true);
+				}
+			}
+		}
+
+		private static Outcome Find(GameData gameData, Player player, Tile tile, bool byBorders) {
 			tile.hasGoodyHut = false;
-			Dictionary<Outcome, double> chances = OutcomeChances(gameData, unit, tile);
+			Dictionary<Outcome, double> chances = OutcomeChances(gameData, player, tile, byBorders);
 			Outcome outcome = Outcome.Nothing;
 			double roll = GameData.rng.NextDouble();
 			foreach ((Outcome o, double chance) in chances) {
@@ -143,14 +170,17 @@ namespace C7GameData {
 					break;
 				}
 			}
-			string text = Apply(outcome, gameData, unit, tile, TribeName(gameData));
-			log.Information($"{unit.owner} entered a goody hut at {tile}: {text}");
-			new MsgGoodyHut(unit.owner.id, outcome, text, tile).send();
+			string text = Apply(outcome, gameData, player, tile, TribeName(gameData));
+			log.Information($"{player} {(byBorders ? "found a goody hut inside its borders" : "entered a goody hut")} at {tile}: {text}");
+			new MsgGoodyHut(player.id, outcome, text, tile).send();
 			return outcome;
 		}
 
 		public static string Apply(Outcome outcome, GameData gameData, MapUnit unit, Tile tile, string tribe) {
-			Player player = unit.owner;
+			return Apply(outcome, gameData, unit.owner, tile, tribe);
+		}
+
+		public static string Apply(Outcome outcome, GameData gameData, Player player, Tile tile, string tribe) {
 			Rules rules = gameData.rules;
 			switch (outcome) {
 				case Outcome.City: {
