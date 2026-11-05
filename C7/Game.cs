@@ -1042,6 +1042,10 @@ public partial class Game : Node {
 		if (resyncWanted) {
 			TryResync();
 		}
+		// (Begun again from the host's copy: this scene has left the tree.)
+		if (!IsInsideTree()) {
+			return;
+		}
 		ProcessActions();
 		UpdateMovePress();
 		EdgeScroll(delta);
