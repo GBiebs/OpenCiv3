@@ -82,6 +82,8 @@ public partial class CityScreen : Control {
 	private const int ShieldBoxRows = 5;
 	private static readonly Vector2 ShieldBoxSpacing = new(18, 20);
 	private ImageTexture taxTexture, scienceTexture, luxuryTexture, corruptGoldTexture;
+	// (Their icons scaled to sit inside the 21-pixel bars.)
+	private const float CommerceIconHeight = 18;
 
 	// Civ3's city screen shows the city at one zoom every time; the map
 	// goes back to the player's own view (zoom and place) on leaving.
@@ -644,21 +646,29 @@ public partial class CityScreen : Control {
 			row.icons.RemoveChild(child);
 			child.QueueFree();
 		}
+		static Vector2 Fitted(ImageTexture texture) => texture.GetSize() * Math.Min(1, CommerceIconHeight / texture.GetHeight());
+		Vector2 lostSize = Fitted(corruptGoldTexture), iconSize = Fitted(icon);
 		float room = row.icons.Size.X - 10;
-		float width = lost * corruptGoldTexture.GetWidth() + amount * icon.GetWidth();
+		float width = lost * lostSize.X + amount * iconSize.X;
 		float squeeze = lost + amount > 1 && width > room ? (width - room) / (lost + amount - 1) : 0;
-		void Place(ImageTexture texture, float x) {
-			row.icons.AddChild(new TextureRect {
+		void Place(ImageTexture texture, Vector2 size, float x) {
+			TextureRect rect = new() {
 				Texture = texture,
-				Position = new Vector2(x, (row.icons.Size.Y - texture.GetHeight()) / 2),
+				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+				StretchMode = TextureRect.StretchModeEnum.Scale,
+				// (Smoothed: shrunk pixel art is choppy otherwise.)
+				TextureFilter = TextureFilterEnum.Linear,
 				MouseFilter = MouseFilterEnum.Ignore,
-			});
+			};
+			rect.Position = new Vector2(x, (row.icons.Size.Y - size.Y) / 2);
+			rect.Size = size;
+			row.icons.AddChild(rect);
 		}
 		for (int i = 0; i < lost; ++i) {
-			Place(corruptGoldTexture, i * (corruptGoldTexture.GetWidth() - squeeze));
+			Place(corruptGoldTexture, lostSize, i * (lostSize.X - squeeze));
 		}
 		for (int i = 1; i <= amount; ++i) {
-			Place(icon, room - icon.GetWidth() - (i - 1) * (icon.GetWidth() - squeeze));
+			Place(icon, iconSize, room - iconSize.X - (i - 1) * (iconSize.X - squeeze));
 		}
 		row.count.Text = amount.ToString();
 		row.lost.Text = lost.ToString();
