@@ -28,6 +28,8 @@ namespace C7Engine.Online {
 		// down), and the games having gone their own ways.
 		public event Action<string> Notice;
 		public event Action OutOfSync;
+		// The turn timer started: whose turn, and its seconds.
+		public event Action<ID, int> TimerStarted;
 
 		// From the sequence `seq` on (a game begun from the host's copy goes
 		// on from the order it has).
@@ -35,7 +37,10 @@ namespace C7Engine.Online {
 			EngineStorage.ResetSequence(seq);
 			EngineStorage.sendOrder = Submit;
 			EngineStorage.onEndTurnDone = seq => Checked(seq, GameChecksum.Of(EngineStorage.gameData));
+			Begun();
 		}
+
+		protected virtual void Begun() { }
 
 		public virtual void Dispose() {
 			EngineStorage.sendOrder = null;
@@ -56,6 +61,8 @@ namespace C7Engine.Online {
 		protected void Tell(string text) => Notice?.Invoke(text);
 
 		protected void WentOutOfSync() => OutOfSync?.Invoke();
+
+		protected void Timed(ID player, int seconds) => TimerStarted?.Invoke(player, seconds);
 
 		// The save as it goes over the network, and back (no bigger than
 		// `limit` once unpacked; the host's folders for its scenario don't
@@ -108,6 +115,13 @@ namespace C7Engine.Online {
 
 		public long Seq => seq;
 
+		// The turn timer: whose turn it times (a human's, until they've
+		// played), and when it's up.
+		private ID timed;
+		private int timedTurn;
+		private DateTime timeUp;
+		private bool timeUpSent;
+
 		// The game to send each player, from the save this game was begun
 		// from (the host begins from the same bytes).
 		public void SendGame(string packedSave, bool resumed = true) {
@@ -135,6 +149,7 @@ namespace C7Engine.Online {
 		}
 
 		public override void Poll(GameData gameData) {
+			WatchTheClock(gameData, DateTime.UtcNow);
 			while (host.TryNextEvent(out HostEvent hostEvent)) {
 				switch (hostEvent) {
 					case MessageFrom { message: OrderRequest request } from when players.TryGetValue(from.player.id, out ID player): {
@@ -176,6 +191,41 @@ namespace C7Engine.Online {
 		protected override void Checked(long seq, string hash) {
 			hashes[seq] = hash;
 			Compare(seq);
+		}
+
+		// (Begun again from this copy: the turn timer goes on, told again.)
+		protected override void Begun() {
+			if (timed != null) {
+				int seconds = Math.Max(0, (int)Math.Ceiling((timeUp - DateTime.UtcNow).TotalSeconds));
+				host.SendToAll(new TurnTimerStarted { player = timed.ToString(), seconds = seconds });
+				Timed(timed, seconds);
+			}
+		}
+
+		// The turn timer: started when a human's turn begins (everyone is
+		// told), and once it's up and the game is settled, every game ends
+		// that turn.
+		internal void WatchTheClock(GameData gameData, DateTime now) {
+			Player acting = gameData.turnTimer == TurnTimer.None ? null : gameData.GetPlayer(EngineStorage.uiControllerID);
+			if (acting == null || !acting.isHuman || acting.hasPlayedThisTurn || acting.defeated) {
+				timed = null;
+				return;
+			}
+			if (timed != acting.id || timedTurn != gameData.turn) {
+				timed = acting.id;
+				timedTurn = gameData.turn;
+				timeUpSent = false;
+				int seconds = TurnTimes.Seconds(gameData, acting);
+				timeUp = now.AddSeconds(seconds);
+				host.SendToAll(new TurnTimerStarted { player = acting.id.ToString(), seconds = seconds });
+				Timed(acting.id, seconds);
+				return;
+			}
+			if (!timeUpSent && now >= timeUp && EngineStorage.OrdersDone() && EngineStorage.OrdersWaiting == 0) {
+				timeUpSent = true;
+				log.Information("Time's up for {Player}", acting);
+				Sequence(localPlayer, new MsgTurnTimeUp(acting.id, gameData.turn));
+			}
 		}
 
 		private void Compare(long seq) {
@@ -238,6 +288,9 @@ namespace C7Engine.Online {
 						break;
 					case ChatLine line:
 						Tell(line.text);
+						break;
+					case TurnTimerStarted started:
+						Timed(ID.FromString(started.player), started.seconds);
 						break;
 					case Goodbye goodbye:
 						Ended?.Invoke(goodbye.reason);

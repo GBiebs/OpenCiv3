@@ -32,6 +32,8 @@ public class GameSetup {
 	// With other humans: the administrator's password (none for no
 	// administrator). See Administration.
 	public string adminPassword { get; set; }
+	// Online: Civ3's turn timer.
+	public TurnTimer turnTimer { get; set; }
 
 	ID.Factory ids;
 
@@ -41,6 +43,7 @@ public class GameSetup {
 		save.VictoryConditions = victoryConditions;
 		bool otherHumans = opponents.Any(o => o.isHuman && !o.isNone);
 		save.PlayByEmail = playByEmail && otherHumans;
+		save.TurnTimer = turnTimer;
 		save.AdminPasswordHash = otherHumans ? Passwords.Hash(adminPassword) : "";
 
 		if (save.Map.tiles.Count == 0) {

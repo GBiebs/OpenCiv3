@@ -24,11 +24,14 @@ namespace C7Engine {
 		// than UI housekeeping.
 		public virtual bool IsPlayerAction => false;
 
-		// Online: an order only the host gives (a player has left). Every
-		// game plays it whoever is in control, as soon as it comes (even
-		// while the engine waits for an answer); the host turns it down from
-		// a player.
+		// Online: an order only the host gives (a player has left, the turn
+		// timer ran out). Every game plays it whoever is in control; the host
+		// turns it down from a player.
 		public virtual bool HostOnly => false;
+
+		// Played as soon as it comes, even while the engine waits for an
+		// answer or an order's work is going on.
+		public virtual bool Urgent => false;
 
 		// (Online, an order that changes the game goes to the host, and comes
 		// back in sequence: EngineStorage.sendOrder.)
@@ -894,6 +897,7 @@ namespace C7Engine {
 	// (LeavingPlayers).
 	public class MsgPlayerLeftGame : MessageToEngine {
 		public override bool HostOnly => true;
+		public override bool Urgent => true;
 		public readonly ID playerId;
 
 		public MsgPlayerLeftGame(ID playerId) {
@@ -904,6 +908,31 @@ namespace C7Engine {
 			if (EngineStorage.gameData.GetPlayer(playerId) is Player player && !player.defeated && !EngineStorage.leaving.Contains(player.id)) {
 				EngineStorage.leaving.Add(player.id);
 			}
+		}
+	}
+
+	// Online: the turn timer ran out on `playerId`'s turn `turn`: it ends,
+	// as their End Turn would, unless it has already (an End Turn on its
+	// way when the time ran out).
+	public class MsgTurnTimeUp : MessageToEngine {
+		public override bool HostOnly => true;
+		public readonly ID playerId;
+		public readonly int turn;
+
+		public MsgTurnTimeUp(ID playerId, int turn) {
+			this.playerId = playerId;
+			this.turn = turn;
+		}
+
+		public override void process() => _ = ProcessAsync();
+
+		public override async Task ProcessAsync() {
+			GameData gameData = EngineStorage.gameData;
+			Player player = gameData.GetPlayer(playerId);
+			if (player == null || player.id != EngineStorage.uiControllerID || gameData.turn != turn || player.hasPlayedThisTurn || player.defeated) {
+				return;
+			}
+			await new MsgEndTurn().ProcessAsync();
 		}
 	}
 

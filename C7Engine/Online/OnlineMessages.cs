@@ -27,6 +27,7 @@ namespace C7Engine.Online {
 	[JsonDerivedType(typeof(OrderRequest), "order")]
 	[JsonDerivedType(typeof(SequencedOrder), "sequenced")]
 	[JsonDerivedType(typeof(Checksum), "checksum")]
+	[JsonDerivedType(typeof(TurnTimerStarted), "turnTimer")]
 	public abstract class OnlineMessage {
 		public const int MaxNameLength = 32;
 		public const int MaxTextLength = 500;
@@ -197,6 +198,14 @@ namespace C7Engine.Online {
 		public bool resumed { get; set; }
 
 		public override bool IsValid() => !string.IsNullOrEmpty(save) && save.Length <= 64 * 1024 * 1024 && IsText(you, 60) && seq >= 0;
+	}
+
+	// The turn timer started for `player`'s turn: `seconds` to play it.
+	public sealed class TurnTimerStarted : OnlineMessage {
+		public string player { get; set; }
+		public int seconds { get; set; }
+
+		public override bool IsValid() => IsText(player, 60) && !string.IsNullOrEmpty(player) && seconds >= 0 && seconds <= 24 * 3600;
 	}
 
 	// A player's order, for the host to put in sequence.

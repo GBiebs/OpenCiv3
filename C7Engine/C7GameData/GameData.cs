@@ -36,6 +36,8 @@ namespace C7GameData {
 		// Play by email: each human plays their turn from the save the one
 		// before sent them (TurnHandling.HearFromOthers).
 		public bool playByEmail;
+		// Online: the turn timer chosen (TurnTimes).
+		public TurnTimer turnTimer;
 		// Hotseat and play by email: the deals humans have sent each other,
 		// waiting for an answer (HumanDiplomacy).
 		public List<HumanDeal> humanDeals = new();

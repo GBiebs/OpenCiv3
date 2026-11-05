@@ -151,6 +151,50 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(hostPlayer.id, from);
 	}
 
+	// Civ3's turn timer: when a human's turn begins, everyone is told its
+	// time; once it's up (and the game is settled) every game ends it, once.
+	[Fact]
+	public async Task TheTurnTimerEndsATurnThatRunsOut() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		gameData.turnTimer = TurnTimer.Fast;
+		int seconds = TurnTimes.Seconds(gameData, hostPlayer);
+		List<(ID, int)> started = new();
+		game.TimerStarted += (player, s) => started.Add((player, s));
+		DateTime start = DateTime.UtcNow;
+		game.WatchTheClock(gameData, start);
+		TurnTimerStarted told = await Until<TurnTimerStarted>(game, client);
+		Assert.Equal(hostPlayer.id.ToString(), told.player);
+		Assert.Equal(seconds, told.seconds);
+		Assert.Equal([(hostPlayer.id, seconds)], started);
+
+		game.WatchTheClock(gameData, start.AddSeconds(seconds - 1));
+		Assert.Empty(EngineStorage.sequencedOrders);
+		game.WatchTheClock(gameData, start.AddSeconds(seconds));
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		MsgTurnTimeUp up = Assert.IsType<MsgTurnTimeUp>(order);
+		Assert.Equal(hostPlayer.id, up.playerId);
+		Assert.Equal(gameData.turn, up.turn);
+		// (Once, even after that order is played.)
+		EngineStorage.ResetSequence(EngineStorage.lastSequenced);
+		game.WatchTheClock(gameData, start.AddSeconds(seconds + 10));
+		Assert.Empty(EngineStorage.sequencedOrders);
+	}
+
+	// No timer, or a computer playing: nothing is timed.
+	[Fact]
+	public async Task OnlyAHumansTurnIsTimed() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		DateTime start = DateTime.UtcNow;
+		game.WatchTheClock(gameData, start);
+		game.WatchTheClock(gameData, start.AddHours(1));
+		gameData.turnTimer = TurnTimer.Fast;
+		EngineStorage.uiControllerID = gameData.players.First(p => !p.isHuman && !p.isBarbarians).id;
+		game.WatchTheClock(gameData, start);
+		game.WatchTheClock(gameData, start.AddHours(1));
+		Assert.Null(await Until<TurnTimerStarted>(game, client, milliseconds: 300));
+		Assert.Empty(EngineStorage.sequencedOrders);
+	}
+
 	// Only the host says who has left.
 	[Fact]
 	public async Task APlayerCantSayAnotherHasLeft() {

@@ -35,6 +35,12 @@ public partial class UnitSelector : Node {
 
 	public override void _Process(double delta) {
 		if (game.CurrentState != GameState.PlayerTurn) return;
+		// Online, only in this computer's player's turn; and never another's
+		// unit (one picked before the game knew whose turn it was).
+		if (EngineStorage.uiControllerID != EngineStorage.viewerID) return;
+		if (CurrentlySelectedUnit != MapUnit.NONE && CurrentlySelectedUnit.owner?.id != EngineStorage.viewerID) {
+			CurrentlySelectedUnit = MapUnit.NONE;
+		}
 		if (NoMoreAutoselectableUnitsEmitted) return;
 		if (EngineStorage.HasPendingAnimations()) return;
 

@@ -98,7 +98,7 @@ namespace C7Engine {
 		// work done, or the engine waiting for this very answer; no animation
 		// going. So every game plays each order at the same point.
 		private static bool ReadyFor(MessageToEngine next) {
-			return !HasPendingAnimations() && (next.HostOnly || OrdersDone() || pendingEngineWaiters.ContainsKey(next.GetType()));
+			return !HasPendingAnimations() && (next.Urgent || OrdersDone() || pendingEngineWaiters.ContainsKey(next.GetType()));
 		}
 
 		public static void ProcessNextMessageToEngine() {
@@ -128,7 +128,7 @@ namespace C7Engine {
 					return;
 				}
 				GameData.rng = new Random(seed);
-				endTurnGoing |= order is MsgEndTurn;
+				endTurnGoing |= order is MsgEndTurn or MsgTurnTimeUp;
 				Process(order);
 				return;
 			}

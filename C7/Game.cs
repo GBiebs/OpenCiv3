@@ -196,8 +196,10 @@ public partial class Game : Node {
 	// settled).
 	private OnlineGame online => Global?.Online;
 	private bool resyncWanted;
-	// Online: what's said and the game's notices, over the map.
+	// Online: what's said and the game's notices, over the map; and the
+	// turn timer's time left.
 	private GameChat chat;
+	private TurnClock turnClock;
 
 	// Hotseat: news held for each other human until they next take the UI
 	// (see MessageRecipients), what runs once a human has taken it (one a
@@ -296,6 +298,10 @@ public partial class Game : Node {
 			// (Below the popups.)
 			popupOverlay.GetParent().MoveChild(chat, popupOverlay.GetIndex());
 			chat.Said += online.Say;
+			turnClock = new TurnClock();
+			popupOverlay.GetParent().AddChild(turnClock);
+			popupOverlay.GetParent().MoveChild(turnClock, popupOverlay.GetIndex());
+			online.TimerStarted += OnTimerStarted;
 			online.Notice += OnOnlineNotice;
 			online.OutOfSync += OnOutOfSync;
 			if (online is ClientGame client) {
@@ -1251,6 +1257,8 @@ public partial class Game : Node {
 		}
 	}
 
+	private void OnTimerStarted(ID player, int seconds) => turnClock?.Start(player, seconds);
+
 	// What's said, and who left (their civ's destruction follows as news).
 	private void OnOnlineNotice(string text) {
 		log.Information("Online: {Text}", text);
@@ -1505,6 +1513,7 @@ public partial class Game : Node {
 		// (The game's side of it goes on in the next scene, begun again.)
 		if (online != null) {
 			online.Notice -= OnOnlineNotice;
+			online.TimerStarted -= OnTimerStarted;
 			online.OutOfSync -= OnOutOfSync;
 			if (online is ClientGame client) {
 				client.Restart -= OnOnlineRestart;

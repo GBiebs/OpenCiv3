@@ -67,6 +67,7 @@ namespace C7GameData.Save {
 				UnitedNations = data.unitedNations,
 				NukesUsed = data.nukesUsed,
 				PlayByEmail = data.playByEmail,
+				TurnTimer = data.turnTimer,
 				HumanDeals = data.humanDeals,
 				AdminPasswordHash = data.adminPasswordHash,
 				BarbarianInfo = data.barbarianInfo,
@@ -304,6 +305,7 @@ namespace C7GameData.Save {
 				unitedNations = UnitedNations ?? new(),
 				nukesUsed = NukesUsed,
 				playByEmail = PlayByEmail,
+				turnTimer = TurnTimer,
 				humanDeals = HumanDeals ?? new(),
 				adminPasswordHash = AdminPasswordHash ?? "",
 				Codex = Codex,
@@ -568,6 +570,7 @@ namespace C7GameData.Save {
 		public UnitedNationsState UnitedNations = new();
 		public int NukesUsed;
 		public bool PlayByEmail;
+		public TurnTimer TurnTimer;
 		public List<HumanDeal> HumanDeals = new();
 		public string AdminPasswordHash = "";
 		public List<SavePlayer> Players = new List<SavePlayer>();

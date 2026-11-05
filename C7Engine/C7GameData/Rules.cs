@@ -76,6 +76,15 @@ namespace C7GameData {
 		// envoys to stay away (Civ3's "do not contact me for 20 turns"). Not
 		// in Civ3's BIQ. See HumanDiplomacy.
 		public int EnvoyRefusalTurns = 20;
+		// Online: the turn timer (TurnTimes): a turn's seconds, then the
+		// per cent for Civ3's Slow, Normal and Fast. Civ3's own aren't
+		// documented, and aren't in its BIQ.
+		public int TurnTimerBaseSeconds = 30;
+		public int TurnTimerSecondsPerCity = 4;
+		public int TurnTimerSecondsPerUnit = 1;
+		public int TurnTimerSlowPercent = 300;
+		public int TurnTimerNormalPercent = 200;
+		public int TurnTimerFastPercent = 100;
 		public float TreasuryInterestRate = .05f;
 		public int MaxInterest = 50;
 		public int ShieldCostPerGold;
