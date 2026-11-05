@@ -59,6 +59,13 @@ namespace C7Engine.Online {
 		// for everyone); it comes back as a Notice.
 		public abstract void Say(string text, IReadOnlyCollection<ID> to = null);
 
+		// Live diplomacy with other humans (LiveTalks): what this computer's
+		// player hears of it (TalkEnvoy, TalkState, TalkSay, TalkEnd), and
+		// what they say (TalkEnvoy, TalkAnswer, TalkTable, TalkSay, TalkEnd).
+		public event Action<OnlineMessage> TalkHeard;
+		public abstract void Talk(OnlineMessage message);
+		protected void Heard(OnlineMessage message) => TalkHeard?.Invoke(message);
+
 		// Who plays each human civ (nicknames), and who has lost their
 		// connection: for the player list.
 		private readonly Dictionary<ID, string> names = new();
@@ -132,7 +139,41 @@ namespace C7Engine.Online {
 			this.localPlayer = localPlayer;
 			this.players = players;
 			this.seq = seq;
+			talks = new LiveTalks(SendTo, WhyNotTalk, (a, aTerms, b, bTerms) => {
+				GameData gameData = EngineStorage.gameData;
+				Sequence(localPlayer, new MsgHumansTrade(a, b, LiveTalks.Read(aTerms, gameData), LiveTalks.Read(bTerms, gameData)));
+			});
 		}
+
+		// To a civ's player: this computer's, or one who joined.
+		private void SendTo(ID civ, OnlineMessage message) {
+			if (civ == localPlayer) {
+				Heard(message);
+				return;
+			}
+			foreach ((int connection, ID player) in players) {
+				if (player == civ) {
+					host.Send(connection, message);
+				}
+			}
+		}
+
+		// Why `from` can't send an envoy to `to` now, or null.
+		private string WhyNotTalk(ID from, ID to) {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData?.GetPlayer(from) is not Player us || gameData.GetPlayer(to) is not Player them || !them.isHuman || them.defeated) {
+				return "They aren't a player we can talk to.";
+			}
+			if (them != gameData.GetPlayer(localPlayer) && !players.ContainsValue(to)) {
+				return $"The {them.civilization.noun} aren't here right now.";
+			}
+			if (!HumanDiplomacy.CanContact(gameData, us, them)) {
+				return $"We can't contact the {them.civilization.noun} now.";
+			}
+			return null;
+		}
+
+		public override void Talk(OnlineMessage message) => talks.Handle(localPlayer, message);
 
 		public long Seq => seq;
 
@@ -142,6 +183,8 @@ namespace C7Engine.Online {
 		// every game begins again from this one's copy (they get it then).
 		private readonly Dictionary<ID, string> away = new();
 		private readonly HashSet<ID> rejoining = new();
+		// The live talks between humans (this one's player's too).
+		private readonly LiveTalks talks;
 		public IReadOnlyDictionary<ID, string> Away => away;
 		public event Action AwayChanged;
 		// Someone rejoined: every game begins again from this copy.
@@ -210,8 +253,12 @@ namespace C7Engine.Online {
 					case PlayerJoined joined:
 						Rejoin(joined.player);
 						break;
+					case MessageFrom { message: TalkEnvoy or TalkAnswer or TalkTable or TalkSay or TalkEnd } talk when players.TryGetValue(talk.player.id, out ID talker):
+						talks.Handle(talker, talk.message);
+						break;
 					case PlayerLeft left when players.TryGetValue(left.player.id, out ID gone):
 						players.Remove(left.player.id);
+						talks.Left(gone);
 						away[gone] = left.player.name;
 						Tell($"{left.player.name} has left the game.");
 						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game. The game waits for them to reconnect, unless the host drops them." });
@@ -441,6 +488,9 @@ namespace C7Engine.Online {
 					case PlayersInGame playing:
 						SetPlayers(playing.players.Select(p => (ID.FromString(p.civ), p.name, p.away)));
 						break;
+					case TalkEnvoy or TalkState or TalkSay or TalkEnd:
+						Heard(message);
+						break;
 					case Goodbye goodbye:
 						Ended?.Invoke(goodbye.reason);
 						break;
@@ -453,6 +503,8 @@ namespace C7Engine.Online {
 		}
 
 		public override void Say(string text, IReadOnlyCollection<ID> to = null) => client.Send(new Chat { text = text, to = to?.Select(c => c.ToString()).ToList() });
+
+		public override void Talk(OnlineMessage message) => client.Send(message);
 
 		public override void Dispose() {
 			base.Dispose();

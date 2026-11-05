@@ -982,6 +982,55 @@ namespace C7Engine {
 		}
 	}
 
+	// Online: two humans accepted the same table (LiveTalks): every game
+	// makes the trade, whoever is in control.
+	public class MsgHumansTrade : MessageToEngine {
+		public override bool HostOnly => true;
+		public readonly ID aId;
+		public readonly ID bId;
+		public readonly TradeOffer aGives;
+		public readonly TradeOffer bGives;
+
+		public MsgHumansTrade(ID aId, ID bId, TradeOffer aGives, TradeOffer bGives) {
+			this.aId = aId;
+			this.bId = bId;
+			this.aGives = aGives;
+			this.bGives = bGives;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(aId) is Player a && gameData.GetPlayer(bId) is Player b) {
+				HumanDiplomacy.TradeAtTheTable(gameData, a, b, aGives ?? new(), bGives ?? new());
+			}
+		}
+	}
+
+	// The human in control demands the table's goods of a computer player
+	// (the deal screen's "Give me this, or else!"), which gives in if it's
+	// outmatched (TributeAI) and minds being asked either way.
+	public class MsgDemandTribute : MessageToEngine {
+		public override bool IsPlayerAction => true;
+		public readonly ID computerId;
+		public readonly TradeOffer demand;
+
+		public MsgDemandTribute(ID computerId, TradeOffer demand) {
+			this.computerId = computerId;
+			this.demand = demand;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.GetPlayer(EngineStorage.uiControllerID) is not Player us || gameData.GetPlayer(computerId) is not Player them || them.isHuman || demand == null || demand.IsEmpty()) {
+				return;
+			}
+			C7Engine.AI.TributeAI.OnDemand(gameData, us, them);
+			if (C7Engine.AI.TributeAI.WouldPay(them, us)) {
+				C7Engine.AI.TributeAI.Pay(gameData, us, them, demand);
+			}
+		}
+	}
+
 	// The human in control contacts a civ whose unit they found (the map's
 	// right-click menu), before talking to them.
 	public class MsgMakeContact : MessageToEngine {

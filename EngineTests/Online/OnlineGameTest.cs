@@ -269,6 +269,37 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains("Sargon: Hello all", notices);
 	}
 
+	// Civ3's live diplomacy over the network: a player's envoy reaches the
+	// host, who hears it; both accept the table, and the trade goes in
+	// sequence for every game, whoever is in control.
+	[Fact]
+	public async Task TwoPlayersTradeAtTheTable() {
+		(HostGame game, OnlineClient client) = await HostWithAPlayer();
+		hostPlayer.EnsureRelationshipExists(remotePlayer);
+		hostPlayer.gold = 50;
+		List<OnlineMessage> hostHeard = new();
+		game.TalkHeard += hostHeard.Add;
+		client.Send(new TalkEnvoy { with = hostPlayer.id.ToString() });
+		for (int i = 0; i < 300 && hostHeard.Count == 0; i++) {
+			game.Poll(gameData);
+			await Task.Delay(10);
+		}
+		Assert.Equal(remotePlayer.id.ToString(), Assert.IsType<TalkEnvoy>(Assert.Single(hostHeard)).with);
+
+		game.Talk(new TalkAnswer { with = remotePlayer.id.ToString(), answer = TalkAnswer.Hear });
+		Assert.True((await Until<TalkState>(game, client)).envoyFromUs);
+		game.Talk(new TalkTable { with = remotePlayer.id.ToString(), terms = LiveTalks.Write(new TradeOffer { gold = 20 }), accepted = true });
+		TalkState table = await Until<TalkState>(game, client, s => s.theyAccepted);
+		Assert.Equal(20, LiveTalks.Read(table.theirTerms, gameData).gold);
+		client.Send(new TalkTable { with = hostPlayer.id.ToString(), terms = "", accepted = true });
+		Assert.Equal(TalkEnd.Done, (await Until<TalkEnd>(game, client)).reason);
+		(long seq, int seed, ID from, MessageToEngine order) = Assert.Single(EngineStorage.sequencedOrders);
+		MsgHumansTrade trade = Assert.IsType<MsgHumansTrade>(order);
+		Assert.Equal(hostPlayer.id, trade.bId);
+		Assert.Equal(20, trade.bGives.gold);
+		Assert.True(trade.HostOnly);
+	}
+
 	// Civ3's turn timer: when a human's turn begins, everyone is told its
 	// time; once it's up (and the game is settled) every game ends it, once.
 	[Fact]

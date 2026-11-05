@@ -29,6 +29,12 @@ namespace C7Engine.Online {
 	[JsonDerivedType(typeof(Checksum), "checksum")]
 	[JsonDerivedType(typeof(TurnTimerStarted), "turnTimer")]
 	[JsonDerivedType(typeof(PlayersInGame), "players")]
+	[JsonDerivedType(typeof(TalkEnvoy), "talkEnvoy")]
+	[JsonDerivedType(typeof(TalkAnswer), "talkAnswer")]
+	[JsonDerivedType(typeof(TalkTable), "talkTable")]
+	[JsonDerivedType(typeof(TalkState), "talkState")]
+	[JsonDerivedType(typeof(TalkSay), "talkSay")]
+	[JsonDerivedType(typeof(TalkEnd), "talkEnd")]
 	public abstract class OnlineMessage {
 		public const int MaxNameLength = 32;
 		public const int MaxTextLength = 500;
@@ -177,6 +183,75 @@ namespace C7Engine.Online {
 
 		public override bool IsValid() => !string.IsNullOrWhiteSpace(text) && IsText(text, MaxLength)
 			&& (to == null || (to.Count <= LobbyState.MaxSlots && to.All(c => !string.IsNullOrEmpty(c) && IsText(c, 60))));
+	}
+
+	// Live diplomacy between humans (LiveTalks). `with`: the other civ.
+	// An envoy: to them (a player's), or from them (the host's).
+	public sealed class TalkEnvoy : OnlineMessage {
+		public string with { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60);
+	}
+
+	// Civ3's three answers to an envoy.
+	public sealed class TalkAnswer : OnlineMessage {
+		public const string Hear = "hear";
+		public const string Refuse = "refuse";
+		public const string Later = "later";
+
+		public string with { get; set; }
+		public string answer { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && answer is Hear or Refuse or Later;
+	}
+
+	// A player's half of the table (what they give), whether they accept
+	// the table as it stands, and their face.
+	public sealed class TalkTable : OnlineMessage {
+		public string with { get; set; }
+		public string terms { get; set; }
+		public bool accepted { get; set; }
+		public int mood { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && IsText(terms, LiveTalks.MaxTerms) && mood is >= 0 and <= 2;
+	}
+
+	// The host's: the other's half of the table, and who has accepted it
+	// (the first one: the talk is open).
+	public sealed class TalkState : OnlineMessage {
+		public string with { get; set; }
+		public string theirTerms { get; set; }
+		public bool theyAccepted { get; set; }
+		public bool weAccepted { get; set; }
+		public int theirMood { get; set; }
+		public bool envoyFromUs { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && IsText(theirTerms, LiveTalks.MaxTerms) && theirMood is >= 0 and <= 2;
+	}
+
+	// A line said at the table (only the other sees it).
+	public sealed class TalkSay : OnlineMessage {
+		public string with { get; set; }
+		public string text { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && !string.IsNullOrWhiteSpace(text) && IsText(text, Chat.MaxLength);
+	}
+
+	// The talk is over: why (a player's: they leave the table).
+	public sealed class TalkEnd : OnlineMessage {
+		public const string Cancelled = "cancelled";
+		public const string Refused = "refused";
+		public const string Later = "later";
+		public const string Busy = "busy";
+		public const string Left = "left";
+		public const string Done = "done";
+		public const string Unable = "unable";
+
+		public string with { get; set; }
+		public string reason { get; set; }
+		public string text { get; set; }
+
+		public override bool IsValid() => !string.IsNullOrEmpty(with) && IsText(with, 60) && IsText(reason, 20) && IsText(text, 200);
 	}
 
 	// In the game: who plays each human civ, by nickname, and who has lost

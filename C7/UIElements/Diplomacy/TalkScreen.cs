@@ -57,11 +57,13 @@ public partial class TalkScreen : TextureRect {
 
 		Button proposeDeal = new();
 		proposeDeal.FocusMode = Control.FocusModeEnum.None;
-		proposeDeal.Text = dealOnTheTable ? "About the deal on the table..." : "We would like to propose a deal...";
+		proposeDeal.Text = dealOnTheTable && GetParent<Diplomacy>().online == null ? "About the deal on the table..." : "We would like to propose a deal...";
 		proposeDeal.SetPosition(new Vector2(512 - 205, offset));
 		proposeDeal.Theme = fontTheme;
 		proposeDeal.Pressed += () => {
-			if (withHuman) {
+			if (withHuman && GetParent<Diplomacy>().online != null) {
+				GetParent<Diplomacy>().SendEnvoy(opponentPlayerId);
+			} else if (withHuman) {
 				GetParent<Diplomacy>().ShowHumanDealScreen(humanPlayerId, opponentPlayerId);
 			} else {
 				GetParent<Diplomacy>().ShowDealScreenForPlayer(humanPlayerId, opponentPlayerId);
@@ -106,12 +108,16 @@ public partial class TalkScreen : TextureRect {
 			opponentPlayerId,
 			() => {
 				GetParent<Diplomacy>().Hide();
-			}).send();
+			}).sendFromScreens();
 	}
 
 	private void TradeWorldMaps() {
 		if (EngineStorage.gameData.GetPlayer(opponentPlayerId).isHuman) {
-			GetParent<Diplomacy>().ShowHumanDealScreen(humanPlayerId, opponentPlayerId);
+			if (GetParent<Diplomacy>().online != null) {
+				GetParent<Diplomacy>().SendEnvoy(opponentPlayerId);
+			} else {
+				GetParent<Diplomacy>().ShowHumanDealScreen(humanPlayerId, opponentPlayerId);
+			}
 			return;
 		}
 		var weGive = new TradeOffer();

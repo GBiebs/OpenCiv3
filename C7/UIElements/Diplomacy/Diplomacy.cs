@@ -17,9 +17,56 @@ public partial class Diplomacy : CenterContainer {
 	private TalkScreen talkScreen;
 	private DealScreen dealScreen;
 
+	// Online: Civ3's live diplomacy with another human (LiveTalks), and the
+	// one at the table with us.
+	public C7Engine.Online.OnlineGame online;
+	private ID liveWith;
+
 	public override void _Ready() {
 		this.Hide();
-		Hidden += () => { new MsgDiplomacyCompleted().send(); };
+		Hidden += () => {
+			// (Leaving the table ends the talk.)
+			if (liveWith != null) {
+				online?.Talk(new C7Engine.Online.TalkEnd { with = liveWith.ToString() });
+				liveWith = null;
+			}
+			new MsgDiplomacyCompleted().send();
+		};
+	}
+
+	// Online, to another human: our envoy goes to them; the table opens if
+	// they hear it.
+	public void SendEnvoy(ID opponentPlayer) {
+		Hide();
+		online.Talk(new C7Engine.Online.TalkEnvoy { with = opponentPlayer.ToString() });
+	}
+
+	// The other's half of the table, and who has accepted it (the first
+	// time: we sit down at it).
+	public void ShowLiveTable(ID humanPlayer, ID opponentPlayer, C7Engine.Online.TalkState state) {
+		if (dealScreen == null || liveWith != opponentPlayer) {
+			liveWith = null;
+			RemoveOtherScreens();
+			dealScreen = new DealScreen(humanPlayer, opponentPlayer, online);
+			AddChild(dealScreen);
+			this.Show();
+			liveWith = opponentPlayer;
+		}
+		dealScreen.LiveUpdate(state);
+	}
+
+	public void LiveLine(ID from, string text) {
+		if (liveWith == from) {
+			dealScreen?.LiveLine(text);
+		}
+	}
+
+	// The talk is over (they left the table, or the trade is done).
+	public void LiveEnded(ID with) {
+		if (liveWith == with) {
+			liveWith = null;
+			Hide();
+		}
 	}
 
 	private void RemoveOtherScreens() {
@@ -91,7 +138,7 @@ public partial class Diplomacy : CenterContainer {
 	}
 
 	// The leader of `player`, with how they feel about `towards`.
-	public void AddLeaderHeadAndLabel(TextureRect node, Player player, Player towards, Theme fontTheme) {
+	public TextureRect AddLeaderHeadAndLabel(TextureRect node, Player player, Player towards, Theme fontTheme) {
 		ColorRect headBackground = new();
 		headBackground.Color = Colors.Black;
 		headBackground.Size = new Vector2(200, 240);
@@ -113,5 +160,6 @@ public partial class Diplomacy : CenterContainer {
 		node.AddChild(civName);
 		civName.Theme = fontTheme;
 		civName.SetTextAndCenterLabel(civNameText);
+		return leaderHead;
 	}
 }

@@ -310,6 +310,9 @@ public partial class Game : Node {
 			popupOverlay.GetParent().AddChild(turnClock);
 			popupOverlay.GetParent().MoveChild(turnClock, popupOverlay.GetIndex());
 			online.TimerStarted += OnTimerStarted;
+			// Civ3's live diplomacy with the other humans.
+			diplomacy.online = online;
+			online.TalkHeard += OnTalkHeard;
 			if (online is HostGame hosting) {
 				awayPanel = new AwayPanel();
 				popupOverlay.GetParent().AddChild(awayPanel);
@@ -1278,6 +1281,73 @@ public partial class Game : Node {
 
 	private void OnTimerStarted(ID player, int seconds) => turnClock?.Start(player, seconds);
 
+	// Civ3's live diplomacy with another human (LiveTalks): their envoy, the
+	// table, a word at it, and the end of the talk.
+	private void OnTalkHeard(OnlineMessage message) {
+		GameData gameData = EngineStorage.gameData;
+		string with = message switch {
+			TalkEnvoy envoy => envoy.with,
+			TalkState state => state.with,
+			TalkSay say => say.with,
+			TalkEnd end => end.with,
+			_ => null,
+		};
+		ID civ;
+		try {
+			civ = ID.FromString(with);
+		} catch (Exception) {
+			return;
+		}
+		if (gameData.GetPlayer(civ) is not Player them) {
+			return;
+		}
+		switch (message) {
+			case TalkEnvoy:
+				EmitLiveEnvoySignal(them);
+				break;
+			case TalkState state:
+				diplomacy.ShowLiveTable(controller.id, civ, state);
+				break;
+			case TalkSay say:
+				diplomacy.LiveLine(civ, $"{them.civilization.leader}: {say.text}");
+				break;
+			case TalkEnd end:
+				diplomacy.LiveEnded(civ);
+				string noun = them.civilization.noun;
+				string news = end.reason switch {
+					TalkEnd.Refused => $"The {noun} refused to hear our envoy.",
+					TalkEnd.Later => $"The {noun} ask us to contact them later.",
+					TalkEnd.Busy => $"The {noun} are in another negotiation: try again later.",
+					TalkEnd.Cancelled => $"The {noun} have left the table.",
+					TalkEnd.Left => $"The {noun}' player has left the game.",
+					TalkEnd.Unable => end.text,
+					// (The trade's own news follows.)
+					_ => null,
+				};
+				if (news != null) {
+					chat?.Add(news);
+				}
+				break;
+		}
+	}
+
+	// Civ3's envoy from another human: hear them, refuse, or later (its X
+	// refuses).
+	private void EmitLiveEnvoySignal(Player them) {
+		void Answer(string answer) => online?.Talk(new TalkAnswer { with = them.id.ToString(), answer = answer });
+		List<ButtonAction> options = [
+			new ButtonAction { message = "Accept the envoy.", action = () => Answer(TalkAnswer.Hear) },
+			new ButtonAction { message = "Refuse to hear the envoy.", action = () => Answer(TalkAnswer.Refuse) },
+			new ButtonAction { message = "Contact me later.", action = () => Answer(TalkAnswer.Later) },
+		];
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new OptionsPopUp(controller.id, "Foreign Advisor", $"The {them.civilization.noun} wish to talk with us. Shall we hear their envoy?",
+				options, Advisor.Foreign, Mood.Surprised, 450) {
+				cancelAction = () => Answer(TalkAnswer.Refuse),
+			}
+		));
+	}
+
 	// What's said goes to the players whose balloon is lit in the player list.
 	private void SayInGame(string text) {
 		if (playerList.EveryoneBlocked) {
@@ -1552,6 +1622,7 @@ public partial class Game : Node {
 		if (online != null) {
 			online.Notice -= OnOnlineNotice;
 			online.TimerStarted -= OnTimerStarted;
+			online.TalkHeard -= OnTalkHeard;
 			if (online is HostGame hosting) {
 				hosting.AwayChanged -= OnAwayChanged;
 				hosting.Rejoined -= OnRejoined;
@@ -1887,7 +1958,13 @@ public partial class Game : Node {
 				ProcessOnReleaseAction(action.ToString());
 			}
 		}
+		// (Typing in a field, such as the table's chat, isn't giving orders:
+		// only Escape still counts.)
+		bool typing = GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit;
 		foreach (string action in ResolveSharedKeys(pressed)) {
+			if (typing && action != C7Action.Escape) {
+				continue;
+			}
 			ProcessAction(action);
 		}
 	}

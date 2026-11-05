@@ -222,8 +222,9 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 			// administrator's changes.
 			typeof(MsgSetPassword), typeof(MsgHearFromOthers), typeof(MsgNewsRead), typeof(MsgAdministerGame),
 			// Research picked for a player who doesn't want to be asked; the
-			// host telling every game a player has left, or a turn's time is up.
-			typeof(MsgPickResearch), typeof(MsgPlayerLeftGame), typeof(MsgTurnTimeUp)];
+			// host telling every game a player has left, a turn's time is up, or
+			// two humans made a deal at the table.
+			typeof(MsgPickResearch), typeof(MsgPlayerLeftGame), typeof(MsgTurnTimeUp), typeof(MsgHumansTrade)];
 		List<Type> messages = typeof(MessageToEngine).Assembly.GetTypes()
 			.Where(t => t.IsSubclassOf(typeof(MessageToEngine)) && !t.IsAbstract).ToList();
 		Assert.True(messages.Count > 40);

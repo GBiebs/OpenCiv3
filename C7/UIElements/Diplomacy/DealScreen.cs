@@ -52,6 +52,19 @@ public partial class DealScreen : TextureRect {
 	HumanDeal pending;
 	bool tableChanged;
 
+	// Online, live (Civ3's multiplayer diplomacy, LiveTalks): both at the
+	// table at once, each putting up what they give; the other's half as
+	// they last sent it, who has accepted, our face, and a word between us.
+	private readonly C7Engine.Online.OnlineGame online;
+	private bool live => online != null;
+	private string theirTerms = "";
+	private bool weAccepted;
+	private bool theyAccepted;
+	private int ourMood = C7Engine.Online.LiveTalks.Neutral;
+	private TextureRect opponentHead;
+	private VBoxContainer talkLines;
+	private ScrollContainer talkScroll;
+
 	public DealScreen(ID humanPlayer, ID opponentPlayer, TradeOffer humanGives, TradeOffer humanWants) {
 		this.humanPlayerId = humanPlayer;
 		this.opponentPlayerId = opponentPlayer;
@@ -64,6 +77,12 @@ public partial class DealScreen : TextureRect {
 		this.withHuman = true;
 		this.pending = pending;
 		this.tableChanged = tableChanged;
+	}
+
+	public DealScreen(ID humanPlayer, ID opponentPlayer, C7Engine.Online.OnlineGame online)
+		: this(humanPlayer, opponentPlayer, new TradeOffer(), new TradeOffer()) {
+		this.withHuman = true;
+		this.online = online;
 	}
 
 	public override void _Ready() {
@@ -89,7 +108,7 @@ public partial class DealScreen : TextureRect {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
 			Player humanPlayer = gD.players.Find(x => x.id == humanPlayerId);
 			bool playersAtWar = AtWar(humanPlayer, opponentPlayer);
-			GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, humanPlayer, fontTheme);
+			opponentHead = GetParent<Diplomacy>().AddLeaderHeadAndLabel(this, opponentPlayer, humanPlayer, fontTheme);
 
 			// Figure out which technologies can be traded by each player, if any.
 			List<Tech> techsOpponentCanTrade = gD.techs.FindAll(x => {
@@ -111,6 +130,8 @@ public partial class DealScreen : TextureRect {
 				playersAtWar, agreements, opponentGoods, showsGoods: !withHuman);
 			AddChild(opponentTree);
 			opponentTree.Position = new Vector2(45, 220);
+			// (Live, their goods are theirs to put up.)
+			opponentTree.Visible = !live;
 
 			Label weWant = new();
 			weWant.Text = "We Want";
@@ -140,17 +161,26 @@ public partial class DealScreen : TextureRect {
 			humanOfferUi.Position = new Vector2(527, 453);
 
 			var syncUis = () => {
+				// Live, their half is as they sent it (an agreement we click
+				// goes on ours).
+				if (live) {
+					CopyInto(C7Engine.Online.LiveTalks.Read(theirTerms, gD), opponentOffer);
+				}
 				opponentTree.RefreshUiForOffer();
 				humanTree.RefreshUiForOffer();
 				opponentOfferUi.RefreshUiForOffer();
 				humanOfferUi.RefreshUiForOffer();
 			};
+			syncLive = syncUis;
 
-			// Link up the tree components appropriately.
-			opponentTree.HandleClicks(humanTree, () => {
-				syncUis();
-				UpdateText();
-			});
+			// Link up the tree components appropriately (live, only our side
+			// is ours to change, and each change goes to them at once).
+			if (!live) {
+				opponentTree.HandleClicks(humanTree, () => {
+					syncUis();
+					UpdateText();
+				});
+			}
 			humanTree.HandleClicks(opponentTree, () => {
 				syncUis();
 				UpdateText();
@@ -160,10 +190,17 @@ public partial class DealScreen : TextureRect {
 				syncUis();
 				UpdateText();
 			});
-			opponentOfferUi.HandleClicks(humanOfferUi, () => {
-				syncUis();
-				UpdateText();
-			});
+			if (!live) {
+				opponentOfferUi.HandleClicks(humanOfferUi, () => {
+					syncUis();
+					UpdateText();
+				});
+			}
+
+			if (live) {
+				AddLiveControls(opponentPlayer);
+				return;
+			}
 
 			if (withHuman) {
 				AddHumanButtons(opponentPlayer);
@@ -291,7 +328,7 @@ public partial class DealScreen : TextureRect {
 			// If the deal is acceptable, make it (an order: every game makes
 			// it) and go back to the previous screen.
 			if (opponentPlayer.WouldAcceptDealFrom(gD, humanPlayer, humanOffer, opponentOffer)) {
-				new MsgTradeWithComputer(opponentPlayerId, humanOffer, opponentOffer).send();
+				new MsgTradeWithComputer(opponentPlayerId, DealTerms.Of(humanOffer).ToOffer(gD), DealTerms.Of(opponentOffer).ToOffer(gD)).send();
 
 				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId);
 			} else if (humanOffer.partOfPeaceTreaty && PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) is null) {
@@ -307,7 +344,7 @@ public partial class DealScreen : TextureRect {
 	}
 
 	// The AI gives in if it's outmatched (see TributeAI), and minds being
-	// asked either way.
+	// asked either way (an order: every game asks).
 	private void DemandTribute() {
 		EngineStorage.ReadGameData((GameData gD) => {
 			Player opponentPlayer = gD.players.Find(x => x.id == opponentPlayerId);
@@ -315,9 +352,10 @@ public partial class DealScreen : TextureRect {
 			if (opponentOffer.IsEmpty()) {
 				return;
 			}
-			TributeAI.OnDemand(gD, humanPlayer, opponentPlayer);
-			if (TributeAI.WouldPay(opponentPlayer, humanPlayer)) {
-				TributeAI.Pay(gD, humanPlayer, opponentPlayer, opponentOffer);
+			bool pays = TributeAI.WouldPay(opponentPlayer, humanPlayer);
+			// (A copy: the table here is cleared before the order is played.)
+			new MsgDemandTribute(opponentPlayerId, DealTerms.Of(opponentOffer).ToOffer(gD)).send();
+			if (pays) {
 				opponentResponse.Text = "\"We will give you what you request. But we do this out of a love of peace, not fear.\"";
 				opponentOffer.Clear();
 				humanOffer.Clear();
@@ -330,6 +368,14 @@ public partial class DealScreen : TextureRect {
 	}
 
 	private void UpdateText() {
+		if (live) {
+			// Our half changed: it goes to them, and neither of us has accepted
+			// it any more.
+			weAccepted = false;
+			SendTable();
+			UpdateLiveText();
+			return;
+		}
 		if (withHuman) {
 			UpdateHumanAcceptText();
 			return;
@@ -351,5 +397,132 @@ public partial class DealScreen : TextureRect {
 				};
 			}
 		});
+	}
+	private System.Action syncLive;
+
+	// Live: Accept (Civ3's "Do Not Accept" once we have, while they
+	// haven't), Cancel, our face (Civ3's emote buttons), and a word at the
+	// table where their goods would be.
+	private void AddLiveControls(Player opponentPlayer) {
+		opponentNoun = opponentPlayer.civilization.noun;
+		acceptDeal = new() { Position = new Vector2(512 - 205, 650), Theme = fontTheme };
+		acceptDeal.Pressed += () => {
+			if (!weAccepted && humanOffer.IsEmpty() && opponentOffer.IsEmpty()) {
+				opponentResponse.Text = "There is nothing on the table.";
+				return;
+			}
+			weAccepted = !weAccepted;
+			SendTable();
+			UpdateLiveText();
+		};
+		AddChild(acceptDeal);
+
+		Button cancel = new() { Text = "Cancel", Position = new Vector2(512 + 20, 650), Theme = fontTheme };
+		// (Leaving the table ends the talk: Diplomacy.)
+		cancel.Pressed += () => GetParent<Diplomacy>().Hide();
+		AddChild(cancel);
+
+		ButtonGroup faces = new();
+		int x = 512 - 205;
+		foreach ((string label, int mood) in new[] { ("Pleased", C7Engine.Online.LiveTalks.Pleased), ("Neutral", C7Engine.Online.LiveTalks.Neutral), ("Angry", C7Engine.Online.LiveTalks.Angry) }) {
+			Button face = new() { Text = label, Position = new Vector2(x, 675), Theme = fontTheme, ToggleMode = true, ButtonGroup = faces, ButtonPressed = mood == ourMood };
+			face.TooltipText = $"The face our leader shows the {opponentNoun}.";
+			face.Pressed += () => {
+				ourMood = mood;
+				SendTable();
+			};
+			AddChild(face);
+			x += 95;
+		}
+
+		opponentResponse = new();
+		// (Wrapping before the size, or the label doesn't wrap.)
+		opponentResponse.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		opponentResponse.SetPosition(new Vector2(512 - 205, 368));
+		opponentResponse.Size = new Vector2(410, 70);
+		opponentResponse.Theme = fontTheme;
+		AddChild(opponentResponse);
+
+		// (Inside the parchment their goods would fill: wrapped, so set before the size.)
+		Label talking = new() { Text = $"At the table with the {opponentNoun} (only they see this):", AutowrapMode = TextServer.AutowrapMode.WordSmart, Theme = fontTheme };
+		talking.Position = new Vector2(45, 222);
+		talking.Size = new Vector2(195, 40);
+		AddChild(talking);
+		talkScroll = new ScrollContainer { Position = new Vector2(45, 264), Size = new Vector2(195, 316), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+		talkLines = new VBoxContainer { CustomMinimumSize = new Vector2(185, 0) };
+		talkScroll.AddChild(talkLines);
+		AddChild(talkScroll);
+		LineEdit say = new() { Position = new Vector2(45, 585), Size = new Vector2(195, 28), MaxLength = C7Engine.Online.Chat.MaxLength, PlaceholderText = "Say something (Enter)", Theme = fontTheme };
+		say.TextSubmitted += text => {
+			text = text.Trim();
+			say.Clear();
+			if (text != "") {
+				online.Talk(new C7Engine.Online.TalkSay { with = opponentPlayerId.ToString(), text = text });
+				LiveLine($"We: {text}");
+			}
+		};
+		AddChild(say);
+		UpdateLiveText();
+	}
+
+	// Our half of the table, whether we accept it as it stands, our face.
+	private void SendTable() {
+		online.Talk(new C7Engine.Online.TalkTable {
+			with = opponentPlayerId.ToString(),
+			terms = C7Engine.Online.LiveTalks.Write(humanOffer),
+			accepted = weAccepted,
+			mood = ourMood,
+		});
+	}
+
+	// What the host says of the table: their half, who has accepted, their
+	// face.
+	public void LiveUpdate(C7Engine.Online.TalkState state) {
+		theirTerms = state.theirTerms ?? "";
+		theyAccepted = state.theyAccepted;
+		weAccepted = state.weAccepted;
+		Player opponent = EngineStorage.gameData.GetPlayer(opponentPlayerId);
+		if (opponentHead != null && opponent != null) {
+			opponentHead.Texture = TextureLoader.Load("leader_heads", new LeaderPortrait(opponent, state.theirMood), useCache: true);
+		}
+		syncLive?.Invoke();
+		UpdateLiveText();
+	}
+
+	public void LiveLine(string text) {
+		if (talkLines == null) {
+			return;
+		}
+		Label line = new() { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2(180, 0), Theme = fontTheme };
+		talkLines.AddChild(line);
+		// (To the newest, once it's laid out.)
+		Callable.From(() => talkScroll.ScrollVertical = (int)talkScroll.GetVScrollBar().MaxValue).CallDeferred();
+	}
+
+	private void UpdateLiveText() {
+		if (acceptDeal == null || opponentResponse == null) {
+			return;
+		}
+		acceptDeal.Text = weAccepted ? "Do Not Accept" : "Accept";
+		opponentResponse.Text = theyAccepted
+			? $"The {opponentNoun} have accepted this deal: accept it too, or change it."
+			: weAccepted
+			? $"We have accepted this deal. Waiting for the {opponentNoun}..."
+			: $"We put up what we give, the {opponentNoun} what they give. When both of us accept the table as it stands, the trade is done.";
+	}
+
+	// (Their half arrives as a new offer; the screen's parts keep this one.)
+	private static void CopyInto(TradeOffer from, TradeOffer to) {
+		to.partOfPeaceTreaty = from.partOfPeaceTreaty;
+		to.gold = from.gold;
+		to.techs = new(from.techs);
+		to.agreements = new(from.agreements);
+		to.worldMap = from.worldMap;
+		to.territoryMap = from.territoryMap;
+		to.contacts = new(from.contacts);
+		to.resources = new(from.resources);
+		to.goldPerTurn = from.goldPerTurn;
+		to.cities = new(from.cities);
+		to.workers = new(from.workers);
 	}
 }

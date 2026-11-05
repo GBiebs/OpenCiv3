@@ -283,6 +283,25 @@ namespace C7GameData {
 			return gameData.simultaneousMoves ? EngineStorage.WaitForAnswerFrom<T>(human.id) : EngineStorage.WaitForMessageToEngine<T>();
 		}
 
+		// Online, live (Civ3's multiplayer diplomacy, LiveTalks): the table
+		// both humans accepted, what's no longer possible taken off first;
+		// false if nothing is left or they can't deal now.
+		public static bool TradeAtTheTable(GameData gameData, Player a, Player b, TradeOffer aGives, TradeOffer bGives) {
+			if (!a.isHuman || !b.isHuman || a.defeated || b.defeated || a == b || !a.playerRelationships.ContainsKey(b.id)) {
+				return false;
+			}
+			Prune(gameData, a, b, aGives);
+			Prune(gameData, b, a, bGives);
+			if (aGives.IsEmpty() && bGives.IsEmpty()) {
+				return false;
+			}
+			log.Information($"{a} and {b} make a deal at the table");
+			a.ExecuteDeal(gameData, b, bGives, aGives);
+			new MsgDiplomacyNews(a.id, $"The trade with the {b.civilization.noun} is done.", good: true).send();
+			new MsgDiplomacyNews(b.id, $"The trade with the {a.civilization.noun} is done.", good: true).send();
+			return true;
+		}
+
 		// The deals of a player who is no longer human (or no longer plays).
 		public static void Forget(GameData gameData, Player player) {
 			gameData.humanDeals.RemoveAll(d => d.from == player.id || d.to == player.id);
