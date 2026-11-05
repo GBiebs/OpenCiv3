@@ -138,6 +138,76 @@ public class SimultaneousMovesTest : IClassFixture<SaveGameFixture>, IDisposable
 		Assert.Equal(a, UnitInteractions.getNextSelectedUnit().owner);
 	}
 
+	// A third human, and a deal from A on the table for B.
+	private (C7GameData.GameData, Player a, Player b, Player c) WithADeal() {
+		(C7GameData.GameData gameData, Player a, Player b) = Load();
+		Player c = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		c.isHuman = true;
+		gameData.humanDeals.Add(new HumanDeal { from = a.id, to = b.id });
+		return (gameData, a, b, c);
+	}
+
+	// B answering A's deal at the start of their turn doesn't hold up the
+	// others: C plays on; B's answer then ends B's diplomacy before any other
+	// order, and B's turn is ready.
+	private string DealWhileOthersPlay() {
+		(C7GameData.GameData gameData, Player a, Player b, Player c) = WithADeal();
+		EngineStorage.EnqueueSequenced(1, 11, b.id, new MsgHearFromOthers());
+		List<MessageToUI> heard = PlayAll();
+		Assert.True(EngineStorage.IsWaitingForAnswerFrom<MsgDiplomacyCompleted>(b.id));
+		Assert.Contains(heard, m => m is MsgShowHumanDeal d && d.playerId == b.id);
+		Assert.DoesNotContain(heard, m => m is MsgTurnReady r && r.playerId == b.id);
+
+		MapUnit hers = c.units[0];
+		EngineStorage.EnqueueSequenced(2, 22, c.id, new MsgSetFortification(hers.id, true));
+		PlayAll();
+		Assert.True(hers.isFortified);
+
+		// (C closing a talk screen of their own isn't B's answer.)
+		EngineStorage.EnqueueSequenced(3, 33, c.id, new MsgDiplomacyCompleted());
+		PlayAll();
+		Assert.True(EngineStorage.IsWaitingForAnswerFrom<MsgDiplomacyCompleted>(b.id));
+
+		EngineStorage.EnqueueSequenced(4, 44, b.id, new MsgDiplomacyCompleted());
+		heard = PlayAll();
+		Assert.False(EngineStorage.IsWaitingForAnswerFrom<MsgDiplomacyCompleted>(b.id));
+		Assert.Contains(heard, m => m is MsgTurnReady r && r.playerId == b.id);
+		return GameChecksum.Of(gameData);
+	}
+
+	[Fact]
+	public void TwoHumansDealingDontHoldUpTheOthers() {
+		Assert.Equal(DealWhileOthersPlay(), DealWhileOthersPlay());
+	}
+
+	// B leaves while A's deal is in front of them: it's closed for them,
+	// and their civilization goes.
+	[Fact]
+	public void LeavingInTheMiddleOfADeal() {
+		(C7GameData.GameData gameData, Player a, Player b, Player c) = WithADeal();
+		EngineStorage.EnqueueSequenced(1, 11, b.id, new MsgHearFromOthers());
+		PlayAll();
+		EngineStorage.EnqueueSequenced(2, 22, a.id, new MsgPlayerLeftGame(b.id));
+		PlayAll();
+		Assert.False(EngineStorage.IsWaitingForAnswerFrom<MsgDiplomacyCompleted>(b.id));
+		Assert.True(b.defeated);
+	}
+
+	// Online, AI diplomacy off: the AIs talk to no human (an old save: on).
+	[Fact]
+	public void TheAIsTalkToHumansOnlyWithAIDiplomacy() {
+		(C7GameData.GameData gameData, Player a, Player b) = Load();
+		Player ai = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		Assert.True(gameData.aiDiplomacy);
+		Assert.True(TurnHandling.TalksTo(gameData, a, null));
+		gameData.aiDiplomacy = false;
+		Assert.False(TurnHandling.TalksTo(gameData, a, null));
+		Assert.False(TurnHandling.TalksTo(gameData, a, a));
+		Assert.True(TurnHandling.TalksTo(gameData, ai, null));
+		Assert.False(SaveGame.FromJson(SaveGame.FromGameData(gameData).ToJson()).ToGameData(fixture.behaviors).aiDiplomacy);
+		Assert.True(System.Text.Json.JsonSerializer.Deserialize<SaveGame>("{}", new System.Text.Json.JsonSerializerOptions { IncludeFields = true }).AiDiplomacy);
+	}
+
 	// A new game with simultaneous moves begins with every human's turn.
 	[Fact]
 	public void ANewGameBeginsWithEveryonesTurn() {

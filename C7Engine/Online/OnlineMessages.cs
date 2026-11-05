@@ -28,6 +28,7 @@ namespace C7Engine.Online {
 	[JsonDerivedType(typeof(SequencedOrder), "sequenced")]
 	[JsonDerivedType(typeof(Checksum), "checksum")]
 	[JsonDerivedType(typeof(TurnTimerStarted), "turnTimer")]
+	[JsonDerivedType(typeof(PlayersInGame), "players")]
 	public abstract class OnlineMessage {
 		public const int MaxNameLength = 32;
 		public const int MaxTextLength = 500;
@@ -53,7 +54,7 @@ namespace C7Engine.Online {
 
 		public static bool IsCivName(string text) => !string.IsNullOrWhiteSpace(text) && text.Length <= 60 && !text.Any(char.IsControl);
 		protected static bool IsName(string text) => !string.IsNullOrWhiteSpace(text) && text.Length <= MaxNameLength && !text.Any(char.IsControl);
-		protected static bool IsText(string text, int max = MaxTextLength) => text == null || (text.Length <= max && !text.Any(c => char.IsControl(c) && c != '\n'));
+		internal static bool IsText(string text, int max = MaxTextLength) => text == null || (text.Length <= max && !text.Any(c => char.IsControl(c) && c != '\n'));
 	}
 
 	// A player's game, once the connection is encrypted: who they are, and
@@ -170,8 +171,28 @@ namespace C7Engine.Online {
 		public const int MaxLength = 200;
 
 		public string text { get; set; }
+		// In the game, the civs whose players see it (Civ3's chat balloons in
+		// the player list); none for everyone.
+		public List<string> to { get; set; }
 
-		public override bool IsValid() => !string.IsNullOrWhiteSpace(text) && IsText(text, MaxLength);
+		public override bool IsValid() => !string.IsNullOrWhiteSpace(text) && IsText(text, MaxLength)
+			&& (to == null || (to.Count <= LobbyState.MaxSlots && to.All(c => !string.IsNullOrEmpty(c) && IsText(c, 60))));
+	}
+
+	// In the game: who plays each human civ, by nickname, and who has lost
+	// their connection (for everyone's player list).
+	public sealed class PlayersInGame : OnlineMessage {
+		public List<PlayerInGame> players { get; set; } = new();
+
+		public override bool IsValid() => players != null && players.Count <= LobbyState.MaxSlots && players.All(p => p != null && p.IsValid());
+	}
+
+	public sealed class PlayerInGame {
+		public string civ { get; set; }
+		public string name { get; set; }
+		public bool away { get; set; }
+
+		public bool IsValid() => !string.IsNullOrEmpty(civ) && OnlineMessage.IsText(civ, 60) && !string.IsNullOrEmpty(name) && OnlineMessage.IsText(name, OnlineMessage.MaxNameLength);
 	}
 
 	// A line for everyone's messages box: who said what, who joined or left.

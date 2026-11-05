@@ -24,7 +24,12 @@ namespace C7Engine {
 		// human's turn, on their computer (HearFromOthers), never on its own
 		// turn, when no one would be there to answer. `onlyWith` is the human
 		// it's talking to then.
+		// Online, with AI diplomacy off, the AIs talk to no human (who may
+		// still talk to them).
 		public static bool TalksTo(GameData gameData, Player them, Player onlyWith) {
+			if (them.isHuman && !gameData.aiDiplomacy) {
+				return false;
+			}
 			return onlyWith != null ? them == onlyWith : !(gameData.playByEmail && them.isHuman);
 		}
 

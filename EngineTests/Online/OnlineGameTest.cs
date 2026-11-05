@@ -219,6 +219,56 @@ public class OnlineGameTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Single(EngineStorage.sequencedOrders);
 	}
 
+	// Civ3's chat balloons: a line goes to the players it's for, and its
+	// sayer, and says to whom; every game knows who plays each civ.
+	[Fact]
+	public async Task ChatGoesToThePlayersItsFor() {
+		host = StartHost();
+		using OnlineClient sargon = await Join(host, "Sargon");
+		using OnlineClient urNammu = await Join(host, "Ur-Nammu");
+		await Next<PlayerJoined>(host);
+		await Next<PlayerJoined>(host);
+		Player third = gameData.players.First(p => !p.isHuman && !p.isBarbarians);
+		third.isHuman = true;
+		HostGame game = new(host, hostPlayer.id, new Dictionary<int, ID> { [sargon.playerId] = remotePlayer.id, [urNammu.playerId] = third.id });
+		toDispose.Add(game);
+		List<string> notices = new();
+		game.Notice += notices.Add;
+		game.Begin();
+		PlayersInGame players = await Next<PlayersInGame>(urNammu);
+		Assert.Equal(["Hammurabi", "Sargon", "Ur-Nammu"], players.players.Select(p => p.name));
+		Assert.Equal("Ur-Nammu", game.Names[third.id]);
+
+		async Task<List<string>> Heard(OnlineClient client) {
+			List<string> lines = new();
+			for (int i = 0; i < 30; i++) {
+				game.Poll(gameData);
+				while (client.TryNextMessage(out OnlineMessage message)) {
+					if (message is ChatLine line) {
+						lines.Add(line.text);
+					}
+				}
+				await Task.Delay(10);
+			}
+			return lines;
+		}
+		// Sargon to the host only.
+		sargon.Send(new Chat { text = "Psst", to = [hostPlayer.id.ToString()] });
+		Assert.Empty(await Heard(urNammu));
+		Assert.Equal(["Sargon (to Hammurabi): Psst"], await Heard(sargon));
+		Assert.Contains("Sargon (to Hammurabi): Psst", notices);
+
+		// The host to Ur-Nammu only.
+		game.Say("Ally?", [third.id]);
+		Assert.Equal(["Hammurabi (to Ur-Nammu): Ally?"], await Heard(urNammu));
+		Assert.Empty(await Heard(sargon));
+
+		// Everyone.
+		sargon.Send(new Chat { text = "Hello all" });
+		Assert.Equal(["Sargon: Hello all"], await Heard(urNammu));
+		Assert.Contains("Sargon: Hello all", notices);
+	}
+
 	// Civ3's turn timer: when a human's turn begins, everyone is told its
 	// time; once it's up (and the game is settled) every game ends it, once.
 	[Fact]

@@ -55,8 +55,29 @@ namespace C7Engine.Online {
 
 		protected abstract void Checked(long seq, string hash);
 
-		// Said to everyone (the in-game chat); it comes back as a Notice.
-		public abstract void Say(string text);
+		// Said in the in-game chat, to the players of the civs `to` (none
+		// for everyone); it comes back as a Notice.
+		public abstract void Say(string text, IReadOnlyCollection<ID> to = null);
+
+		// Who plays each human civ (nicknames), and who has lost their
+		// connection: for the player list.
+		private readonly Dictionary<ID, string> names = new();
+		private readonly HashSet<ID> awayCivs = new();
+		public IReadOnlyDictionary<ID, string> Names => names;
+		public IReadOnlyCollection<ID> AwayCivs => awayCivs;
+		public event Action PlayersChanged;
+
+		protected void SetPlayers(IEnumerable<(ID civ, string name, bool away)> players) {
+			names.Clear();
+			awayCivs.Clear();
+			foreach ((ID civ, string name, bool away) in players) {
+				names[civ] = name;
+				if (away) {
+					awayCivs.Add(civ);
+				}
+			}
+			PlayersChanged?.Invoke();
+		}
 
 		protected void Tell(string text) => Notice?.Invoke(text);
 
@@ -183,9 +204,8 @@ namespace C7Engine.Online {
 						them[from.player.id] = checksum.hash;
 						Compare(checksum.seq);
 						break;
-					case MessageFrom { message: Chat chat } from:
-						host.SendToAll(new ChatLine { text = $"{from.player.name}: {chat.text.Trim()}" });
-						Tell($"{from.player.name}: {chat.text.Trim()}");
+					case MessageFrom { message: Chat chat } from when players.TryGetValue(from.player.id, out ID sender):
+						Deliver(from.player.name, sender, chat.text.Trim(), chat.to);
 						break;
 					case PlayerJoined joined:
 						Rejoin(joined.player);
@@ -195,6 +215,7 @@ namespace C7Engine.Online {
 						away[gone] = left.player.name;
 						Tell($"{left.player.name} has left the game.");
 						host.SendToAll(new ChatLine { text = $"{left.player.name} has left the game. The game waits for them to reconnect, unless the host drops them." });
+						AnnouncePlayers();
 						AwayChanged?.Invoke();
 						break;
 				}
@@ -222,6 +243,7 @@ namespace C7Engine.Online {
 			Tell($"{player.name} has rejoined the game.");
 			host.SendToAll(new ChatLine { text = $"{player.name} has rejoined the game." });
 			host.Send(player.id, new LobbyNotice { text = "Rejoining the game..." });
+			AnnouncePlayers();
 			AwayChanged?.Invoke();
 			Rejoined?.Invoke();
 		}
@@ -235,6 +257,7 @@ namespace C7Engine.Online {
 			Tell($"{name} has been dropped from the game.");
 			host.SendToAll(new ChatLine { text = $"{name} has been dropped from the game." });
 			Sequence(localPlayer, new MsgPlayerLeftGame(civ));
+			AnnouncePlayers();
 			AwayChanged?.Invoke();
 		}
 
@@ -242,13 +265,15 @@ namespace C7Engine.Online {
 		// yet) is answered for them as closing its popup would, so the game
 		// doesn't wait on them for it.
 		private void AnswerForTheAway() {
-			ID asked = EngineStorage.uiControllerID;
-			if (asked == null || !(away.ContainsKey(asked) || rejoining.Contains(asked)) || EngineStorage.OrdersWaiting > 0) {
+			if (EngineStorage.OrdersWaiting > 0) {
 				return;
 			}
-			if (LeavingPlayers.AnswerFor(EngineStorage.WaitedFor) is MessageToEngine answer) {
-				log.Information("Answering {Kind} for {Player}, who's away", answer.GetType().Name, asked);
-				Sequence(asked, answer);
+			foreach (ID asked in away.Keys.Concat(rejoining).ToList()) {
+				if (LeavingPlayers.AnswerFor(EngineStorage.WaitedForFrom(asked)) is MessageToEngine answer) {
+					log.Information("Answering {Kind} for {Player}, who's away", answer.GetType().Name, asked);
+					Sequence(asked, answer);
+					return;
+				}
 			}
 		}
 
@@ -282,6 +307,7 @@ namespace C7Engine.Online {
 
 		// (Begun again from this copy: the turn timer goes on, told again.)
 		protected override void Begun() {
+			AnnouncePlayers();
 			if (timed != null) {
 				int seconds = Math.Max(0, (int)Math.Ceiling((timeUp - DateTime.UtcNow).TotalSeconds));
 				bool round = EngineStorage.gameData?.simultaneousMoves == true;
@@ -331,10 +357,38 @@ namespace C7Engine.Online {
 			}
 		}
 
-		public override void Say(string text) {
-			string name = host.hostName;
-			host.SendToAll(new ChatLine { text = $"{name}: {text}" });
-			Tell($"{name}: {text}");
+		public override void Say(string text, IReadOnlyCollection<ID> to = null) {
+			Deliver(host.hostName, localPlayer, text.Trim(), to?.Select(c => c.ToString()).ToList());
+		}
+
+		// A line said in the game: to everyone, or (Civ3's chat balloons) to
+		// the players of the civs `to` only, and its sayer; the line says to
+		// whom.
+		private void Deliver(string name, ID sender, string text, List<string> to) {
+			List<ID> recipients = to == null ? Names.Keys.ToList() : Names.Keys.Where(c => to.Contains(c.ToString())).ToList();
+			string line = to == null ? $"{name}: {text}"
+				: $"{name} (to {(recipients.Count == 0 ? "nobody" : string.Join(", ", recipients.Select(c => Names[c])))}): {text}";
+			foreach ((int connection, ID civ) in players) {
+				if (civ == sender || recipients.Contains(civ)) {
+					host.Send(connection, new ChatLine { text = line });
+				}
+			}
+			if (sender == localPlayer || recipients.Contains(localPlayer)) {
+				Tell(line);
+			}
+		}
+
+		// Everyone's player list: who plays each human civ, and who's away.
+		private void AnnouncePlayers() {
+			List<(ID civ, string name, bool away)> playing = [(localPlayer, host.hostName, false)];
+			foreach ((int connection, ID civ) in players) {
+				playing.Add((civ, host.Players.FirstOrDefault(p => p.id == connection)?.name ?? "?", false));
+			}
+			foreach ((ID civ, string name) in away) {
+				playing.Add((civ, name, true));
+			}
+			SetPlayers(playing);
+			host.SendToAll(new PlayersInGame { players = playing.Select(p => new PlayerInGame { civ = p.civ.ToString(), name = p.name, away = p.away }).ToList() });
 		}
 
 		public override void Dispose() {
@@ -384,6 +438,9 @@ namespace C7Engine.Online {
 					case TurnTimerStarted started:
 						Timed(started.round ? null : ID.FromString(started.player), started.seconds);
 						break;
+					case PlayersInGame playing:
+						SetPlayers(playing.players.Select(p => (ID.FromString(p.civ), p.name, p.away)));
+						break;
 					case Goodbye goodbye:
 						Ended?.Invoke(goodbye.reason);
 						break;
@@ -395,7 +452,7 @@ namespace C7Engine.Online {
 			client.Send(new Checksum { seq = seq, hash = hash });
 		}
 
-		public override void Say(string text) => client.Send(new Chat { text = text });
+		public override void Say(string text, IReadOnlyCollection<ID> to = null) => client.Send(new Chat { text = text, to = to?.Select(c => c.ToString()).ToList() });
 
 		public override void Dispose() {
 			base.Dispose();

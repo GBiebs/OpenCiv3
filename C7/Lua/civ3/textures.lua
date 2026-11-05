@@ -497,6 +497,10 @@ textures.multiplayer = {
   ready = { path = MULTIPLAYER_BUTTONS, crop_region = { 0, 212, 24, 23 } },
   kick = { path = MULTIPLAYER_BUTTONS, crop_region = { 24, 236, 24, 23 } },
   kick_hover = { path = MULTIPLAYER_BUTTONS, crop_region = { 0, 236, 24, 23 } },
+  -- The game's player list (Play the World's): a row, its team color box
+  -- (254) see-through; the chat balloon for the row's box on the right.
+  player_row = { path = MULTIPLAYER .. "x_playerlist bar.pcx", shadows = false, transparent_color_indexes = { 254 } },
+  chat_balloon = { path = MULTIPLAYER .. "x_playerlist parts.pcx", crop_region = { 205, 45, 16, 16 }, shadows = false },
 }
 
 textures.diplomacy = {

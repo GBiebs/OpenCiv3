@@ -58,6 +58,8 @@ public partial class MultiplayerScreen : Control {
 	private VictoryConditions victoryConditions;
 	private TurnTimer turnTimer = TurnTimer.None;
 	private bool simultaneous;
+	private bool aiDiplomacy = true;
+	private const string AiDiplomacyRule = "AI diplomacy with humans";
 	private OnlineLobby lobby;
 	// Civ3's "Load Game" (online): the saved game to go on with, and its
 	// file's name; null for a new game.
@@ -604,15 +606,21 @@ public partial class MultiplayerScreen : Control {
 
 	// What players are told: the settings, then the rules.
 	private List<LobbySetting> LobbySettings() {
-		return Settings().Select(s => new LobbySetting { name = s.name, value = s.values[s.selected] })
+		List<LobbySetting> told = Settings().Select(s => new LobbySetting { name = s.name, value = s.values[s.selected] })
 			.Concat(VictoryConditions.Options.Select(o => new LobbySetting { name = o.label, value = o.get(Rules) ? "Yes" : "No" }))
 			.ToList();
+		if (mode == Mode.Host) {
+			told.Add(new LobbySetting { name = AiDiplomacyRule, value = AiDiplomacyOn ? "Yes" : "No" });
+		}
+		return told;
 	}
 
-	// The victory conditions: a saved game's as they were.
+	// The victory conditions: a saved game's as they were (and its AI
+	// diplomacy).
 	private VictoryConditions Rules => loadedSave?.VictoryConditions ?? victoryConditions;
+	private bool AiDiplomacyOn => loadedSave?.AiDiplomacy ?? aiDiplomacy;
 
-	private static bool IsRule(LobbySetting setting) => VictoryConditions.Options.Any(o => o.label == setting.name);
+	private static bool IsRule(LobbySetting setting) => setting.name == AiDiplomacyRule || VictoryConditions.Options.Any(o => o.label == setting.name);
 
 	private static bool SameSettings(LobbyState a, LobbyState b) {
 		return a.settings.Count == b.settings.Count && a.settings.Zip(b.settings).All(p => p.First.name == p.Second.name && p.First.value == p.Second.value);
@@ -661,7 +669,8 @@ public partial class MultiplayerScreen : Control {
 
 	// GAME RULES: Civ3's victory conditions and game types.
 	private void ShowRules() {
-		OnlinePanel panel = OpenPopup(460, 120 + 26 * VictoryConditions.Options.Count);
+		bool online = mode is Mode.Host or Mode.Join;
+		OnlinePanel panel = OpenPopup(460, 120 + 26 * (VictoryConditions.Options.Count + (online ? 1 : 0)));
 		panel.Header("Game Rules");
 		int y = 56;
 		foreach (VictoryConditions.Option option in VictoryConditions.Options) {
@@ -677,6 +686,26 @@ public partial class MultiplayerScreen : Control {
 				}
 				box.Toggled += on => {
 					option.set(victoryConditions, on);
+					SettingsChanged();
+				};
+			}
+			y += 26;
+		}
+		// Online: whether the AIs talk to the humans (offers, agreements,
+		// demands and trades; humans may always talk to them).
+		if (online) {
+			if (mode == Mode.Join) {
+				panel.Text($"{AiDiplomacyRule}: {state?.settings.FirstOrDefault(s => s.name == AiDiplomacyRule)?.value ?? "?"}", y, 14, left: true);
+			} else if (loadedSave != null) {
+				panel.Text($"{AiDiplomacyRule}: {(AiDiplomacyOn ? "Yes" : "No")}", y, 14, left: true);
+			} else {
+				CheckBox box = panel.Show(new CheckBox { Text = AiDiplomacyRule, ButtonPressed = aiDiplomacy, Position = new Vector2(40, y - 2), FocusMode = FocusModeEnum.None });
+				foreach (string colorName in new[] { "font_color", "font_pressed_color", "font_hover_color" }) {
+					box.AddThemeColorOverride(colorName, OnlinePanel.Ink);
+				}
+				box.TooltipText = "Whether the computers make offers, demands and trades to the humans. Humans can always talk to them.";
+				box.Toggled += on => {
+					aiDiplomacy = on;
 					SettingsChanged();
 				};
 			}
@@ -1184,6 +1213,7 @@ public partial class MultiplayerScreen : Control {
 			adminPassword = adminPassword,
 			turnTimer = mode == Mode.Host ? turnTimer : TurnTimer.None,
 			simultaneousMoves = mode == Mode.Host && simultaneous,
+			aiDiplomacy = mode != Mode.Host || aiDiplomacy,
 		};
 		RememberSettings();
 		loading.Visible = true;

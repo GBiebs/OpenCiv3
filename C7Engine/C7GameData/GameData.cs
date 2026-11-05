@@ -42,6 +42,9 @@ namespace C7GameData {
 		public TurnTimer turnTimer;
 		public bool simultaneousMoves;
 		public int simultaneousTurnStarted = -1;
+		// Online: whether the AIs talk to humans (offers, agreements, demands,
+		// trades: TurnHandling.TalksTo); off, they wait to be talked to.
+		public bool aiDiplomacy = true;
 		// Hotseat and play by email: the deals humans have sent each other,
 		// waiting for an answer (HumanDiplomacy).
 		public List<HumanDeal> humanDeals = new();

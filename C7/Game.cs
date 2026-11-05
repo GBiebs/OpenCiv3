@@ -202,6 +202,8 @@ public partial class Game : Node {
 	private TurnClock turnClock;
 	// The host's: who it waits for (Drop Player).
 	private AwayPanel awayPanel;
+	// Civ3's player list, with its chat balloons.
+	private PlayerList playerList;
 
 	// Hotseat: news held for each other human until they next take the UI
 	// (see MessageRecipients), what runs once a human has taken it (one a
@@ -299,7 +301,11 @@ public partial class Game : Node {
 			popupOverlay.GetParent().AddChild(chat);
 			// (Below the popups.)
 			popupOverlay.GetParent().MoveChild(chat, popupOverlay.GetIndex());
-			chat.Said += online.Say;
+			chat.Said += SayInGame;
+			playerList = new PlayerList();
+			popupOverlay.GetParent().AddChild(playerList);
+			popupOverlay.GetParent().MoveChild(playerList, popupOverlay.GetIndex());
+			playerList.Begin(online);
 			turnClock = new TurnClock();
 			popupOverlay.GetParent().AddChild(turnClock);
 			popupOverlay.GetParent().MoveChild(turnClock, popupOverlay.GetIndex());
@@ -1271,6 +1277,15 @@ public partial class Game : Node {
 	}
 
 	private void OnTimerStarted(ID player, int seconds) => turnClock?.Start(player, seconds);
+
+	// What's said goes to the players whose balloon is lit in the player list.
+	private void SayInGame(string text) {
+		if (playerList.EveryoneBlocked) {
+			chat.Add("Nobody sees your messages: click a player's balloon in the player list to let them.");
+			return;
+		}
+		online.Say(text, playerList.Recipients());
+	}
 
 	private void OnAwayChanged() {
 		if (online is HostGame hosting && IsInstanceValid(awayPanel)) {

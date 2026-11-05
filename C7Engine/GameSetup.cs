@@ -35,6 +35,8 @@ public class GameSetup {
 	// Online: Civ3's turn timer, and simultaneous moves.
 	public TurnTimer turnTimer { get; set; }
 	public bool simultaneousMoves { get; set; }
+	// Online: whether the AIs talk to humans.
+	public bool aiDiplomacy { get; set; } = true;
 
 	ID.Factory ids;
 
@@ -46,6 +48,7 @@ public class GameSetup {
 		save.PlayByEmail = playByEmail && otherHumans;
 		save.TurnTimer = turnTimer;
 		save.SimultaneousMoves = simultaneousMoves;
+		save.AiDiplomacy = aiDiplomacy;
 		// (The first turn's humans all begin at once.)
 		save.SimultaneousTurnStarted = simultaneousMoves ? 0 : -1;
 		save.AdminPasswordHash = otherHumans ? Passwords.Hash(adminPassword) : "";

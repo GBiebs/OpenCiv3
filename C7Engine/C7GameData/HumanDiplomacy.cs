@@ -268,14 +268,19 @@ namespace C7GameData {
 				}
 				if (deal.envoy) {
 					new MsgEnvoyArrives(human.id, them.id).send();
-					await EngineStorage.WaitForMessageToEngine<MsgEnvoyAnswer>();
+					await AnswerFrom<MsgEnvoyAnswer>(gameData, human);
 					if (!gameData.humanDeals.Contains(deal) || deal.envoy) {
 						continue;
 					}
 				}
 				new MsgShowHumanDeal(human.id, them.id).send();
-				await EngineStorage.WaitForMessageToEngine<MsgDiplomacyCompleted>();
+				await AnswerFrom<MsgDiplomacyCompleted>(gameData, human);
 			}
+		}
+
+		// (With simultaneous moves, the others play on while they answer.)
+		private static Task<T> AnswerFrom<T>(GameData gameData, Player human) where T : MessageToEngine {
+			return gameData.simultaneousMoves ? EngineStorage.WaitForAnswerFrom<T>(human.id) : EngineStorage.WaitForMessageToEngine<T>();
 		}
 
 		// The deals of a player who is no longer human (or no longer plays).

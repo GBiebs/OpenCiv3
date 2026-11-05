@@ -70,6 +70,7 @@ namespace C7GameData.Save {
 				TurnTimer = data.turnTimer,
 				SimultaneousMoves = data.simultaneousMoves,
 				SimultaneousTurnStarted = data.simultaneousTurnStarted,
+				AiDiplomacy = data.aiDiplomacy,
 				HumanDeals = data.humanDeals,
 				AdminPasswordHash = data.adminPasswordHash,
 				BarbarianInfo = data.barbarianInfo,
@@ -310,6 +311,7 @@ namespace C7GameData.Save {
 				turnTimer = TurnTimer,
 				simultaneousMoves = SimultaneousMoves,
 				simultaneousTurnStarted = SimultaneousTurnStarted,
+				aiDiplomacy = AiDiplomacy,
 				humanDeals = HumanDeals ?? new(),
 				adminPasswordHash = AdminPasswordHash ?? "",
 				Codex = Codex,
@@ -577,6 +579,8 @@ namespace C7GameData.Save {
 		public TurnTimer TurnTimer;
 		public bool SimultaneousMoves;
 		public int SimultaneousTurnStarted = -1;
+		// (On in saves from before it was a choice.)
+		public bool AiDiplomacy = true;
 		public List<HumanDeal> HumanDeals = new();
 		public string AdminPasswordHash = "";
 		public List<SavePlayer> Players = new List<SavePlayer>();

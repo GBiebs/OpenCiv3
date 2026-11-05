@@ -4,7 +4,8 @@ using Godot;
 
 // Online, over the map: what the players say and the game's notices (who
 // left), the latest at the bottom, each fading after a while; and, opened
-// with ~ (Civ3's key), a line to say something to everyone.
+// with ~ (Civ3's key), a line to say something (to the players whose chat
+// balloon is lit in the player list).
 public partial class GameChat : Control {
 	private const int MaxLines = 8;
 	private const double ShownSeconds = 15;
@@ -12,7 +13,7 @@ public partial class GameChat : Control {
 	private const int Width = 520;
 
 	private readonly VBoxContainer lines = new() { Position = new Vector2(10, 60) };
-	private readonly LineEdit input = new() { MaxLength = 200, Visible = false, PlaceholderText = "Say something to everyone (Enter), or Escape" };
+	private readonly LineEdit input = new() { MaxLength = 200, Visible = false, PlaceholderText = "Say something (Enter), or Escape: those with a lit balloon see it" };
 	private readonly List<(Label label, double shownAt)> shown = new();
 	private double now;
 

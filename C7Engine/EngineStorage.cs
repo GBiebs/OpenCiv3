@@ -42,9 +42,22 @@ namespace C7Engine {
 		// taken out too).
 		public static bool OrdersDone() => WorkDone() && leaving.Count == 0;
 
+		// (An order waiting for one player's answer counts as done: Park.)
 		private static bool WorkDone() {
 			working.RemoveAll(t => t.IsCompleted);
-			return working.Count == 0;
+			return working.Count <= parked.Count;
+		}
+
+		// Simultaneous moves: answers awaited from one player that don't hold
+		// up the others' orders (a human answering another's deal: they play
+		// on meanwhile). Once the answer comes, the order that waited runs on
+		// before any other, so every game does the same.
+		private static readonly Dictionary<(Type type, ID player), TaskCompletionSource<MessageToEngine>> parked = new();
+
+		public static Task<T> WaitForAnswerFrom<T>(ID player) where T : MessageToEngine {
+			var tcs = new TaskCompletionSource<MessageToEngine>(TaskCreationOptions.RunContinuationsAsynchronously);
+			parked[(typeof(T), player)] = tcs;
+			return tcs.Task.ContinueWith(t => (T)t.Result);
 		}
 
 		// Online: players who have left (MsgPlayerLeftGame), whose civs go
@@ -80,6 +93,7 @@ namespace C7Engine {
 		public static void AbandonWork() {
 			working.Clear();
 			pendingEngineWaiters.Clear();
+			parked.Clear();
 			pendingAnimations.Clear();
 			pendingMessages.Clear();
 			messagesToUI.Clear();
@@ -107,9 +121,11 @@ namespace C7Engine {
 				onEndTurnDone?.Invoke(lastSequenced);
 			}
 			if (leaving.Count > 0 && !HasPendingAnimations()) {
-				if (leaving.Contains(uiControllerID) && LeavingPlayers.AnswerFor(pendingEngineWaiters.Keys) is MessageToEngine answer) {
-					Process(answer);
-					return;
+				foreach (ID going in leaving) {
+					if (LeavingPlayers.AnswerFor(WaitedForFrom(going)) is MessageToEngine answer) {
+						Process(answer, going);
+						return;
+					}
 				}
 				if (WorkDone()) {
 					ID gone = leaving[0];
@@ -133,7 +149,7 @@ namespace C7Engine {
 				}
 				GameData.rng = new Random(seed);
 				endTurnGoing |= order is MsgEndTurn or MsgTurnTimeUp;
-				Process(order);
+				Process(order, from);
 				return;
 			}
 			if (pendingMessages.Count > 0) {
@@ -141,7 +157,9 @@ namespace C7Engine {
 			}
 		}
 
-		private static void Process(MessageToEngine msg) {
+		// `from`: the player whose order it is (an answer may be awaited from
+		// them).
+		private static void Process(MessageToEngine msg, ID from = null) {
 			Run(msg.ProcessAsync(), msg.GetType().Name);
 
 			if (msg.IsPlayerAction && gameData != null) {
@@ -150,7 +168,9 @@ namespace C7Engine {
 			}
 
 			var type = msg.GetType();
-			if (pendingEngineWaiters.TryGetValue(type, out var tcs)) {
+			if (parked.Remove((type, from ?? uiControllerID), out var answered)) {
+				answered.TrySetResult(msg);
+			} else if (pendingEngineWaiters.TryGetValue(type, out var tcs)) {
 				tcs.TrySetResult(msg);
 				pendingEngineWaiters.Remove(type);
 			}
@@ -198,9 +218,15 @@ namespace C7Engine {
 			return tcs.Task.ContinueWith(t => (T)t.Result);
 		}
 
-		// The answers the engine is waiting for (online: one for a player who
-		// is away is given for them, LeavingPlayers.AnswerFor).
-		internal static IEnumerable<Type> WaitedFor => pendingEngineWaiters.Keys;
+		// The answers the engine is waiting for from `player` (online: one for
+		// a player who is away is given for them, LeavingPlayers.AnswerFor):
+		// those awaited from them only, and if they're in control, any.
+		internal static IEnumerable<Type> WaitedForFrom(ID player) {
+			return parked.Keys.Where(k => k.player == player).Select(k => k.type)
+				.Concat(player == uiControllerID ? pendingEngineWaiters.Keys : []).ToList();
+		}
+
+		internal static bool IsWaitingForAnswerFrom<T>(ID player) where T : MessageToEngine => parked.ContainsKey((typeof(T), player));
 
 		// Whether the engine is waiting for a T from the UI (for tests, whose
 		// answers must come after the engine starts waiting).
