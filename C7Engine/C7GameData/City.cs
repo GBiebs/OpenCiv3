@@ -450,15 +450,13 @@ namespace C7GameData {
 				// If we completed a great wonder, mark it as completed so no
 				// other civ can build it. If any other cities are building the
 				// wonder then change production to the most expensive option,
-				// to avoid wasting the shields.
-				//
-				// TODO: This should interrupt the player's turn to let them
-				// make the choice. And does the game allow wonder shuffling in
-				// this situation?
+				// to avoid wasting the shields; a human is told (and can
+				// change it), as in Civ3.
 				if (building.greatWonderProperties != null) {
 					gameData.GreatWondersBuilt.Add(building.name);
 					owner.MaybeStartGoldenAgeFromWonders(gameData);
 					VictoryPoints.OnGreatWonderBuilt(gameData, owner, building);
+					new MsgWonderCompleted(owner, this, building).send();
 
 					foreach (Player p in gameData.players) {
 						if (p == this.owner) {
@@ -467,7 +465,11 @@ namespace C7GameData {
 
 						foreach (City c in p.cities) {
 							if (c.itemBeingProduced.name == building.name) {
-								c.SetItemBeingProduced(c.GetMostExpensiveItemToProduce(like: c.itemBeingProduced));
+								IProducible lost = c.itemBeingProduced;
+								c.SetItemBeingProduced(c.GetMostExpensiveItemToProduce(like: lost));
+								if (p.isHuman) {
+									new MsgProductionSwitched(p.id, c, lost, c.itemBeingProduced).send();
+								}
 							}
 						}
 					}
@@ -479,18 +481,21 @@ namespace C7GameData {
 			}
 
 			// A human's city builds the same unit again (Civ3's "always build
-			// previously built unit"; there's no "what next?" question yet),
-			// unless its governor manages production.
-			if (owner.isHuman) {
-				if (!governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
-					return;
-				}
-				if (governor.manageProduction) {
-					SetItemBeingProduced(governor.ChooseProduction(this));
-					return;
-				}
+			// previously built unit"), unless its governor manages
+			// production; otherwise the advisor's suggestion goes ahead
+			// and the player is asked whether to build it.
+			bool askWhatNext = false;
+			if (owner.isHuman && !governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
+				// (Still building it.)
+			} else if (owner.isHuman && governor.manageProduction) {
+				SetItemBeingProduced(governor.ChooseProduction(this));
+			} else {
+				SetItemBeingProduced(ChooseProducible.Choose(this, owner));
+				askWhatNext = owner.isHuman;
 			}
-			SetItemBeingProduced(ChooseProducible.Choose(this, owner));
+			if (owner.isHuman) {
+				new MsgProductionComplete(owner.id, this, producedItem, askWhatNext).send();
+			}
 		}
 
 		public void HandleCityGrowth(GameData gameData) {

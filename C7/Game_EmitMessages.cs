@@ -1277,4 +1277,89 @@ public partial class Game {
 			)
 		));
 	}
+
+	// One of our cities finished an improvement or a wonder (Civ3's
+	// IMPROVEMENT_COMPLETE, and WONDERSPLASH for a wonder): the advisor's
+	// suggestion is already under way; the list offers everything the city
+	// can build, and "Zoom to" opens the city. Closing it keeps the
+	// suggestion.
+	private void AskWhatNext(MsgProductionComplete msg) {
+		GameData gameData = EngineStorage.gameData;
+		City city = msg.city;
+		if (city.owner != controller || !controller.cities.Contains(city)) {
+			return;
+		}
+		ensureLocationIsInView(city.location);
+		string done = msg.IsGreatWonder
+			? $"We have completed [b]{msg.produced.name}[/b] in {city.name}!"
+			: $"Work on [b]{msg.produced.name}[/b] is complete in {city.name}.";
+		if (!msg.askWhatNext) {
+			// (A wonder whose city's governor chooses what follows.)
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "Domestic Advisor", done, Advisor.Domestic, Mood.Happy, 400)));
+			return;
+		}
+
+		List<IProducible> options = city.ListProductionOptions(gameData).ToList();
+		if (!options.Contains(city.itemBeingProduced)) {
+			options.Insert(0, city.itemBeingProduced);
+		}
+		string Turns(IProducible item) {
+			int turns = city.TurnsToProduce(item);
+			return turns == int.MaxValue ? "no production" : $"{turns} {(turns == 1 ? "turn" : "turns")}";
+		}
+		DropdownComponent list = new() {
+			items = options.Select(o => $"{ProductionMenu.ItemText(o)} ({Turns(o)})").ToList(),
+			selected = options.IndexOf(city.itemBeingProduced),
+		};
+		void Build() {
+			IProducible chosen = options[list.selected];
+			if (chosen != city.itemBeingProduced) {
+				new MsgChooseProduction(city.id, chosen.name).send();
+			}
+		}
+
+		OptionsPopUp popup = new(controller.id, "Domestic Advisor", $"{done} What shall we build there next?", [
+			new ButtonAction() {
+				message = $"Zoom to {city.name}.",
+				action = () => {
+					Build();
+					EngineStorage.ReadGameData(data => ShowCityScreenForCity(data, city));
+				},
+			},
+			new ButtonAction() { message = "OK.", action = Build },
+		], Advisor.Domestic, Mood.Happy, 420) { dropdownComponent = list };
+		// (Civ3 starts on "OK.")
+		popup.buttonActions[0].pressed = false;
+		popup.buttonActions[1].pressed = true;
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
+
+	// Another civ completed the wonder one of our cities was building, so it
+	// has switched (Civ3's WONDERCHANGE).
+	private void TellProductionSwitched(MsgProductionSwitched msg) {
+		City city = msg.city;
+		if (city.owner != controller || !controller.cities.Contains(city)) {
+			return;
+		}
+		ensureLocationIsInView(city.location);
+		OptionsPopUp popup = new(controller.id, "Domestic Advisor", msg.Text(), [
+			new ButtonAction() {
+				message = $"Zoom to {city.name}.",
+				action = () => EngineStorage.ReadGameData(data => ShowCityScreenForCity(data, city)),
+			},
+			new ButtonAction() { message = "Sounds good.", action = () => { } },
+		], Advisor.Domestic, Mood.Sad, 400);
+		popup.buttonActions[0].pressed = false;
+		popup.buttonActions[1].pressed = true;
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
+
+	// Another civ completed a great wonder (Civ3's WONDERPRODUCE). (Mood.None
+	// would be no face at all, which an advisor popup can't draw.)
+	private void TellWonderCompleted(MsgWonderCompleted msg, string text) {
+		ensureLocationIsInView(msg.city.location);
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Domestic Advisor", text, Advisor.Domestic, Mood.Surprised, 400)));
+	}
 }

@@ -20,6 +20,7 @@ public class InteractablePopUp {
 	public string message { get; init; }
 	public AdvisorGraphicsDetails advisorDetails { get; init; }
 	public LineEditComponent lineEditComponent { get; init; }
+	public DropdownComponent dropdownComponent { get; init; }
 	public int contollerEraIndex { get; init; } = 0;
 	public List<ButtonAction> buttonActions { get; init; }
 	public bool hasConfirm { get; init; }
@@ -55,4 +56,11 @@ public class LineEditComponent {
 	public string label;
 	public string placeholderText;
 	public Action<string> callback;
+}
+
+// A drop-down list under the text (Civ3's DROPLINK); the popup's actions
+// read `selected`, which follows the player's pick.
+public class DropdownComponent {
+	public List<string> items;
+	public int selected;
 }

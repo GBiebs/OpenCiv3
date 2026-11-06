@@ -109,6 +109,12 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgPollution mPol:
 						continue;
+					case MsgProductionComplete mPC:
+						continue;
+					case MsgProductionSwitched mPS:
+						continue;
+					case MsgWonderCompleted mWC:
+						continue;
 					case MsgMeltdown mMd:
 						continue;
 					case MsgDisease mDis:

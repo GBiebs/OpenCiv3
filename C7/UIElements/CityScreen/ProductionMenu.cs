@@ -23,6 +23,16 @@ public partial class ProductionMenu : Civ3TextureRect {
 		fontTheme.DefaultFont = font;
 	}
 
+	// An item's name, with a unit's attack (bombard), defense and moves.
+	public static string ItemText(IProducible option) {
+		string text = $"{option.name}";
+		if (option is UnitPrototype proto) {
+			string attackDesc = (proto.bombard > 0) ? $"{proto.attack}({proto.bombard})" : proto.attack.ToString();
+			text += $" {attackDesc}.{proto.defense}.{proto.movement}";
+		}
+		return text;
+	}
+
 	public void AddItems(GameData gameData, City city, Action<IProducible> chooseProduction) {
 		if (tree != null) {
 			itemMapping.Clear();
@@ -47,12 +57,7 @@ public partial class ProductionMenu : Civ3TextureRect {
 			int buildTime = city.TurnsToProduce(option);
 
 			TreeItem child = tree.CreateItem(root);
-			string text = $"{option.name}";
-			if (option is UnitPrototype proto) {
-				string attackDesc = (proto.bombard > 0) ? $"{proto.attack}({proto.bombard})" : proto.attack.ToString();
-				text += $" {attackDesc}.{proto.defense}.{proto.movement}";
-			}
-			child.SetText(0, text);
+			child.SetText(0, ItemText(option));
 			child.SetText(1, $"{buildTime} turns");
 			child.SetIcon(0, RightClickChooseProductionMenu.GetProducibleIcon(option, city.owner));
 			child.SetCustomMinimumHeight(40);

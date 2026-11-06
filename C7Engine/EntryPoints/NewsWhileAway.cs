@@ -102,6 +102,10 @@ namespace C7Engine {
 					return m.Text();
 				case MsgPollution m:
 					return m.Text();
+				case MsgProductionComplete m:
+					return m.askWhatNext ? $"{m.Text()} It is now working on {m.city.itemBeingProduced.name}." : m.Text();
+				case MsgProductionSwitched m:
+					return m.Text();
 				case MsgResistanceQuelled m:
 					return m.resistanceContinues
 						? $"Our troops have quelled {m.stopped} {(m.stopped == 1 ? "resister" : "resisters")} in {m.city.name}."
@@ -139,6 +143,8 @@ namespace C7Engine {
 						return $"We have brought the {m.princess.adjective} princess to {m.capital.name}!";
 					}
 					return m.princess == viewer.civilization ? $"The {m.captor.civilization.noun} have taken our princess to {m.capital.name}!" : null;
+				case MsgWonderCompleted m:
+					return m.TextFor(viewer);
 				case MsgSpaceshipPart m:
 					return m.owner != viewer && Knows(m.owner) ? $"The {m.owner.civilization.noun} have added {m.part.name} to their spaceship." : null;
 				case MsgElectionResults m:

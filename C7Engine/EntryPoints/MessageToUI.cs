@@ -695,6 +695,74 @@ namespace C7Engine {
 		}
 	}
 
+	// One of a human's cities finished what it was building. It already
+	// works on what comes next: the same unit again (Civ3's "always build
+	// the previously built unit"), its governor's pick, or the advisor's
+	// suggestion, which the player is asked about (askWhatNext) as Civ3
+	// asks at the start of the turn.
+	public class MsgProductionComplete : MessageToUI {
+		public ID playerId;
+		public City city;
+		public IProducible produced;
+		public bool askWhatNext;
+
+		public MsgProductionComplete(ID playerId, City city, IProducible produced, bool askWhatNext) {
+			this.playerId = playerId;
+			this.city = city;
+			this.produced = produced;
+			this.askWhatNext = askWhatNext;
+		}
+
+		public bool IsGreatWonder => produced is Building b && b.IsGreatWonder();
+
+		public string Text() {
+			return IsGreatWonder ? $"We have completed {produced.name} in {city.name}!" : $"{city.name} builds {produced.name}.";
+		}
+	}
+
+	// A great wonder was completed: news for everyone but its builder.
+	public class MsgWonderCompleted : MessageToUI {
+		public Player builder;
+		public City city;
+		public Building wonder;
+
+		public MsgWonderCompleted(Player builder, City city, Building wonder) {
+			this.builder = builder;
+			this.city = city;
+			this.wonder = wonder;
+		}
+
+		// The city and its civ are named to those who have met the builder.
+		public string TextFor(Player viewer) {
+			if (viewer == builder) {
+				return null;
+			}
+			return viewer.playerRelationships.ContainsKey(builder.id)
+				? $"Word has reached us that the {builder.civilization.adjective} city of {city.name} has completed {wonder.name}."
+				: $"Word has reached us that a distant civilization has completed {wonder.name}.";
+		}
+	}
+
+	// Another civ completed the great wonder a human's city was building,
+	// so that city has switched to something else.
+	public class MsgProductionSwitched : MessageToUI {
+		public ID playerId;
+		public City city;
+		public IProducible lost;
+		public IProducible now;
+
+		public MsgProductionSwitched(ID playerId, City city, IProducible lost, IProducible now) {
+			this.playerId = playerId;
+			this.city = city;
+			this.lost = lost;
+			this.now = now;
+		}
+
+		public string Text() {
+			return $"{city.name} can no longer work on {lost.name}, so it has switched to {now.name}.";
+		}
+	}
+
 	// A wonder (the Great Library) gave the player advances.
 	public class MsgTechsFromWonder : MessageToUI {
 		public ID playerId;

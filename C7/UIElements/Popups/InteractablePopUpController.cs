@@ -45,6 +45,11 @@ public partial class InteractablePopUpController : Control {
 	private LineEditComponent lineEditComponent;
 	private Action cancelAction;
 
+	// The drop-down list, under the text input (made here, not in the scene).
+	private MarginContainer dropdownContainer;
+	private OptionButton dropdown;
+	private DropdownComponent dropdownComponent;
+
 	private float defaultOffsetTop;
 	private float defaultOffsetBottom;
 	private float defaultOffsetLeft;
@@ -63,6 +68,38 @@ public partial class InteractablePopUpController : Control {
 		this.defaultOffsetBottom = mainContainer.OffsetBottom;
 		this.defaultOffsetLeft = mainContainer.OffsetLeft;
 		this.defaultOffsetRight = mainContainer.OffsetRight;
+
+		this.dropdownContainer = new MarginContainer();
+		foreach (string side in new[] { "left", "right" }) {
+			this.dropdownContainer.AddThemeConstantOverride($"margin_{side}", 30);
+		}
+		foreach (string side in new[] { "top", "bottom" }) {
+			this.dropdownContainer.AddThemeConstantOverride($"margin_{side}", 5);
+		}
+		this.dropdown = new OptionButton() { FitToLongestItem = false, ClipText = true };
+		// (Styled as the science advisor's list.)
+		StyleBoxFlat box = new() {
+			BorderColor = Color.Color8(50, 50, 50, 220),
+			BorderWidthBottom = 2,
+			BorderWidthLeft = 2,
+			BorderWidthRight = 2,
+			BorderWidthTop = 2,
+			ContentMarginLeft = 4,
+			ContentMarginRight = 4,
+			ContentMarginTop = 4,
+			ContentMarginBottom = 4,
+		};
+		foreach (string state in new[] { "normal", "hover", "pressed", "focus" }) {
+			this.dropdown.AddThemeStyleboxOverride(state, box);
+		}
+		this.dropdown.GetPopup().AddThemeStyleboxOverride("panel", box);
+		this.dropdown.ItemSelected += index => {
+			if (this.dropdownComponent != null) {
+				this.dropdownComponent.selected = (int)index;
+			}
+		};
+		this.dropdownContainer.AddChild(this.dropdown);
+		this.lineEditContainer.AddSibling(this.dropdownContainer);
 
 		this.CloseAndDelete();
 
@@ -139,6 +176,21 @@ public partial class InteractablePopUpController : Control {
 			this.lineEdit.Text = value.lineEditComponent.placeholderText;
 			this.lineEdit.SelectAll();
 			this.lineEdit.GrabFocus();
+		}
+
+		if (value.dropdownComponent != null) {
+			this.dropdownComponent = value.dropdownComponent;
+			this.dropdown.Clear();
+			foreach (string item in value.dropdownComponent.items) {
+				this.dropdown.AddItem(item);
+			}
+			PopupMenu list = this.dropdown.GetPopup();
+			for (int i = 0; i < list.ItemCount; ++i) {
+				list.SetItemAsRadioCheckable(i, false);
+				list.SetItemAsCheckable(i, false);
+			}
+			this.dropdown.Select(value.dropdownComponent.selected);
+			this.dropdownContainer.Show();
 		}
 
 		if (value.buttonActions is { Count: > 0 }) {
@@ -308,6 +360,8 @@ public partial class InteractablePopUpController : Control {
 		this.advisorTextureRect.Texture = null;
 		this.lineEditContainer.Hide();
 		this.lineEditComponent = null;
+		this.dropdownContainer.Hide();
+		this.dropdownComponent = null;
 		this.cancelAction = null;
 
 		foreach (var child in buttonContainer.GetChildren()) {

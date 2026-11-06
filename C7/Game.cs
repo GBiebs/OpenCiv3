@@ -214,6 +214,11 @@ public partial class Game : Node {
 	private HandOverScreen handOverScreen;
 	private bool startedATurn;
 
+	// Civ3's news of our cities' production (what next? a wonder built, a
+	// wonder lost), shown one at a time once our turn has begun and nothing
+	// else is on the screen; what's left when the turn ends is dropped.
+	private readonly Queue<(ID player, Action show)> productionNews = new();
+
 	private MapView mapView;
 
 	public enum GameState {
@@ -1013,6 +1018,27 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, mPol.Text(), mapView.screenLocationOfTile(mPol.city.location, true));
 				}
 				break;
+			case MsgProductionComplete mPC:
+				if (mPC.playerId != controller.id) {
+					break;
+				}
+				if (mPC.askWhatNext || mPC.IsGreatWonder) {
+					productionNews.Enqueue((controller.id, () => AskWhatNext(mPC)));
+				} else {
+					// A unit built again, or the governor's choice: a note.
+					TemporaryPopup.Show(this, mPC.Text(), mapView.screenLocationOfTile(mPC.city.location, true));
+				}
+				break;
+			case MsgProductionSwitched mPSw:
+				if (mPSw.playerId == controller.id) {
+					productionNews.Enqueue((controller.id, () => TellProductionSwitched(mPSw)));
+				}
+				break;
+			case MsgWonderCompleted mWC:
+				if (mWC.TextFor(controller) is string wonderNews) {
+					productionNews.Enqueue((controller.id, () => TellWonderCompleted(mWC, wonderNews)));
+				}
+				break;
 			case MsgResistanceQuelled mRQ:
 				if (mRQ.playerId == controller.id) {
 					string resistanceText = mRQ.resistanceContinues
@@ -1100,6 +1126,13 @@ public partial class Game : Node {
 			next();
 		else if (EngineStorage.TryDequeueNextMessageToUI(out MessageToUI msg))
 			HandleEngineMessage(msg);
+		else if (productionNews.Count > 0 && CurrentState == GameState.PlayerTurn && !HasVisibleModal()) {
+			// (Hotseat: only the player in control's.)
+			(ID player, Action show) = productionNews.Dequeue();
+			if (player == controller.id) {
+				show();
+			}
+		}
 	}
 
 	// If "location" is not already near the center of the screen, moves the camera to bring it into view.
@@ -1242,6 +1275,7 @@ public partial class Game : Node {
 
 	private void DoActualEndTurn() {
 		log.Information("Ending player turn");
+		productionNews.Clear();
 		EmitSignal(SignalName.TurnEnded);
 		log.Information("Starting computer turn");
 		CurrentState = GameState.ComputerTurn;
