@@ -12,6 +12,12 @@ using QueryCiv3;
 public partial class Util {
 	static public string Civ3Root = GetCiv3Path();
 
+	// The project's version, or the release's when the installer build
+	// stamped one (packaging/build-windows-installer.sh writes an
+	// override.cfg beside the exe). Online games compare it, so two
+	// different builds never play together.
+	public static string GameVersion() => (string)ProjectSettings.GetSetting("application/config/version");
+
 	static public string GetCiv3Path() {
 		string path = C7Settings.GetSettingValue("locations", "civ3InstallDir");
 		if (path != null) return path;

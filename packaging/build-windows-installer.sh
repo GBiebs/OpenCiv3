@@ -35,6 +35,15 @@ cp "$REPO/C7/icon.ico" "$GAME/icon.ico"
 # (Never a developer's own settings or log.)
 rm -f "$GAME/C7.ini" "$GAME/log.txt"
 
+# The build's version, with its commit: Godot reads an override.cfg beside
+# the exe over the project's settings, so the main menu shows it and an
+# online game only lets in players with exactly this build.
+STAMP="$VERSION ($(git -C "$REPO" rev-parse --short=8 HEAD)"
+git -C "$REPO" diff --quiet --ignore-submodules HEAD || STAMP="$STAMP, modified"
+STAMP="$STAMP)"
+printf '[application]\n\nconfig/version="%s"\n' "$STAMP" > "$GAME/override.cfg"
+echo "Version: $STAMP"
+
 # (MSYS_NO_PATHCONV: Git Bash would take ISCC's /D and /O switches for paths.)
 MSYS_NO_PATHCONV=1 "$ISCC" "/DAppVersion=$VERSION" "/DSourceDir=$(cygpath -w "$GAME")" "/O$(cygpath -w "$REPO/build")" "$(cygpath -w "$REPO/packaging/OpenCiv3.iss")"
 echo "Built $REPO/build/OpenCiv3-Setup-$VERSION.exe"

@@ -85,8 +85,6 @@ public partial class MultiplayerScreen : Control {
 
 	private sealed record Setting(string name, List<string> values, int selected, Action<int> set);
 
-	public static string GameVersion() => (string)ProjectSettings.GetSetting("application/config/version");
-
 	public override void _Ready() {
 		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 		ColorRect black = new() { Color = Colors.Black, MouseFilter = MouseFilterEnum.Ignore };
@@ -240,7 +238,7 @@ public partial class MultiplayerScreen : Control {
 		int port = int.TryParse(C7Settings.GetSettingsValueOrDefault(C7Settings.Multiplayer.SectionName, C7Settings.Multiplayer.Port, ""),
 			out int configured) ? configured : OnlineProtocol.DefaultPort;
 		gamePassword = OnlineHost.NewPassword();
-		host = new OnlineHost(name.Trim(), gamePassword, GameVersion());
+		host = new OnlineHost(name.Trim(), gamePassword, Util.GameVersion());
 		try {
 			host.Start(port);
 		} catch (SocketException e) {
@@ -376,7 +374,7 @@ public partial class MultiplayerScreen : Control {
 		joining = true;
 		status.Text = "Attempting to connect to multiplayer game...";
 		try {
-			OnlineClient joined = await OnlineClient.Join(parsed, name, password, GameVersion());
+			OnlineClient joined = await OnlineClient.Join(parsed, name, password, Util.GameVersion());
 			if (!IsInsideTree()) {
 				joined.Dispose();
 				return;
