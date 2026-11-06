@@ -1362,4 +1362,110 @@ public partial class Game {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new InformationPopup(controller.id, "Domestic Advisor", text, Advisor.Domestic, Mood.Surprised, 400)));
 	}
+
+	// Shift-L (Civ3's Locate City): our cities, then the others we know of,
+	// in a list; the choice is brought into view.
+	private void EmitLocateCity() {
+		GameData gameData = EngineStorage.gameData;
+		List<City> known = controller.cities.OrderBy(c => c.name)
+			.Concat(gameData.cities.Where(c => c.owner != controller && controller.tileKnowledge.isTileKnown(c.location)).OrderBy(c => c.name))
+			.ToList();
+		if (known.Count == 0) {
+			return;
+		}
+		DropdownComponent list = new() {
+			items = known.Select(c => c.owner == controller ? c.name : $"{c.name} ({c.owner.civilization.adjective})").ToList(),
+			selected = 0,
+		};
+		OptionsPopUp popup = new(controller.id, "Locate City", "Which city should we look at?", [
+			new ButtonAction() { message = "Show me.", action = () => mapView.centerCameraOnTile(known[list.selected].location) },
+		], Advisor.None, Mood.None, 380) { dropdownComponent = list };
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
+
+	// Ctrl-Shift-G (Civ3's Go to City): the selected unit sets off for one
+	// of our cities, by the same route a go-to would take.
+	private void EmitGotoCity(MapUnit unit) {
+		List<City> cities = controller.cities.Where(c => c.location != unit.location).OrderBy(c => c.name).ToList();
+		if (cities.Count == 0) {
+			return;
+		}
+		DropdownComponent list = new() { items = cities.Select(c => c.name).ToList(), selected = 0 };
+		OptionsPopUp popup = new(controller.id, "Go to City", $"Where should the {unit.unitType.name} go?", [
+			new ButtonAction() {
+				message = "Go there.",
+				action = () => {
+					City target = cities[list.selected];
+					SetGotoMode(false);
+					gotoInfo = GetGotoInfo(target.location);
+					if (gotoInfo.moveCost == -1) {
+						new MsgShowTemporaryPopup($"There is no way to {target.name} from here.", unit.location).sendFromScreens();
+					} else {
+						ResolveMovement(gotoInfo);
+					}
+					SetGotoMode(false);
+				},
+			},
+		], Advisor.None, Mood.None, 380) { dropdownComponent = list };
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
+
+	// Civ3's embassy and espionage keys pick the civ first: Ctrl-E an embassy
+	// (those we can afford), E, Shift-E and Ctrl-Shift-E the missions against
+	// its capital (Ctrl-Shift-E only where a spy can be planted).
+	private void EmitChooseCivFor(string action) {
+		GameData gameData = EngineStorage.gameData;
+		EspionageMission plant = gameData.rules.EspionageMissions.Find(m => m.key == EspionageMission.PlantSpy);
+		List<ButtonAction> choices = new();
+		foreach (Player civ in gameData.players.Where(p => p != controller && !p.isBarbarians && !p.defeated && controller.playerRelationships.ContainsKey(p.id))) {
+			if (action == C7Action.EstablishEmbassy) {
+				int cost = Embassies.Cost(gameData, controller, civ);
+				if (Embassies.CanEstablish(controller, civ) && controller.gold >= cost) {
+					choices.Add(new ButtonAction() {
+						message = $"The {civ.civilization.noun} ({cost} gold)",
+						action = () => new MsgEstablishEmbassy(controller.id, civ.id).send(),
+					});
+				}
+				continue;
+			}
+			City capital = civ.cities.Find(c => c.IsCapital()) ?? civ.cities.FirstOrDefault();
+			bool possible = action == C7Action.PlantSpy
+				? plant != null && Espionage.CanAttempt(controller, civ, plant, out _)
+				: gameData.rules.EspionageMissions.Any(m => m.key != EspionageMission.Embassy && Espionage.CanAttempt(controller, civ, m, out _));
+			if (capital != null && possible) {
+				choices.Add(new ButtonAction() { message = $"The {civ.civilization.noun}", action = () => ShowEspionage(capital) });
+			}
+		}
+		bool embassy = action == C7Action.EstablishEmbassy;
+		if (choices.Count == 0) {
+			string none = embassy ? "There is no one we can establish an embassy with right now."
+				: action == C7Action.PlantSpy ? "We can't plant a spy with anyone right now."
+				: "We can't carry out any missions against anyone right now.";
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "Foreign Advisor", none, Advisor.Foreign, Mood.Sad, 380)));
+			return;
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new OptionsPopUp(controller.id, "Foreign Advisor",
+			embassy ? "With whom shall we establish an embassy?" : "Against whom?", choices, Advisor.Foreign, Mood.Happy, 400)));
+	}
+
+	// Ctrl-Shift-Q, or the game menu's New Game: leaves this game for the
+	// new game setup (not online, where everyone plays the same game).
+	public void OnNewGame() {
+		if (online != null) {
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+				new InformationPopup(controller.id, "New Game", "A new game can't be started during an online game.", Advisor.None, Mood.None, 380)));
+			return;
+		}
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new ConfirmPopUp(
+			controller.id,
+			"Start a new game?",
+			"All progress since your last save will be lost.",
+			Advisor.None,
+			Mood.None,
+			"Yes, start a new game",
+			"No, let me keep playing",
+			() => GetTree().ChangeSceneToFile("res://UIElements/NewGame/world_setup.tscn"),
+			hSize: 420)));
+	}
 }

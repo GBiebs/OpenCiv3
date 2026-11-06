@@ -407,4 +407,5 @@ visible = false
 [connection signal="OpenPreferences" from="CanvasLayer/PopupOverlay" to="." method="OnOpenPreferences"]
 [connection signal="Quit" from="CanvasLayer/PopupOverlay" to="." method="OnQuitTheGame"]
 [connection signal="Retire" from="CanvasLayer/PopupOverlay" to="." method="OnRetire"]
+[connection signal="NewGame" from="CanvasLayer/PopupOverlay" to="." method="OnNewGame"]
 [connection signal="SaveGame" from="CanvasLayer/PopupOverlay" to="." method="OnSaveGame"]

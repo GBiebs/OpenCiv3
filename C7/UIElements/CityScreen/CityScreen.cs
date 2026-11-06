@@ -320,6 +320,9 @@ public partial class CityScreen : Control {
 		button.Modulate = enabled ? Colors.White : new Color(1, 1, 1, 0.45f);
 	}
 
+	// The city shown (for the screen's keys: G, H).
+	public City ShownCity => tileAssignmentLayer.city;
+
 	private void RenderStrategicResources(GameData gameData, City city) {
 		Dictionary<C7GameData.Resource, int> resourceCounter = city.GetStrategicResources(gameData);
 

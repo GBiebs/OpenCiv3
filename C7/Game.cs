@@ -1894,15 +1894,6 @@ public partial class Game : Node {
 		}
 
 
-		if (eventKeyDown.Keycode == Godot.Key.C && HasCurrentlySelectedUnit()) {
-			mapView.centerCameraOnTile(CurrentlySelectedUnit.location);
-		}
-		if (eventKeyDown.Keycode == Godot.Key.H) {
-			City capital = controller.cities.Find(c => c.IsCapital());
-			if (capital != null) {
-				mapView.centerCameraOnTile(capital.location);
-			}
-		}
 		// For inputs that have the same keys mapped to multiple actions like G
 		// we need to manually handle what is triggered by adding extra conditions.
 		// Otherwise when pressing CTRL + G for example, both the go-to
@@ -1918,8 +1909,8 @@ public partial class Game : Node {
 				&& eventKeyDown.AltPressed) {
 				ProcessAction(C7Action.ToggleCoordinates);
 			}
-			// Toggle Grid
-			else if (eventKeyDown.IsCommandOrControlPressed()) {
+			// Toggle Grid (Ctrl-Shift-G is Go to City, in the input map)
+			else if (eventKeyDown.IsCommandOrControlPressed() && !eventKeyDown.ShiftPressed) {
 				ProcessAction(C7Action.ToggleGrid);
 			}
 			// Trigger Unit go-to
@@ -2037,6 +2028,20 @@ public partial class Game : Node {
 		int recon = pressed.IndexOf(C7Action.UnitRecon);
 		if (recon >= 0 && !SelectedUnitCan(C7Action.UnitRecon)) {
 			pressed[recon] = C7Action.UnitRebase;
+		}
+		// L loads, or unloads what can unload.
+		if (pressed.Contains(C7Action.UnitLoad) && pressed.Contains(C7Action.UnitUnload)) {
+			pressed.Remove(SelectedUnitCan(C7Action.UnitUnload) ? C7Action.UnitLoad : C7Action.UnitUnload);
+		}
+		// P: a plane's precision strike, a paratrooper's airdrop, else pillage.
+		string[] pKeys = [C7Action.UnitPrecisionStrike, C7Action.UnitAirdrop, C7Action.UnitPillage];
+		if (pKeys.Count(pressed.Contains) > 1) {
+			string keep = pKeys.Where(pressed.Contains).FirstOrDefault(SelectedUnitCan) ?? C7Action.UnitPillage;
+			pressed.RemoveAll(a => pKeys.Contains(a) && a != keep);
+		}
+		// E explores with a unit that can; otherwise it's espionage.
+		if (pressed.Contains(C7Action.UnitExplore) && pressed.Contains(C7Action.Espionage)) {
+			pressed.Remove(SelectedUnitCan(C7Action.UnitExplore) ? C7Action.Espionage : C7Action.UnitExplore);
 		}
 		return pressed;
 	}
@@ -2167,6 +2172,19 @@ public partial class Game : Node {
 			}
 		}
 
+		// The city screen's own keys (Civ3's): G for the governor, H to hurry.
+		if (cityScreen.Visible && !popupOverlay.ShowingPopup && CurrentState == GameState.PlayerTurn
+			&& cityScreen.ShownCity is City shown && shown.owner == controller) {
+			if (currentAction == C7Action.CityGovernor) {
+				ShowGovernor(shown);
+				return;
+			}
+			if (currentAction == C7Action.CenterOnCapital) {
+				EngineStorage.ReadGameData(_ => new MsgDisplayHurryProductionPopup(shown, shown.GetHurryProductionDetails()).sendFromScreens());
+				return;
+			}
+		}
+
 		// never poll for actions if UI elements are visible
 		if (HasVisibleModal()) {
 			return;
@@ -2190,6 +2208,60 @@ public partial class Game : Node {
 		if (currentAction == C7Action.Retire) {
 			EmitRetireConfirmationSignal();
 			return;
+		}
+
+		// Civ3's other keys for the game and the map.
+		switch (currentAction) {
+			case C7Action.QuitGame:
+				EmitQuitGameSignal();
+				return;
+			case C7Action.NewGame:
+				OnNewGame();
+				return;
+			case C7Action.ShowVersion:
+				EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+					new InformationPopup(controller.id, "OpenCiv3", $"Version {Util.GameVersion()}", Advisor.None, Mood.None, 350)));
+				return;
+			case C7Action.SoundPreferences:
+				preferences.ShowPreferences();
+				return;
+			case C7Action.HideInterface:
+				Control hud = GetNode<Control>("CanvasLayer/Control");
+				hud.Visible = !hud.Visible;
+				return;
+			case C7Action.CenterOnUnit:
+				if (HasCurrentlySelectedUnit()) {
+					mapView.centerCameraOnTile(CurrentlySelectedUnit.location);
+				}
+				return;
+			case C7Action.CenterOnCapital:
+				if (controller.cities.Find(c => c.IsCapital()) is City capital) {
+					mapView.centerCameraOnTile(capital.location);
+				}
+				return;
+			case C7Action.LocateCity:
+				EmitLocateCity();
+				return;
+			case C7Action.ContactLeaders:
+				if (controller.playerRelationships.Count > 0) {
+					EmitDiplomacyPopUpSignal();
+				}
+				return;
+			case C7Action.EstablishEmbassy or C7Action.Espionage or C7Action.UseEmbassyOrSpy or C7Action.PlantSpy:
+				if (CurrentState == GameState.PlayerTurn) {
+					EmitChooseCivFor(currentAction);
+				}
+				return;
+			case C7Action.ChangeGovernment:
+				if (CurrentState == GameState.PlayerTurn) {
+					new MsgConfirmStartRevolution(controller.id).sendFromScreens();
+				}
+				return;
+			case C7Action.EndTurnNow:
+				if (CurrentState == GameState.PlayerTurn) {
+					OnPlayerEndTurn();
+				}
+				return;
 		}
 
 		if (currentAction == C7Action.EndTurn && !this.HasCurrentlySelectedUnit()) {
@@ -2337,6 +2409,19 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.UnitUpgrade) {
 			EmitUpgradeSignal(CurrentlySelectedUnit);
+		}
+
+		// Shift-U: every unit of this one's type that can upgrade, cheapest
+		// first while the gold lasts (the engine checks each again).
+		if (currentAction == C7Action.UnitUpgradeAll && CurrentlySelectedUnit.UpgradeOffer() != null) {
+			UnitPrototype type = CurrentlySelectedUnit.unitType;
+			foreach (MapUnit unit in controller.units.Where(u => u.unitType == type && u.UpgradeOffer() != null).OrderBy(u => u.UpgradeOffer().Value.cost).ToList()) {
+				new MsgUpgradeUnit(unit.id).send();
+			}
+		}
+
+		if (currentAction == C7Action.GotoCity) {
+			EmitGotoCity(CurrentlySelectedUnit);
 		}
 
 		if (currentAction == C7Action.UnitLoad) {

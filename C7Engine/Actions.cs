@@ -27,7 +27,24 @@ public static class C7Action {
 	public const string OpenGameMenu = "open_game_menu"; //Ctrl-M
 	public const string SaveGame = "save_game"; // Ctrl-S
 	public const string LoadGame = "load_game"; // Ctrl-L
-	public const string Retire = "retire"; // Ctrl-Q
+	public const string Retire = "retire"; // Shift-Q
+	public const string QuitGame = "quit_game"; // Ctrl-Q (Escape too)
+	public const string NewGame = "new_game"; // Ctrl-Shift-Q
+	public const string EndTurnNow = "end_turn_now"; // Shift-Enter: even with units left to move
+	public const string CenterOnUnit = "center_on_unit"; // C
+	public const string CenterOnCapital = "center_on_capital"; // H (Hurry in the city screen)
+	public const string LocateCity = "locate_city"; // Shift-L
+	public const string GotoCity = "goto_city"; // Ctrl-Shift-G
+	public const string ContactLeaders = "contact_leaders"; // Shift-D
+	public const string ChangeGovernment = "change_government"; // Shift-G
+	public const string EstablishEmbassy = "establish_embassy"; // Ctrl-E
+	public const string PlantSpy = "plant_spy"; // Ctrl-Shift-E
+	public const string UseEmbassyOrSpy = "use_embassy_or_spy"; // Shift-E
+	public const string Espionage = "espionage"; // E, when the unit selected can't explore
+	public const string SoundPreferences = "sound_preferences"; // Shift-S
+	public const string HideInterface = "hide_interface"; // Delete
+	public const string ShowVersion = "show_version"; // Ctrl-F4
+	public const string CityGovernor = "city_governor"; // G in the city screen (Hurry is H)
 	public const string ChangeMobilization = "change_mobilization"; // Shift-M
 	public const string OpenChat = "open_chat"; // ~ (online)
 
@@ -75,6 +92,7 @@ public static class C7Action {
 	public const string UnitPillage = "unit_pillage";
 	public const string UnitJoinCity = "unit_join_city";
 	public const string UnitUpgrade = "unit_upgrade";
+	public const string UnitUpgradeAll = "unit_upgrade_all"; // Shift-U: every unit of the selected one's type
 	public const string UnitHurryProduction = "unit_hurry_production";
 	public const string UnitBuildArmy = "unit_build_army";
 	public const string UnitStartAgeOfScience = "unit_start_age_of_science";

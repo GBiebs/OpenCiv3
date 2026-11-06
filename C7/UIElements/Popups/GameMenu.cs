@@ -19,14 +19,14 @@ public partial class GameMenu : Popup {
 
 		// Note: Enable buttons as the features are implemented
 
+		// (With Civ3's keys.)
 		Tuple<string, Action>[] buttons = [
 			new("Map", ShowMap),
-			new("Load Game", Load),
-			// new("New Game (Ctrl-Shift-Q)", NewGame),
-			// TODO: Quick Start?
+			new("Load Game (Ctrl-L)", Load),
+			new("New Game (Ctrl-Shift-Q)", NewGame),
 			new("Preferences (Ctrl-P)", OpenPreferences),
-			new("Retire", Retire),
-			new("Save Game", Save),
+			new("Retire (Shift-Q)", Retire),
+			new("Save Game (Ctrl-S)", Save),
 			new("Quit Game (ESC)", Quit)
 		];
 
@@ -63,7 +63,9 @@ public partial class GameMenu : Popup {
 	}
 
 	private void NewGame() {
-		// TODO: Wire to a NewGame scene
+		// (The menu closes first: the question is a popup of the newer kind.)
+		GetParent().EmitSignal(PopupOverlay.SignalName.HidePopup);
+		GetParent().EmitSignal(PopupOverlay.SignalName.NewGame);
 	}
 
 	private void OpenPreferences() {
