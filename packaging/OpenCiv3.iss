@@ -56,3 +56,4 @@ Filename: "{app}\OpenCiv3.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchPro
 ; are in Civ3's Saves folder and stay.
 Type: files; Name: "{app}\C7.ini"
 Type: files; Name: "{app}\log.txt"
+Type: files; Name: "{app}\log-previous.txt"

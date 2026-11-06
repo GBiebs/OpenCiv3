@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Godot;
 using Serilog;
 using Serilog.Templates;
@@ -24,6 +25,17 @@ public partial class LogManager : Node {
 		// suggested:
 		// filter += " OR SourceContext like 'C7Engine.AI.%'"; // (insert the namespace you need to debug)
 
+		// Each run starts its own log, the run before kept beside it, so a
+		// bug report holds just the session that went wrong (the log used to
+		// grow across runs until its 50 MB limit silenced it).
+		try {
+			if (File.Exists(GamePaths.LogFilePath)) {
+				File.Move(GamePaths.LogFilePath, GamePaths.PreviousLogFilePath, overwrite: true);
+			}
+		} catch (IOException) {
+			// (Another copy of the game is writing it: carry on in it.)
+		}
+
 		Log.Logger = new LoggerConfiguration()
 			.WriteTo.File(GamePaths.LogFilePath, buffered: true, flushToDiskInterval: TimeSpan.FromMilliseconds(2500), fileSizeLimitBytes: 52428800, //50 MB
 						  outputTemplate: "[{Level:u3}] {Timestamp:HH:mm:ss} {SourceContext}: {Message:lj} {NewLine}{Exception}")
@@ -32,6 +44,7 @@ public partial class LogManager : Node {
 			.CreateLogger();
 
 		Log.ForContext<LogManager>().Debug("Hello!");
+		Log.ForContext<LogManager>().Information("OpenCiv3 {Version}, started {Started:yyyy-MM-dd HH:mm}", Util.GameVersion(), DateTime.Now);
 	}
 
 	public override void _Notification(int what) {

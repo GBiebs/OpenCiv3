@@ -76,6 +76,8 @@ public static class GamePaths {
 	}
 
 	public static string LogFilePath => Path.Combine(WritableDir, "log.txt");
+	// The run before this one's log (see LogManager).
+	public static string PreviousLogFilePath => Path.Combine(WritableDir, "log-previous.txt");
 
 	public static string GameModesDir => Path.Combine(BaseDir, "Lua");
 	public static GameMode.Config basic = new("civ3");

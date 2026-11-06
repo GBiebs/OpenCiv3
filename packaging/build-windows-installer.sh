@@ -33,7 +33,7 @@ mkdir -p "$GAME/Assets"
 (cd "$REPO/C7/Assets" && tar --exclude=.git --exclude=.github --exclude=.gitignore --exclude=.gitattributes -cf - .) | (cd "$GAME/Assets" && tar -xf -)
 cp "$REPO/C7/icon.ico" "$GAME/icon.ico"
 # (Never a developer's own settings or log.)
-rm -f "$GAME/C7.ini" "$GAME/log.txt"
+rm -f "$GAME/C7.ini" "$GAME/log.txt" "$GAME/log-previous.txt"
 
 # The build's version, with its commit: Godot reads an override.cfg beside
 # the exe over the project's settings, so the main menu shows it and an

@@ -45,6 +45,7 @@ project.lock.json
 *.sln.docstates
 C7.ini
 log.txt
+log-previous.txt
 *.csproj.old
 *.csproj.old.*
 C7/.idea/.*
