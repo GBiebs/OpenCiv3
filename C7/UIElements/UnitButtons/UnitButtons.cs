@@ -53,6 +53,7 @@ public partial class UnitButtons : VBoxContainer {
 		AddNewButton(primaryControls, C7Action.UnitExplore);
 		AddNewButton(primaryControls, C7Action.UnitSentry);
 		AddNewButton(primaryControls, C7Action.UnitSentryEnemyOnly);
+		AddNewButton(primaryControls, C7Action.UnitRename);
 
 		//   ******* SPECIALIZED CONTROLS *************
 		AddNewButton(specializedControls, C7Action.UnitLoad);

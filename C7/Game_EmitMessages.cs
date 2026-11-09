@@ -1468,4 +1468,10 @@ public partial class Game {
 			() => GetTree().ChangeSceneToFile("res://UIElements/NewGame/world_setup.tscn"),
 			hSize: 420)));
 	}
+
+	// A unit's or city's new name (Civ3's Rename), the old one to edit.
+	public void EmitRename(string header, string current, Action<string> rename) {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new TextInputPopUp(controller.id, header, "Name:", current, rename, Advisor.None, Mood.None, 420)));
+	}
 }

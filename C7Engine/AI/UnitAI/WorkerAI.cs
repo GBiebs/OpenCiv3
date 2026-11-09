@@ -24,6 +24,14 @@ namespace C7Engine {
 		internal const int ColonyRange = 4;
 
 		public static WorkerAIData MakeAiData(MapUnit unit, Player player) {
+			if (unit.workerAutomation is WorkerAutomation how) {
+				WorkerAIData plan = MakeRestrictedPlan(unit, player, how);
+				if (plan != null) {
+					plan.automation = how;
+				}
+				return plan;
+			}
+
 			// A colony brings home a resource we lack (see Structures).
 			if (GetColonyPlan(unit, player) is WorkerAIData colony) {
 				return colony;
@@ -91,7 +99,8 @@ namespace C7Engine {
 			//
 			// This also functions as a way to build a road network, since we
 			// will eventually road between all worked tiles of all cities.
-			Terraform? improvement = GetTileImprovement(unit.location, unit);
+			Terraform? improvement = data.automation == null ? GetTileImprovement(unit.location, unit)
+				: OnTheWay(unit, data.automation);
 			if (improvement != null) {
 				return PerformWorkerMove(unit, improvement);
 			}
@@ -99,13 +108,15 @@ namespace C7Engine {
 			return this.TryToMoveAlongPath(unit, ref data.pathToDestination);
 		}
 
-		private static Terraform? GetTileImprovement(Tile t, MapUnit unit) {
+		private static Terraform? GetTileImprovement(Tile t, MapUnit unit, bool noAlterations = false) {
 			if (!t.IsLand()) {
 				return null;
 			}
 
+			// (Shift-A: nothing that would replace an improvement there.)
 			HashSet<Terraform> accessibleTerraforms = EngineStorage.gameData.Terraforms
-													.Where(terr => unit.CanPerformTerraformAction(terr, t))
+													.Where(terr => unit.CanPerformTerraformAction(terr, t)
+														&& !(noAlterations && t.overlays.GetReplacementTarget(terr) != null))
 													.ToHashSet();
 
 			if (accessibleTerraforms.Count == 0) {
@@ -197,6 +208,138 @@ namespace C7Engine {
 				}
 			}
 			return null;
+		}
+
+		// Civ3's kinds of automation (WorkerAutomation): the next thing to do
+		// for that kind only, or null once there's nothing left.
+		private static WorkerAIData? MakeRestrictedPlan(MapUnit unit, Player player, WorkerAutomation how) {
+			GameData gameData = EngineStorage.gameData;
+			switch (how.kind) {
+				case WorkerAutomation.Kind.ClearOnly: {
+						Terraform job = gameData.Terraforms.Find(t => t.UIAction == how.job);
+						if (job == null) {
+							return null;
+						}
+						IEnumerable<Tile> ours = player.cities.SelectMany(c => c.GetTilesWithinBorders()).Prepend(unit.location).Distinct();
+						return PlanNearest(unit, ours.Where(t => unit.CanPerformTerraformAction(job, t)), _ => job);
+					}
+				case WorkerAutomation.Kind.ThisCityOnly or WorkerAutomation.Kind.NoAltering or WorkerAutomation.Kind.ThisCityNoAltering: {
+						List<City> cities = how.CityOnly ? [how.target?.cityAtTile] : player.cities;
+						if (cities.Any(c => c == null || c.owner != player)) {
+							return null;
+						}
+						HashSet<Tile> worked = cities.SelectMany(c => c.residents).Select(r => r.tileWorked).Where(t => t != Tile.NONE).ToHashSet();
+						List<Tile> tiles = worked.Concat(cities.SelectMany(c => c.GetTilesWithinBorders()).Where(t => !worked.Contains(t))).ToList();
+						return PlanNearest(unit, tiles, t => GetTileImprovement(t, unit, how.NoAlterations));
+					}
+				case WorkerAutomation.Kind.TradeNetwork:
+					return PlanNearest(unit, TradeNetworkGaps(unit, player), t => Road(unit, t));
+				default: {
+						// Road, rail or colony to a tile, or irrigation to a city:
+						// the first tile along the way still needing it.
+						if (how.target == null || how.target == Tile.NONE) {
+							return null;
+						}
+						foreach (Tile t in Route(unit, how.target)) {
+							if (RouteJob(unit, how, t) is Terraform job) {
+								return PlanAt(unit, t, job);
+							}
+						}
+						Terraform colony = gameData.Terraforms.Find(t => t.Improvement?.key == Tile.TileOverlays.COLONY);
+						if (how.kind == WorkerAutomation.Kind.ColonyTo && colony != null && unit.CanPerformTerraformAction(colony, how.target)) {
+							return PlanAt(unit, how.target, colony);
+						}
+						return null;
+					}
+			}
+		}
+
+		// What a worker on one of these kinds does on a tile it passes.
+		private static Terraform? OnTheWay(MapUnit unit, WorkerAutomation how) {
+			Tile here = unit.location;
+			switch (how.kind) {
+				case WorkerAutomation.Kind.ClearOnly:
+					Terraform job = EngineStorage.gameData.Terraforms.Find(t => t.UIAction == how.job);
+					return job != null && unit.CanPerformTerraformAction(job, here) && here.owningCity?.owner == unit.owner ? job : null;
+				case WorkerAutomation.Kind.ThisCityOnly or WorkerAutomation.Kind.ThisCityNoAltering:
+					return here.owningCity != null && here.owningCity == how.target?.cityAtTile ? GetTileImprovement(here, unit, how.NoAlterations) : null;
+				case WorkerAutomation.Kind.NoAltering:
+					return GetTileImprovement(here, unit, true);
+				case WorkerAutomation.Kind.TradeNetwork:
+					return null;
+				default:
+					return Route(unit, how.target).Contains(here) ? RouteJob(unit, how, here) : null;
+			}
+		}
+
+		// The tiles from the worker's to the goal, both included.
+		private static List<Tile> Route(MapUnit unit, Tile goal) {
+			List<Tile> route = [unit.location];
+			if (goal != null && goal != Tile.NONE && goal != unit.location) {
+				TilePath path = PathingAlgorithmChooser.GetAlgorithm(unit).PathFrom(unit.location, goal, unit);
+				if (path?.path != null) {
+					route.AddRange(path.path);
+				}
+			}
+			return route;
+		}
+
+		private static Terraform? RouteJob(MapUnit unit, WorkerAutomation how, Tile t) {
+			GameData gameData = EngineStorage.gameData;
+			Terraform job;
+			if (how.kind == WorkerAutomation.Kind.IrrigateToCity) {
+				job = t.HasCity() || t.HasIrrigation() ? null : gameData.Terraforms.Find(tf => tf.Improvement?.key == Tile.TileOverlays.IRRIGATION);
+			} else if (how.kind == WorkerAutomation.Kind.RailTo && t.IsRoaded() && !t.HasRailroad()) {
+				job = gameData.Terraforms.Find(tf => tf.Improvement?.key == Tile.TileOverlays.RAILROAD);
+			} else {
+				job = Road(unit, t);
+			}
+			return job != null && unit.CanPerformTerraformAction(job, t) ? job : null;
+		}
+
+		private static Terraform? Road(MapUnit unit, Tile t) {
+			return t.IsRoaded() ? null : EngineStorage.gameData.Terraforms.FirstOrDefault(tf => tf.ProvidesRoad() && unit.CanPerformTerraformAction(tf, t));
+		}
+
+		// Ctrl-N: tiles our trade network still lacks a road on: the way from
+		// each city cut off from the capital to the nearest one joined to it,
+		// and the luxuries and strategic resources inside our borders.
+		private static IEnumerable<Tile> TradeNetworkGaps(MapUnit unit, Player player) {
+			GameData gameData = EngineStorage.gameData;
+			List<Tile> gaps = new();
+			List<City> joined = player.cities.Where(c => c.capital || gameData.GetTradeNetwork().ConnectedToCapital(player, c)).ToList();
+			if (joined.Count > 0) {
+				PathingAlgorithm algorithm = PathingAlgorithmChooser.GetAlgorithm(unit);
+				foreach (City cut in player.cities.Except(joined)) {
+					City to = joined.OrderBy(c => c.location.DistanceTo(cut.location)).First();
+					TilePath path = algorithm.PathFrom(cut.location, to.location, unit);
+					if (path?.path != null) {
+						gaps.AddRange(path.path.Where(t => !t.IsRoaded()));
+					}
+				}
+			}
+			gaps.AddRange(player.cities.SelectMany(c => c.GetTilesWithinBorders()).Where(t => !t.IsRoaded()
+				&& (t.Resource.Category == ResourceCategory.LUXURY || t.Resource.Category == ResourceCategory.STRATEGIC)
+				&& player.KnowsAboutResource(t.Resource)));
+			return gaps.Distinct();
+		}
+
+		private static WorkerAIData? PlanNearest(MapUnit unit, IEnumerable<Tile> tiles, System.Func<Tile, Terraform?> jobOn) {
+			foreach (Tile t in tiles.OrderBy(t => t.DistanceTo(unit.location))) {
+				if (jobOn(t) is Terraform job && PlanAt(unit, t, job) is WorkerAIData plan) {
+					return plan;
+				}
+			}
+			return null;
+		}
+
+		// Going there and doing it (null if there's no way there).
+		private static WorkerAIData? PlanAt(MapUnit unit, Tile t, Terraform job) {
+			TilePath path = t == unit.location ? null : PathingAlgorithmChooser.GetAlgorithm(unit).PathFrom(unit.location, t, unit);
+			if (t != unit.location && (path == null || path.PathLength() == 0)) {
+				return null;
+			}
+			return new WorkerAIData() { workerMove = job, destination = t, pathToDestination = path };
 		}
 	}
 }

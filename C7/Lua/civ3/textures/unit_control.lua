@@ -32,6 +32,7 @@ local unit_control = {
   unit_sentry = make_entry(6, 0),
   -- (Civ3 has one sentry button; its tooltip tells the two apart.)
   unit_sentry_enemy_only = make_entry(6, 0),
+  unit_rename = make_entry(2, 7),
   unit_load = make_entry(7, 0),
   
   unit_unload = make_entry(0, 1),

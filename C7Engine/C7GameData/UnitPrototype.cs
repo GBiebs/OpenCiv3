@@ -37,6 +37,7 @@ namespace C7GameData {
 		// Civ3's sentry (MapUnit.SentryMode).
 		Sentry,
 		SentryEnemyOnly,
+		Rename,
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {

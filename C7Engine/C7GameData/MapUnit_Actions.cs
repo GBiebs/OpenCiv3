@@ -119,6 +119,15 @@ public partial class MapUnit {
 		sentry = SentryMode.None;
 	}
 
+	// A new automation order: plain A (null), or one of Civ3's kinds.
+	public void Automate(WorkerAutomation how) {
+		if (how != null && how.NeedsCity && how.target == null) {
+			how.target = WorkerAutomation.NearestCity(this)?.location;
+		}
+		workerAutomation = how;
+		Automate();
+	}
+
 	public void Automate() {
 		Wake();
 		isAutomated = true;
@@ -126,6 +135,7 @@ public partial class MapUnit {
 		if (maybeAiData == null) {
 			log.Information($"Could not find anything to automate for {this} owned by {owner}");
 			isAutomated = false;
+			workerAutomation = null;
 			return;
 		}
 		currentAI = new WorkerAI(maybeAiData);
@@ -176,7 +186,7 @@ public partial class MapUnit {
 			return null;
 		}
 		return currentAI switch {
-			WorkerAI => "work",
+			WorkerAI => workerAutomation == null ? "work" : "work:" + workerAutomation.Save(),
 			ExplorerAI => "explore",
 			_ => resumeAutomation,
 		};
@@ -189,6 +199,8 @@ public partial class MapUnit {
 			resumeAutomation = null;
 			if (resume == "work") {
 				Automate();
+			} else if (resume?.StartsWith("work:") == true) {
+				Automate(WorkerAutomation.Load(resume["work:".Length..], EngineStorage.gameData.map));
 			} else if (resume == "explore") {
 				Explore();
 			} else {

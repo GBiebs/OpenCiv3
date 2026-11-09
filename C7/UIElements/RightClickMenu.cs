@@ -259,7 +259,11 @@ public partial class RightClickTileMenu : RightClickMenu {
 					game.ShowCityScreenForCity(gameData, tile.cityAtTile);
 				});
 			});
-			// TODO: Rename city
+			AddItem("Rename City...", () => {
+				this.CloseAndDelete();
+				City city = tile.cityAtTile;
+				game.EmitRename("Rename City", city.name, name => MsgRename.City(city.id, name).send());
+			});
 			AddTreeSeparator();
 			AddItem("Change Production", () => {
 				// Close the first menu before opening the second menu.

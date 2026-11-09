@@ -235,6 +235,28 @@ public partial class Game : Node {
 	//
 	// Otherwise null.
 	public GotoInfo gotoInfo = null;
+	// Civ3's stack go-to (X or J: every unit on the tile; Ctrl-X or Ctrl-J:
+	// those of the selected unit's type), for the go-to under way.
+	private enum StackGoto { None, All, SameType }
+	private StackGoto stackGoto = StackGoto.None;
+	// Road, rail or colony to: the go-to picks the worker's goal instead.
+	private WorkerAutomation.Kind? gotoAutomation;
+
+	// Civ3's keys for its kinds of worker automation (and the job, for
+	// clearing only).
+	private static readonly Dictionary<string, (WorkerAutomation.Kind kind, string job)> workerAutomationKeys = new() {
+		[C7Action.UnitAutoCityOnly] = (WorkerAutomation.Kind.ThisCityOnly, null),
+		[C7Action.UnitAutoNoAltering] = (WorkerAutomation.Kind.NoAltering, null),
+		[C7Action.UnitAutoCityNoAltering] = (WorkerAutomation.Kind.ThisCityNoAltering, null),
+		[C7Action.UnitAutoClearForest] = (WorkerAutomation.Kind.ClearOnly, C7Action.UnitClearForest),
+		[C7Action.UnitAutoClearWetlands] = (WorkerAutomation.Kind.ClearOnly, C7Action.UnitClearWetlands),
+		[C7Action.UnitAutoClearDamage] = (WorkerAutomation.Kind.ClearOnly, C7Action.UnitClearDamage),
+		[C7Action.UnitRoadTo] = (WorkerAutomation.Kind.RoadTo, null),
+		[C7Action.UnitRailTo] = (WorkerAutomation.Kind.RailTo, null),
+		[C7Action.UnitColonyTo] = (WorkerAutomation.Kind.ColonyTo, null),
+		[C7Action.UnitTradeNetwork] = (WorkerAutomation.Kind.TradeNetwork, null),
+		[C7Action.UnitIrrigateToCity] = (WorkerAutomation.Kind.IrrigateToCity, null),
+	};
 
 	public BombardInfo bombardInfo = null;
 	public AirTargetInfo airTargetInfo = null;
@@ -2039,6 +2061,10 @@ public partial class Game : Node {
 			string keep = pKeys.Where(pressed.Contains).FirstOrDefault(SelectedUnitCan) ?? C7Action.UnitPillage;
 			pressed.RemoveAll(a => pKeys.Contains(a) && a != keep);
 		}
+		// Shift-D sets a worker clearing pollution; otherwise it's contact.
+		if (pressed.Contains(C7Action.UnitAutoClearDamage) && pressed.Contains(C7Action.ContactLeaders)) {
+			pressed.Remove(SelectedUnitCan(C7Action.UnitAutomate) ? C7Action.ContactLeaders : C7Action.UnitAutoClearDamage);
+		}
 		// E explores with a unit that can; otherwise it's espionage.
 		if (pressed.Contains(C7Action.UnitExplore) && pressed.Contains(C7Action.Espionage)) {
 			pressed.Remove(SelectedUnitCan(C7Action.UnitExplore) ? C7Action.Espionage : C7Action.UnitExplore);
@@ -2341,6 +2367,10 @@ public partial class Game : Node {
 		if (currentAction == C7Action.UnitGoto) {
 			this.SetGotoMode(true);
 		}
+		if (currentAction is C7Action.UnitStackGoto or C7Action.UnitStackGotoSameType && SelectedUnitCan(C7Action.UnitGoto)) {
+			this.SetGotoMode(true);
+			stackGoto = currentAction == C7Action.UnitStackGoto ? StackGoto.All : StackGoto.SameType;
+		}
 
 		if (currentAction == C7Action.UnitExplore) {
 			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Explore).send();
@@ -2424,6 +2454,20 @@ public partial class Game : Node {
 			EmitGotoCity(CurrentlySelectedUnit);
 		}
 
+		if (workerAutomationKeys.TryGetValue(currentAction, out var automation) && SelectedUnitCan(C7Action.UnitAutomate)) {
+			if (automation.kind is WorkerAutomation.Kind.RoadTo or WorkerAutomation.Kind.RailTo or WorkerAutomation.Kind.ColonyTo) {
+				this.SetGotoMode(true);
+				gotoAutomation = automation.kind;
+			} else {
+				new MsgAutomateWorker(CurrentlySelectedUnit.id, automation.kind, automation.job).send();
+			}
+		}
+
+		if (currentAction == C7Action.UnitRename) {
+			MapUnit unit = CurrentlySelectedUnit;
+			EmitRename("Rename Unit", unit.name, name => MsgRename.Unit(unit.id, name).send());
+		}
+
 		if (currentAction == C7Action.UnitLoad) {
 			EngineStorage.ReadGameData((GameData gameData) => {
 				new MsgSelectTransport(CurrentlySelectedUnit, CurrentlySelectedUnit.GetTransportsToBoard(CurrentlySelectedUnit.location)).sendFromScreens();
@@ -2463,6 +2507,8 @@ public partial class Game : Node {
 			this.gotoInfo = null;
 			this.lastTile = null;
 			this.movePressTile = null;
+			this.stackGoto = StackGoto.None;
+			this.gotoAutomation = null;
 		}
 	}
 
@@ -2500,6 +2546,11 @@ public partial class Game : Node {
 			return;
 		}
 
+		if (gotoAutomation is WorkerAutomation.Kind goal) {
+			new MsgAutomateWorker(CurrentlySelectedUnit.id, goal, null, info.destinationTile).send();
+			return;
+		}
+
 		EngineStorage.ReadGameData((GameData gameData) => {
 			// If this move would require declaring war, display a popup that checks
 			// if the player really wants to declare war. If they do, declare the
@@ -2513,8 +2564,25 @@ public partial class Game : Node {
 				});
 			} else {
 				new MsgSetUnitPath(CurrentlySelectedUnit.id, info.path).send();
+				SendStackAlong(gameData, info.destinationTile);
 			}
 		});
+	}
+
+	// A stack go-to: the selected unit's companions on its tile (not ones
+	// aboard a ship) each take their own way there; one that can't stays.
+	private void SendStackAlong(GameData gameData, Tile destination) {
+		if (stackGoto == StackGoto.None || destination == null) {
+			return;
+		}
+		MapUnit leader = gameData.GetUnit(CurrentlySelectedUnit.id);
+		foreach (MapUnit unit in leader.location.unitsOnTile.Where(u => u != leader && u.owner == leader.owner && u.loadedOnUnitId == null
+			&& (stackGoto == StackGoto.All || u.unitType == leader.unitType) && u.GetAvailableActions().Contains(UnitAction.Goto)).ToList()) {
+			TilePath path = PathingAlgorithmChooser.GetAlgorithm(unit).PathFrom(unit.location, destination, unit);
+			if (path != null && path.PathLength() > 0) {
+				new MsgSetUnitPath(unit.id, path).send();
+			}
+		}
 	}
 
 	private void MaybeDeclareWar(Player player, Action callback) {

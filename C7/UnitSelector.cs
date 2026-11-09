@@ -51,7 +51,7 @@ public partial class UnitSelector : Node {
 		}
 
 		// If the selected unit is unfortified, prepare to autoselect the next one if it becomes fortified
-		if (!CurrentlySelectedUnit.isFortified)
+		if (!CurrentlySelectedUnit.isFortified && CurrentlySelectedUnit.sentry == MapUnit.SentryMode.None)
 			KeepCSUWhenFortified = false;
 
 		if (ShouldSkipUnit(CurrentlySelectedUnit))
@@ -65,7 +65,8 @@ public partial class UnitSelector : Node {
 			.DeservesPlayerAttention();
 
 		bool shouldSkipForMovement = outOfMovesOrDead && notAttentionWorthy;
-		bool shouldSkipFortified = unit.isFortified && !KeepCSUWhenFortified;
+		// (A unit on sentry too, as Civ3 skips it.)
+		bool shouldSkipFortified = (unit.isFortified || unit.sentry != MapUnit.SentryMode.None) && !KeepCSUWhenFortified;
 		bool shouldSkipAutomated = unit.isAutomated;
 
 		return shouldSkipForMovement || shouldSkipFortified || shouldSkipAutomated;
@@ -103,7 +104,7 @@ public partial class UnitSelector : Node {
 		}
 
 		this.CurrentlySelectedUnit = unit;
-		this.KeepCSUWhenFortified = unit.isFortified; // If fortified, make sure the autoselector doesn't immediately skip past the unit
+		this.KeepCSUWhenFortified = unit.isFortified || unit.sentry != MapUnit.SentryMode.None; // If fortified, make sure the autoselector doesn't immediately skip past the unit
 
 		if (unit != MapUnit.NONE) {
 			game.ensureLocationIsInView(unit.location);
@@ -112,7 +113,7 @@ public partial class UnitSelector : Node {
 		// Also emit the signal for a new unit being selected, so other areas such as Game Status and Unit Buttons can update
 		if (CurrentlySelectedUnit != MapUnit.NONE) {
 			// (An order: it changes the game.)
-			if (unit.isFortified || unit.airSuperiority) {
+			if (unit.isFortified || unit.airSuperiority || unit.sentry != MapUnit.SentryMode.None) {
 				new MsgSetFortification(unit.id, false).send();
 			}
 			NoMoreAutoselectableUnitsEmitted = false;

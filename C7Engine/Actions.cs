@@ -93,6 +93,22 @@ public static class C7Action {
 	public const string UnitJoinCity = "unit_join_city";
 	public const string UnitUpgrade = "unit_upgrade";
 	public const string UnitUpgradeAll = "unit_upgrade_all"; // Shift-U: every unit of the selected one's type
+	public const string UnitRename = "unit_rename"; // Shift-N
+	public const string UnitStackGoto = "unit_stack_goto"; // X, J: the whole stack goes
+	public const string UnitStackGotoSameType = "unit_stack_goto_same_type"; // Ctrl-X, Ctrl-J: units of the selected one's type
+
+	// Civ3's kinds of worker automation (WorkerAutomation).
+	public const string UnitAutoCityOnly = "unit_auto_city_only"; // Shift-I
+	public const string UnitAutoNoAltering = "unit_auto_no_altering"; // Shift-A
+	public const string UnitAutoCityNoAltering = "unit_auto_city_no_altering"; // Ctrl-Shift-I
+	public const string UnitAutoClearForest = "unit_auto_clear_forest"; // Shift-F
+	public const string UnitAutoClearWetlands = "unit_auto_clear_wetlands"; // Shift-W
+	public const string UnitAutoClearDamage = "unit_auto_clear_damage"; // Shift-D (a worker; else contact)
+	public const string UnitRoadTo = "unit_road_to"; // Ctrl-R
+	public const string UnitRailTo = "unit_rail_to"; // Ctrl-Shift-R
+	public const string UnitColonyTo = "unit_colony_to"; // Ctrl-B
+	public const string UnitTradeNetwork = "unit_trade_network"; // Ctrl-N
+	public const string UnitIrrigateToCity = "unit_irrigate_to_city"; // Ctrl-I
 	public const string UnitHurryProduction = "unit_hurry_production";
 	public const string UnitBuildArmy = "unit_build_army";
 	public const string UnitStartAgeOfScience = "unit_start_age_of_science";
@@ -110,6 +126,7 @@ public static class C7Action {
 		[UnitHold] = UnitAction.Hold,
 		[UnitSentry] = UnitAction.Sentry,
 		[UnitSentryEnemyOnly] = UnitAction.SentryEnemyOnly,
+		[UnitRename] = UnitAction.Rename,
 		[UnitLoad] = UnitAction.Load,
 		[UnitUnload] = UnitAction.Unload,
 		[UnitWait] = UnitAction.Wait,
@@ -158,6 +175,7 @@ public static class C7Action {
 		[UnitHold] = "Hold",
 		[UnitSentry] = "Sentry: wait until a unit comes near",
 		[UnitSentryEnemyOnly] = "Sentry until an enemy comes near",
+		[UnitRename] = "Rename unit",
 		[UnitWait] = "Wait",
 		[UnitLoad] = "Load",
 		[UnitUnload] = "Unload",

@@ -276,7 +276,7 @@ namespace C7Engine {
 					unit.Explore();
 					break;
 				case Order.Automate:
-					unit.Automate();
+					unit.Automate(null);
 					break;
 				case Order.Disband:
 					await unit.Disband();
@@ -284,6 +284,7 @@ namespace C7Engine {
 				case Order.Cancel:
 					unit.path = TilePath.NONE;
 					unit.isAutomated = false;
+					unit.workerAutomation = null;
 					unit.currentAI = null;
 					break;
 				case Order.Sentry:
@@ -1182,6 +1183,68 @@ namespace C7Engine {
 			City? city = await unit.BuildCity(name);
 			if (city != null) {
 				new MsgCityCreated(city).send();
+			}
+		}
+	}
+
+	// Civ3's renaming: a unit (Shift-N) or one of our cities (its
+	// right-click menu). Names are trimmed and kept short; a blank name
+	// gives a unit back its type's name and leaves a city's as it was.
+	public class MsgRename : MessageToEngine {
+		public const int MaxLength = 24;
+
+		public override bool IsPlayerAction => true;
+
+		private readonly ID unitId;
+		private readonly ID cityId;
+		private readonly string name;
+
+		private MsgRename(ID unitId, ID cityId, string name) {
+			this.unitId = unitId;
+			this.cityId = cityId;
+			this.name = name;
+		}
+
+		public static MsgRename Unit(ID unitId, string name) => new(unitId, null, name);
+		public static MsgRename City(ID cityId, string name) => new(null, cityId, name);
+
+		public static string Clean(string name) {
+			string clean = new string((name ?? "").Where(c => !char.IsControl(c)).ToArray()).Trim();
+			return clean.Length > MaxLength ? clean[..MaxLength].TrimEnd() : clean;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			string clean = Clean(name);
+			if (unitId != null && gameData.GetUnit(unitId) is MapUnit unit) {
+				unit.name = clean == "" ? unit.unitType.name : clean;
+			}
+			if (cityId != null && gameData.cities.Find(c => c.id == cityId) is C7GameData.City city && clean != "") {
+				city.name = clean;
+			}
+		}
+	}
+
+	// One of Civ3's kinds of worker automation (WorkerAutomation).
+	public class MsgAutomateWorker : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID unitId;
+		private readonly WorkerAutomation.Kind kind;
+		private readonly string job;
+		private readonly Tile target;
+
+		public MsgAutomateWorker(ID unitId, WorkerAutomation.Kind kind, string job = null, Tile target = null) {
+			this.unitId = unitId;
+			this.kind = kind;
+			this.job = job;
+			this.target = target;
+		}
+
+		public override void process() {
+			MapUnit unit = EngineStorage.gameData.GetUnit(unitId);
+			if (unit != null && unit.GetAvailableActions().Contains(UnitAction.Automate)) {
+				unit.Automate(new WorkerAutomation() { kind = kind, job = job, target = target });
 			}
 		}
 	}

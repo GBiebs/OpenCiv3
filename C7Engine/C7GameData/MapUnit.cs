@@ -92,6 +92,8 @@ namespace C7GameData {
 		// The automation a unit loaded from a save resumes on its next turn
 		// ("work" or "explore", see AutomationKind).
 		public string resumeAutomation;
+		// The kind of worker automation (null: plain A, everything).
+		public WorkerAutomation workerAutomation;
 
 		public MapUnit(ID id) {
 			this.id = id;
@@ -855,6 +857,7 @@ namespace C7GameData {
 				result.Add(UnitAction.Sentry);
 				result.Add(UnitAction.SentryEnemyOnly);
 			}
+			result.Add(UnitAction.Rename);
 
 			if (canBuildCity()) {
 				result.Add(UnitAction.BuildCity);
