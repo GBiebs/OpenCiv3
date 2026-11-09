@@ -45,6 +45,8 @@ public static class C7Action {
 	public const string HideInterface = "hide_interface"; // Delete
 	public const string ShowVersion = "show_version"; // Ctrl-F4
 	public const string CityGovernor = "city_governor"; // G in the city screen (Hurry is H)
+	public const string CityLoadQueue = "city_load_queue"; // Q in the city screen (saving is Shift-Q)
+	public const string CityClearQueue = "city_clear_queue"; // Shift-Delete in the city screen
 	public const string ChangeMobilization = "change_mobilization"; // Shift-M
 	public const string OpenChat = "open_chat"; // ~ (online)
 

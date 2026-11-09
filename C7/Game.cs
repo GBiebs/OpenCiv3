@@ -2205,6 +2205,18 @@ public partial class Game : Node {
 				ShowGovernor(shown);
 				return;
 			}
+			if (currentAction == C7Action.CityClearQueue) {
+				new MsgSetProductionQueue(shown.id, new()).send();
+				return;
+			}
+			if (currentAction == C7Action.Retire) {
+				EmitSaveQueue(shown);
+				return;
+			}
+			if (currentAction == C7Action.CityLoadQueue) {
+				EmitLoadQueue(shown);
+				return;
+			}
 			if (currentAction == C7Action.CenterOnCapital) {
 				EngineStorage.ReadGameData(_ => new MsgDisplayHurryProductionPopup(shown, shown.GetHurryProductionDetails()).sendFromScreens());
 				return;

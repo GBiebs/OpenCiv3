@@ -1187,6 +1187,58 @@ namespace C7Engine {
 		}
 	}
 
+	// A city's production queue, set whole (ProductionQueue.Entry each;
+	// sent as lines of one string, as online orders carry no lists).
+	public class MsgSetProductionQueue : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID cityId;
+		private readonly string entries;
+
+		public MsgSetProductionQueue(ID cityId, List<string> entries) {
+			this.cityId = cityId;
+			this.entries = string.Join("\n", entries);
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.cities.Find(c => c.id == cityId) is C7GameData.City city) {
+				city.productionQueue = (entries ?? "").Split('\n', System.StringSplitOptions.RemoveEmptyEntries).Take(ProductionQueue.MaxLength)
+					.Select(e => ProductionQueue.Find(e, gameData.unitPrototypes, gameData.Buildings, gameData.Inflows))
+					.Where(p => p != null).ToList();
+				new MsgCityChanged(city.id).send();
+			}
+		}
+	}
+
+	// A production queue kept under a name to load into cities (Shift-Q;
+	// none clears that name).
+	public class MsgSaveProductionQueue : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID playerId;
+		private readonly string name;
+		private readonly string entries;
+
+		public MsgSaveProductionQueue(ID playerId, string name, List<string> entries) {
+			this.playerId = playerId;
+			this.name = name;
+			this.entries = string.Join("\n", entries ?? new());
+		}
+
+		public override void process() {
+			string clean = MsgRename.Clean(name);
+			List<string> kept = (entries ?? "").Split('\n', System.StringSplitOptions.RemoveEmptyEntries).Take(ProductionQueue.MaxLength).ToList();
+			if (EngineStorage.gameData.GetPlayer(playerId) is Player player && clean != "") {
+				if (kept.Count == 0) {
+					player.savedQueues.Remove(clean);
+				} else {
+					player.savedQueues[clean] = kept;
+				}
+			}
+		}
+	}
+
 	// Civ3's renaming: a unit (Shift-N) or one of our cities (its
 	// right-click menu). Names are trimmed and kept short; a blank name
 	// gives a unit back its type's name and leaves a city's as it was.

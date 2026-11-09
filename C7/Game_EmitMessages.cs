@@ -1474,4 +1474,34 @@ public partial class Game {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new TextInputPopUp(controller.id, header, "Name:", current, rename, Advisor.None, Mood.None, 420)));
 	}
+
+	// Shift-Q in the city screen: this city's queue kept under a name.
+	private void EmitSaveQueue(City city) {
+		if (city.productionQueue.Count == 0) {
+			return;
+		}
+		List<string> entries = city.productionQueue.Select(ProductionQueue.Entry).ToList();
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new TextInputPopUp(controller.id,
+			"Save Production Queue", "Name:", $"{city.name} queue",
+			name => new MsgSaveProductionQueue(controller.id, name, entries).send(), Advisor.None, Mood.None, 420)));
+	}
+
+	// Q in the city screen: one of our saved queues, from a list, becomes
+	// this city's.
+	private void EmitLoadQueue(City city) {
+		List<string> names = controller.savedQueues.Keys.OrderBy(n => n).ToList();
+		if (names.Count == 0) {
+			EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new InformationPopup(controller.id,
+				"Load Production Queue", "No queue has been saved yet (Shift-Q saves a city's queue).", Advisor.None, Mood.None, 380)));
+			return;
+		}
+		DropdownComponent list = new() { items = names, selected = 0 };
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new OptionsPopUp(controller.id,
+			"Load Production Queue", $"Which queue should {city.name} follow?", [
+				new ButtonAction() {
+					message = "Load it.",
+					action = () => new MsgSetProductionQueue(city.id, controller.savedQueues[names[list.selected]]).send(),
+				},
+			], Advisor.None, Mood.None, 400) { dropdownComponent = list }));
+	}
 }

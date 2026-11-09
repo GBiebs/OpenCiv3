@@ -53,6 +53,9 @@ namespace C7GameData {
 
 		//Temporary production code because production is fun.
 		public IProducible itemBeingProduced;
+		// Civ3's production queue: what comes next, in order (see
+		// ProductionQueue).
+		public List<IProducible> productionQueue = new();
 		public int shieldsStored { get; private set; } = 0;
 
 		public int foodStored = 0;
@@ -480,12 +483,15 @@ namespace C7GameData {
 				return;
 			}
 
-			// A human's city builds the same unit again (Civ3's "always build
-			// previously built unit"), unless its governor manages
-			// production; otherwise the advisor's suggestion goes ahead
-			// and the player is asked whether to build it.
+			// The queue comes first. Otherwise a human's city builds the same
+			// unit again (Civ3's "always build previously built unit"),
+			// unless its governor manages production; otherwise the
+			// advisor's suggestion goes ahead and the player is asked
+			// whether to build it.
 			bool askWhatNext = false;
-			if (owner.isHuman && !governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
+			if (ProductionQueue.TakeNext(this, gameData) is IProducible queued) {
+				SetItemBeingProduced(queued);
+			} else if (owner.isHuman && !governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
 				// (Still building it.)
 			} else if (owner.isHuman && governor.manageProduction) {
 				SetItemBeingProduced(governor.ChooseProduction(this));

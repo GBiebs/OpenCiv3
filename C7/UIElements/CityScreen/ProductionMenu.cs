@@ -8,6 +8,8 @@ using System;
 [GlobalClass]
 public partial class ProductionMenu : Civ3TextureRect {
 	private Dictionary<TreeItem, IProducible> itemMapping = new();
+	// The queue's rows: which place in the queue each one is.
+	private Dictionary<TreeItem, int> queueMapping = new();
 
 	Tree tree;
 	Theme fontTheme = new();
@@ -33,9 +35,12 @@ public partial class ProductionMenu : Civ3TextureRect {
 		return text;
 	}
 
-	public void AddItems(GameData gameData, City city, Action<IProducible> chooseProduction) {
+	// The city's queue comes first, under its own heading (a click takes
+	// an item off it), then everything the city can build.
+	public void AddItems(GameData gameData, City city, Action<IProducible> chooseProduction, Action<int> unqueue = null) {
 		if (tree != null) {
 			itemMapping.Clear();
+			queueMapping.Clear();
 			RemoveChild(tree);
 			tree = null;
 		}
@@ -52,6 +57,26 @@ public partial class ProductionMenu : Civ3TextureRect {
 		TradingTree.ConfigureTreeTheme(tree, fontTheme);
 
 		TreeItem root = TradingTree.CreateTreeRoot(tree);
+
+		if (city.productionQueue.Count > 0) {
+			TreeItem heading = tree.CreateItem(root);
+			heading.SetText(0, "Queued (click to remove):");
+			heading.SetSelectable(0, false);
+			heading.SetSelectable(1, false);
+			for (int i = 0; i < city.productionQueue.Count; i++) {
+				TreeItem queued = tree.CreateItem(root);
+				queued.SetText(0, $"{i + 1}. {ItemText(city.productionQueue[i])}");
+				queued.SetIcon(0, RightClickChooseProductionMenu.GetProducibleIcon(city.productionQueue[i], city.owner));
+				queued.SetCustomMinimumHeight(28);
+				queueMapping[queued] = i;
+			}
+			foreach (string line in new[] { "Shift+click: add", "Shift+Delete: clear" }) {
+				TreeItem hint = tree.CreateItem(root);
+				hint.SetText(0, line);
+				hint.SetSelectable(0, false);
+				hint.SetSelectable(1, false);
+			}
+		}
 
 		foreach (IProducible option in city.ListProductionOptions(gameData)) {
 			int buildTime = city.TurnsToProduce(option);
@@ -70,7 +95,11 @@ public partial class ProductionMenu : Civ3TextureRect {
 		tree.ItemSelected += () => {
 			TreeItem ti = tree.GetSelected();
 			ti.Deselect(0);
-			chooseProduction(itemMapping[ti]);
+			if (queueMapping.TryGetValue(ti, out int place)) {
+				unqueue?.Invoke(place);
+			} else {
+				chooseProduction(itemMapping[ti]);
+			}
 		};
 	}
 }

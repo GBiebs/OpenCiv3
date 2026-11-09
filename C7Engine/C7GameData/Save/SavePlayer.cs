@@ -60,6 +60,7 @@ namespace C7GameData.Save {
 		// Play by email: news from while they were away, and the turn the AIs
 		// last talked to them.
 		public List<string> newsWhileAway = new();
+		public Dictionary<string, List<string>> savedQueues;
 		public int heardFromAIsOnTurn = -1;
 
 		// The number of "beakers" (gold) spent on the currently researched
@@ -131,6 +132,7 @@ namespace C7GameData.Save {
 				gold = gold,
 				passwordHash = passwordHash ?? "",
 				newsWhileAway = new(newsWhileAway ?? new()),
+				savedQueues = savedQueues == null ? new() : savedQueues.ToDictionary(q => q.Key, q => new List<string>(q.Value)),
 				heardFromAIsOnTurn = heardFromAIsOnTurn,
 				turnsUntilPriorityReevaluation = turnsUntilPriorityReevaluation,
 				inAnarchyUntilTurn = inAnarchyUntilTurn,
@@ -215,6 +217,7 @@ namespace C7GameData.Save {
 			gold = player.gold;
 			passwordHash = player.passwordHash;
 			newsWhileAway = new(player.newsWhileAway);
+			savedQueues = player.savedQueues.Count == 0 ? null : player.savedQueues.ToDictionary(q => q.Key, q => new List<string>(q.Value));
 			heardFromAIsOnTurn = player.heardFromAIsOnTurn;
 			beakers = player.beakers;
 			turnsResearched = player.turnsResearched;

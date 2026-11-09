@@ -727,11 +727,21 @@ public partial class CityScreen : Control {
 		productionButtonLabel.SetPosition(new Vector2(0, 65));
 		productionButtonLabel.SetTextAndCenterLabel($"{city.itemBeingProduced.name}");
 
+		// Shift+click queues the item instead (Civ3's production queue).
+		List<string> queue = city.productionQueue.Select(ProductionQueue.Entry).ToList();
 		productionMenu.AddItems(gameData, city, (IProducible p) => {
+			if (Input.IsKeyPressed(Key.Shift)) {
+				if (queue.Count < ProductionQueue.MaxLength) {
+					new MsgSetProductionQueue(city.id, queue.Append(ProductionQueue.Entry(p)).ToList()).send();
+				}
+				return;
+			}
 			// (Chosen: the list goes until the production box is clicked.)
 			productionMenu.Hide();
 			new MsgChooseProduction(city.id, p.name).send();
-		});
+		}, place => new MsgSetProductionQueue(city.id, queue.Where((_, i) => i != place).ToList()).send());
+		productionButton.TooltipText = city.productionQueue.Count == 0 ? ""
+			: "Then: " + string.Join(", ", city.productionQueue.Select(p => p.name));
 	}
 
 	private void RenderShieldRow(int goodShields, int corruptShields) {

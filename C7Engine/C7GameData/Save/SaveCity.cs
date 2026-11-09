@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace C7GameData.Save {
 	public class SaveCityResident {
@@ -56,6 +57,8 @@ namespace C7GameData.Save {
 		public bool capital;
 		public TileLocation location;
 		public string producible;
+		// The production queue (ProductionQueue.Entry: "U:Warrior", "B:Temple").
+		public List<string> productionQueue;
 		public ProducibleType producibleType;
 		public string name;
 		public int size;
@@ -95,6 +98,7 @@ namespace C7GameData.Save {
 				UnitPrototype => ProducibleType.UNIT,
 				Building => ProducibleType.BUILDING,
 			};
+			productionQueue = city.productionQueue.Count == 0 ? null : city.productionQueue.Select(ProductionQueue.Entry).ToList();
 			shieldsStored = city.shieldsStored;
 			foodStored = city.foodStored;
 			turnsOfUnhappinessDueToPopRushing = city.turnsOfUnhappinessDueToPopRushing;
@@ -148,6 +152,7 @@ namespace C7GameData.Save {
 				confusedCitizens = confusedCitizens,
 				draftTurn = draftTurn ?? -1,
 				draftedThatTurn = draftedThatTurn,
+				productionQueue = (productionQueue ?? new()).Select(e => ProductionQueue.Find(e, unitPrototypes, buildings, inflows)).Where(p => p != null).ToList(),
 				celebrating = celebrating,
 				turnsInDisorder = turnsInDisorder,
 				governor = governor?.Copy() ?? new(),
