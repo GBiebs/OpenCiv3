@@ -34,6 +34,9 @@ namespace C7GameData {
 		PrecisionStrike,
 		Airdrop,
 		Airlift,
+		// Civ3's sentry (MapUnit.SentryMode).
+		Sentry,
+		SentryEnemyOnly,
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {

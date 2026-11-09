@@ -29,7 +29,9 @@ local unit_control = {
   unit_disband = make_entry(3, 0),
   unit_goto = make_entry(4, 0),
   unit_explore = make_entry(5, 0),
-  -- unit_sentry = make_entry(6, 0),  
+  unit_sentry = make_entry(6, 0),
+  -- (Civ3 has one sentry button; its tooltip tells the two apart.)
+  unit_sentry_enemy_only = make_entry(6, 0),
   unit_load = make_entry(7, 0),
   
   unit_unload = make_entry(0, 1),

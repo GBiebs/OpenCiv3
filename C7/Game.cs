@@ -2350,12 +2350,12 @@ public partial class Game : Node {
 			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Automate).send();
 		}
 
-		if (currentAction == C7Action.UnitSentry) {
-			// unimplemented
+		if (currentAction == C7Action.UnitSentry && SelectedUnitCan(currentAction)) {
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.Sentry).send();
 		}
 
-		if (currentAction == C7Action.UnitSentryEnemyOnly) {
-			// unimplemented
+		if (currentAction == C7Action.UnitSentryEnemyOnly && SelectedUnitCan(currentAction)) {
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.SentryEnemyOnly).send();
 		}
 
 		if (currentAction == C7Action.UnitBuildCity && CurrentlySelectedUnit.canBuildCity()) {

@@ -51,7 +51,8 @@ namespace C7GameData.Save {
 				path = unit.path.path.ToList().ConvertAll(tile => new TileLocation(tile));
 			}
 			hitPointsRemaining = unit.hitPointsRemaining;
-			action = unit.isFortified ? "fortified" : unit.airSuperiority ? "airSuperiority" : "";
+			action = unit.isFortified ? "fortified" : unit.airSuperiority ? "airSuperiority"
+				: unit.sentry == MapUnit.SentryMode.AnyUnit ? "sentry" : unit.sentry == MapUnit.SentryMode.EnemyOnly ? "sentryEnemy" : "";
 			isAutomated = unit.isAutomated;
 			automation = unit.AutomationKind();
 			hasProducedLeader = unit.hasProducedLeader;
@@ -79,6 +80,7 @@ namespace C7GameData.Save {
 				movementPoints = new MovementPoints(),
 				isFortified = action == "fortified",
 				airSuperiority = action == "airSuperiority",
+				sentry = action == "sentry" ? MapUnit.SentryMode.AnyUnit : action == "sentryEnemy" ? MapUnit.SentryMode.EnemyOnly : MapUnit.SentryMode.None,
 				isAutomated = isAutomated,
 				hasProducedLeader = hasProducedLeader,
 				scientificLeader = scientificLeader,

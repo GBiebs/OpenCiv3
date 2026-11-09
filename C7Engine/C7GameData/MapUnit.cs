@@ -50,6 +50,11 @@ namespace C7GameData {
 		}
 		public bool isFortified { get; set; }
 
+		// Civ3's sentry (Y, Shift-Y): the unit sits out until a unit comes
+		// next to it (any other unit, or only an enemy's); see Sentries.
+		public enum SentryMode { None, AnyUnit, EnemyOnly }
+		public SentryMode sentry { get; set; } = SentryMode.None;
+
 		// An air unit on air superiority duty: it intercepts enemy missions
 		// until it's given another order (see Air).
 		public bool airSuperiority { get; set; }
@@ -101,7 +106,7 @@ namespace C7GameData {
 		}
 
 		public bool IsBusy() {
-			return isFortified || airSuperiority || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
+			return isFortified || sentry != SentryMode.None || airSuperiority || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
 		}
 
 		public bool IsLandUnit() {
@@ -843,6 +848,12 @@ namespace C7GameData {
 				if (unitType.actions.Contains(action)) {
 					result.Add(action);
 				}
+			}
+			// Any unit can stand sentry (Civ3 has no flag for it), not one
+			// that already does.
+			if (sentry == SentryMode.None) {
+				result.Add(UnitAction.Sentry);
+				result.Add(UnitAction.SentryEnemyOnly);
 			}
 
 			if (canBuildCity()) {

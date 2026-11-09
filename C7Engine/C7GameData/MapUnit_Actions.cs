@@ -34,6 +34,9 @@ public partial class MapUnit {
 		//Add to player knowledge of tiles
 		owner.tileKnowledge.AddTilesToKnown(tile);
 
+		// Sentries next to where we stand wake up.
+		Sentries.WakeNear(this, tile);
+
 		// Enemy units still here can't defend themselves: capture or destroy them.
 		CaptureUnitsOn(tile);
 
@@ -99,12 +102,21 @@ public partial class MapUnit {
 	public void Fortify() {
 		ResetFacingDirection();
 		isFortified = true;
+		sentry = SentryMode.None;
 		animate(MapUnit.AnimatedAction.FORTIFY);
+	}
+
+	// Civ3's sentry: sits out until a unit comes next to it (Sentries).
+	public void StandSentry(SentryMode mode) {
+		isFortified = false;
+		airSuperiority = false;
+		sentry = mode;
 	}
 
 	public void Wake() {
 		isFortified = false;
 		airSuperiority = false;
+		sentry = SentryMode.None;
 	}
 
 	public void Automate() {
@@ -199,7 +211,7 @@ public partial class MapUnit {
 	}
 
 	public async Task PerformBusyAction() {
-		if (isFortified) {
+		if (isFortified || sentry != SentryMode.None) {
 			return;
 		}
 
