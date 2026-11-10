@@ -1193,6 +1193,30 @@ namespace C7Engine {
 		}
 	}
 
+	// A human's preferences the engine follows (PlayerPreferences), as
+	// "key=1;key=0" (online orders carry strings).
+	public class MsgSetPreferences : MessageToEngine {
+		private readonly ID playerId;
+		private readonly string settings;
+
+		public MsgSetPreferences(ID playerId, string settings) {
+			this.playerId = playerId;
+			this.settings = settings;
+		}
+
+		public override void process() {
+			if (EngineStorage.gameData.GetPlayer(playerId) is not Player player) {
+				return;
+			}
+			foreach (string pair in (settings ?? "").Split(';', System.StringSplitOptions.RemoveEmptyEntries)) {
+				string[] kv = pair.Split('=');
+				if (kv.Length == 2) {
+					player.preferences[kv[0]] = kv[1] == "1";
+				}
+			}
+		}
+	}
+
 	// A city's production queue, set whole (ProductionQueue.Entry each;
 	// sent as lines of one string, as online orders carry no lists).
 	public class MsgSetProductionQueue : MessageToEngine {

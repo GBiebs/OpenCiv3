@@ -41,6 +41,7 @@ namespace C7.Map {
 
 		public override void drawObject(LooseView looseView, GameData gameData, Tile tile, Vector2 tileCenter) {
 			if (city == null) {
+				DrawMapYields(looseView, tile, tileCenter);
 				return;
 			}
 
@@ -75,6 +76,26 @@ namespace C7.Map {
 				.. Enumerable.Repeat(foodTexture, food.yield), .. Enumerable.Repeat(LostFoodTexture, food.penalty),
 				.. Enumerable.Repeat(shieldTexture, shields.yield), .. Enumerable.Repeat(LostShieldTexture, shields.penalty),
 				.. Enumerable.Repeat(goldTexture, gold.yield), .. Enumerable.Repeat(lostGoldTexture, gold.penalty),
+			];
+			DrawYieldRow(looseView, tileCenter, icons);
+		}
+
+		// Civ3's "Show Food and Shields on Map": each land tile we know shows
+		// what it would yield us (not when zoomed far out, where they'd be
+		// unreadable).
+		private void DrawMapYields(LooseView looseView, Tile tile, Vector2 tileCenter) {
+			if (!C7.UIElements.Civ3Preferences.Get(C7.UIElements.Civ3Preferences.ShowFoodAndShieldsOnMap) || !tile.IsLand()
+				|| looseView.mapView.cameraZoom < 0.5f) {
+				return;
+			}
+			Player viewer = looseView.mapView.game.controller;
+			if (viewer == null || !viewer.tileKnowledge.isTileKnown(tile)) {
+				return;
+			}
+			List<ImageTexture> icons = [
+				.. Enumerable.Repeat(foodTexture, tile.FoodYield(viewer).yield),
+				.. Enumerable.Repeat(shieldTexture, tile.ProductionYield(viewer).yield),
+				.. Enumerable.Repeat(goldTexture, tile.CommerceYield(viewer).yield),
 			];
 			DrawYieldRow(looseView, tileCenter, icons);
 		}

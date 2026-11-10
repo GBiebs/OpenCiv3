@@ -1,3 +1,4 @@
+using C7.UIElements;
 using C7Engine;
 using C7GameData;
 using Godot;
@@ -44,9 +45,12 @@ public partial class UnitSelector : Node {
 		if (NoMoreAutoselectableUnitsEmitted) return;
 		if (EngineStorage.HasPendingAnimations()) return;
 
-		// If no unit is selected, move to the next one
+		// If no unit is selected, move to the next one (online, not if the
+		// player asked it not to, Civ3's preference).
 		if (CurrentlySelectedUnit == MapUnit.NONE) {
-			SetNextUnit();
+			if (EngineStorage.localPlayerID == null || !Civ3Preferences.Get(Civ3Preferences.NoAutoSelectOnline)) {
+				SetNextUnit();
+			}
 			return;
 		}
 

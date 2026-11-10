@@ -1,3 +1,4 @@
+using C7.UIElements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -292,6 +293,18 @@ public partial class UnitLayer : LooseLayer {
 		List<MapUnit> units = tile.unitsOnTile.Where(u => Naval.IsVisibleTo(u, looseView.mapView.game.controller) && !tracker.IsFlying(u)).ToList();
 		if (units.Count == 0) {
 			return;
+		}
+		// Civ3's preferences: no units drawn over cities, and the disc of
+		// the owner's color under them.
+		if (tile.HasCity() && !Civ3Preferences.Get(Civ3Preferences.ShowUnitsOverCities)) {
+			return;
+		}
+		if (Civ3Preferences.Get(Civ3Preferences.ShowTeamColorDisc)) {
+			Color disc = TextureLoader.LoadColor(units[0].owner.GetPlayerColor());
+			disc.A = 0.75f;
+			looseView.DrawSetTransform(tileCenter + new Vector2(0, 8), 0, new Vector2(1, 0.45f));
+			looseView.DrawCircle(Vector2.Zero, 18, disc);
+			looseView.DrawSetTransform(Vector2.Zero, 0, Vector2.One);
 		}
 
 		var white = Color.Color8(255, 255, 255);

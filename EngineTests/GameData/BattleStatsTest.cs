@@ -215,7 +215,7 @@ public class BattleStatsTest : IClassFixture<SaveGameFixture> {
 	// order isn't missed; only the engine's own messages don't.
 	[Fact]
 	public void EveryOrderIsAnAction() {
-		HashSet<Type> notActions = [typeof(MsgShutdownEngine), typeof(MsgEndTurn), typeof(MsgSetAnimationsEnabled),
+		HashSet<Type> notActions = [typeof(MsgShutdownEngine), typeof(MsgEndTurn), typeof(MsgSetAnimationsEnabled), typeof(MsgSetPreferences),
 			typeof(MsgToggleAnimationsEnabled), typeof(MsgDiplomacyCompleted), typeof(MsgUiDisengaged),
 			// A hotseat password isn't a move in the game, nor arriving for a
 			// turn played by email and reading the news, nor the

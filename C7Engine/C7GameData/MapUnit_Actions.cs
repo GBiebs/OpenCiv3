@@ -169,10 +169,26 @@ public partial class MapUnit {
 	}
 
 	public async Task MoveAlongPath() {
+		// Civ3's preferences: a human's go-to stops when a combat unit of an
+		// enemy, or of a civ at peace, comes next to it (not ones already
+		// there when it set off).
+		HashSet<MapUnit> nearAtStart = owner.isHuman ? CombatUnitsNear() : null;
 		while (movementPoints.canMove && path?.PathLength() > 0) {
 			TileDirection dir = location.DirectionTo(path.Next());
 			await Move(dir, true); //TODO: don't wait on last move animation?
+			if (nearAtStart != null && path?.PathLength() > 0 && CombatUnitsNear().Any(u => !nearAtStart.Contains(u))) {
+				path = TilePath.NONE;
+			}
 		}
+	}
+
+	private HashSet<MapUnit> CombatUnitsNear() {
+		bool enemies = owner.Prefers(PlayerPreferences.CancelOrdersForEnemyCombatUnit);
+		bool friends = owner.Prefers(PlayerPreferences.CancelOrdersForFriendlyCombatUnit);
+		return location.neighbors.Values.Where(t => t != null && t != Tile.NONE).SelectMany(t => t.unitsOnTile)
+			.Where(u => u.owner != owner && u.IsCombatUnit() && Naval.IsVisibleTo(u, owner)
+				&& (u.owner.isBarbarians || !owner.IsAtPeaceWith(u.owner) ? enemies : friends))
+			.ToHashSet();
 	}
 
 	public async Task SetUnitPath(TilePath path) {

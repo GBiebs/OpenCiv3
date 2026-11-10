@@ -44,6 +44,7 @@ public partial class MainMenu : Node {
 		GetNode<RichTextLabel>("Control/Background/RichTextLabel").Text = "v" + Util.GameVersion();
 
 		try {
+			Preferences.ApplySound();
 			DisplayTitleScreen();
 			PlayMusic();
 		} catch (Exception ex) {

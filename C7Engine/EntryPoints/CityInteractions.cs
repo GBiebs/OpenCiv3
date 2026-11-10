@@ -13,7 +13,10 @@ namespace C7Engine {
 		public static City BuildCity(Tile tileWithNewCity, Player owner, string name) {
 			GameData gameData = EngineStorage.gameData;
 			City newCity = new City(tileWithNewCity, owner, name, gameData.ids.CreateID("city"));
-			newCity.governor = owner.defaultGovernor.Copy();
+			// (Civ3's preference: the capital's governor, else the default.)
+			City capital = owner.cities.Find(c => c.IsCapital() && c != newCity);
+			newCity.governor = owner.isHuman && capital != null && owner.Prefers(PlayerPreferences.CapitalGovernorDefault)
+				? capital.governor.Copy() : owner.defaultGovernor.Copy();
 			if (owner.cities.Count == 0) {
 				newCity.capital = true;
 				newCity.AddBuilding(gameData.Buildings.Find(x => x.isCenterOfEmpire), gameData);

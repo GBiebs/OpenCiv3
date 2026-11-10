@@ -1,3 +1,4 @@
+using C7.UIElements;
 using C7.Textures;
 using C7GameData;
 using Godot;
@@ -93,6 +94,12 @@ namespace C7.Map {
 			centerDivider.AddThemeConstantOverride("separation", 1);
 
 			popSizeLabel.HorizontalAlignment = HorizontalAlignment.Center;
+			// (Civ3's preference: the population's shadow.)
+			if (Civ3Preferences.Get(Civ3Preferences.ShowCityPopShadow)) {
+				popSizeLabel.AddThemeColorOverride("font_shadow_color", new Color(0, 0, 0, 0.8f));
+				popSizeLabel.AddThemeConstantOverride("shadow_offset_x", 1);
+				popSizeLabel.AddThemeConstantOverride("shadow_offset_y", 1);
+			}
 			popSizeLabel.VerticalAlignment = VerticalAlignment.Center;
 			popSizePanel.CustomMinimumSize = new Vector2(LEFT_RIGHT_BOXES_WIDTH, LEFT_RIGHT_BOXES_HEIGHT);
 

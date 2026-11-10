@@ -295,8 +295,11 @@ public class PlayerRelationship {
 					.ToList();
 
 				foreach (MultiTurnDeal deadDeal in deadDeals) {
-					// TODO: Add a popup to notify if an AI/Human deal expires
-					// TODO: Add renegotiate logic (plus preferences option Always Renegotiate Deals)
+					// A human is told, and may renegotiate (Civ3's "Always
+					// Renegotiate Deals" opens the talks at once).
+					if (player.isHuman && deadDeal.dealSubType != DealSubType.Peace) {
+						new MsgDealExpired(player.id, other.id, deadDeal.dealSubType, deadDeal.resourcePerTurn).send();
+					}
 					log.Information($"Cancelling multi turn deal: {player} -- {other}");
 					// For both: a human's side of a deal with the AI ends too.
 					EndDeal(player, other, deadDeal);

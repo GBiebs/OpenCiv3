@@ -115,6 +115,76 @@ public partial class Preferences : Control {
 
 		TextureLoader.SetButtonTextures(close, "ui.exit");
 		close.Pressed += HidePreferences;
+		AddCiv3Options();
+	}
+
+	// Raised when one of Civ3's preferences changes (the game applies it).
+	public static event Action<Civ3Preferences.Option> Changed;
+
+	// Civ3's preferences (Civ3Preferences): the game's and the units' two to
+	// a row in their grids, the sound switches with the volumes, and the map
+	// scroll speed. Those the game can't act on yet are greyed, saying why.
+	private void AddCiv3Options() {
+		GridContainer gameGrid = GetNode<GridContainer>("Background/Rows/GameSection/GameGrid");
+		GridContainer unitsGrid = GetNode<GridContainer>("Background/Rows/UnitsSection/UnitsGrid");
+		VBoxContainer gameSection = GetNode<VBoxContainer>("Background/Rows/GameSection");
+		VBoxContainer audio = GetNode<VBoxContainer>("Background/Rows/AudioSection");
+		gameGrid.Columns = 2;
+		unitsGrid.Columns = 2;
+		// (The four animation settings below replace these two.)
+		animateFriendly.Visible = false;
+		animateEnemy.Visible = false;
+
+		HBoxContainer soundRow = new();
+		audio.AddChild(soundRow);
+		audio.MoveChild(soundRow, 1);
+		foreach (Civ3Preferences.Option option in Civ3Preferences.All) {
+			Civ3Checkbox box = new() { Text = option.label, CustomMinimumSize = new Vector2(option.section == Civ3Preferences.Sound ? 200 : 420, 18) };
+			box.SetPressed(Civ3Preferences.Get(option.key));
+			if (option.unavailable != null) {
+				box.Disabled = true;
+				box.TooltipText = option.unavailable;
+			}
+			box.Toggled += on => {
+				Civ3Preferences.Set(option.key, on);
+				if (option.section == Civ3Preferences.Sound) {
+					ApplySound();
+				}
+				Changed?.Invoke(option);
+			};
+			(option.section == Civ3Preferences.Game ? gameGrid : option.section == Civ3Preferences.Units ? unitsGrid : (Container)soundRow).AddChild(box);
+		}
+
+		HBoxContainer scroll = new();
+		Label scrollLabel = new() { Text = "Map Scroll Speed", CustomMinimumSize = new Vector2(140, 0) };
+		scrollLabel.AddThemeFontSizeOverride("font_size", 13);
+		scroll.AddChild(scrollLabel);
+		HSlider speed = new() { MinValue = 25, MaxValue = 200, Step = 5, Value = Civ3Preferences.GetMapScrollSpeed(), CustomMinimumSize = new Vector2(240, 20) };
+		Label speedValue = new() { Text = $"{Civ3Preferences.GetMapScrollSpeed()}%", CustomMinimumSize = new Vector2(52, 0) };
+		speedValue.AddThemeFontSizeOverride("font_size", 13);
+		speed.ValueChanged += value => {
+			Civ3Preferences.SetMapScrollSpeed((int)value);
+			speedValue.Text = $"{(int)value}%";
+		};
+		scroll.AddChild(speed);
+		scroll.AddChild(speedValue);
+		gameSection.AddChild(scroll);
+	}
+
+	// Civ3's sound switches: everything, the music, the effects (muting the
+	// buses; the volumes stay as they are). Also when the game starts.
+	public static void ApplySound() {
+		void Mute(string bus, bool mute) {
+			int index = AudioServer.GetBusIndex(bus);
+			if (index >= 0 && mute) {
+				AudioServer.SetBusMute(index, true);
+			} else if (index >= 0) {
+				AudioServer.SetBusMute(index, AudioServer.GetBusVolumeDb(index) <= -79f);
+			}
+		}
+		Mute(AudioManager.MasterBus, !Civ3Preferences.Get(Civ3Preferences.AllSoundsOn));
+		Mute(AudioManager.MusicBus, !Civ3Preferences.Get(Civ3Preferences.MusicOn));
+		Mute(AudioManager.SfxAudioBus, !Civ3Preferences.Get(Civ3Preferences.SoundFxOn));
 	}
 
 	private void ConnectVolumeSlider(Control row, Civ3HSlider slider, Label valueLabel, string bus,
@@ -134,6 +204,7 @@ public partial class Preferences : Control {
 		};
 		slider.DragEnded += changed => {
 			_audioManager.SetBusVolume(bus, (int)slider.Value);
+			ApplySound();
 			callback?.Invoke();
 		};
 	}

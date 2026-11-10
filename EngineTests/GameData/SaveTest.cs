@@ -115,6 +115,12 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 						continue;
 					case MsgWonderCompleted mWC:
 						continue;
+					case MsgWonderStarted mWS:
+						continue;
+					case MsgCityCantGrow mCCG:
+						continue;
+					case MsgDealExpired mDE:
+						continue;
 					case MsgMeltdown mMd:
 						continue;
 					case MsgDisease mDis:

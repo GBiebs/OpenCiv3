@@ -721,6 +721,66 @@ namespace C7Engine {
 		}
 	}
 
+	// A great wonder begun: news for those who've met the builder.
+	public class MsgWonderStarted : MessageToUI {
+		public Player builder;
+		public City city;
+		public Building wonder;
+
+		public MsgWonderStarted(Player builder, City city, Building wonder) {
+			this.builder = builder;
+			this.city = city;
+			this.wonder = wonder;
+		}
+
+		public string TextFor(Player viewer) {
+			return viewer == builder || !viewer.playerRelationships.ContainsKey(builder.id) ? null
+				: $"Word has reached us that the {builder.civilization.noun} have begun work on {wonder.name} in {city.name}.";
+		}
+	}
+
+	// One of a human's cities can't grow larger without a building.
+	public class MsgCityCantGrow : MessageToUI {
+		public ID playerId;
+		public City city;
+		public string needs;
+
+		public MsgCityCantGrow(ID playerId, City city, string needs) {
+			this.playerId = playerId;
+			this.city = city;
+			this.needs = needs;
+		}
+
+		public string Text() => $"{city.name} can't grow any larger without {needs}.";
+	}
+
+	// A deal between a human and another civ has run out.
+	public class MsgDealExpired : MessageToUI {
+		public ID playerId;
+		public ID otherId;
+		public DealSubType deal;
+		public string resource;
+
+		public MsgDealExpired(ID playerId, ID otherId, DealSubType deal, string resource) {
+			this.playerId = playerId;
+			this.otherId = otherId;
+			this.deal = deal;
+			this.resource = resource;
+		}
+
+		public string Text(GameData gameData) {
+			string noun = gameData.GetPlayer(otherId)?.civilization.noun ?? "another civilization";
+			string what = deal switch {
+				DealSubType.GoldPerTurn => "gold per turn",
+				DealSubType.ResourcePerTurn or DealSubType.LuxuryPerTurn => $"{gameData.Resources.Find(r => r.Key == resource)?.Name ?? "resource"} trade",
+				DealSubType.RightOfPassage => "right of passage",
+				DealSubType.MutualProtectionPact => "mutual protection pact",
+				_ => "agreement",
+			};
+			return $"Our {what} with the {noun} has run out.";
+		}
+	}
+
 	// A great wonder was completed: news for everyone but its builder.
 	public class MsgWonderCompleted : MessageToUI {
 		public Player builder;

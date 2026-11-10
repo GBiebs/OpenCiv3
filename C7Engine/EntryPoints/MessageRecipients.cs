@@ -15,7 +15,7 @@ namespace C7Engine {
 		// them (whether they know the civs involved, for instance).
 		public static bool ForEveryone(MessageToUI msg) => msg is MsgCivilizationDestroyed or MsgWarDeclarationNotification
 			or MsgNuclearAttack or MsgPrincessDelivered or MsgSpaceshipPart or MsgElectionResults or MsgPeaceTreatySigned
-			or MsgGlobalWarming or MsgVictory or MsgWonderCompleted;
+			or MsgGlobalWarming or MsgVictory or MsgWonderCompleted or MsgWonderStarted;
 
 		// The players a message is news for (none for everyone's or the
 		// acting player's own).
@@ -50,6 +50,8 @@ namespace C7Engine {
 				MsgPollution m => [m.playerId],
 				MsgProductionComplete m => [m.playerId],
 				MsgProductionSwitched m => [m.playerId],
+				MsgCityCantGrow m => [m.playerId],
+				MsgDealExpired m => [m.playerId],
 				MsgResistanceQuelled m => [m.playerId],
 				MsgTilePillaged m => [m.pillagerId, m.landOwnerId],
 				MsgUnitsCaptured m => [m.capturerId, m.victimId],

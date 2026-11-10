@@ -1,3 +1,4 @@
+using C7.UIElements;
 using Godot;
 using System.Collections.Generic;
 using C7Engine;
@@ -211,6 +212,12 @@ public partial class UnitButtons : VBoxContainer {
 				value.button.Visible = true;
 			} else {
 				log.Warning("Could not find button " + actionKey);
+			}
+		}
+		// Civ3's preference: the advanced row of buttons, or not.
+		if (!Civ3Preferences.Get(Civ3Preferences.ShowAdvancedUnitButtons)) {
+			foreach (Control button in advancedControls.GetChildren().OfType<Control>()) {
+				button.Visible = false;
 			}
 		}
 

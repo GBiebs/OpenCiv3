@@ -56,6 +56,8 @@ namespace C7GameData {
 		// Civ3's production queue: what comes next, in order (see
 		// ProductionQueue).
 		public List<IProducible> productionQueue = new();
+		// Whether its human was told it can't grow (not saved).
+		public bool sizeLimitWarned;
 		public int shieldsStored { get; private set; } = 0;
 
 		public int foodStored = 0;
@@ -181,6 +183,11 @@ namespace C7GameData {
 		// switching back the same turn returns them, and a further switch
 		// costs nothing more.
 		public void SetItemBeingProduced(IProducible producible) {
+			// Civ3's news of a great wonder begun (shown to those who've met
+			// the builder, if they want it).
+			if (producible is Building wonder && wonder.IsGreatWonder() && producible != itemBeingProduced && owner != null) {
+				new MsgWonderStarted(owner, this, wonder).send();
+			}
 			if (itemBeingProduced != null && producible != null) {
 				ProductionCategory from = CategoryOf(itemBeingProduced);
 				ProductionCategory to = CategoryOf(producible);
@@ -491,8 +498,11 @@ namespace C7GameData {
 			bool askWhatNext = false;
 			if (ProductionQueue.TakeNext(this, gameData) is IProducible queued) {
 				SetItemBeingProduced(queued);
-			} else if (owner.isHuman && !governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)) {
-				// (Still building it.)
+			} else if (owner.isHuman && !governor.manageProduction && producedItem is UnitPrototype again && ListProductionOptions(gameData).Contains(again)
+				&& owner.Prefers(PlayerPreferences.AlwaysBuildPreviousUnit)) {
+				// (Still building it; asked about if the player wants, Civ3's
+				// "Ask for Build Orders after Unit Construction".)
+				askWhatNext = owner.Prefers(PlayerPreferences.AskBuildOrdersAfterUnit);
 			} else if (owner.isHuman && governor.manageProduction) {
 				SetItemBeingProduced(governor.ChooseProduction(this));
 			} else {
@@ -529,6 +539,17 @@ namespace C7GameData {
 			// No growth necessary.
 			if (foodStored < foodNeededToGrow) {
 				return;
+			}
+
+			// At its size limit: a human is told once (Civ3's population
+			// limit warning), until it grows again.
+			if (!CanGrowPopulationByOne(gameData)) {
+				if (owner.isHuman && !sizeLimitWarned) {
+					sizeLimitWarned = true;
+					new MsgCityCantGrow(owner.id, this, CanGrowIntoCity() ? "a Hospital" : "an Aqueduct").send();
+				}
+			} else {
+				sizeLimitWarned = false;
 			}
 
 			if (CanGrowPopulationByOne(gameData)) {

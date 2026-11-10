@@ -1523,4 +1523,40 @@ public partial class Game {
 				},
 			], Advisor.None, Mood.None, 400) { dropdownComponent = list }));
 	}
+
+	// Another civ has begun a great wonder (Civ3's wonder initiation
+	// popup, if the player wants it).
+	private void TellWonderStarted(MsgWonderStarted msg, string text) {
+		ensureLocationIsInView(msg.city.location);
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Domestic Advisor", text, Advisor.Domestic, Mood.Surprised, 400)));
+	}
+
+	// A city at its size limit (Civ3's population limit warning, unless
+	// the player turned those off).
+	private void TellCityCantGrow(MsgCityCantGrow msg) {
+		ensureLocationIsInView(msg.city.location);
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+			new InformationPopup(controller.id, "Domestic Advisor", msg.Text(), Advisor.Domestic, Mood.Sad, 400)));
+	}
+
+	// A deal has run out: renegotiate (at once with Civ3's "Always
+	// Renegotiate Deals"), or carry on without it.
+	private void TellDealExpired(MsgDealExpired msg) {
+		GameData gameData = EngineStorage.gameData;
+		if (gameData.GetPlayer(msg.otherId) is not Player other || other.defeated) {
+			return;
+		}
+		if (Civ3Preferences.Get(Civ3Preferences.AlwaysRenegotiateDeals)) {
+			OnDiplomacySelected(new ParameterWrapper<ID>(other.id));
+			return;
+		}
+		OptionsPopUp popup = new(controller.id, "Foreign Advisor", msg.Text(gameData), [
+			new ButtonAction() { message = "Let's renegotiate.", action = () => OnDiplomacySelected(new ParameterWrapper<ID>(other.id)) },
+			new ButtonAction() { message = "Never mind.", action = () => { } },
+		], Advisor.Foreign, Mood.Sad, 400);
+		popup.buttonActions[0].pressed = false;
+		popup.buttonActions[1].pressed = true;
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
 }

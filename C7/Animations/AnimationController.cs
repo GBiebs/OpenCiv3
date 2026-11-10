@@ -20,16 +20,42 @@ public partial class AnimationController : Node {
 		animTracker = new AnimationTracker(civ3AnimData);
 	}
 
+	private bool Animated(MapUnit unit, MapUnit.AnimatedAction action) {
+		if (action is MapUnit.AnimatedAction.ATTACK1 or MapUnit.AnimatedAction.ATTACK2 or MapUnit.AnimatedAction.ATTACK3
+			or MapUnit.AnimatedAction.DEFEND or MapUnit.AnimatedAction.DEATH) {
+			return Civ3Preferences.Get(Civ3Preferences.AnimateBattles);
+		}
+		return Civ3Preferences.Get(MoveKind(unit, game.controller, show: false));
+	}
+
+	// Which of Civ3's kinds a unit's move is: ours by hand, ours on a
+	// go-to or automation, a civ at peace with us, an enemy (barbarians too).
+	public static string MoveKind(MapUnit unit, Player us, bool show) {
+		if (unit.owner == us) {
+			bool automatic = unit.isAutomated || (unit.path?.PathLength() ?? 0) > 0;
+			return automatic ? (show ? Civ3Preferences.ShowOurAutomaticMoves : Civ3Preferences.AnimateOurAutomaticMoves)
+				: (show ? Civ3Preferences.ShowOurManualMoves : Civ3Preferences.AnimateOurManualMoves);
+		}
+		bool enemy = unit.owner.isBarbarians || us == null || !us.IsAtPeaceWith(unit.owner);
+		return enemy ? (show ? Civ3Preferences.ShowEnemyMoves : Civ3Preferences.AnimateEnemyMoves)
+			: (show ? Civ3Preferences.ShowFriendMoves : Civ3Preferences.AnimateFriendMoves);
+	}
+
 	public void HandleEngineMessage(AnimationMessage msg) {
 		GameData gameData = EngineStorage.gameData;
 
 		switch (msg) {
 			case MsgStartUnitAnimation mSUA:
 				MapUnit unit = gameData.GetUnit(mSUA.unitID);
-				// Preferences: our units' animations and other civs'.
-				if (unit != null && !(unit.owner == game.controller ? PreferencesSettings.GetAnimateFriendlyUnits() : PreferencesSettings.GetAnimateEnemyUnits())) {
+				// Civ3's preferences: battles, and our manual moves, our
+				// automatic ones, other civs' at peace with us, enemies'.
+				if (unit != null && !Animated(unit, mSUA.action)) {
 					mSUA.markCompleted();
 					break;
+				}
+				if (unit != null && mSUA.action is MapUnit.AnimatedAction.RUN or MapUnit.AnimatedAction.WALK
+					&& game.controller.tileKnowledge.isActiveTile(unit.location) && Civ3Preferences.Get(MoveKind(unit, game.controller, show: true))) {
+					game.ensureLocationIsInView(unit.location);
 				}
 				// A plane on a mission is seen from its base or its target.
 				Tile flightTarget = unit != null && mSUA.flying ? FlightTarget(gameData, unit, mSUA) : null;

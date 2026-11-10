@@ -77,6 +77,8 @@ namespace C7GameData {
 		// shown at the start of their turn, and the turn the AIs last talked
 		// to them (TurnHandling.HearFromOthers).
 		public List<string> newsWhileAway = new();
+		// Civ3's preferences the engine follows for this human (PlayerPreferences).
+		public Dictionary<string, bool> preferences = new();
 		// Production queues saved under a name (Shift-Q), to load into a
 		// city (Q); entries as ProductionQueue.Entry.
 		public Dictionary<string, List<string>> savedQueues = new();

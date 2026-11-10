@@ -106,6 +106,12 @@ namespace C7Engine {
 					return m.askWhatNext ? $"{m.Text()} It is now working on {m.city.itemBeingProduced.name}." : m.Text();
 				case MsgProductionSwitched m:
 					return m.Text();
+				case MsgCityCantGrow m:
+					return m.Text();
+				case MsgDealExpired m:
+					return m.Text(gameData);
+				case MsgWonderStarted m:
+					return m.TextFor(viewer);
 				case MsgResistanceQuelled m:
 					return m.resistanceContinues
 						? $"Our troops have quelled {m.stopped} {(m.stopped == 1 ? "resister" : "resisters")} in {m.city.name}."

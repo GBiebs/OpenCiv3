@@ -280,6 +280,9 @@ public partial class Game : Node {
 	// The catch should always catch any error, as it's the general catch
 	// that gives an error if we fail to load for some reason.
 	public override async void _Ready() {
+		unitSelector.NoMoreAutoselectableUnits += OnNoMoreUnitsToMove;
+		Preferences.Changed += OnPreferenceChanged;
+		TreeExiting += () => Preferences.Changed -= OnPreferenceChanged;
 		Global = GetNode<GlobalSingleton>("/root/GlobalSingleton");
 
 		FileDialog = GetNode<Civ3FileDialog>("%LoadDialog");
@@ -1053,6 +1056,21 @@ public partial class Game : Node {
 					TemporaryPopup.Show(this, mPC.Text(), mapView.screenLocationOfTile(mPC.city.location, true));
 				}
 				break;
+			case MsgWonderStarted mWSt:
+				if (Civ3Preferences.Get(Civ3Preferences.ShowWonderInitiation) && mWSt.TextFor(controller) is string started) {
+					productionNews.Enqueue((controller.id, () => TellWonderStarted(mWSt, started)));
+				}
+				break;
+			case MsgCityCantGrow mCCG:
+				if (mCCG.playerId == controller.id && !Civ3Preferences.Get(Civ3Preferences.DisablePopulationLimitWarnings)) {
+					productionNews.Enqueue((controller.id, () => TellCityCantGrow(mCCG)));
+				}
+				break;
+			case MsgDealExpired mDE:
+				if (mDE.playerId == controller.id) {
+					productionNews.Enqueue((controller.id, () => TellDealExpired(mDE)));
+				}
+				break;
 			case MsgProductionSwitched mPSw:
 				if (mPSw.playerId == controller.id) {
 					productionNews.Enqueue((controller.id, () => TellProductionSwitched(mPSw)));
@@ -1258,6 +1276,16 @@ public partial class Game : Node {
 			} catch {
 			}
 
+			// The engine follows this human's preferences (Civ3's), and their
+			// cities in disorder are named (if they want).
+			if (controller.isHuman) {
+				new MsgSetPreferences(controller.id, Civ3Preferences.ForEngine()).send();
+			}
+			List<string> rioting = controller.cities.Where(c => c.isInCivilDisorder).Select(c => c.name).ToList();
+			if (rioting.Count > 0 && Civ3Preferences.Get(Civ3Preferences.ShowCivilDisorder)) {
+				productionNews.Enqueue((controller.id, () => EmitBadNewsSignal($"Civil disorder in {string.Join(", ", rioting)}!")));
+			}
+
 			// Allow fast forwarding in observer mode.
 			if (gameData.observerMode && turnsLeftToFastForward > 0) {
 				--turnsLeftToFastForward;
@@ -1294,6 +1322,22 @@ public partial class Game : Node {
 		});
 		if (doEndTurn) {
 			DoActualEndTurn();
+		}
+	}
+
+	// With nothing left to move: Civ3's "Always Wait at End of Turn" off
+	// ends the turn, once nothing is on the screen or waiting to be shown.
+	private void OnNoMoreUnitsToMove() {
+		if (!Civ3Preferences.Get(Civ3Preferences.AlwaysWaitAtEndOfTurn) && CurrentState == GameState.PlayerTurn && !HasVisibleModal()
+			&& productionNews.Count == 0 && online == null) {
+			OnPlayerEndTurn();
+		}
+	}
+
+	// A preference the engine follows, changed during the game.
+	private void OnPreferenceChanged(Civ3Preferences.Option option) {
+		if (option.engine && controller != null && controller.isHuman && IsInsideTree()) {
+			new MsgSetPreferences(controller.id, Civ3Preferences.ForEngine()).send();
 		}
 	}
 
@@ -1734,7 +1778,7 @@ public partial class Game : Node {
 		if (direction == Vector2.Zero) {
 			return;
 		}
-		mapView.cameraLocation += direction * EdgeScrollSpeed * (float)delta;
+		mapView.cameraLocation += direction * EdgeScrollSpeed * Civ3Preferences.GetMapScrollSpeed() / 100f * (float)delta;
 		// A move being picked follows the tile now under the mouse.
 		if (movePressTile != null && gotoInfo != null) {
 			gotoInfo = GetGotoInfo(mouse);
