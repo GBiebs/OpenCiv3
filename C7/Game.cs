@@ -96,6 +96,8 @@ public class AirTargetInfo {
 	public MapUnit unit;
 	public string action;
 	public Tile mouseTile;
+	// J (or X) with a plane: the planes of its type on its tile re-base too.
+	public bool stack;
 
 	public AirTargetInfo(MapUnit unit, string action) {
 		this.unit = unit;
@@ -2271,6 +2273,19 @@ public partial class Game : Node {
 				Control hud = GetNode<Control>("CanvasLayer/Control");
 				hud.Visible = !hud.Visible;
 				return;
+			case C7Action.CleanUpMap:
+				HideTileInfo();
+				SetGotoMode(false);
+				setBombard(null);
+				SetAirTarget(null);
+				// (Hidden: each frees itself when its time is up.)
+				foreach (TemporaryPopup note in GetChildren().OfType<TemporaryPopup>()) {
+					note.Hide();
+				}
+				return;
+			case C7Action.ToggleUnitButtons:
+				GetNode<UnitButtons>("CanvasLayer/Control/UnitButtons").ToggleLayout();
+				return;
 			case C7Action.CenterOnUnit:
 				if (HasCurrentlySelectedUnit()) {
 					mapView.centerCameraOnTile(CurrentlySelectedUnit.location);
@@ -2382,6 +2397,10 @@ public partial class Game : Node {
 		// it is not the input being pressed.
 		if (currentAction == C7Action.UnitGoto) {
 			this.SetGotoMode(true);
+		}
+		if (currentAction is C7Action.UnitStackGoto or C7Action.UnitStackGotoSameType && CurrentlySelectedUnit.IsAirUnit()
+			&& SelectedUnitCan(C7Action.UnitRebase)) {
+			SetAirTarget(new AirTargetInfo(CurrentlySelectedUnit, C7Action.UnitRebase) { stack = true });
 		}
 		if (currentAction is C7Action.UnitStackGoto or C7Action.UnitStackGotoSameType && SelectedUnitCan(C7Action.UnitGoto)) {
 			this.SetGotoMode(true);
@@ -2707,6 +2726,12 @@ public partial class Game : Node {
 				new MsgAirMove(info.unit.id, info.action == C7Action.UnitAirlift, tile).send();
 			} else {
 				new MsgFlyMission(info.unit.id, info.Mission(), tile).send();
+				if (info.stack) {
+					foreach (MapUnit plane in info.unit.location.unitsOnTile.Where(u => u != info.unit && u.owner == info.unit.owner
+						&& u.unitType == info.unit.unitType && Air.CanFly(u, Air.Mission.Rebase, tile)).ToList()) {
+						new MsgFlyMission(plane.id, Air.Mission.Rebase, tile).send();
+					}
+				}
 			}
 		});
 	}

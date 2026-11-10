@@ -31,6 +31,43 @@ public partial class UnitButtons : VBoxContainer {
 	[Export]
 	HBoxContainer advancedControls;
 
+	// The bar's place along the bottom, kept for Backspace to go back to.
+	private (Vector4 anchors, Vector4 offsets)? bottomBar;
+	// The columns the buttons move into (Godot's row and column containers
+	// can't turn), side by side; made the first time.
+	private HBoxContainer columnsBox;
+
+	// Backspace (Civ3's): the buttons in three rows along the bottom, or in
+	// three columns down the left side.
+	public void ToggleLayout() {
+		HBoxContainer[] rows = [advancedControls, specializedControls, primaryControls];
+		if (columnsBox == null) {
+			columnsBox = new HBoxContainer() { Visible = false };
+			AddChild(columnsBox);
+			foreach (HBoxContainer _ in rows) {
+				columnsBox.AddChild(new VBoxContainer() { Alignment = AlignmentMode.Center });
+			}
+		}
+		bool columns = !columnsBox.Visible;
+		bottomBar ??= (new Vector4(AnchorLeft, AnchorTop, AnchorRight, AnchorBottom), new Vector4(OffsetLeft, OffsetTop, OffsetRight, OffsetBottom));
+		for (int i = 0; i < rows.Length; i++) {
+			Container from = columns ? rows[i] : (Container)columnsBox.GetChild(i);
+			Container to = columns ? (Container)columnsBox.GetChild(i) : rows[i];
+			foreach (Node button in from.GetChildren()) {
+				button.Reparent(to);
+			}
+			rows[i].Visible = !columns;
+		}
+		columnsBox.Visible = columns;
+		if (columns) {
+			SetAnchorsAndOffsetsPreset(LayoutPreset.CenterLeft, LayoutPresetMode.Minsize, 8);
+		} else {
+			(Vector4 a, Vector4 o) = bottomBar.Value;
+			(AnchorLeft, AnchorTop, AnchorRight, AnchorBottom) = (a.X, a.Y, a.Z, a.W);
+			(OffsetLeft, OffsetTop, OffsetRight, OffsetBottom) = (o.X, o.Y, o.Z, o.W);
+		}
+	}
+
 	private static readonly string[] terraformOrder = [
 		C7Action.UnitBuildRoad,
 		C7Action.UnitBuildRailroad,
