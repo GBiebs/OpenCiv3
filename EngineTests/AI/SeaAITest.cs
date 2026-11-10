@@ -175,6 +175,25 @@ public class SeaAITest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.True(swordsman.IsLoaded());
 	}
 
+	// Units bound for the same place all gather in one port, the one
+	// nearest it, wherever they start (found by the soak: an invasion
+	// waiting in seven ports at once never sailed).
+	[Fact]
+	public void TravellersGatherInThePortNearestTheirDestination() {
+		IGrouping<int, Tile> home = Continents()[0];
+		Tile first = PortSite(home);
+		CityInteractions.BuildCity(first, us, "First");
+		Tile destination = OverseasSite(first);
+		Tile second = home.Where(t => t.IsAllowCities() && t.NeighborsOcean() && t.unitsOnTile.Count == 0 && !t.hasGoodyHut
+				&& gameData.cities.All(c => c.location.DistanceTo(t) > 4))
+			.OrderByDescending(t => t.DistanceTo(destination)).First();
+		CityInteractions.BuildCity(second, us, "Second");
+		Tile nearer = first.DistanceTo(destination) <= second.DistanceTo(destination) ? first : second;
+
+		Assert.Same(nearer, SeaAI.MusterPort(us, first, destination).location);
+		Assert.Same(nearer, SeaAI.MusterPort(us, second, destination).location);
+	}
+
 	[Fact]
 	public void WarshipsAttackShipsTheyCanBeat() {
 		Tile portSite = PortSite(Continents()[0]);

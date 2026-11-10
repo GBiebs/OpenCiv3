@@ -347,7 +347,7 @@ namespace C7Engine {
 			} else if (unit.unitType.name == "Settler") {
 				SettlerAIData settle = SettlerAI.MakeAiData(unit, player);
 				if (settle.goal == SettlerAIData.SettlerGoal.JOIN_CITY && SeaAI.OverseasSettlerSite(unit, player) is Tile site && site != Tile.NONE
-					&& SeaAI.NearestPort(player, unit.location) is City port) {
+					&& SeaAI.MusterPort(player, unit.location, site) is City port) {
 					log.Information($"{unit} is to be shipped to a site overseas at {site}, from {port.name}");
 					return new OverseasAI(new OverseasAIData { destination = site, port = port.location });
 				}
@@ -386,7 +386,7 @@ namespace C7Engine {
 
 				// Or across the water, if there's nothing to attack here.
 				if (SeaAI.OverseasAttackTarget(unit, player) is Tile target && target != Tile.NONE
-					&& SeaAI.NearestPort(player, unit.location) is City port) {
+					&& SeaAI.MusterPort(player, unit.location, target) is City port) {
 					log.Information($"{unit} is to be shipped to attack {target.cityAtTile?.name ?? target.ToString()}, from {port.name}");
 					return new OverseasAI(new OverseasAIData { destination = target, port = port.location, attack = true });
 				}

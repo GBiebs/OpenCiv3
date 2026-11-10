@@ -83,6 +83,13 @@ namespace C7Engine {
 			return Ports(player, from.continent).OrderBy(c => c.location.DistanceTo(from)).FirstOrDefault();
 		}
 
+		// Where units on this continent bound for the destination gather for
+		// their ferry: our port there nearest the destination, so all of them
+		// wait in one place and the crossing is short.
+		public static City MusterPort(Player player, Tile from, Tile destination) {
+			return Ports(player, from.continent).OrderBy(c => c.location.DistanceTo(destination)).ThenBy(c => c.location.DistanceTo(from)).FirstOrDefault();
+		}
+
 		// Whether the player knows how to build a ferry (unique units and
 		// resources aside: this is only a guide for plans).
 		public static bool KnowsFerries(Player player) {
