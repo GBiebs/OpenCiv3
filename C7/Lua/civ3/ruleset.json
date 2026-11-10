@@ -13119,6 +13119,7 @@
     "landTilesPerGoodyHut": 55,
     "goodyHutSpacing": 4,
     "goodyHutAdvancedBarbarianPercent": 25,
+    "barbarianAdvancedUnitCivsWithTech": 2,
     "pollutionLeftByReducingBuildings": 1,
     "productionSwitchKeptPercent": 50,
     "enslaveChanceOneIn": 3,

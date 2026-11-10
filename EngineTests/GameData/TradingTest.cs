@@ -196,6 +196,21 @@ public class TradingTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(before + gameData.rules.attitude.soldUsWorkers, us.playerRelationships[them.id].attitudePenalty);
 	}
 
+	// As in Civ3, only a worker in one of its owner's cities can be traded.
+	[Fact]
+	public void OnlyAWorkerInACityCanBeTraded() {
+		Tile outside = theirCapital.location.neighbors.Values.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity());
+		MapUnit afield = gameData.SpawnUnit(them, gameData.unitPrototypes.Find(u => u.name == "Worker"), outside);
+		Assert.DoesNotContain(afield, Trading.TradeableWorkers(them));
+
+		// One that leaves its city before the deal is made stays.
+		MapUnit worker = gameData.SpawnUnit(them, gameData.unitPrototypes.Find(u => u.name == "Worker"), theirCapital.location);
+		Assert.Contains(worker, Trading.TradeableWorkers(them));
+		gameData.TeleportUnit(worker, outside);
+		us.ExecuteDeal(gameData, them, new TradeOffer() { workers = [worker.id] }, new TradeOffer { gold = 10 });
+		Assert.Equal(them, worker.owner);
+	}
+
 	[Fact]
 	public void AIsSwapMapsAndSpareResources() {
 		foreach (Player p in new[] { us, them }) {

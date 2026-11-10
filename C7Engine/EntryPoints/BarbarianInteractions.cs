@@ -30,7 +30,7 @@ public class BarbarianInteractions {
 
 		// Spawn a unit
 		foreach (Tile camp in spawningCamps) {
-			UnitPrototype unitType = SelectBarbarianUnitType(gameData.barbarianInfo, camp);
+			UnitPrototype unitType = SelectBarbarianUnitType(gameData, camp);
 			Tile tile = SelectSpawnTile(barbPlayer, camp, unitType);
 			if (tile != null) {
 				gameData.SpawnUnit(barbPlayer, unitType, tile);
@@ -63,14 +63,16 @@ public class BarbarianInteractions {
 
 	}
 
-	public static UnitPrototype SelectBarbarianUnitType(BarbarianInfo barbInfo, Tile tile) {
+	public static UnitPrototype SelectBarbarianUnitType(GameData gameData, Tile tile) {
+		BarbarianInfo barbInfo = gameData.barbarianInfo;
 		// Coastal camps have a 20% chance of spawning a sea unit
 		if (tile.NeighborsWater() && GameData.rng.Next(100) < 20) {
 			return barbInfo.barbarianSeaUnitProto;
 		}
 
-		// Land units are generated in a 3:1 ratio, three advanced units for every basic barbarian
-		return GameData.rng.Next(100) < 25 ? barbInfo.advancedBarbarian : barbInfo.basicBarbarian;
+		// Land units: one in four the advanced unit, once it's out (until
+		// then only the basic one).
+		return barbInfo.AdvancedUnitAvailable(gameData) && GameData.rng.Next(100) < 25 ? barbInfo.advancedBarbarian : barbInfo.basicBarbarian;
 	}
 
 	public static Tile SelectSpawnTile(Player player, Tile camp, UnitPrototype unitType) {

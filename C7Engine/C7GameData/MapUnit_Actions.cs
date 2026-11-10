@@ -462,8 +462,10 @@ public partial class MapUnit {
 			defender.animate(MapUnit.AnimatedAction.ATTACK1);
 			await attacker.animateAsync(MapUnit.AnimatedAction.ATTACK1);
 			if (GameData.rng.NextDouble() < AttackerOdds()) {
+				// Neither side retreats from an opponent down to its last hit
+				// point (Civ3; players' reports).
 				if (defenderEligibleToRetreat &&
-					defender.hitPointsRemaining == 1 &&
+					defender.hitPointsRemaining == 1 && attacker.hitPointsRemaining > 1 &&
 					GameData.rng.NextDouble() < defender.RetreatChance(attacker, false)) {
 					// TODO: Defender retreat behavior requires some more work. There's an issue for it here:
 					// https://github.com/C7-Game/Prototype/issues/274
@@ -480,7 +482,7 @@ public partial class MapUnit {
 					break;
 				}
 			} else {
-				if (attacker.hitPointsRemaining == 1 &&
+				if (attacker.hitPointsRemaining == 1 && defender.hitPointsRemaining > 1 &&
 					GameData.rng.NextDouble() < attacker.RetreatChance(defender, true)) {
 					result = CombatResult.AttackerRetreated;
 					break;

@@ -112,6 +112,10 @@ namespace C7GameData {
 		public int LandTilesPerGoodyHut = 55;
 		public int GoodyHutSpacing = 4;
 		public int GoodyHutAdvancedBarbarianPercent = 25;
+		// Barbarians field their advanced unit (Horsemen) only once this many
+		// civs know the advance it needs (Horseback Riding); before that,
+		// their basic unit (the user's account of Civ3, 2026-11-09).
+		public int BarbarianAdvancedUnitCivsWithTech = 2;
 
 		// The chance, in percent, each of a city's pollution points gives each
 		// turn that one of its tiles gets polluted (see Pollution). Civ3's

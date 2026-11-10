@@ -219,7 +219,7 @@ namespace C7GameData {
 				case Outcome.Barbarians: {
 						Player barbarians = gameData.players.Find(p => p.isBarbarians);
 						List<Tile> sites = BarbarianSites(tile);
-						UnitPrototype type = GameData.rng.Next(100) < rules.GoodyHutAdvancedBarbarianPercent
+						UnitPrototype type = gameData.barbarianInfo.AdvancedUnitAvailable(gameData) && GameData.rng.Next(100) < rules.GoodyHutAdvancedBarbarianPercent
 							? gameData.barbarianInfo.advancedBarbarian : gameData.barbarianInfo.basicBarbarian;
 						for (int i = 0; i < rules.GoodyHutBarbarians && sites.Count > 0; ++i) {
 							Tile site = sites[GameData.rng.Next(sites.Count)];

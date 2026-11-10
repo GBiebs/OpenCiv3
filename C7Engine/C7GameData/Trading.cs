@@ -52,9 +52,13 @@ namespace C7GameData {
 			return giver.cities.Where(c => !c.IsCapital()).ToList();
 		}
 
+		// Only a worker standing in one of its owner's cities can be traded
+		// (as in Civ3).
 		public static List<MapUnit> TradeableWorkers(Player giver) {
-			return giver.units.Where(u => u.unitType.isWorker && !u.IsLoaded()).ToList();
+			return giver.units.Where(u => u.unitType.isWorker && !u.IsLoaded() && InOwnCity(u)).ToList();
 		}
+
+		private static bool InOwnCity(MapUnit unit) => unit.location.cityAtTile?.owner == unit.owner;
 
 		// The civs `giver` could introduce `receiver` to.
 		public static List<Player> Introductions(GameData gameData, Player giver, Player receiver) {
@@ -97,7 +101,8 @@ namespace C7GameData {
 				}
 			}
 			foreach (ID id in offer.workers) {
-				MapUnit worker = gameData.mapUnits.Find(u => u.id == id && u.owner == giver);
+				// (It may have left its city since the deal was made.)
+				MapUnit worker = gameData.mapUnits.Find(u => u.id == id && u.owner == giver && InOwnCity(u));
 				City capital = receiver.cities.Find(c => c.IsCapital()) ?? receiver.cities.FirstOrDefault();
 				if (worker != null && capital != null) {
 					gameData.TransferUnit(worker, receiver);

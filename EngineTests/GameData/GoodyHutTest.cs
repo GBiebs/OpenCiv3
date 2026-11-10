@@ -212,8 +212,10 @@ public class GoodyHutTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains(hut.unitsOnTile, u => u.owner == us && u.unitType.actions.Contains(UnitAction.BuildCity));
 
 		Player barbarians = gameData.players.Find(p => p.isBarbarians);
-		// The advanced barbarian type this often (a rule).
+		// The advanced barbarian type this often (a rule), once it's out
+		// (BarbarianUnitTest; here no civ needs its advance).
 		gameData.rules.GoodyHutAdvancedBarbarianPercent = 100;
+		gameData.rules.BarbarianAdvancedUnitCivsWithTech = 0;
 		Assert.Equal($"We have disturbed an angry Olmec {gameData.barbarianInfo.advancedBarbarian.name}.", Apply(GoodyHuts.Outcome.Barbarians));
 		Assert.Equal(gameData.rules.GoodyHutBarbarians, hut.neighbors.Values.Sum(n => n.unitsOnTile.Count(u => u.owner == barbarians)));
 

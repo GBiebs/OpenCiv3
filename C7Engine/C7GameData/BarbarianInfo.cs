@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace C7GameData {
@@ -13,6 +14,19 @@ namespace C7GameData {
 		public string barbarianSeaUnit;
 		[JsonIgnore] public UnitPrototype basicBarbarian;
 		[JsonIgnore] public UnitPrototype advancedBarbarian;
+
+		// Whether the advanced unit is out yet: enough civs know the advance
+		// it needs (Rules.BarbarianAdvancedUnitCivsWithTech).
+		public bool AdvancedUnitAvailable(GameData gameData) {
+			if (advancedBarbarian == null) {
+				return false;
+			}
+			if (advancedBarbarian.requiredTech == null) {
+				return true;
+			}
+			return gameData.players.Count(p => !p.isBarbarians && !p.defeated && p.HasTech(advancedBarbarian.requiredTech.id))
+				>= gameData.rules.BarbarianAdvancedUnitCivsWithTech;
+		}
 		[JsonIgnore] public UnitPrototype barbarianSeaUnitProto;
 
 		public int defaultHitpoints = 2;
