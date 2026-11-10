@@ -744,6 +744,17 @@ namespace C7GameData {
 			return working.Where(b => !b.replacesOtherBuildings).Sum(b => b.productionBonus) + bestPlant;
 		}
 
+		// A city's commerce by the sliders (rates in tenths): science's and
+		// luxury's shares rounded to the nearest (a half up), taxes the rest,
+		// as Civ3 players report it (10% luxury of 5 commerce gives 1; it was
+		// rounded down, so small cities got none and the slider had to go
+		// higher than in Civ3).
+		public static (int beakers, int luxury, int taxes) SplitCommerce(int commerce, int scienceRate, int luxuryRate) {
+			int beakers = (int)Math.Floor(commerce * scienceRate / 10.0 + 0.5);
+			int luxury = Math.Min((int)Math.Floor(commerce * luxuryRate / 10.0 + 0.5), commerce - beakers);
+			return (beakers, luxury, commerce - beakers - luxury);
+		}
+
 		public CommerceBreakdown CurrentCommerceYieldRaw(bool respectCivilDisorder = true) {
 			int uncorruptedCommerce = location.CommerceYield(this).yield;
 			foreach (CityResident r in residents) {
@@ -780,9 +791,7 @@ namespace C7GameData {
 			double taxMultiplier = 1 + activeBuildings.Sum(b => b.commerceBonus);
 
 			// Split the commerce first, then apply the building bonuses to each part.
-			int baseBeakers = (int)Math.Floor(commerce.useful * owner.scienceRate / 10.0);
-			int baseHappiness = (int)Math.Floor(commerce.useful * owner.luxuryRate / 10.0);
-			int baseTaxes = commerce.useful - baseBeakers - baseHappiness;
+			(int baseBeakers, int baseHappiness, int baseTaxes) = SplitCommerce(commerce.useful, owner.scienceRate, owner.luxuryRate);
 
 			// TODO: Science/Luxury commerce doesn't seem to be tabulating correctly, can be negative in some cases with specialists, might be ImportCiv3 issue?
 			CommerceBreakdown result = new();
