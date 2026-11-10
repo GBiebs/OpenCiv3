@@ -437,6 +437,15 @@ namespace C7GameData {
 			return renderedObsoleteBy != null && owner.knownTechs.Contains(renderedObsoleteBy.id);
 		}
 
+		// Whether this building does what it does for its owner: not once
+		// it's obsolete, nor under another government than the one it needs
+		// (Civ3's Secret Police HQ: "Changing from Communism will cause the
+		// Secret Police HQ bonuses to stop."). Its culture it makes anyway
+		// (Civ3's obsolete wonders keep theirs), and it still costs upkeep.
+		public bool Works(Player owner) {
+			return !IsObsolete(owner) && (requiredGovernment == null || owner.government?.id == requiredGovernment.id);
+		}
+
 		public bool isGreatWonderObsolete(Player owner) {
 			return greatWonderProperties != null && IsObsolete(owner);
 		}

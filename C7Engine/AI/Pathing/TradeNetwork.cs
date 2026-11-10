@@ -155,7 +155,7 @@ namespace C7Engine.Pathing {
 		}
 
 		private static bool HasWorking(City city, Func<Building, bool> predicate) {
-			return city.GetBuildings().Any(cb => predicate(cb.building) && !cb.building.IsObsolete(city.owner));
+			return city.GetBuildings().Any(cb => predicate(cb.building) && cb.building.Works(city.owner));
 		}
 
 		// Enemy ships next to the city blockade its harbor.

@@ -649,8 +649,7 @@ namespace C7GameData {
 				result.wealthProduction += cityCommerce.wealth;
 				result.tourism += city.TourismGold();
 
-				// TODO: Skip obsolete buildings (see Building.IsObsolete).
-				interestBuildings += city.constructed_buildings.Count(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.TreasuryEarnsInterest));
+				interestBuildings += city.constructed_buildings.Count(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.TreasuryEarnsInterest) && cb.building.Works(this));
 
 				foreach (CityResident cr in city.residents) {
 					// Split city income into "regular citizen" and "tax collector" buckets
@@ -917,15 +916,14 @@ namespace C7GameData {
 			bool isCommercialCiv = civilization.traits.Contains(Civilization.Trait.Commercial);
 			float commercialCivFactor = isCommercialCiv ? .25f : 0;
 
-			// TODO: Handle the SPHQ.
+			// The Forbidden Palace and Secret Police HQ.
 			int numCorruptionReducingSmallWondersInEmpire = 0;
 			foreach (City c in cities) {
 				// We use constructed_buildings here because great wonders can't
 				// supply small wonders like forbidden palaces, so we can avoid
 				// doing extra work for each city.
 				foreach (CityBuilding cb in c.constructed_buildings) {
-					// TODO: Skip obsolete buildings (see Building.IsObsolete).
-					if (cb.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption)) {
+					if (cb.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption) && cb.building.Works(this)) {
 						++numCorruptionReducingSmallWondersInEmpire;
 					}
 				}
@@ -1080,7 +1078,9 @@ namespace C7GameData {
 		}
 
 		public void HandleCityUpdates(GameData gameData) {
-			foreach (City c in cities) {
+			// (A copy: borders growing over a goody hut can bring in a new
+			// city, which starts its updates next turn.)
+			foreach (City c in cities.ToList()) {
 				// Garrisons quell resisters (and peace ends their resistance)
 				// before the city works its tiles this turn.
 				int stopped = Resistance.Update(gameData, c);
@@ -1394,8 +1394,7 @@ namespace C7GameData {
 				// We use constructed_buildings here because great wonders can't
 				// supply small wonders like forbidden palaces, so we can avoid
 				// doing extra work for each city.
-				// TODO: Skip obsolete buildings (see Building.IsObsolete).
-				if (c.constructed_buildings.Any(x => x.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption))) {
+				if (c.constructed_buildings.Any(x => x.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption) && x.building.Works(this))) {
 					citiesWithCorruptionWonders.Add(c);
 				}
 			}
@@ -1451,7 +1450,7 @@ namespace C7GameData {
 					continue;
 				}
 				foreach (CityBuilding cb in c.constructed_buildings) {
-					if (cb.building.IsObsolete(this)) {
+					if (!cb.building.Works(this)) {
 						continue;
 					}
 					if (cb.building.continentalMoodEffects && !c.IsOnSameContinentAs(city)) {
@@ -1582,7 +1581,7 @@ namespace C7GameData {
 		// Whether any of this player's cities has constructed a building that
 		// matches the predicate and isn't obsolete.
 		public bool OwnsBuilding(Func<Building, bool> predicate) {
-			return cities.Any(c => c.constructed_buildings.Any(cb => !cb.building.IsObsolete(this) && predicate(cb.building)));
+			return cities.Any(c => c.constructed_buildings.Any(cb => cb.building.Works(this) && predicate(cb.building)));
 		}
 
 		// The extra moves our ships get: one each from the Great Lighthouse and
@@ -1594,10 +1593,10 @@ namespace C7GameData {
 			foreach (City city in cities) {
 				foreach (CityBuilding cb in city.constructed_buildings) {
 					Building b = cb.building;
-					if (b.HasWonderFlag(SaveBuilding.WonderFlag.IncreasedShipMovement) && !b.IsObsolete(this)) {
+					if (b.HasWonderFlag(SaveBuilding.WonderFlag.IncreasedShipMovement) && b.Works(this)) {
 						bonus += 1;
 					}
-					if (b.HasWonderFlag(SaveBuilding.WonderFlag.PlusTwoShipMovement) && !b.IsObsolete(this)) {
+					if (b.HasWonderFlag(SaveBuilding.WonderFlag.PlusTwoShipMovement) && b.Works(this)) {
 						bonus += 2;
 					}
 				}

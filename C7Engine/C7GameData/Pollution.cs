@@ -21,7 +21,7 @@ namespace C7GameData {
 		private static ILogger log = Log.ForContext(typeof(Pollution));
 
 		private static IEnumerable<Building> WorkingBuildings(City city) {
-			return city.GetBuildings().Select(cb => cb.building).Where(b => !b.IsObsolete(city.owner));
+			return city.GetBuildings().Select(cb => cb.building).Where(b => b.Works(city.owner));
 		}
 
 		public static int BuildingPoints(City city) {

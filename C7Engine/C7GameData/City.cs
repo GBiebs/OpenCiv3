@@ -237,6 +237,12 @@ namespace C7GameData {
 				this.shieldsStored = shields;
 		}
 
+		// The buildings that do what they do (Building.Works): not obsolete
+		// ones, nor a Secret Police HQ outside Communism.
+		public IEnumerable<CityBuilding> WorkingBuildings() {
+			return GetBuildings().Where(cb => cb.building.Works(owner));
+		}
+
 		public List<CityBuilding> GetBuildings() {
 			HashSet<Building> buildingsSeen = new();
 			List<CityBuilding> result = new();
@@ -588,7 +594,7 @@ namespace C7GameData {
 
 			// If we're a city trying to grow into a metropolis, we need a
 			// hospital.
-			if (GetBuildings().Any(cb => cb.building.allowsCitySize3 && !cb.building.IsObsolete(owner))) {
+			if (GetBuildings().Any(cb => cb.building.allowsCitySize3 && cb.building.Works(owner))) {
 				return int.MaxValue;
 			}
 
@@ -600,12 +606,11 @@ namespace C7GameData {
 		public bool CanGrowIntoCity() {
 			// TODO: lakes are bodies of water under 20 tiles (https://civilization.fandom.com/wiki/Fresh_Water_Lake_(Civ3))
 			return hasFreshwaterAccess
-				|| GetBuildings().Any(cb => (cb.building.allowsCitySize2 || cb.building.allowsCitySize3) && !cb.building.IsObsolete(owner));
+				|| GetBuildings().Any(cb => (cb.building.allowsCitySize2 || cb.building.allowsCitySize3) && cb.building.Works(owner));
 		}
 
 		public bool HasGranary() {
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			foreach (CityBuilding cb in GetBuildings()) {
+			foreach (CityBuilding cb in WorkingBuildings()) {
 				if (cb.building.doublesCityGrowthRate) {
 					return true;
 				}
@@ -614,8 +619,7 @@ namespace C7GameData {
 		}
 
 		public bool HasWalls() {
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			foreach (CityBuilding cb in GetBuildings()) {
+			foreach (CityBuilding cb in WorkingBuildings()) {
 				if (cb.building.providesWalls) {
 					return true;
 				}
@@ -638,8 +642,7 @@ namespace C7GameData {
 			bool isTown = residents.Count <= gD.rules.MaximumLevel1CitySize;
 
 			// Buildings, such as walls, can also give bonuses.
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			foreach (CityBuilding cb in GetBuildings()) {
+			foreach (CityBuilding cb in WorkingBuildings()) {
 				if (cb.building.combatDefenseBonus is not StrengthBonus defenseBonus) {
 					continue;
 				}
@@ -662,7 +665,7 @@ namespace C7GameData {
 		// Whether this city has a building that lets it build armies (the
 		// Military Academy).
 		public bool HasBuildingAllowingArmies() {
-			return constructed_buildings.Any(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.AllowsBuildArmy) && !cb.building.IsObsolete(owner));
+			return constructed_buildings.Any(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.AllowsBuildArmy) && cb.building.Works(owner));
 		}
 
 		public IProducible ComputeTurnProduction() {
@@ -758,7 +761,7 @@ namespace C7GameData {
 		public double ProductionBonus() {
 			List<Building> present = GetBuildings().Select(cb => cb.building).ToList();
 			List<Building> working = present
-				.Where(b => b.productionBonus > 0 && !b.IsObsolete(owner))
+				.Where(b => b.productionBonus > 0 && b.Works(owner))
 				.Where(b => b.requiredBuilding == null || b.numberOfRequiredBuildings > 0 || present.Contains(b.requiredBuilding))
 				.ToList();
 			double bestPlant = working.Where(b => b.replacesOtherBuildings).Select(b => b.productionBonus).DefaultIfEmpty(0).Max();
@@ -804,7 +807,7 @@ namespace C7GameData {
 			// the empire each time.
 			List<Building> activeBuildings = constructed_buildings
 				.Select(cb => cb.building)
-				.Where(b => !b.IsObsolete(owner))
+				.Where(b => b.Works(owner))
 				.ToList();
 			double researchMultiplier = 1 + activeBuildings.Sum(b => b.researchBonus)
 				+ (owner.InAgeOfScience() ? EngineStorage.gameData.rules.AgeOfScienceResearchBonus / 100.0 : 0);
@@ -867,7 +870,8 @@ namespace C7GameData {
 			// Harbors, Marketplaces, Banks, Airports, Commercial Docks and Stock
 			// Exchanges, which are the buildings with the commercial trait).
 			bool tradePaidFor = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.PaysTradeMaintenance));
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
+			// (Obsolete buildings still cost their upkeep: Civ3 lets them be
+			// sold.)
 			foreach (CityBuilding cb in constructed_buildings) {
 				if (tradePaidFor && cb.building.traits.Contains(Civilization.Trait.Commercial)) {
 					continue;
@@ -959,7 +963,8 @@ namespace C7GameData {
 		}
 
 		public int GetCulturePerTurnRaw() {
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
+			// Obsolete buildings too: Civ3's obsolete wonders keep making
+			// culture.
 			return GetBuildings().Sum(CulturePerTurnFrom);
 		}
 
@@ -1204,8 +1209,9 @@ namespace C7GameData {
 			gameData.mapUnits.Add(newUnit);
 			owner.AddUnit(newUnit);
 
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			GetBuildings().ForEach(b => b.building.onFinishedUnitProduction?.Invoke(newUnit));
+			foreach (CityBuilding b in WorkingBuildings()) {
+				b.building.onFinishedUnitProduction?.Invoke(newUnit);
+			}
 		}
 
 		// The list of tiles that could be worked by this city.
@@ -1313,11 +1319,10 @@ namespace C7GameData {
 		}
 
 		public void CalculateCorruption(GameData gameData) {
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			List<CityBuilding> buildings = GetBuildings();
+			List<CityBuilding> buildings = WorkingBuildings().ToList();
 			int numAntiCorruptionBuildings = buildings.Count(x => x.building.reducesCorruption);
 
-			// TODO: Handle the SPHQ.
+			// The Forbidden Palace and Secret Police HQ.
 			int numCorruptionReducingSmallWondersInCity = buildings.Count(x => x.building.HasWonderFlag(SaveBuilding.WonderFlag.ReducesCorruption));
 
 			corruption = CalculateDistanceCorruption(gameData, numAntiCorruptionBuildings)
@@ -1347,7 +1352,7 @@ namespace C7GameData {
 		// the borders need to be updated.
 		public bool UpdateCultureAndCheckForExpansion() {
 			int start = GetBorderExpansionLevel();
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
+			// (Obsolete buildings too, see GetCulturePerTurnRaw.)
 			foreach (CityBuilding cb in GetBuildings()) {
 				cb.totalCulture += CulturePerTurnFrom(cb);
 			}
@@ -1524,10 +1529,7 @@ namespace C7GameData {
 
 			// Building happiness/unhappiness, which only affects the unhappy to
 			// content transition, nothing with happy faces.
-			foreach (CityBuilding cb in GetBuildings()) {
-				if (cb.building.IsObsolete(owner)) {
-					continue;
-				}
+			foreach (CityBuilding cb in WorkingBuildings()) {
 				unhappyToContentMoves -= cb.building.unhappyFacesInCity;
 				unhappyToContentMoves += cb.building.contentFacesInCity;
 			}
@@ -1549,8 +1551,7 @@ namespace C7GameData {
 
 			// As do luxury resources, which can be boosted by marketplaces.
 			int effectiveLux = GetLuxuries(gameData).Keys.Count;
-			// TODO: Skip obsolete buildings (see Building.IsObsolete).
-			if (GetBuildings().Any(x => x.building.increasesLuxuryTrade)) {
+			if (WorkingBuildings().Any(x => x.building.increasesLuxuryTrade)) {
 				effectiveLux = (int)(Math.Floor(effectiveLux / 2f) * Math.Ceiling(effectiveLux / 2f) + Math.Ceiling(effectiveLux / 2f));
 			}
 			contentToHappyMoves += effectiveLux;

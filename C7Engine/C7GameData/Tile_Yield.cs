@@ -74,7 +74,7 @@ public partial class Tile {
 
 		private Yield ApplyCityModifiers(City city) {
 			// An obsolete building (the Colossus, from Flight) no longer helps.
-			city.GetBuildings().Where(b => !b.building.IsObsolete(city.owner)).ToList().ForEach(b => b.building.tileModifier?.Invoke(this));
+			city.GetBuildings().Where(b => b.building.Works(city.owner)).ToList().ForEach(b => b.building.tileModifier?.Invoke(this));
 			return this;
 		}
 

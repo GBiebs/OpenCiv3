@@ -91,7 +91,7 @@ namespace C7GameData {
 			if (unhappy > 0) {
 				// A Police Station takes a quarter away (rounding the rest
 				// down), Universal Suffrage one citizen in every city.
-				if (city.constructed_buildings.Any(cb => cb.building.reducesWarWeariness && !cb.building.IsObsolete(owner))) {
+				if (city.constructed_buildings.Any(cb => cb.building.reducesWarWeariness && cb.building.Works(owner))) {
 					unhappy = unhappy * (100 - rules.policeStationReductionPercent) / 100;
 				}
 				if (owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.ReducesWarWearinessAllCities))) {

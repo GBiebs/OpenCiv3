@@ -38,7 +38,7 @@ public partial class MapUnit {
 	// Whether the city has the building that trains veterans of this unit's
 	// kind (Barracks, Harbor, Airport), where it can upgrade and heal fully.
 	private bool CityTrainsMyKind(City city) {
-		return city.GetBuildings().Any(cb => !cb.building.IsObsolete(owner) && (
+		return city.GetBuildings().Any(cb => cb.building.Works(owner) && (
 			(IsLandUnit() && cb.building.providesVeteranGroundUnits)
 			|| (IsWaterUnit() && cb.building.providesVeteranSeaUnits)
 			|| (IsAirUnit() && cb.building.providesVeteranAirUnits)));

@@ -54,7 +54,7 @@ namespace C7GameData {
 
 		public static bool HasIntelligenceAgency(Player player) {
 			return player.cities.Any(c => c.constructed_buildings.Any(cb => cb.building.HasWonderFlag(SaveBuilding.WonderFlag.AllowsSpyMissions)
-				&& !cb.building.IsObsolete(player)));
+				&& cb.building.Works(player)));
 		}
 
 		public static bool HasSpy(Player us, Player them) {
