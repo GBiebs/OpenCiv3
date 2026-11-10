@@ -256,6 +256,7 @@ namespace C7GameData.Save {
 				Elimination.PlaceKings(EngineStorage.gameData);
 				Princess.Place(EngineStorage.gameData);
 				VictoryPoints.MarkStartingLocations(EngineStorage.gameData);
+				BarbarianInteractions.GuardCamps(EngineStorage.gameData);
 			}
 			foreach (Player p in EngineStorage.gameData.players) {
 				// Backfill citizen assignments for scenarios that don't specify

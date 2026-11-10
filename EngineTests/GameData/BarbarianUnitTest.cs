@@ -48,6 +48,18 @@ public class BarbarianUnitTest : IClassFixture<SaveGameFixture> {
 		Assert.InRange(Advanced(400), 50, 150);
 	}
 
+	// Once it's out, camps still raise the basic unit too: the advanced
+	// one only this percent of the time (a rule).
+	[Fact]
+	public void HowOftenIsARule() {
+		Learn(2);
+		Assert.Equal(25, gameData.rules.BarbarianAdvancedUnitPercent);
+		gameData.rules.BarbarianAdvancedUnitPercent = 0;
+		Assert.Equal(0, Advanced(200));
+		gameData.rules.BarbarianAdvancedUnitPercent = 100;
+		Assert.Equal(200, Advanced(200));
+	}
+
 	[Fact]
 	public void TheNumberOfCivsIsARule() {
 		gameData.rules.BarbarianAdvancedUnitCivsWithTech = 1;

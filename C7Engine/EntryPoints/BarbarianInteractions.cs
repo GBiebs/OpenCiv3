@@ -70,9 +70,28 @@ public class BarbarianInteractions {
 			return barbInfo.barbarianSeaUnitProto;
 		}
 
-		// Land units: one in four the advanced unit, once it's out (until
-		// then only the basic one).
-		return barbInfo.AdvancedUnitAvailable(gameData) && GameData.rng.Next(100) < 25 ? barbInfo.advancedBarbarian : barbInfo.basicBarbarian;
+		// Land units: sometimes the advanced unit, once it's out (until then
+		// only the basic one).
+		return barbInfo.AdvancedUnitAvailable(gameData) && GameData.rng.Next(100) < gameData.rules.BarbarianAdvancedUnitPercent
+			? barbInfo.advancedBarbarian : barbInfo.basicBarbarian;
+	}
+
+	// A camp is never empty when it appears (Civ3's camps come with a
+	// guard): each camp of a new game gets the basic barbarian unit. (A
+	// game whose barbarians have units already began: a camp emptied since
+	// stays empty.)
+	public static void GuardCamps(GameData gameData) {
+		Player barbarians = gameData.players.Find(p => p.isBarbarians);
+		UnitPrototype guard = gameData.barbarianInfo.basicBarbarian;
+		if (barbarians == null || guard == null || barbarians.units.Count > 0
+			|| gameData.barbarianInfo.barbarianActivity == BarbarianActivity.None) {
+			return;
+		}
+		foreach (Tile camp in gameData.map.barbarianCamps) {
+			if (!camp.unitsOnTile.Any(u => u.owner == barbarians)) {
+				gameData.SpawnUnit(barbarians, guard, camp);
+			}
+		}
 	}
 
 	public static Tile SelectSpawnTile(Player player, Tile camp, UnitPrototype unitType) {

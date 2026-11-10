@@ -106,16 +106,19 @@ namespace C7GameData {
 		// else the row at its place), for most civs and for Expansionists. See
 		// GoodyHuts. Placing them on new maps: one for every so many land
 		// tiles, at least so far apart (and from barbarian camps). The angry
-		// tribesmen are of the advanced barbarian type this percent of the time.
+		// tribesmen are always the basic barbarian unit (the user,
+		// 2026-11-10: Horsemen only come from camps).
 		public List<GoodyHutOdds> GoodyHutOdds = GoodyHutOddsRow.Standard();
 		public List<GoodyHutOdds> ExpansionistGoodyHutOdds = GoodyHutOddsRow.Expansionist();
 		public int LandTilesPerGoodyHut = 55;
 		public int GoodyHutSpacing = 4;
-		public int GoodyHutAdvancedBarbarianPercent = 25;
-		// Barbarians field their advanced unit (Horsemen) only once this many
-		// civs know the advance it needs (Horseback Riding); before that,
-		// their basic unit (the user's account of Civ3, 2026-11-09).
+		// Camps field their advanced unit (Horsemen) only once this many civs
+		// know the advance it needs (Horseback Riding); before that, their
+		// basic unit (the user's account of Civ3, 2026-11-09). After that,
+		// a land unit a camp raises is the advanced one this percent of the
+		// time, else still the basic one.
 		public int BarbarianAdvancedUnitCivsWithTech = 2;
+		public int BarbarianAdvancedUnitPercent = 25;
 
 		// Civ3's Accelerated Production game setting: what builds and
 		// upgrades cost with it, in percent.

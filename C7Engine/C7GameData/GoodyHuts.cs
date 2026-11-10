@@ -219,8 +219,9 @@ namespace C7GameData {
 				case Outcome.Barbarians: {
 						Player barbarians = gameData.players.Find(p => p.isBarbarians);
 						List<Tile> sites = BarbarianSites(tile);
-						UnitPrototype type = gameData.barbarianInfo.AdvancedUnitAvailable(gameData) && GameData.rng.Next(100) < rules.GoodyHutAdvancedBarbarianPercent
-							? gameData.barbarianInfo.advancedBarbarian : gameData.barbarianInfo.basicBarbarian;
+						// Always the basic unit: the advanced one (Horsemen)
+						// only comes from camps.
+						UnitPrototype type = gameData.barbarianInfo.basicBarbarian;
 						for (int i = 0; i < rules.GoodyHutBarbarians && sites.Count > 0; ++i) {
 							Tile site = sites[GameData.rng.Next(sites.Count)];
 							gameData.SpawnUnit(barbarians, type, site);

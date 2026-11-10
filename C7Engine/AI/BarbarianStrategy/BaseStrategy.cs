@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using C7Engine.AI.UnitAI;
 using C7GameData;
@@ -25,6 +27,9 @@ internal abstract class BaseStrategy : IBarbarianStrategy {
 		if (unit.isFortified)
 			return;
 
+		if (await KeepCamp(player, unit))
+			return;
+
 		var orientation = await Orient(player, unit);
 		var plan = await Decide(player, unit, orientation);
 		var result = await Act(player, unit, plan);
@@ -49,12 +54,58 @@ internal abstract class BaseStrategy : IBarbarianStrategy {
 	}
 
 	/// <summary>
-	/// "Orient: Analyze and synthesize data to form a mental perspective, considering experience,
+	/// Civ3's camps keep their last unit (Conquests players' reports): it
+	/// leaves only to fall on a defenseless unit next to the camp (a worker,
+	/// a settler), and a barbarian next to an empty camp goes back into it.
+	/// True if the unit's turn was played here.
+	/// </summary>
+	private async Task<bool> KeepCamp(Player player, MapUnit unit) {
+		if (!unit.IsLandUnit() || !unit.IsCombatUnit()) {
+			return false;
+		}
+		Tile here = unit.location;
+		if (IsLastUnitInCamp(player, unit)) {
+			if (RaidsFromCamp) {
+				foreach (KeyValuePair<TileDirection, Tile> next in here.neighbors) {
+					if (IsDefenseless(next.Value, player) && unit.CanEnter(next.Value)) {
+						await unit.Move(next.Key);
+						return true;
+					}
+				}
+			}
+			return false; // (Decide keeps it in the camp.)
+		}
+		foreach (KeyValuePair<TileDirection, Tile> next in here.neighbors) {
+			if (next.Value.hasBarbarianCamp && next.Value.unitsOnTile.Count == 0 && unit.CanEnter(next.Value)) {
+				await unit.Move(next.Key);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// The only barbarian in its camp (its guard).
+	internal static bool IsLastUnitInCamp(Player player, MapUnit unit) {
+		return unit.location.hasBarbarianCamp && unit.location.unitsOnTile.Count(u => u.owner == player) == 1;
+	}
+
+	// Units another civ left on open ground with no defense at all.
+	internal static bool IsDefenseless(Tile tile, Player barbarians) {
+		return tile.cityAtTile == null && tile.unitsOnTile.Count > 0
+			&& tile.unitsOnTile.All(u => u.owner != barbarians && u.IsLandUnit() && u.unitType.defense == 0);
+	}
+
+	// Whether a camp's guard may step out for a defenseless unit next to it
+	// (not when barbarians keep to their camps).
+	protected virtual bool RaidsFromCamp => true;
+
+	/// <summary>
+	/// "Orient:Analyze and synthesize data to form a mental perspective, considering experience,
 	/// culture, and new information. This is considered the most important phase of the OODA loop."
 	/// </summary>
 	protected Task<Orientation> Orient(Player player, MapUnit unit) {
 		return Task.FromResult(new Orientation {
-			IsLastUnitInCamp = unit.location.hasBarbarianCamp && unit.location.unitsOnTile.Count == 1,
+			IsLastUnitInCamp = IsLastUnitInCamp(player, unit),
 			CombatIntel = CombatAI.MakeAiData(unit, player)
 		});
 	}
