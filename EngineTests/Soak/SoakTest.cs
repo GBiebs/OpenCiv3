@@ -302,6 +302,10 @@ public class SoakTest {
 			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.OUTPOST)} outposts "
 			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.AIRFIELD)} airfields "
 			+ $"{gameData.map.tiles.Count(t => Structures.On(t)?.key == Tile.TileOverlays.RADAR_TOWER)} radar towers, "
+			+ $"at sea: {SeaAI.landings} landings, "
+			+ $"{gameData.cities.Count(c => c.owner.cities.Find(x => x.IsCapital()) is City capital && capital.location.continent != c.location.continent)} cities overseas, "
+			+ $"{gameData.mapUnits.Count(u => !u.owner.isBarbarians && SeaAI.IsFerry(u))} ferries and "
+			+ $"{gameData.mapUnits.Count(u => !u.owner.isBarbarians && SeaAI.IsWarshipType(u.unitType))} warships now, "
 			+ $"{messages.OfType<MsgGoodyHut>().Count()} goody huts found ("
 			+ string.Join(" ", messages.OfType<MsgGoodyHut>().GroupBy(m => m.outcome).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} {g.Count()}"))
 			+ $", {gameData.map.tiles.Count(t => t.hasGoodyHut)} left), "

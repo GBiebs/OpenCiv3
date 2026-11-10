@@ -12,6 +12,10 @@ namespace C7Engine {
 		// What a building that leads to victory (the United Nations, the
 		// spaceship) adds to its score.
 		internal const float VictoryBuildingBoost = 30;
+		// What a ferry for units waiting to be shipped, and a warship in a
+		// war at sea, add to their scores (AI tuning).
+		internal const float FerryBoost = 40;
+		internal const float WarshipBoost = 10;
 
 		record struct ProducibleStats(
 			float bestAttack,
@@ -117,9 +121,13 @@ namespace C7Engine {
 					return int.MinValue;
 				}
 
-				// Don't built a naval unit if we wouldn't explore with it. We
-				// don't yet handle using ships as transports or naval warfare.
-				if (!(PlayerAI.GetAIForUnit(temp, player) is ExplorerAI)) {
+				// A ferry when units wait for one on this continent (SeaAI),
+				// a warship in a war at sea, else only a ship we'd explore with.
+				if (SeaAI.IsFerryType(unit) && SeaAI.FerryNeeded(player, city.location.continent)) {
+					score += FerryBoost;
+				} else if (SeaAI.IsWarshipType(unit) && SeaAI.WarshipsWanted(player)) {
+					score += WarshipBoost;
+				} else if (!(PlayerAI.GetAIForUnit(temp, player) is ExplorerAI)) {
 					return int.MinValue;
 				}
 			}
@@ -333,6 +341,11 @@ namespace C7Engine {
 			ProducibleStats stats = new() {
 				numberOfReachableOpenCitySpots = NumberOfReachableOpenCitySpots(city),
 			};
+			// With no room left at home, one settler at a time for a site
+			// overseas (SeaAI ships it).
+			if (stats.numberOfReachableOpenCitySpots == 0 && OverseasSettlerWanted(city)) {
+				stats.numberOfReachableOpenCitySpots = 1;
+			}
 			stats.inExpansionPhase = city.owner.cities.Count < 5 || stats.numberOfReachableOpenCitySpots > city.owner.cities.Count * 2;
 
 			foreach (IProducible option in options) {
@@ -354,6 +367,15 @@ namespace C7Engine {
 				}
 			}
 			return false;
+		}
+
+		private static bool OverseasSettlerWanted(City city) {
+			Player player = city.owner;
+			if (player.units.Any(u => u.currentAI is OverseasAI || (u.unitType.isSettler && u.IsLoaded()))
+				|| !SeaAI.CanFerry(player, city.location.continent)) {
+				return false;
+			}
+			return SettlerLocationAI.GetScoredSettlerCandidates(city.location, player, overseasWithin: SeaAI.OverseasSiteRange).Count > 0;
 		}
 
 		private static int NumberOfReachableOpenCitySpots(City city) {

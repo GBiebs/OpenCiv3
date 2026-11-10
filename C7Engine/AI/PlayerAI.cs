@@ -166,7 +166,7 @@ namespace C7Engine {
 			}
 		}
 
-		private static async Task DoUnitActions(Player player) {
+		internal static async Task DoUnitActions(Player player) {
 			// Reorder the list so that settlers are second to last, giving our escorts a
 			// chance to configure themselves without wasting a turn.
 			// Finally reorder so that the workers are last, so in case a settler builds a new city,
@@ -189,8 +189,17 @@ namespace C7Engine {
 			await AirAI.Act(player, EngineStorage.gameData);
 			NuclearAI.Act(player, EngineStorage.gameData);
 
-			// Do things with units. Copy into an array first to avoid collection-was-modified exception
-			foreach (MapUnit unit in player.units.ToArray()) {
+			// At war, warships waiting in port look for enemy ships again.
+			if (IsInAnyWar(player, EngineStorage.gameData.players)) {
+				foreach (MapUnit ship in player.units.Where(u => u.isFortified && SeaAI.IsWarshipType(u.unitType))) {
+					ship.Wake();
+				}
+			}
+
+			// Do things with units. Copy into an array first to avoid collection-was-modified exception.
+			// Units aboard ships go last: a ferry that reaches its landing
+			// spot this turn sets them ashore at once (SeaAI).
+			foreach (MapUnit unit in player.units.OrderBy(u => u.IsLoaded()).ToArray()) {
 				// Units in an army only act with it; aircraft have flown, and
 				// nukes stay put.
 				if (unit.IsInArmy() || unit.IsAirUnit() || Nuclear.IsNuke(unit.unitType)) {
@@ -327,14 +336,26 @@ namespace C7Engine {
 				return new DefenderAI(toCapital);
 			}
 
+			if (unit.IsLoaded() && unit.Container() is MapUnit ferry && SeaAI.IsFerry(ferry)) {
+				return SeaAI.AboardJob(unit, ferry);
+			}
+
 			if (unit.unitType.isLeader) {
 				return new LeaderAI();
 			} else if (unit.IsArmy()) {
 				return GetAIForArmy(unit, player);
 			} else if (unit.unitType.name == "Settler") {
-				return new SettlerAI(SettlerAI.MakeAiData(unit, player));
+				SettlerAIData settle = SettlerAI.MakeAiData(unit, player);
+				if (settle.goal == SettlerAIData.SettlerGoal.JOIN_CITY && SeaAI.OverseasSettlerSite(unit, player) is Tile site && site != Tile.NONE
+					&& SeaAI.NearestPort(player, unit.location) is City port) {
+					log.Information($"{unit} is to be shipped to a site overseas at {site}, from {port.name}");
+					return new OverseasAI(new OverseasAIData { destination = site, port = port.location });
+				}
+				return new SettlerAI(settle);
 			} else if (unit.unitType.name == "Worker") {
 				return new WorkerAI(WorkerAI.MakeAiData(unit, player));
+			} else if (unit.IsWaterUnit() && SeaAI.JobFor(unit, player) is UnitAI seaJob) {
+				return seaJob;
 			} else if (unit.location.cityAtTile != null && unit.CanDefendOnLand() && unit.location.unitsOnTile.Count(u => u.CanDefendOnLand() && u != unit) == 0) {
 				return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(unit, player));
 			} else if (GetCombatAIIfUnitCanAttackNearbyBarbCamp(unit, player) is UnitAI unitAI && unitAI != null) {
@@ -345,7 +366,7 @@ namespace C7Engine {
 			}
 
 			// Special case: we're at war.
-			if (IsInAnyWar(player, EngineStorage.gameData.players)) {
+			if (!unit.IsWaterUnit() && IsInAnyWar(player, EngineStorage.gameData.players)) {
 				// Priority 1: ensure we don't have any unguarded cities.
 				//
 				// If this is an offensive unit only go defend if there are
@@ -361,6 +382,13 @@ namespace C7Engine {
 				CombatAIData maybeCombat = CombatAI.MakeAiData(unit, player);
 				if (maybeCombat != null) {
 					return new CombatAI(maybeCombat);
+				}
+
+				// Or across the water, if there's nothing to attack here.
+				if (SeaAI.OverseasAttackTarget(unit, player) is Tile target && target != Tile.NONE
+					&& SeaAI.NearestPort(player, unit.location) is City port) {
+					log.Information($"{unit} is to be shipped to attack {target.cityAtTile?.name ?? target.ToString()}, from {port.name}");
+					return new OverseasAI(new OverseasAIData { destination = target, port = port.location });
 				}
 
 				// Priority 3: defend our cities.
@@ -388,6 +416,10 @@ namespace C7Engine {
 				if (maybeAiData != null) {
 					return new ExplorerAI(maybeAiData);
 				}
+			}
+
+			if (unit.IsWaterUnit()) {
+				return SeaAI.IdleJob(unit, player);
 			}
 
 			//Nowhere to explore or too many explorers.  What to do now?

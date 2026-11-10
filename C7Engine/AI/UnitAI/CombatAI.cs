@@ -159,7 +159,9 @@ namespace C7Engine.AI.UnitAI {
 				result.path = algorithm.PathFrom(unit.location, result.destination, unit);
 
 				// If we can't reach the destination, go to the next candidate.
-				if ((result.path?.PathLength() ?? -1) == -1) {
+				// (An empty path is no way there either: the AI's pathing gives
+				// one between continents.)
+				if ((result.path?.PathLength() ?? -1) <= 0) {
 					continue;
 				}
 

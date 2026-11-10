@@ -18,10 +18,13 @@ namespace C7Engine {
 			return result;
 		}
 
-		public static Dictionary<Tile, float> GetScoredSettlerCandidates(Tile start, Player player, HashSet<Tile> excludedTiles = null) {
+		// The sites on the start's continent, or (overseasWithin > 0) those
+		// on other continents within that distance, for a settler to be
+		// shipped there (SeaAI).
+		public static Dictionary<Tile, float> GetScoredSettlerCandidates(Tile start, Player player, HashSet<Tile> excludedTiles = null, int overseasWithin = 0) {
 			List<MapUnit> playerUnits = player.units;
-			// TODO: handle settling other continents
-			IEnumerable<Tile> candidates = player.tileKnowledge.AllKnownTiles().Where(t => !IsInvalidCityLocation(t, player) && t.continent == start.continent);
+			IEnumerable<Tile> candidates = player.tileKnowledge.AllKnownTiles().Where(t => !IsInvalidCityLocation(t, player)
+				&& (overseasWithin > 0 ? t.IsLand() && t.continent != start.continent && t.DistanceTo(start) <= overseasWithin : t.continent == start.continent));
 			Dictionary<Tile, float> scores = AssignTileScores(start, player, candidates, playerUnits.FindAll(u => u.unitType.name == "Settler"), excludedTiles);
 			return scores;
 		}

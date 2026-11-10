@@ -174,18 +174,25 @@ namespace C7GameData.AIData {
 		// Calculate the smallest pairwise distance between cities of the two
 		// players. This is O(N^2), but shouldn't run very often and N shouldn't
 		// be excessively large.
-		private static int DistanceToClosestCity(Player a, Player b) {
+		// Across the water only if we can ship an army there (SeaAI), as
+		// if further away.
+		internal static int DistanceToClosestCity(Player a, Player b) {
 			int result = int.MaxValue;
+			int overseas = int.MaxValue;
 
 			foreach (City ca in a.cities) {
 				foreach (City cb in b.cities) {
-					// TODO: Implement cross-continent fighting.
 					if (ca.location.continent != cb.location.continent) {
+						overseas = Math.Min(overseas, ca.location.DistanceTo(cb.location));
 						continue;
 					}
 
 					result = Math.Min(result, ca.location.DistanceTo(cb.location));
 				}
+			}
+			if (result == int.MaxValue && overseas != int.MaxValue
+				&& a.cities.Select(c => c.location.continent).Distinct().Any(continent => SeaAI.CanFerry(a, continent))) {
+				result = overseas + SeaAI.OverseasWarDistance;
 			}
 			return result;
 		}

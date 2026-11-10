@@ -1,3 +1,4 @@
+using System.Linq;
 using C7Engine.Pathing;
 using C7GameData;
 using C7GameData.AIData;
@@ -16,7 +17,11 @@ namespace C7Engine {
 				settlerAiData.destination = unit.location;
 				log.Information("No cities yet!  Set AI for unit to settler AI with destination of " + settlerAiData.destination);
 			} else {
-				settlerAiData.destination = SettlerLocationAI.FindSettlerLocation(unit.location, player);
+				// Shipped overseas for a site: that one (the settler AI drops it
+				// if it's no longer good).
+				Tile shipped = SeaAI.TakeShippedSite(unit);
+				settlerAiData.destination = shipped != null && shipped.continent == unit.location.continent ? shipped
+					: SettlerLocationAI.FindSettlerLocation(unit.location, player);
 				if (settlerAiData.destination == Tile.NONE) {
 					//This is possible if all tiles within 4 tiles of a city are either not land, or already claimed
 					//by another colonist.  Longer-term, the AI shouldn't be building settlers if that is the case,
@@ -60,7 +65,9 @@ namespace C7Engine {
 						//TODO: This should use a message, and the message handler should cause the disbanding to happen.
 						CityInteractions.BuildCity(unit.location, player, unit.owner.GetNextCityName());
 						unit.RemoveFromPlay();
-					} else if (data.escort == null) {
+					} else if (data.escort == null && player.cities.Any(c => c.location.continent == unit.location.continent)) {
+						// (A settler shipped to a continent where we have no
+						// city goes alone: no escort could reach it.)
 						log.Information($"Settler {unit.id} is waiting for an escort");
 						unit.movementPoints.onConsumeAll();
 						return C7GameData.UnitAI.Result.InProgress;
