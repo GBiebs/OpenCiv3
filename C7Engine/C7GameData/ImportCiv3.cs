@@ -761,6 +761,7 @@ namespace C7GameData {
 				if (leader.Researching > -1) {
 					player.currentlyResearchedTech = save.Techs[leader.Researching].id;
 				}
+				player.futureTechs = leader.FutureTechsKnown;
 
 				player.hasVictoriousArmy = leader.HasVictoriousArmy;
 
@@ -2429,6 +2430,7 @@ namespace C7GameData {
 			save.Rules.TurnPenaltyForEachDraftedCitizen = rule.TurnPenaltyForEachDraftedCitizen;
 			save.Rules.MinimumPopulationForWeLoveTheKing = rule.MinimumPopulationForWeLoveTheKing;
 			save.Rules.GoldenAgeDuration = rule.GoldenAgeDuration;
+			save.Rules.FutureTechCost = rule.FutureTechCost;
 			// Diplomatic and spy missions; Civ3 knows them by their place.
 			BiqData espnBiq = biq.Espn is null ? defaultBiq : biq;
 			if (espnBiq.Espn is { Length: > 0 }) {

@@ -120,6 +120,10 @@ namespace C7GameData {
 		public int BarbarianAdvancedUnitCivsWithTech = 2;
 		public int BarbarianAdvancedUnitPercent = 25;
 
+		// Civ3's future techs, once every advance is known: each costs as an
+		// advance of this cost would (the BIQ's "future tech cost").
+		public int FutureTechCost = 400;
+
 		// Civ3's Accelerated Production game setting: what builds and
 		// upgrades cost with it, in percent.
 		public int AcceleratedProductionPercent = 50;

@@ -83,7 +83,7 @@ public class ScoreVictory : IVictory {
 		int contentCitizens = citizens.Count(c => c.mood == CityResident.Mood.Content);
 		int specialists = player.cities.Sum(c => c.residents.Count(r => !r.citizenType.IsDefaultCitizen));
 
-		int futureTechs = 0; // TODO: future techs
+		int futureTechs = player.futureTechs;
 
 		// TODO: gameData.gameDifficulty.ScoreMultiplier
 		float difficultyFactor = GetDifficultyScoreFactor(gameData);

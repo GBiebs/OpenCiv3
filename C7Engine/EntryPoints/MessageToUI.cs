@@ -824,6 +824,19 @@ namespace C7Engine {
 		}
 	}
 
+	// The player's scientists discovered a future tech (the how-manyth).
+	public class MsgFutureTech : MessageToUI {
+		public ID playerId;
+		public int number;
+
+		public MsgFutureTech(ID playerId, int number) {
+			this.playerId = playerId;
+			this.number = number;
+		}
+
+		public string Text() => $"Our scientists have discovered Future Tech {number}!";
+	}
+
 	// A wonder (the Great Library) gave the player advances.
 	public class MsgTechsFromWonder : MessageToUI {
 		public ID playerId;

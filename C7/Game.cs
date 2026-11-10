@@ -917,6 +917,12 @@ public partial class Game : Node {
 				if (mTW.playerId == controller.id)
 					EmitTechsFromWonderSignal(mTW);
 				break;
+			case MsgFutureTech mFT:
+				if (mFT.playerId == controller.id) {
+					EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
+						new InformationPopup(controller.id, "Science Advisor", mFT.Text(), Advisor.Science, Mood.Happy, 350)));
+				}
+				break;
 			case MsgCelebration mCel:
 				if (mCel.playerId == controller.id) {
 					TemporaryPopup.Show(this, mCel.Text(), mapView.screenLocationOfTile(mCel.city.location, true));

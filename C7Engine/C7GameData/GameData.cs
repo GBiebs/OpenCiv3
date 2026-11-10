@@ -535,6 +535,18 @@ namespace C7GameData {
 			return newUnit;
 		}
 
+		// The beakers the player's next future tech takes: an advance of the
+		// rules' future tech cost that no one else knows.
+		public int FutureTechCostFor(Player player) {
+			return (int)Math.Floor(map.techRate * 10f * rules.FutureTechCost / (ResearchDifficultyFactor(player) * 10));
+		}
+
+		private int ResearchDifficultyFactor(Player player) {
+			int neutralFactor = gameDifficulty.HumanCostFactor;
+			int aiFactor = gameDifficulty.AiCostFactor > 0 ? gameDifficulty.AiCostFactor : neutralFactor;
+			return player.isHuman ? Math.Min(aiFactor, neutralFactor) : neutralFactor;
+		}
+
 		public int TechCostFor(Tech tech, Player player) {
 			// Cost formula from https://forums.civfanatics.com/threads/research-cost-formula-v1-29f.29485/.
 			// Research Cost = [MM * [10*COST * (1 - N/[CL*1.75])]/(CF * 10)] - progress
@@ -564,9 +576,7 @@ namespace C7GameData {
 			// and the human for the AI's advantage instead, dividing by the AI
 			// cost factor, at most the neutral one (Monarch's 9 makes advances
 			// 11% dearer, Deity's 6 67%; easy levels change nothing).
-			int neutralFactor = gameDifficulty.HumanCostFactor;
-			int aiFactor = gameDifficulty.AiCostFactor > 0 ? gameDifficulty.AiCostFactor : neutralFactor;
-			int difficultyFactor = player.isHuman ? Math.Min(aiFactor, neutralFactor) : neutralFactor;
+			int difficultyFactor = ResearchDifficultyFactor(player);
 			float knowledgeFactor = 1.0f - knownCivsThatKnowTheTech / (civsLeft * 1.75f);
 			float researchCost = map.techRate * 10 * tech.Cost  * knowledgeFactor/ (difficultyFactor * 10);
 

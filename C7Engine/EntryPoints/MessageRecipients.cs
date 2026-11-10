@@ -34,6 +34,7 @@ namespace C7Engine {
 				MsgGoldenAge m => [m.playerId],
 				MsgAgeOfScience m => [m.playerId],
 				MsgTechsFromWonder m => [m.playerId],
+				MsgFutureTech m => [m.playerId],
 				MsgCelebration m => [m.playerId],
 				MsgGoodyHut m => [m.playerId],
 				MsgMeltdown m => [m.playerId],

@@ -64,6 +64,8 @@ namespace C7Engine {
 					return m.started ? "Our civilization has entered a Golden Age!" : "Our Golden Age has ended.";
 				case MsgAgeOfScience m:
 					return m.started ? "Our civilization has entered an Age of Scientific Discovery!" : "Our Age of Scientific Discovery has ended.";
+				case MsgFutureTech m:
+					return m.Text();
 				case MsgTechsFromWonder m:
 					return $"{m.wonder} has given us {string.Join(", ", m.techs)}!";
 				case MsgCelebration m:

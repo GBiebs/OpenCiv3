@@ -35,6 +35,9 @@ namespace C7GameData.Save {
 		// How many free tech advances the player still has to spend.
 		public int freeTechsRemaining;
 
+		// Future techs learned (Civ3's), once every advance was known.
+		public int futureTechs;
+
 		// The civilopedia name of the era this player is in.
 		//
 		// The civilopedia name is what is used for art lookups, not the actual
@@ -183,6 +186,7 @@ namespace C7GameData.Save {
 			}
 
 			player.freeTechsRemaining = freeTechsRemaining;
+			player.futureTechs = futureTechs;
 
 			if (player.civilization.isBarbarian) {
 				player.canBePicked = false;
@@ -212,6 +216,7 @@ namespace C7GameData.Save {
 			currentlyResearchedTech = player.currentlyResearchedTech;
 			researchQueue = new List<ID>(player.ResearchQueue.Select(t => t.id));
 			freeTechsRemaining = player.freeTechsRemaining;
+			futureTechs = player.futureTechs;
 			eraCivilopediaName = player.eraCivilopediaName;
 			luxuryRate = player.luxuryRate;
 			scienceRate = player.scienceRate;

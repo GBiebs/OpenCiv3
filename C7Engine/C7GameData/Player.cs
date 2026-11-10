@@ -194,6 +194,10 @@ namespace C7GameData {
 		// The number of turns the player has been researching the current tech.
 		public int turnsResearched = 0;
 
+		// Future techs learned (Civ3's), once every advance is known. They
+		// count for the score only.
+		public int futureTechs;
+
 		// If the government is anarchy (or a govt with the transition bool set
 		// to true), the turn number at which switching governments is allowed.
 		public int inAnarchyUntilTurn = 0;
@@ -770,6 +774,15 @@ namespace C7GameData {
 
 		public string SummarizeScience(GameData gD) {
 			Tech tech = gD.techs.Find(x => x.id == currentlyResearchedTech);
+			if (tech == null && KnowsEveryTech(gD)) {
+				int perTurn = cities.Sum(c => c.CurrentCommerceYield().beakers);
+				if (perTurn == 0) {
+					return $"Future Tech {futureTechs + 1} (-- turns)";
+				}
+				int left = (int)Math.Ceiling(Math.Max(gD.FutureTechCostFor(this) - beakers, 0) / (double)perTurn);
+				left = Math.Clamp(left, rules.MinimumResearchTime - turnsResearched, rules.MaximumResearchTime - turnsResearched);
+				return $"Future Tech {futureTechs + 1} ({Math.Max(left, 1)} turns)";
+			}
 			if (tech == null) {
 				return "Not selected (-- turns)";
 			}
@@ -1107,6 +1120,7 @@ namespace C7GameData {
 
 		public void DoPerTurnScienceUpdates(GameData gameData) {
 			if (currentlyResearchedTech == null) {
+				ResearchFutureTech(gameData);
 				return;
 			}
 
@@ -1123,6 +1137,29 @@ namespace C7GameData {
 			}
 
 			CompleteResearchAndBeginNew(gameData, tech);
+		}
+
+		// Whether there's no advance left to learn.
+		public bool KnowsEveryTech(GameData gameData) {
+			return gameData.techs.Count > 0 && gameData.techs.All(t => knownTechs.Contains(t.id));
+		}
+
+		// With every advance known the beakers go to the next future tech,
+		// within the rules' least and most turns of research like an advance.
+		private void ResearchFutureTech(GameData gameData) {
+			if (!KnowsEveryTech(gameData)) {
+				return;
+			}
+			turnsResearched++;
+			bool paidFor = beakers >= gameData.FutureTechCostFor(this);
+			if (!(paidFor && turnsResearched >= rules.MinimumResearchTime) && turnsResearched < rules.MaximumResearchTime) {
+				return;
+			}
+			futureTechs++;
+			beakers = 0;
+			turnsResearched = 0;
+			log.Information($"{this} discovered Future Tech {futureTechs}");
+			new MsgFutureTech(id, futureTechs).send();
 		}
 
 		/// <summary>
