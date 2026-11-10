@@ -48,6 +48,8 @@ namespace C7GameData {
 		// Civ3's Accelerated Production: builds and upgrades cost less
 		// (Rules.AcceleratedProductionPercent). Chosen at setup.
 		public bool acceleratedProduction;
+		// The history the end-of-game replay plays (ReplayHistory).
+		public ReplayHistory replay = new();
 
 		// What a build or upgrade costs, in shields, with that setting.
 		public int ProductionCost(int shields) {

@@ -1313,6 +1313,27 @@ public partial class Game : Node {
 		GetTree().ChangeSceneToFile("res://UIElements/MainMenu/main_menu.tscn");
 	}
 
+	// Civ3's Retire: the game is over, its replay plays, then the
+	// statistics (every civ's), then the main menu. Online it only leaves.
+	public void RetireFromGame() {
+		if (online != null) {
+			OnRetire();
+			return;
+		}
+		EngineStorage.ReadGameData(gameData => gameData.gameOver = true);
+		ShowReplayThenStatistics();
+	}
+
+	// The end of the game: the replay, then the statistics, then the main
+	// menu.
+	public void ShowReplayThenStatistics() {
+		HideScreensOverTheMap();
+		EngineStorage.ReadGameData(gameData => {
+			gameData.replay.Record(gameData);
+			popupOverlay.GetParent().AddChild(new ReplayScreen(gameData, () => gameViews.ShowStatistics(onClose: OnRetire)));
+		});
+	}
+
 	private void LeaveOnline() {
 		Global.Online?.Dispose();
 		Global.Online = null;

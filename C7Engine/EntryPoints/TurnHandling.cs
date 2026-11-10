@@ -202,6 +202,7 @@ namespace C7Engine {
 				foreach (Player player in gameData.players) {
 					player.stats.EndTurn(player, land.GetValueOrDefault(player), PlayerStats.LastHistory(player, gameData));
 				}
+				gameData.replay.Record(gameData);
 
 				CheckVictory(gameData);
 

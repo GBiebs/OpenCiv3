@@ -23,6 +23,7 @@ namespace C7Engine {
 		public void send() {
 			sentFor = EngineStorage.uiControllerID;
 			NewsWhileAway.Record(this);
+			EngineStorage.gameData?.replay?.Note(EngineStorage.gameData, this);
 			EngineStorage.messagesToUI.Enqueue(this);
 		}
 

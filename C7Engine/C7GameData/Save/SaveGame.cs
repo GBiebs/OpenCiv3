@@ -72,6 +72,8 @@ namespace C7GameData.Save {
 				SimultaneousTurnStarted = data.simultaneousTurnStarted,
 				AiDiplomacy = data.aiDiplomacy,
 				AcceleratedProduction = data.acceleratedProduction,
+				// (Nothing recorded yet: none, as a save that never was a game.)
+				Replay = data.replay.startTurn < 0 ? null : data.replay,
 				HumanDeals = data.humanDeals,
 				AdminPasswordHash = data.adminPasswordHash,
 				BarbarianInfo = data.barbarianInfo,
@@ -314,6 +316,7 @@ namespace C7GameData.Save {
 				simultaneousTurnStarted = SimultaneousTurnStarted,
 				aiDiplomacy = AiDiplomacy,
 				acceleratedProduction = AcceleratedProduction,
+				replay = Replay ?? new(),
 				humanDeals = HumanDeals ?? new(),
 				adminPasswordHash = AdminPasswordHash ?? "",
 				Codex = Codex,
@@ -584,6 +587,7 @@ namespace C7GameData.Save {
 		// (On in saves from before it was a choice.)
 		public bool AiDiplomacy = true;
 		public bool AcceleratedProduction;
+		public ReplayHistory Replay;
 		public List<HumanDeal> HumanDeals = new();
 		public string AdminPasswordHash = "";
 		public List<SavePlayer> Players = new List<SavePlayer>();

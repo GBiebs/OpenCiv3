@@ -84,7 +84,7 @@ public partial class Game {
 		};
 		options.Add(loadGameBtn);
 
-		// TODO: add New Game option. This seems to do exactly the same as Retire in the original game
+		options.Add(new ButtonAction() { message = "New Game (Ctrl-Shift-Q)", action = () => OnNewGame() });
 
 		var preferencesBtn = new ButtonAction() {
 			message = "Preferences (Ctrl-P)",
@@ -93,10 +93,12 @@ public partial class Game {
 		options.Add(preferencesBtn);
 
 		var retireBtn = new ButtonAction() {
-			message = "Retire (Ctrl-Q)",
+			message = "Retire (Shift-Q)",
 			action = () => EmitRetireConfirmationSignal(),
 		};
 		options.Add(retireBtn);
+
+		options.Add(new ButtonAction() { message = "Main Menu", action = () => EmitMainMenuConfirmation() });
 
 		var saveBtn = new ButtonAction() {
 			message = "Save Game (Ctrl-S)",
@@ -124,8 +126,25 @@ public partial class Game {
 		));
 	}
 
+	// Leaving the game for the main menu, without ending it (a save can
+	// carry on with it).
+	public void EmitMainMenuConfirmation() {
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(new ConfirmPopUp(
+			controller.id,
+			"Back to the main menu?",
+			"Progress since your last save will be lost.",
+			Advisor.None,
+			Mood.None,
+			"Yes, to the main menu",
+			"No, let me keep playing",
+			() => OnRetire(),
+			hSize: 460)));
+	}
+
+	// Civ3's Retire: the game ends here, with its replay and the
+	// statistics (online it only leaves: the others play on).
 	public void EmitRetireConfirmationSignal() {
-		var message = "Retire from this game? All progress since your last save will be lost.";
+		var message = "Retire from this game? It ends here: you'll see its replay and statistics. Progress since your last save will be lost.";
 
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(
 			new ConfirmPopUp(
@@ -136,7 +155,7 @@ public partial class Game {
 				Mood.None,
 				"Yes, retire from this game",
 				"No, let me keep playing",
-				() => OnRetire(),
+				() => RetireFromGame(),
 				hSize: 500
 			)
 		));
@@ -1215,7 +1234,7 @@ public partial class Game {
 			// The game statistics first, then back to the main menu.
 			new ButtonAction() {
 				message = "Good! I’m Done!",
-				action = () => gameViews.ShowStatistics(onClose: OnRetire)
+				action = () => ShowReplayThenStatistics()
 			},
 			new ButtonAction() {
 				message = $"Wait, lemme just {continueAction} a couple of more turns..."
