@@ -375,6 +375,12 @@ namespace C7GameData {
 				return true;
 			}
 
+			// Civ3's Electricity ("enables irrigation everywhere"): no fresh
+			// water needed.
+			if (player != null && player.HasTechWithFlag(SaveTech.Flag.EnablesIrrigationEverywhere)) {
+				return true;
+			}
+
 			foreach (KeyValuePair<TileDirection, Tile> dirToTile in neighbors) {
 				// If a neighboring tile is irrigated, this tile has fresh water access.
 				if (dirToTile.Value.overlays.HasImprovement(irrigation)) {
