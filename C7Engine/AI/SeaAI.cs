@@ -95,10 +95,28 @@ namespace C7Engine {
 			return Ports(player, continent).Count > 0 && (player.units.Any(IsFerry) || KnowsFerries(player));
 		}
 
-		// Land a unit can be set on: no city but ours, no one else's units.
+		// Land a unit can be set on: no city but ours, no one else's units,
+		// and not the land of a civ we're at peace with (its border guards
+		// would send the unit home).
 		public static bool IsFreeLand(Tile tile, Player us) {
 			return tile != Tile.NONE && tile.IsLand() && (tile.cityAtTile == null || tile.cityAtTile.owner == us)
-				&& tile.unitsOnTile.All(u => u.owner == us);
+				&& tile.unitsOnTile.All(u => u.owner == us)
+				&& (tile.OwningPlayer() is not Player owner || owner == us || AtWar(us, owner));
+		}
+
+		// Whether a trip is still worth making: an enemy city still ours to
+		// attack, a site still free to settle (a war may end, or another
+		// civ settle there, while the unit is on its way).
+		public static bool StillWorthIt(Player player, OverseasAIData trip) {
+			Tile to = trip.destination;
+			if (to == null) {
+				return false;
+			}
+			if (trip.attack) {
+				return to.cityAtTile is City city && city.owner != player && !city.owner.isBarbarians && AtWar(player, city.owner);
+			}
+			return !to.HasCity() && (to.OwningPlayer() is not Player owner || owner == player)
+				&& !to.HasCityCloserThan(System.Math.Max(3, player.rules?.MinimumCityDistance ?? 0));
 		}
 
 		// Where a ferry sets passengers bound for the target ashore: a water
@@ -138,9 +156,11 @@ namespace C7Engine {
 			if (waiting == 0) {
 				return false;
 			}
-			int room = player.units.Where(IsFerry).Sum(f => f.FreeCapacity());
+			List<MapUnit> ferries = player.units.Where(IsFerry).ToList();
+			int room = ferries.Sum(f => f.FreeCapacity());
 			bool building = player.cities.Any(c => c.itemBeingProduced is UnitPrototype t && IsFerryType(t));
-			return waiting > room && !building;
+			int most = 2 + player.cities.Count(c => c.location.NeighborsOcean()) / 4;
+			return waiting > room && !building && ferries.Count < most;
 		}
 
 		// Whether we'd like a warship: at war with a civ that has ships or

@@ -145,6 +145,36 @@ public class SeaAITest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.IsNotType<OverseasAI>(PlayerAI.GetAIForUnit(swordsman, us));
 	}
 
+	// A war that ends while the attackers are at sea: the trip is off, and
+	// the land of a civ at peace with us is no place to go ashore (its
+	// border guards would send them home, again and again: found by the
+	// soak).
+	[Fact]
+	public async Task ATripIsCalledOffWhenTheWarEnds() {
+		Tile portSite = PortSite(Continents()[0]);
+		CityInteractions.BuildCity(portSite, us, "Port");
+		City enemy = CityInteractions.BuildCity(OverseasSite(portSite), them, "Enemy");
+		us.DeclareWarOn(them, gameData.turn);
+		MapUnit transport = Spawn(us, "Transport", portSite);
+		MapUnit swordsman = Spawn(us, "Swordsman", portSite);
+		OverseasAI trip = new(new OverseasAIData { destination = enemy.location, port = portSite, attack = true });
+		Assert.True(SeaAI.StillWorthIt(us, trip.data));
+		Tile theirs = enemy.location.neighbors.Values.First(n => n.IsLand() && n.OwningPlayer() == them && n.unitsOnTile.Count == 0);
+		Assert.True(SeaAI.IsFreeLand(theirs, us));
+
+		PlayerRelationship.SignPeaceAfterWar(us, them, gameData);
+		Assert.False(SeaAI.StillWorthIt(us, trip.data));
+		Assert.False(SeaAI.IsFreeLand(theirs, us));
+
+		// Aboard, the unit stays on: the ferry takes it home.
+		swordsman.BoardTransport(transport);
+		swordsman.Wake();
+		swordsman.currentAI = trip;
+		await swordsman.currentAI.PlayTurn(us, swordsman);
+		Assert.Null(trip.data.destination);
+		Assert.True(swordsman.IsLoaded());
+	}
+
 	[Fact]
 	public void WarshipsAttackShipsTheyCanBeat() {
 		Tile portSite = PortSite(Continents()[0]);

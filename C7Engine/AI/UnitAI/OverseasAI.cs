@@ -11,6 +11,8 @@ namespace C7Engine {
 		public Tile destination;
 		// The port it waits in for a ferry.
 		public Tile port;
+		// Bound to attack the enemy city there (else to settle the site).
+		public bool attack;
 		public TilePath path;
 		public int turnsWaited;
 		public int lastWaitTurn = -1;
@@ -36,6 +38,16 @@ namespace C7Engine {
 
 		UnitAI.MoveResult UnitAI.PlayTurnImpl(Player player, MapUnit unit) {
 			GameData gameData = EngineStorage.gameData;
+			// A trip no longer worth making is off: aboard, the unit stays
+			// on until the ferry puts in at a port; ashore, it gets a new
+			// plan.
+			if (data.destination != null && !SeaAI.StillWorthIt(player, data)) {
+				log.Information($"{unit} gives up its trip to {data.destination}");
+				data.destination = null;
+				if (!unit.IsLoaded()) {
+					return UnitAI.Result.Error;
+				}
+			}
 			if (unit.IsLoaded()) {
 				MapUnit ferry = unit.Container();
 				if (data.destination != null && ferry != null) {

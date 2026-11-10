@@ -388,7 +388,7 @@ namespace C7Engine {
 				if (SeaAI.OverseasAttackTarget(unit, player) is Tile target && target != Tile.NONE
 					&& SeaAI.NearestPort(player, unit.location) is City port) {
 					log.Information($"{unit} is to be shipped to attack {target.cityAtTile?.name ?? target.ToString()}, from {port.name}");
-					return new OverseasAI(new OverseasAIData { destination = target, port = port.location });
+					return new OverseasAI(new OverseasAIData { destination = target, port = port.location, attack = true });
 				}
 
 				// Priority 3: defend our cities.
