@@ -405,6 +405,12 @@ namespace C7GameData {
 			return false;
 		}
 
+		// Inside another civ's borders (no city may be founded there, as in
+		// Civ3).
+		public bool IsForeignTerritoryFor(Player player) {
+			return OwningPlayer() is Player owner && owner != player;
+		}
+
 		public Player? OwningPlayer() {
 			if (cityAtTile != null) {
 				return cityAtTile.owner;

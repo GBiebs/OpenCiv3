@@ -98,9 +98,10 @@ namespace C7Engine {
 		}
 
 		// A city now stands there or too close (another settler got there
-		// first): the rules' minimum distance, or at least not next door.
+		// first): the rules' minimum distance, or at least not next door; or
+		// another civ's borders have grown over it.
 		private static bool IsInvalidCityLocation(Tile tile, Player player) {
-			return tile.HasCityCloserThan(player.rules?.MinimumCityDistance ?? 2);
+			return tile.HasCityCloserThan(player.rules?.MinimumCityDistance ?? 2) || tile.IsForeignTerritoryFor(player);
 		}
 
 		public string SummarizePlan() {

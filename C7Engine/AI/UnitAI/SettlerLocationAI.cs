@@ -108,7 +108,7 @@ namespace C7Engine {
 		private const int AIMinimumCityDistance = 3;
 
 		private static bool IsInvalidCityLocation(Tile tile, Player player) {
-			if (tile == Tile.NONE || tile.HasCity())
+			if (tile == Tile.NONE || tile.HasCity() || tile.IsForeignTerritoryFor(player))
 				return true;
 			return tile.HasCityCloserThan(Math.Max(AIMinimumCityDistance, player.rules?.MinimumCityDistance ?? 0));
 		}
