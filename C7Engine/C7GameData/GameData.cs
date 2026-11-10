@@ -45,6 +45,14 @@ namespace C7GameData {
 		// Online: whether the AIs talk to humans (offers, agreements, demands,
 		// trades: TurnHandling.TalksTo); off, they wait to be talked to.
 		public bool aiDiplomacy = true;
+		// Civ3's Accelerated Production: builds and upgrades cost less
+		// (Rules.AcceleratedProductionPercent). Chosen at setup.
+		public bool acceleratedProduction;
+
+		// What a build or upgrade costs, in shields, with that setting.
+		public int ProductionCost(int shields) {
+			return acceleratedProduction ? (shields * rules.AcceleratedProductionPercent + 99) / 100 : shields;
+		}
 		// Hotseat and play by email: the deals humans have sent each other,
 		// waiting for an answer (HumanDiplomacy).
 		public List<HumanDeal> humanDeals = new();

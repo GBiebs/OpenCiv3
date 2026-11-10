@@ -1622,7 +1622,7 @@ namespace C7GameData {
 			Difficulty difficulty = EngineStorage.gameData.gameDifficulty;
 			float costFactor = isHuman ? 1.0f : difficulty.AiCostFactor / (float)(difficulty.HumanCostFactor);
 
-			return producible.ShieldCost(this, costFactor);
+			return EngineStorage.gameData.ProductionCost(producible.ShieldCost(this, costFactor));
 		}
 
 		// The averaged parts of the score so far. A record saved before the

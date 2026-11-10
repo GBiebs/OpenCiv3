@@ -37,6 +37,8 @@ public class GameSetup {
 	public bool simultaneousMoves { get; set; }
 	// Online: whether the AIs talk to humans.
 	public bool aiDiplomacy { get; set; } = true;
+	// Civ3's Accelerated Production (off by default, as in Civ3).
+	public bool acceleratedProduction { get; set; }
 
 	ID.Factory ids;
 
@@ -49,6 +51,7 @@ public class GameSetup {
 		save.TurnTimer = turnTimer;
 		save.SimultaneousMoves = simultaneousMoves;
 		save.AiDiplomacy = aiDiplomacy;
+		save.AcceleratedProduction = acceleratedProduction;
 		// (The first turn's humans all begin at once.)
 		save.SimultaneousTurnStarted = simultaneousMoves ? 0 : -1;
 		save.AdminPasswordHash = otherHumans ? Passwords.Hash(adminPassword) : "";

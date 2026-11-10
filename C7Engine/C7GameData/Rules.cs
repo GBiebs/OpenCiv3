@@ -117,6 +117,10 @@ namespace C7GameData {
 		// their basic unit (the user's account of Civ3, 2026-11-09).
 		public int BarbarianAdvancedUnitCivsWithTech = 2;
 
+		// Civ3's Accelerated Production game setting: what builds and
+		// upgrades cost with it, in percent.
+		public int AcceleratedProductionPercent = 50;
+
 		// The chance, in percent, each of a city's pollution points gives each
 		// turn that one of its tiles gets polluted (see Pollution). Civ3's
 		// figure isn't documented; not in its BIQ.

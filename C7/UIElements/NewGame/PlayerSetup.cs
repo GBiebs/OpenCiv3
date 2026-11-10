@@ -121,7 +121,16 @@ public partial class PlayerSetup : Control {
 			checkbox.Toggled += (state) => { option.set(victoryConditions, state); };
 			rulesContainer.AddChild(checkbox);
 		}
+		// Civ3's Accelerated Production: builds cost half.
+		acceleratedProduction = bool.TryParse(C7Settings.GetSettingsValueOrDefault(C7Settings.Rules.SectionName, AcceleratedProductionKey, ""), out bool on) && on;
+		var accelerated = new Civ3Checkbox() { Text = "Accelerated Production" };
+		accelerated.SetPressed(acceleratedProduction);
+		accelerated.Toggled += state => acceleratedProduction = state;
+		rulesContainer.AddChild(accelerated);
 	}
+
+	private const string AcceleratedProductionKey = "AcceleratedProduction";
+	private bool acceleratedProduction;
 
 	private void BackToMainMenu() {
 		GetTree().ChangeSceneToFile("res://UIElements/MainMenu/main_menu.tscn");
@@ -293,7 +302,8 @@ public partial class PlayerSetup : Control {
 			difficulty = selectedDifficulty,
 			worldCharacteristics = global.WorldCharacteristics,
 			opponents = opponents,
-			victoryConditions = victoryConditions
+			victoryConditions = victoryConditions,
+			acceleratedProduction = acceleratedProduction,
 		};
 
 		PersistGameSettings(gameSetup);
@@ -330,6 +340,7 @@ public partial class PlayerSetup : Control {
 			C7Settings.SetValue(C7Settings.LastGame.SectionName, C7Settings.LastGame.Opponents, opponentsValue);
 
 			PersistVictoryConditions(gameSetup.victoryConditions);
+			C7Settings.SetValue(C7Settings.Rules.SectionName, AcceleratedProductionKey, gameSetup.acceleratedProduction.ToString());
 
 			C7Settings.SaveSettings();
 		} catch (Exception e) {

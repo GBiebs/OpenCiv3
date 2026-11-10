@@ -60,6 +60,8 @@ public partial class MultiplayerScreen : Control {
 	private bool simultaneous;
 	private bool aiDiplomacy = true;
 	private const string AiDiplomacyRule = "AI diplomacy with humans";
+	private bool acceleratedProduction;
+	private const string AcceleratedProductionRule = "Accelerated Production";
 	private OnlineLobby lobby;
 	// Civ3's "Load Game" (online): the saved game to go on with, and its
 	// file's name; null for a new game.
@@ -610,6 +612,7 @@ public partial class MultiplayerScreen : Control {
 		if (mode == Mode.Host) {
 			told.Add(new LobbySetting { name = AiDiplomacyRule, value = AiDiplomacyOn ? "Yes" : "No" });
 		}
+		told.Add(new LobbySetting { name = AcceleratedProductionRule, value = AcceleratedProductionOn ? "Yes" : "No" });
 		return told;
 	}
 
@@ -617,8 +620,10 @@ public partial class MultiplayerScreen : Control {
 	// diplomacy).
 	private VictoryConditions Rules => loadedSave?.VictoryConditions ?? victoryConditions;
 	private bool AiDiplomacyOn => loadedSave?.AiDiplomacy ?? aiDiplomacy;
+	private bool AcceleratedProductionOn => loadedSave?.AcceleratedProduction ?? acceleratedProduction;
 
-	private static bool IsRule(LobbySetting setting) => setting.name == AiDiplomacyRule || VictoryConditions.Options.Any(o => o.label == setting.name);
+	private static bool IsRule(LobbySetting setting) => setting.name == AiDiplomacyRule || setting.name == AcceleratedProductionRule
+		|| VictoryConditions.Options.Any(o => o.label == setting.name);
 
 	private static bool SameSettings(LobbyState a, LobbyState b) {
 		return a.settings.Count == b.settings.Count && a.settings.Zip(b.settings).All(p => p.First.name == p.Second.name && p.First.value == p.Second.value);
@@ -709,6 +714,23 @@ public partial class MultiplayerScreen : Control {
 			}
 			y += 26;
 		}
+		// Civ3's Accelerated Production: builds cost half.
+		if (mode == Mode.Join) {
+			panel.Text($"{AcceleratedProductionRule}: {state?.settings.FirstOrDefault(s => s.name == AcceleratedProductionRule)?.value ?? "?"}", y, 14, left: true);
+		} else if (loadedSave != null) {
+			panel.Text($"{AcceleratedProductionRule}: {(AcceleratedProductionOn ? "Yes" : "No")}", y, 14, left: true);
+		} else {
+			CheckBox box = panel.Show(new CheckBox { Text = AcceleratedProductionRule, ButtonPressed = acceleratedProduction, Position = new Vector2(40, y - 2), FocusMode = FocusModeEnum.None });
+			foreach (string colorName in new[] { "font_color", "font_pressed_color", "font_hover_color" }) {
+				box.AddThemeColorOverride(colorName, OnlinePanel.Ink);
+			}
+			box.TooltipText = "Units, buildings and wonders cost half as many shields.";
+			box.Toggled += on => {
+				acceleratedProduction = on;
+				SettingsChanged();
+			};
+		}
+		y += 26;
 		panel.Button("Close", new Vector2(190, y + 16), ClosePopup);
 	}
 
@@ -1212,6 +1234,7 @@ public partial class MultiplayerScreen : Control {
 			turnTimer = mode == Mode.Host ? turnTimer : TurnTimer.None,
 			simultaneousMoves = mode == Mode.Host && simultaneous,
 			aiDiplomacy = mode != Mode.Host || aiDiplomacy,
+			acceleratedProduction = acceleratedProduction,
 		};
 		RememberSettings();
 		loading.Visible = true;
