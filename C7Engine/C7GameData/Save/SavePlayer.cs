@@ -64,6 +64,8 @@ namespace C7GameData.Save {
 		// last talked to them.
 		public List<string> newsWhileAway = new();
 		public Dictionary<string, List<string>> savedQueues;
+		// Continental rally points by continent (Player.continentalRallyPoints).
+		public Dictionary<int, TileLocation> continentalRallyPoints;
 		public Dictionary<string, bool> preferences;
 		public int heardFromAIsOnTurn = -1;
 
@@ -137,6 +139,8 @@ namespace C7GameData.Save {
 				passwordHash = passwordHash ?? "",
 				newsWhileAway = new(newsWhileAway ?? new()),
 				savedQueues = savedQueues == null ? new() : savedQueues.ToDictionary(q => q.Key, q => new List<string>(q.Value)),
+				continentalRallyPoints = continentalRallyPoints == null ? new()
+					: continentalRallyPoints.ToDictionary(r => r.Key, r => map.tileAt(r.Value.X, r.Value.Y)),
 				preferences = preferences == null ? new() : new(preferences),
 				heardFromAIsOnTurn = heardFromAIsOnTurn,
 				turnsUntilPriorityReevaluation = turnsUntilPriorityReevaluation,
@@ -225,6 +229,8 @@ namespace C7GameData.Save {
 			passwordHash = player.passwordHash;
 			newsWhileAway = new(player.newsWhileAway);
 			savedQueues = player.savedQueues.Count == 0 ? null : player.savedQueues.ToDictionary(q => q.Key, q => new List<string>(q.Value));
+			continentalRallyPoints = player.continentalRallyPoints.Count == 0 ? null
+				: player.continentalRallyPoints.ToDictionary(r => r.Key, r => new TileLocation(r.Value));
 			preferences = player.preferences.Count == 0 ? null : new(player.preferences);
 			heardFromAIsOnTurn = player.heardFromAIsOnTurn;
 			beakers = player.beakers;

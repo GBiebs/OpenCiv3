@@ -194,6 +194,10 @@ namespace C7GameData {
 		// The number of turns the player has been researching the current tech.
 		public int turnsResearched = 0;
 
+		// Civ3's continental rally points, by continent: where the units the
+		// cities there build head (a city's own rally point first).
+		public Dictionary<int, Tile> continentalRallyPoints = new();
+
 		// Future techs learned (Civ3's), once every advance is known. They
 		// count for the score only.
 		public int futureTechs;

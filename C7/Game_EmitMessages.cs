@@ -1402,6 +1402,23 @@ public partial class Game {
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
 	}
 
+	// Unloading a transport with several units aboard: all of them, or the
+	// one picked from the list.
+	private void EmitChooseUnload(MapUnit transport) {
+		List<MapUnit> aboard = transport.Passengers();
+		DropdownComponent list = new() {
+			items = [$"All {aboard.Count} units", .. aboard.Select(u => u.Describe())],
+			selected = 0,
+		};
+		OptionsPopUp popup = new(controller.id, "Unload", $"Which units should leave the {transport.unitType.name}?", [
+			new ButtonAction() {
+				message = "Unload.",
+				action = () => new MsgUnloadTransport(transport.id, list.selected == 0 ? null : aboard[list.selected - 1].id).send(),
+			},
+		], Advisor.None, Mood.None, 380) { dropdownComponent = list };
+		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
+	}
+
 	// Ctrl-Shift-G (Civ3's Go to City): the selected unit sets off for one
 	// of our cities, by the same route a go-to would take.
 	private void EmitGotoCity(MapUnit unit) {

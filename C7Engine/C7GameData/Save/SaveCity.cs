@@ -56,6 +56,8 @@ namespace C7GameData.Save {
 		public ID owner;
 		public bool capital;
 		public TileLocation location;
+		// Its rally point (City.rallyPoint), if it has one.
+		public TileLocation? rallyPoint;
 		public string producible;
 		// The production queue (ProductionQueue.Entry: "U:Warrior", "B:Temple").
 		public List<string> productionQueue;
@@ -91,6 +93,7 @@ namespace C7GameData.Save {
 			owner = city.owner.id;
 			capital = city.capital;
 			location = new TileLocation(city.location);
+			rallyPoint = city.rallyPoint == null ? null : new TileLocation(city.rallyPoint);
 			name = city.name;
 			producible = city.itemBeingProduced.name;
 			producibleType = city.itemBeingProduced switch {
@@ -138,6 +141,7 @@ namespace C7GameData.Save {
 			City city = new City{
 				id = id,
 				location = gameMap.tileAt(location.X, location.Y),
+				rallyPoint = rallyPoint is TileLocation rally ? gameMap.tileAt(rally.X, rally.Y) : null,
 				owner = players.Find(p => p.id == owner),
 				name = name,
 				itemBeingProduced = producibleType switch {

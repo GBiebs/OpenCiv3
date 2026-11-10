@@ -219,25 +219,50 @@ namespace C7Engine {
 		}
 	}
 
+	// The transport's units get off: all of them, or only the one chosen.
 	public class MsgUnloadTransport : MessageToEngine {
 		public override bool IsPlayerAction => true;
 
 		private ID transportUnitId;
+		private ID only;
 
-		public MsgUnloadTransport(ID transportUnitId) {
+		public MsgUnloadTransport(ID transportUnitId, ID only = null) {
 			this.transportUnitId = transportUnitId;
+			this.only = only;
 		}
 
 		public override void process() {
-			// TODO: more selective unload, let human player choose
 			MapUnit transportUnit = EngineStorage.gameData.GetUnit(transportUnitId);
-			foreach (MapUnit unit in transportUnit.location.unitsOnTile) {
-				if (unit.loadedOnUnitId == transportUnit.id) {
+			if (transportUnit == null) {
+				return;
+			}
+			foreach (MapUnit unit in transportUnit.location.unitsOnTile.ToList()) {
+				if (unit.loadedOnUnitId == transportUnit.id && (only == null || unit.id == only)) {
 					unit.UnboardTransport(transportUnit);
 				}
 			}
 			new
 				MsgTransportUnloaded(transportUnit).send();
+		}
+	}
+
+	// Civ3's "Wake Transported": the units aboard stop sleeping (fortified,
+	// sentried), to be given orders one by one.
+	public class MsgWakeTransported : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID transportUnitId;
+
+		public MsgWakeTransported(ID transportUnitId) {
+			this.transportUnitId = transportUnitId;
+		}
+
+		public override void process() {
+			if (EngineStorage.gameData.GetUnit(transportUnitId) is MapUnit transport) {
+				foreach (MapUnit unit in transport.Passengers()) {
+					unit.Wake();
+				}
+			}
 		}
 	}
 
@@ -1303,6 +1328,40 @@ namespace C7Engine {
 			}
 			if (cityId != null && gameData.cities.Find(c => c.id == cityId) is C7GameData.City city && clean != "") {
 				city.name = clean;
+			}
+		}
+	}
+
+	// Civ3's rally points: the units a city builds (or, continental, any
+	// city of its continent) head for the tile; no tile clears it.
+	public class MsgSetRallyPoint : MessageToEngine {
+		public override bool IsPlayerAction => true;
+
+		private readonly ID cityId;
+		private readonly Tile tile;
+		private readonly bool continental;
+
+		public MsgSetRallyPoint(ID cityId, Tile tile, bool continental) {
+			this.cityId = cityId;
+			this.tile = tile;
+			this.continental = continental;
+		}
+
+		public override void process() {
+			GameData gameData = EngineStorage.gameData;
+			if (gameData.cities.Find(c => c.id == cityId) is not C7GameData.City city) {
+				return;
+			}
+			Tile at = tile == null ? null : gameData.map.tileAt(tile.XCoordinate, tile.YCoordinate);
+			if (at == Tile.NONE) {
+				at = null;
+			}
+			if (!continental) {
+				city.rallyPoint = at;
+			} else if (at == null) {
+				city.owner.continentalRallyPoints.Remove(city.location.continent);
+			} else {
+				city.owner.continentalRallyPoints[city.location.continent] = at;
 			}
 		}
 	}

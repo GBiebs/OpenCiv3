@@ -248,6 +248,17 @@ public partial class RightClickTileMenu : RightClickMenu {
 		if (fortifiedCount > 1) {
 			AddItem($"Wake All ({fortifiedCount} units)", () => ForAll(tile.XCoordinate, tile.YCoordinate, false));
 		}
+		// Civ3's "Wake Transported": a transport's sleeping units, to be
+		// given orders one by one.
+		foreach (MapUnit transport in playerUnits.Where(u => u.CanTransport() && u.owner == game.controller)) {
+			List<MapUnit> sleeping = transport.Passengers().Where(p => p.isFortified || p.sentry != MapUnit.SentryMode.None).ToList();
+			if (sleeping.Count > 0) {
+				AddItem($"Wake Transported ({sleeping.Count} on the {transport.unitType.name})", () => {
+					new MsgWakeTransported(transport.id).send();
+					this.CloseAndDelete();
+				});
+			}
+		}
 		if (unfortifiedCount > 1) {
 			AddItem($"Fortify All ({unfortifiedCount} units)", () => ForAll(tile.XCoordinate, tile.YCoordinate, true));
 		}
@@ -281,9 +292,28 @@ public partial class RightClickTileMenu : RightClickMenu {
 				this.CloseAndDelete();
 				game.ShowGovernor(tile.cityAtTile);
 			});
-			// TODO: Set Rally Point
-			// TODO: Set Continental Rally Point
-			// TODO: Clear Continental Rally Point
+			// Civ3's rally points: the next click on the map picks the tile.
+			City rallying = tile.cityAtTile;
+			AddItem("Set Rally Point", () => {
+				this.CloseAndDelete();
+				game.PickRallyPoint(rallying, continental: false);
+			});
+			if (rallying.rallyPoint != null) {
+				AddItem("Clear Rally Point", () => {
+					this.CloseAndDelete();
+					new MsgSetRallyPoint(rallying.id, null, continental: false).send();
+				});
+			}
+			AddItem("Set Continental Rally Point", () => {
+				this.CloseAndDelete();
+				game.PickRallyPoint(rallying, continental: true);
+			});
+			if (rallying.owner.continentalRallyPoints.ContainsKey(rallying.location.continent)) {
+				AddItem("Clear Continental Rally Point", () => {
+					this.CloseAndDelete();
+					new MsgSetRallyPoint(rallying.id, null, continental: true).send();
+				});
+			}
 
 			AddItem("Abandon City", () => {
 				this.CloseAndDelete();

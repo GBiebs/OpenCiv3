@@ -262,6 +262,10 @@ public partial class Game : Node {
 
 	public BombardInfo bombardInfo = null;
 	public AirTargetInfo airTargetInfo = null;
+	// Civ3's "Set Rally Point": the city (and whether for its continent)
+	// waiting for the next click on the map.
+	private (City city, bool continental)? rallyPick = null;
+	private TemporaryPopup rallyNote;
 
 	public TileInfo tileInfo = null;
 
@@ -1707,7 +1711,7 @@ public partial class Game : Node {
 	}
 
 	private bool CanClickToMove() {
-		return CurrentState == GameState.PlayerTurn && gotoInfo == null && airTargetInfo == null && bombardInfo == null
+		return CurrentState == GameState.PlayerTurn && gotoInfo == null && airTargetInfo == null && bombardInfo == null && rallyPick == null
 			&& IsMapUnitValid(CurrentlySelectedUnit) && CurrentlySelectedUnit.owner == controller
 			&& CurrentlySelectedUnit.GetAvailableActions().Contains(UnitAction.Goto);
 	}
@@ -1808,11 +1812,19 @@ public partial class Game : Node {
 	private bool CanDoubleClick(InputEventMouseButton eventMouseButton) {
 		Tile tile = PositionToTile(eventMouseButton.Position);
 
-		return gotoInfo == null && airTargetInfo == null && tile?.cityAtTile?.owner == controller;
+		return gotoInfo == null && airTargetInfo == null && rallyPick == null && tile?.cityAtTile?.owner == controller;
 	}
 
 	private void OnSingleLeftMouseButtonClick(InputEventMouseButton eventMouseButton) {
-		if (gotoInfo != null) {
+		if (rallyPick is (City rallying, bool continental)) {
+			Tile tile = PositionToTile(eventMouseButton.Position);
+			if (tile != null && tile != Tile.NONE && controller.tileKnowledge.isTileKnown(tile)) {
+				new MsgSetRallyPoint(rallying.id, tile, continental).send();
+				TemporaryPopup.Show(this, continental ? "Continental rally point set" : $"{rallying.name}'s rally point set",
+					mapView.screenLocationOfTile(tile, true));
+			}
+			EndRallyPick();
+		} else if (gotoInfo != null) {
 			this.ResolveMovement(gotoInfo);
 			this.SetGotoMode(false);
 		} else if (airTargetInfo != null) {
@@ -1891,7 +1903,9 @@ public partial class Game : Node {
 
 		var activeTile = controller.tileKnowledge.isActiveTile(tile);
 
-		if (bombardInfo != null)
+		if (rallyPick != null)
+			EndRallyPick();
+		else if (bombardInfo != null)
 			setBombard(null);
 		else if (airTargetInfo != null)
 			SetAirTarget(null);
@@ -2253,6 +2267,11 @@ public partial class Game : Node {
 			return;
 		}
 
+		if (currentAction == C7Action.Escape && rallyPick != null) {
+			EndRallyPick();
+			return;
+		}
+
 		// The advisors (F1-F6) and the game views (F7-F11), also while one of
 		// them or the city screen is open (not over a popup, nor during the
 		// computer's turn). They're read from the input map, which a focused
@@ -2587,7 +2606,13 @@ public partial class Game : Node {
 			});
 		}
 		if (currentAction == C7Action.UnitUnload) {
-			new MsgUnloadTransport(CurrentlySelectedUnit.id).send();
+			// With several aboard, which of them (or all).
+			MapUnit transport = CurrentlySelectedUnit;
+			if (transport.CanTransport() && transport.Passengers().Count > 1) {
+				EmitChooseUnload(transport);
+			} else {
+				new MsgUnloadTransport(transport.id).send();
+			}
 		}
 
 		Terraform terraform = C7Action.ToTerraform(currentAction);
@@ -2774,6 +2799,25 @@ public partial class Game : Node {
 		});
 
 		return result;
+	}
+
+	// Civ3's "Set Rally Point" (or its continental one) for the city: the
+	// next left click on the map picks the tile; Escape or a right click
+	// cancels.
+	public void PickRallyPoint(City city, bool continental) {
+		rallyPick = (city, continental);
+		Input.SetDefaultCursorShape(Input.CursorShape.Cross);
+		string whose = continental ? $"the rally point for {city.name}'s continent" : $"{city.name}'s rally point";
+		rallyNote = TemporaryPopup.Show(this, $"Click the tile for {whose} (Escape cancels).", mapView.screenLocationOfTile(city.location, true));
+	}
+
+	private void EndRallyPick() {
+		rallyPick = null;
+		// (Hidden, not freed: it frees itself when its time is up.)
+		if (IsInstanceValid(rallyNote)) {
+			rallyNote.Visible = false;
+		}
+		Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
 	}
 
 	// Waits for the air order's target, showing the targeting cursor and

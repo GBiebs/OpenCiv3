@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Serilog;
 using C7Engine;
+using C7Engine.Pathing;
+using C7GameData.AIData;
 using C7GameData.Save;
 using MoonSharp.Interpreter;
 
@@ -48,6 +50,10 @@ namespace C7GameData {
 
 		public ID id { get; set; }
 		public Tile location { get; internal set; }
+
+		// Civ3's rally point: where the units this city builds head (null:
+		// none of its own; a continental one may apply, see RallyPoint).
+		public Tile rallyPoint;
 		public string name;
 		public Dictionary<Player, int> perPlayerCulture = new();
 
@@ -451,7 +457,7 @@ namespace C7GameData {
 			log.Debug($"Produced {producedItem} in {this}");
 			if (producedItem is UnitPrototype prototype) {
 				owner.stats.RecordUnitBuilt(prototype);
-				AddUnit(prototype, gameData);
+				SendToRallyPoint(AddUnit(prototype, gameData));
 			} else if (producedItem is Building part && part.spaceshipPart != null) {
 				Spaceship.AddPart(gameData, this, part);
 			} else if (producedItem is Building building) {
@@ -1200,7 +1206,31 @@ namespace C7GameData {
 			return gold;
 		}
 
-		public void AddUnit(UnitPrototype proto, GameData gameData) {
+		// Where this city's new units head: its own rally point, else its
+		// continent's (Civ3's continental rally point), if any.
+		public Tile RallyPoint() {
+			return rallyPoint ?? owner.continentalRallyPoints.GetValueOrDefault(location.continent);
+		}
+
+		// A unit just built goes for the rally point, by the way its kind
+		// travels (one that can't get there stays).
+		private void SendToRallyPoint(MapUnit unit) {
+			Tile rally = RallyPoint();
+			if (rally == null || rally == location || unit.IsAirUnit() || unit.unitType.immobile) {
+				return;
+			}
+			// Land units to land, ships to water or a city.
+			bool fits = unit.IsLandUnit() ? rally.IsLand() : !rally.IsLand() || rally.HasCity();
+			if (!fits) {
+				return;
+			}
+			TilePath path = PathingAlgorithmChooser.GetAlgorithm(unit).PathFrom(location, rally, unit);
+			if (path != null && path.PathLength() > 0) {
+				unit.path = path;
+			}
+		}
+
+		public MapUnit AddUnit(UnitPrototype proto, GameData gameData) {
 			MapUnit newUnit = proto.GetInstance(gameData.GenerateID(proto.name), proto, owner, location: location);
 			newUnit.experienceLevelKey = gameData.defaultExperienceLevelKey;
 			newUnit.experienceLevel = gameData.defaultExperienceLevel;
@@ -1212,6 +1242,7 @@ namespace C7GameData {
 			foreach (CityBuilding b in WorkingBuildings()) {
 				b.building.onFinishedUnitProduction?.Invoke(newUnit);
 			}
+			return newUnit;
 		}
 
 		// The list of tiles that could be worked by this city.

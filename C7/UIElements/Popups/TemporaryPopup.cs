@@ -57,7 +57,7 @@ public partial class TemporaryPopup : Label {
 		return customTheme;
 	}
 
-	public static void Show(Node parent, string msg, Vector2 rootPosition) {
+	public static TemporaryPopup Show(Node parent, string msg, Vector2 rootPosition) {
 		TemporaryPopup popup = new(msg, 2);
 		popup.SetPosition(rootPosition);
 		parent.AddChild(popup);
@@ -68,6 +68,7 @@ public partial class TemporaryPopup : Label {
 		popup.SetPosition(rootPosition + offset);
 
 		popup.ShowPopup();
+		return popup;
 	}
 
 	public async void ShowPopup() {
