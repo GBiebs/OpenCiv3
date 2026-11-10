@@ -15,7 +15,8 @@ namespace C7Engine {
 			// only theirs; online, this computer's).
 			foreach (Player player in EngineStorage.gameData.players.Where(p => p.isHuman && p.id == EngineStorage.viewerID)) {
 				foreach (MapUnit unit in player.units.Where(u => u.movementPoints.canMove)) {
-					if (unit.isFortified || unit.sentry != MapUnit.SentryMode.None) {
+					if (unit.isFortified || unit.sentry != MapUnit.SentryMode.None
+						|| (unit.autoBombard != MapUnit.AutoBombardMode.None && unit.autoBombardTurn == EngineStorage.gameData.turn)) {
 						continue;
 					}
 

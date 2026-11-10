@@ -249,7 +249,7 @@ namespace C7Engine {
 	// The UI's unit orders: hold, explore, automate, disband.
 	public class MsgUnitOrder : MessageToEngine {
 		// (Cancel: its go-to and automation, as a click on it does.)
-		public enum Order { Hold, Explore, Automate, Disband, Cancel, Sentry, SentryEnemyOnly }
+		public enum Order { Hold, Explore, Automate, Disband, Cancel, Sentry, SentryEnemyOnly, AutoBombard, AutoPrecisionStrike }
 
 		public override bool IsPlayerAction => true;
 
@@ -292,6 +292,12 @@ namespace C7Engine {
 					break;
 				case Order.SentryEnemyOnly:
 					unit.StandSentry(MapUnit.SentryMode.EnemyOnly);
+					break;
+				case Order.AutoBombard:
+					AutoBombard.Start(unit, precision: false);
+					break;
+				case Order.AutoPrecisionStrike:
+					AutoBombard.Start(unit, precision: true);
 					break;
 			}
 		}

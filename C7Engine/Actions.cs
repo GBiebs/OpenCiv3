@@ -111,6 +111,8 @@ public static class C7Action {
 	public const string UnitColonyTo = "unit_colony_to"; // Ctrl-B
 	public const string UnitTradeNetwork = "unit_trade_network"; // Ctrl-N
 	public const string UnitIrrigateToCity = "unit_irrigate_to_city"; // Ctrl-I
+	public const string UnitAutoBombard = "unit_auto_bombard"; // Shift-B: bombard, or a plane's bombing
+	public const string UnitAutoPrecisionStrike = "unit_auto_precision_strike"; // Shift-P for a plane (else pillage)
 	public const string UnitHurryProduction = "unit_hurry_production";
 	public const string UnitBuildArmy = "unit_build_army";
 	public const string UnitStartAgeOfScience = "unit_start_age_of_science";

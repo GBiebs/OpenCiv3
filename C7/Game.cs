@@ -2061,6 +2061,10 @@ public partial class Game : Node {
 			string keep = pKeys.Where(pressed.Contains).FirstOrDefault(SelectedUnitCan) ?? C7Action.UnitPillage;
 			pressed.RemoveAll(a => pKeys.Contains(a) && a != keep);
 		}
+		// Shift-P: a plane's automated precision strikes; otherwise pillage.
+		if (pressed.Contains(C7Action.UnitAutoPrecisionStrike) && pressed.Contains(C7Action.UnitPillage)) {
+			pressed.Remove(AutoBombard.CanAutomate(unit, precision: true) ? C7Action.UnitPillage : C7Action.UnitAutoPrecisionStrike);
+		}
 		// Shift-D sets a worker clearing pollution; otherwise it's contact.
 		if (pressed.Contains(C7Action.UnitAutoClearDamage) && pressed.Contains(C7Action.ContactLeaders)) {
 			pressed.Remove(SelectedUnitCan(C7Action.UnitAutomate) ? C7Action.ContactLeaders : C7Action.UnitAutoClearDamage);
@@ -2473,6 +2477,13 @@ public partial class Game : Node {
 			} else {
 				new MsgAutomateWorker(CurrentlySelectedUnit.id, automation.kind, automation.job).send();
 			}
+		}
+
+		if (currentAction == C7Action.UnitAutoBombard && AutoBombard.CanAutomate(CurrentlySelectedUnit, precision: false)) {
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.AutoBombard).send();
+		}
+		if (currentAction == C7Action.UnitAutoPrecisionStrike && AutoBombard.CanAutomate(CurrentlySelectedUnit, precision: true)) {
+			new MsgUnitOrder(CurrentlySelectedUnit.id, MsgUnitOrder.Order.AutoPrecisionStrike).send();
 		}
 
 		if (currentAction == C7Action.UnitRename) {

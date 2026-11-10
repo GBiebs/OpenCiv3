@@ -117,6 +117,7 @@ public partial class MapUnit {
 		isFortified = false;
 		airSuperiority = false;
 		sentry = SentryMode.None;
+		autoBombard = AutoBombardMode.None;
 	}
 
 	// A new automation order: plain A (null), or one of Civ3's kinds.
@@ -224,6 +225,10 @@ public partial class MapUnit {
 
 	public async Task PerformBusyAction() {
 		if (isFortified || sentry != SentryMode.None) {
+			return;
+		}
+		if (autoBombard != AutoBombardMode.None) {
+			await AutoBombard.Act(EngineStorage.gameData, this);
 			return;
 		}
 

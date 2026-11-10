@@ -55,6 +55,13 @@ namespace C7GameData {
 		public enum SentryMode { None, AnyUnit, EnemyOnly }
 		public SentryMode sentry { get; set; } = SentryMode.None;
 
+		// Civ3's automated bombarding (Shift-B; a plane's Shift-P precision
+		// strikes): each turn at the best enemy target in range (AutoBombard).
+		public enum AutoBombardMode { None, Bombard, Bombing, PrecisionStrike }
+		public AutoBombardMode autoBombard { get; set; } = AutoBombardMode.None;
+		// (The turn it last looked for a target, so it acts once a turn.)
+		public int autoBombardTurn = -1;
+
 		// An air unit on air superiority duty: it intercepts enemy missions
 		// until it's given another order (see Air).
 		public bool airSuperiority { get; set; }
@@ -108,7 +115,7 @@ namespace C7GameData {
 		}
 
 		public bool IsBusy() {
-			return isFortified || sentry != SentryMode.None || airSuperiority || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
+			return isFortified || sentry != SentryMode.None || autoBombard != AutoBombardMode.None || airSuperiority || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
 		}
 
 		public bool IsLandUnit() {
