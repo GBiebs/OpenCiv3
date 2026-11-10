@@ -8,7 +8,7 @@ using Serilog;
 namespace C7GameData {
 
 	// A class for interacting with the PediaIcons.txt file used in scenarios.
-	class PediaIcons {
+	public class PediaIcons {
 		private static readonly ILogger log = Log.ForContext<PediaIcons>();
 
 		// A mapping from the civilopedia entry name (like PRTO_Spearman or
@@ -30,6 +30,9 @@ namespace C7GameData {
 		public readonly Dictionary<string, int> buildingToRowNumberMapping = new();
 
 		private readonly Dictionary<string, string> civilopediaLargeIcons = new();
+		// A building's large Civilopedia picture (BLDG_... -> its path), for
+		// those drawn the same in every era and culture.
+		private readonly Dictionary<string, string> buildingLargeIcons = new(StringComparer.OrdinalIgnoreCase);
 		private readonly Dictionary<string, string> civilopediaSmallIcons = new();
 
 		private readonly Dictionary<string, int> unitSmallIconsIndex = new();
@@ -73,6 +76,9 @@ namespace C7GameData {
 					// columns for culture groups or by era. We don't try to
 					// support that yet.
 					buildingToRowNumberMapping[lines[i].Substring(6)] = Int32.Parse(lines[i + 2]);
+					if (lines[i + 1].Trim() == "SINGLE" && i + 3 < lines.Length) {
+						buildingLargeIcons[lines[i].Substring(6)] = lines[i + 3].Trim();
+					}
 				}
 
 				if (lines[i].StartsWith("#UNITICON_PRTO") && i + 1 < lines.Length) {
@@ -84,6 +90,11 @@ namespace C7GameData {
 					civilopediaSmallIcons[lines[i].Substring(6)] = lines[i + 2];
 				}
 			}
+		}
+
+		// The building's large Civilopedia picture ("BLDG_Pyramids"), or null.
+		public string GetBuildingLargeIcon(string civilopediaEntry) {
+			return civilopediaEntry != null && buildingLargeIcons.TryGetValue(civilopediaEntry, out string path) ? path : null;
 		}
 
 		public string GetTechIconPath(string civilopediaEntry) {
