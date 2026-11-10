@@ -552,10 +552,15 @@ public partial class MapUnit {
 			return null;
 		}
 
+		// Inside the borders of a civ at peace with us, founding a city
+		// declares war on it (Civ3's rule; a human was asked first).
+		if (location.PeacefulOwnerFor(owner) is Player landOwner) {
+			log.Information($"{owner} founds a city in the land of the {landOwner.civilization.noun}: war");
+			owner.DeclareWarOn(landOwner, EngineStorage.gameData.turn);
+		}
+
 		await animateAsync(MapUnit.AnimatedAction.BUILD);
 
-		// TODO: Need to check somewhere that this unit is allowed to build a city on its current tile. Either do that here or in every caller
-		// (probably best to just do it here).
 		City city = CityInteractions.BuildCity(location, owner, cityName);
 		this.RemoveFromPlay();
 

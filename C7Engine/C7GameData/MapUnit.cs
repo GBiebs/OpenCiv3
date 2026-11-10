@@ -795,7 +795,7 @@ namespace C7GameData {
 			if (!unitType.actions.Contains(UnitAction.BuildCity)) {
 				return false;
 			}
-			if (location.HasCity() || !location.IsAllowCities() || location.IsForeignTerritoryFor(owner)) {
+			if (location.HasCity() || !location.IsAllowCities()) {
 				return false;
 			}
 			return !location.HasCityCloserThan((owner?.rules ?? EngineStorage.gameData.rules).MinimumCityDistance);

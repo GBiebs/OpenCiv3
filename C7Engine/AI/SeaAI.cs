@@ -122,7 +122,7 @@ namespace C7Engine {
 			if (trip.attack) {
 				return to.cityAtTile is City city && city.owner != player && !city.owner.isBarbarians && AtWar(player, city.owner);
 			}
-			return !to.HasCity() && !to.IsForeignTerritoryFor(player)
+			return !to.HasCity() && to.PeacefulOwnerFor(player) == null
 				&& !to.HasCityCloserThan(System.Math.Max(3, player.rules?.MinimumCityDistance ?? 0));
 		}
 

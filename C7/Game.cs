@@ -2514,11 +2514,13 @@ public partial class Game : Node {
 		}
 
 		if (currentAction == C7Action.UnitBuildCity && CurrentlySelectedUnit.canBuildCity()) {
-			EngineStorage.ReadGameData((GameData gameData) => {
-				MapUnit currentUnit = gameData.GetUnit(CurrentlySelectedUnit.id);
-				log.Debug(currentUnit.Describe());
-				new MsgNameCity(controller.id, controller.GetNextCityName()).sendFromScreens();
-			});
+			// In the land of a civ at peace with us it means war: asked first.
+			Action nameCity = () => new MsgNameCity(controller.id, controller.GetNextCityName()).sendFromScreens();
+			if (CurrentlySelectedUnit.location.PeacefulOwnerFor(controller) is Player landOwner) {
+				MaybeDeclareWar(landOwner, nameCity);
+			} else {
+				nameCity();
+			}
 		}
 
 		// Air orders share their keys with other orders (B bombs or builds a

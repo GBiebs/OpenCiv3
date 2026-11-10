@@ -405,10 +405,16 @@ namespace C7GameData {
 			return false;
 		}
 
-		// Inside another civ's borders (no city may be founded there, as in
-		// Civ3).
+		// Inside another civ's borders.
 		public bool IsForeignTerritoryFor(Player player) {
 			return OwningPlayer() is Player owner && owner != player;
+		}
+
+		// The civ at peace with the player whose borders this tile is in:
+		// founding a city here declares war on it, as in Civ3 (null if none:
+		// no one's land, ours, or an enemy's).
+		public Player PeacefulOwnerFor(Player player) {
+			return OwningPlayer() is Player owner && owner != player && !PlayerRelationship.AtWar(player, owner) ? owner : null;
 		}
 
 		public Player? OwningPlayer() {

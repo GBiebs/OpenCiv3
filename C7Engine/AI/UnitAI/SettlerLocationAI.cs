@@ -107,8 +107,10 @@ namespace C7Engine {
 		// distance asks for it.
 		private const int AIMinimumCityDistance = 3;
 
+		// (Not in the land of a civ at peace with us: founding there would
+		// declare war.)
 		private static bool IsInvalidCityLocation(Tile tile, Player player) {
-			if (tile == Tile.NONE || tile.HasCity() || tile.IsForeignTerritoryFor(player))
+			if (tile == Tile.NONE || tile.HasCity() || tile.PeacefulOwnerFor(player) != null)
 				return true;
 			return tile.HasCityCloserThan(Math.Max(AIMinimumCityDistance, player.rules?.MinimumCityDistance ?? 0));
 		}

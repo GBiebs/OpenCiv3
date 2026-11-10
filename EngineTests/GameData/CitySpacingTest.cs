@@ -80,39 +80,56 @@ public class CitySpacingTest : IClassFixture<SaveGameFixture> {
 		Assert.Single(us.cities);
 	}
 
-	// No city inside another civ's borders (Civ3's rule; the user,
-	// 2026-11-10): not by a settler, not the AI's pick, not a goody hut's
-	// village. Our own land and no one's land are fine.
+	// A city in another civ's land (Civ3's rule; the user, 2026-11-10): at
+	// war, as anywhere; at peace, founding it declares war. The spacing
+	// still holds. The AI never starts a war that way: it only picks such
+	// sites at war.
 	[Fact]
-	public void NotInsideAnotherCivsBorders() {
+	public void InAnotherCivsLandOnlyAtWarOrFoundingDeclaresIt() {
 		Player them = gameData.players.First(p => p != us && !p.isBarbarians);
 		City theirs = CityInteractions.BuildCity(them.units.First(u => u.unitType.isSettler).location, them, "Theirs");
+		us.EnsureRelationshipExists(them);
+		them.EnsureRelationshipExists(us);
+		Assert.False(PlayerRelationship.AtWar(us, them));
 		Tile inside = At(3);
-		Tile outside = city.location.GetTilesWithinTileSquare(3).First(t => t != inside && Tile.IsTileValid(t) && t.IsLand() && t.IsAllowCities()
-			&& t.OwningPlayer() == null && !city.location.GetTilesWithinTileSquare(2).Contains(t)
-			&& !gameData.cities.Any(c => c != city && c.location.GetTilesWithinTileSquare(3).Contains(t)));
-		Assert.Null(inside.OwningPlayer());
-		gameData.TeleportUnit(settler, inside);
-		Assert.True(settler.canBuildCity());
-
-		// Their borders grow over it.
 		inside.owningCity = theirs;
-		Assert.False(settler.canBuildCity());
-		Assert.DoesNotContain(UnitAction.BuildCity, settler.GetAvailableActions());
-		Assert.Null(settler.BuildCity("Trespass").Result);
-		MapUnit explorer = us.units.First(u => !u.unitType.isSettler);
-		Assert.False(GoodyHuts.IsPossible(GoodyHuts.Outcome.City, gameData, explorer, inside));
-		Assert.DoesNotContain(inside, SettlerLocationAI.GetScoredSettlerCandidates(city.location, us).Keys);
+		us.tileKnowledge.AddTilesToKnown(inside);
+		Assert.Same(them, inside.PeacefulOwnerFor(us));
 
-		// An AI settler bound there looks for another site instead.
+		// The AI keeps away at peace, the settler bound there looks again.
+		Assert.DoesNotContain(inside, SettlerLocationAI.GetScoredSettlerCandidates(city.location, us).Keys);
+		gameData.TeleportUnit(settler, inside);
 		SettlerAI ai = new(new C7GameData.AIData.SettlerAIData { goal = C7GameData.AIData.SettlerAIData.SettlerGoal.BUILD_CITY, destination = inside });
 		Assert.Equal(C7GameData.UnitAI.Result.Error, ((C7GameData.UnitAI)ai).PlayTurn(us, settler).Result);
-		Assert.Equal(2, gameData.cities.Count(c => c.owner == us || c == theirs));
+		Assert.Single(us.cities);
 
-		// Our own land, and no one's, are fine.
-		inside.owningCity = city;
+		// A settler may: the city is founded and the war begins.
 		Assert.True(settler.canBuildCity());
-		gameData.TeleportUnit(settler, outside);
+		Assert.Contains(UnitAction.BuildCity, settler.GetAvailableActions());
+		City founded = settler.BuildCity("Trespass").Result;
+		Assert.NotNull(founded);
+		Assert.True(PlayerRelationship.AtWar(us, them));
+		Assert.Null(inside.PeacefulOwnerFor(us));
+	}
+
+	[Fact]
+	public void AtWarTheirLandIsOpenButNotNextToTheirCity() {
+		Player them = gameData.players.First(p => p != us && !p.isBarbarians);
+		City theirs = CityInteractions.BuildCity(them.units.First(u => u.unitType.isSettler).location, them, "Theirs");
+		us.DeclareWarOn(them, gameData.turn);
+		Tile inside = At(3);
+		inside.owningCity = theirs;
+		us.tileKnowledge.AddTilesToKnown(inside);
+		Assert.Null(inside.PeacefulOwnerFor(us));
+		Assert.Contains(inside, SettlerLocationAI.GetScoredSettlerCandidates(city.location, us).Keys);
+
+		// Not next to their city, war or no war.
+		Tile nextToTheirs = theirs.location.neighbors.Values.First(t => t.IsLand() && t.IsAllowCities());
+		gameData.TeleportUnit(settler, nextToTheirs);
+		Assert.False(settler.canBuildCity());
+		Tile twoAway = theirs.location.GetTilesWithinTileSquare(2).First(t => Tile.IsTileValid(t) && t.IsLand() && t.IsAllowCities()
+			&& !theirs.location.GetTilesWithinTileSquare(1).Contains(t) && gameData.cities.All(c => c == theirs || c.location.DistanceTo(t) > 2));
+		gameData.TeleportUnit(settler, twoAway);
 		Assert.True(settler.canBuildCity());
 	}
 
