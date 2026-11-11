@@ -184,10 +184,13 @@ namespace C7GameData {
 		public ProductionCategory? switchedFromCategory;
 		public int shieldsLostToSwitching;
 
-		// Sets what the city builds. Switching to another category keeps half
-		// the shields (Rules.ProductionSwitchKeptPercent, rounded down);
-		// switching back the same turn returns them, and a further switch
-		// costs nothing more.
+		// Sets what the city builds. The shields go with the switch, all of
+		// them by default (user, 2026-11-11; Civ3 kept half between units,
+		// improvements and wonders: Rules.ProductionSwitchKeptPercent, whose
+		// loss switching back the same turn returns). But the box never holds
+		// more than the new item costs: switching to something cheaper loses
+		// the rest for good, switching back too (the user's rule; Wealth
+		// costs nothing, so it empties the box).
 		public void SetItemBeingProduced(IProducible producible) {
 			// Civ3's news of a great wonder begun (shown to those who've met
 			// the builder, if they want it).
@@ -206,6 +209,7 @@ namespace C7GameData {
 					switchedFromCategory = null;
 					shieldsLostToSwitching = 0;
 				}
+				shieldsStored = Math.Min(shieldsStored, owner.ShieldCost(producible));
 			}
 			this.itemBeingProduced = producible;
 		}

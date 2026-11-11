@@ -427,42 +427,47 @@ namespace C7GameData {
 			return null;
 		}
 
-		public void MaybeAwardForestClearingShields() {
+		// Clearing a forest gives its shields (Rules.ForestValueInShields,
+		// Civ3's 10) to the clearing civ's nearest city whose radius reaches
+		// it, nearest first in Civ3's order (TilesInCiv3Order), once per
+		// tile as in Civ3. A city building a wonder (small ones and
+		// spaceship parts too) or Wealth is passed over for the next one
+		// (user, 2026-11-11); none in reach, no shields. As much as the box
+		// holds (shields beyond the item's cost are lost, as at the turn's
+		// end). The civ is the worker's; without one, the tile's owner.
+		public void MaybeAwardForestClearingShields(Player player = null) {
 			if (hasHadForestCleared) {
 				return;
 			}
 			hasHadForestCleared = true;
 
-			// Shields can only be awarded if the forest is within some city's
-			// borders.
-			if (OwningPlayer() == null) {
+			City city = CityForClearedForest(player ?? OwningPlayer());
+			if (city == null) {
 				return;
 			}
-
-			// Check all the tiles of the forest that a city could be in, taking into account the big fat cross size.
-			foreach (Tile other in GetTilesWithinRankDistance(EngineStorage.gameData.rules.MaxRankOfWorkableTiles)) {
-				if (other.cityAtTile == null) {
-					continue;
-				}
-
-				// Shields aren't awarded to wonders.
-				if (other.cityAtTile.itemBeingProduced is Building b
-					&& (b.greatWonderProperties != null || b.isSmallWonder)) {
-					continue;
-				}
-
-				City c = other.cityAtTile;
-				int shieldsAwarded = EngineStorage.gameData.rules.ForestValueInShields;
-				c.SetStoredShields(shieldsAwarded, true);
-				c.SetStoredShields(Math.Min(c.shieldsStored, c.owner.ShieldCost(c.itemBeingProduced)));
-
-				if (c.owner.isHuman) {
-					new MsgShowTemporaryPopup($"{shieldsAwarded} shields awarded for clearing forests", other).send();
-				}
-
-				return;
+			int shields = EngineStorage.gameData.rules.ForestValueInShields;
+			city.SetStoredShields(Math.Min(city.shieldsStored + shields, city.owner.ShieldCost(city.itemBeingProduced)));
+			if (city.owner.isHuman) {
+				new MsgShowTemporaryPopup($"{shields} shields for {city.name} from clearing the forest", city.location).send();
 			}
 		}
+
+		// The city that gets a cleared forest's shields, or null.
+		public City CityForClearedForest(Player player) {
+			if (player == null) {
+				return null;
+			}
+			foreach (Tile t in TilesInCiv3Order(EngineStorage.gameData.rules.MaxRankOfWorkableTiles)) {
+				if (t.cityAtTile is City city && city.owner == player && TakesForestShields(city)) {
+					return city;
+				}
+			}
+			return null;
+		}
+
+		private static bool TakesForestShields(City city) =>
+			city.itemBeingProduced != null && city.itemBeingProduced is not Inflow
+			&& City.CategoryOf(city.itemBeingProduced) != City.ProductionCategory.Wonder;
 
 		public MapUnit FindTopDefenderForBombard(MapUnit opponent) {
 			return FindTopDefenderForBombard(this, opponent);

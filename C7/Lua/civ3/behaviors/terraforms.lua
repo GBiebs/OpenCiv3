@@ -33,7 +33,7 @@ terraforms.effects = {
     context.tile:ClearTerrainOverlay()
   end,
   clear_forest = function(context)
-    context.tile:MaybeAwardForestClearingShields()
+    context.tile:MaybeAwardForestClearingShields(context.player)
     context.tile:ClearTerrainOverlay()
   end,
   clear_damage = function(context)

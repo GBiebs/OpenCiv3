@@ -186,6 +186,80 @@ public partial class Tile {
 		return null;
 	}
 
+	// Civ3's order around a tile. Its saves encode a citizen's tile as a
+	// position in a spiral around the city, starting with the NE tile and going
+	// clockwise. After the inner spiral, it continues with the top of the
+	// NE outer spiral. Here's a crude ASCII diagram of this.
+	//
+	//                      <   8  >
+	//                  <   7  ><   1  >
+	//              <   6  >< City ><   2  >
+	//                  <   5  ><   3  >
+	//                      <   4  >
+	//
+	//                  <  20  ><  9  >
+	//              <  19  >        <  10  >
+	//          <  18  >                <  11 >
+	//                      < City >
+	//          <  17  >                <  12  >
+	//              <  16  >        <  13  >
+	//                  <  15  ><  14  >
+	public static TileLocation Civ3SpiralLocation(TileLocation start, int spiral) {
+		return spiral switch {
+			// Inner circle.
+			1 => Tile.NeighborCoordinate(start, TileDirection.NORTHEAST),
+			2 => Tile.NeighborCoordinate(start, TileDirection.EAST),
+			3 => Tile.NeighborCoordinate(start, TileDirection.SOUTHEAST),
+			4 => Tile.NeighborCoordinate(start, TileDirection.SOUTH),
+			5 => Tile.NeighborCoordinate(start, TileDirection.SOUTHWEST),
+			6 => Tile.NeighborCoordinate(start, TileDirection.WEST),
+			7 => Tile.NeighborCoordinate(start, TileDirection.NORTHWEST),
+			8 => Tile.NeighborCoordinate(start, TileDirection.NORTH),
+
+			// Outer circle, to the NE
+			9 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHEAST), TileDirection.NORTH),
+			10 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHEAST), TileDirection.NORTHEAST),
+			11 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHEAST), TileDirection.EAST),
+
+			// Outer circle, to the SE
+			12 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHEAST), TileDirection.EAST),
+			13 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHEAST), TileDirection.SOUTHEAST),
+			14 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHEAST), TileDirection.SOUTH),
+
+			// Outer circle, to the SW
+			15 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHWEST), TileDirection.SOUTH),
+			16 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHWEST), TileDirection.SOUTHWEST),
+			17 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.SOUTHWEST), TileDirection.WEST),
+
+			// Outer circle, to the NW
+			18 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHWEST), TileDirection.WEST),
+			19 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHWEST), TileDirection.NORTHWEST),
+			20 => Tile.NeighborCoordinate(Tile.NeighborCoordinate(start, TileDirection.NORTHWEST), TileDirection.NORTH),
+
+			_ => throw new ArgumentOutOfRangeException("Invalid spiral value" + spiral),
+		};
+	}
+
+	// The tiles of Civ3's spiral (Civ3SpiralLocation): the city radius.
+	public const int Civ3SpiralTiles = 20;
+
+	// The tiles within `rank` (as GetTilesWithinRankDistance), nearest first
+	// in Civ3's order: this tile, then Civ3's spiral, then any further rings
+	// (a mod's bigger city radius) by distance in our own spiral's order.
+	public List<Tile> TilesInCiv3Order(int rank) {
+		List<Tile> within = GetTilesWithinRankDistance(rank);
+		List<Tile> ordered = [this];
+		for (int i = 1; i <= Civ3SpiralTiles; i++) {
+			TileLocation at = Civ3SpiralLocation(new TileLocation(this), i);
+			Tile t = map.tileAt(at.X, at.Y);
+			if (t != NONE && within.Contains(t) && !ordered.Contains(t)) {
+				ordered.Add(t);
+			}
+		}
+		ordered.AddRange(within.Where(t => t != NONE && !ordered.Contains(t)).OrderBy(RankDistanceTo));
+		return ordered;
+	}
+
 	// Returns the tiles in the spiral ordering defined by
 	// GetTileAtNeighborIndex(i).
 	public List<Tile> GetTilesWithinRankDistance(int rank) {

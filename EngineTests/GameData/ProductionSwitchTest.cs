@@ -7,11 +7,14 @@ using Xunit;
 
 namespace EngineTests.GameData;
 
-// Civ3: switching a city's build between units, improvements and wonders
-// loses half the shields in the box; within a category it costs nothing.
-// Wealth is an improvement (Civ3's Capitalization); small wonders and
-// spaceship parts count as wonders. Switching back the same turn returns
-// the shields.
+// Switching a city's build keeps all the shields (user, 2026-11-11), but
+// the box never holds more than the new item costs: switching to
+// something cheaper loses the rest, also when switching back. Civ3 lost
+// half between units, improvements and wonders, which is still a rule
+// (ProductionSwitchKeptPercent): within a category it costs nothing,
+// switching back the same turn returns the loss. Wealth is an improvement
+// (Civ3's Capitalization); small wonders and spaceship parts count as
+// wonders.
 public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 	private readonly SaveGameFixture fixture;
 	private readonly C7GameData.GameData gameData;
@@ -50,7 +53,38 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 	}
 
 	[Fact]
-	public void ToAnotherCategoryHalfIsLost() {
+	public void AllTheShieldsGoToAnotherCategory() {
+		Assert.Equal(100, gameData.rules.ProductionSwitchKeptPercent);
+		city.SetItemBeingProduced(Building("Temple"));
+		Assert.Equal(9, city.shieldsStored);
+		city.SetItemBeingProduced(Building("The Pyramids"));
+		Assert.Equal(9, city.shieldsStored);
+		city.SetItemBeingProduced(Unit("Settler"));
+		Assert.Equal(9, city.shieldsStored);
+	}
+
+	[Fact]
+	public void SomethingCheaperKeepsOnlyItsCostEvenSwitchingBack() {
+		city.SetItemBeingProduced(Building("Temple"));
+		int warrior = us.ShieldCost(Unit("Warrior"));
+		city.SetStoredShields(warrior + 15);
+		city.SetItemBeingProduced(Unit("Warrior"));
+		Assert.Equal(warrior, city.shieldsStored);
+		city.SetItemBeingProduced(Building("Temple"));
+		Assert.Equal(warrior, city.shieldsStored);
+	}
+
+	[Fact]
+	public void WealthCostsNothingSoItEmptiesTheBox() {
+		city.SetItemBeingProduced(gameData.Inflows.First());
+		Assert.Equal(0, city.shieldsStored);
+		city.SetItemBeingProduced(Unit("Warrior"));
+		Assert.Equal(0, city.shieldsStored);
+	}
+
+	[Fact]
+	public void WithCiv3sRuleHalfIsLostToAnotherCategory() {
+		gameData.rules.ProductionSwitchKeptPercent = 50;
 		city.SetItemBeingProduced(Building("Temple"));
 		// Half of 9, rounded down, is kept.
 		Assert.Equal(4, city.shieldsStored);
@@ -65,6 +99,7 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void SwitchingBackTheSameTurnReturnsThemAndAThirdCategoryCostsNoMore() {
+		gameData.rules.ProductionSwitchKeptPercent = 50;
 		city.SetItemBeingProduced(Building("Temple"));
 		city.SetItemBeingProduced(Building("The Pyramids"));
 		Assert.Equal(4, city.shieldsStored);
@@ -75,6 +110,7 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void NextTurnASwitchCostsAgain() {
+		gameData.rules.ProductionSwitchKeptPercent = 50;
 		city.SetItemBeingProduced(Building("Temple"));
 		city.ComputeTurnProduction();
 		int stored = city.shieldsStored;
@@ -82,14 +118,6 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 
 		city.SetItemBeingProduced(Unit("Spearman"));
 		Assert.Equal(stored / 2, city.shieldsStored);
-	}
-
-	[Fact]
-	public void WealthIsAnImprovement() {
-		city.SetItemBeingProduced(Building("Temple"));
-		Assert.Equal(4, city.shieldsStored);
-		city.SetItemBeingProduced(gameData.Inflows.First());
-		Assert.Equal(4, city.shieldsStored);
 	}
 
 	[Fact]
@@ -116,6 +144,7 @@ public class ProductionSwitchTest : IClassFixture<SaveGameFixture> {
 
 	[Fact]
 	public void TheSwitchIsSaved() {
+		gameData.rules.ProductionSwitchKeptPercent = 50;
 		city.SetItemBeingProduced(Building("Temple"));
 
 		C7GameData.GameData reloaded = SaveGame.FromGameData(gameData).Clone().ToGameData(fixture.behaviors);

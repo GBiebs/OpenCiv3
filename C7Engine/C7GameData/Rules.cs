@@ -138,8 +138,9 @@ namespace C7GameData {
 		public int PollutionLeftByReducingBuildings = 1;
 
 		// The percent of its shields a city keeps when it switches production
-		// between a unit, an improvement and a wonder (rounded down).
-		public int ProductionSwitchKeptPercent = 50;
+		// between a unit, an improvement and a wonder (rounded down): all of
+		// them (user, 2026-11-11); Civ3 kept 50.
+		public int ProductionSwitchKeptPercent = 100;
 
 		// The chance, one in this many, that a unit that enslaves turns a
 		// unit it beats into a slave (Civ3: one in three).

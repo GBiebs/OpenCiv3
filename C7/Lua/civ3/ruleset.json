@@ -13123,7 +13123,7 @@
     "futureTechCost": 400,
     "acceleratedProductionPercent": 50,
     "pollutionLeftByReducingBuildings": 1,
-    "productionSwitchKeptPercent": 50,
+    "productionSwitchKeptPercent": 100,
     "enslaveChanceOneIn": 3,
     "upgradeDiscountPercent": 50,
     "defendingLeaderChanceFactor": 2,
