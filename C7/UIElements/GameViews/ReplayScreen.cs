@@ -25,11 +25,28 @@ public partial class ReplayScreen : Control {
 	private static readonly Rect2 MapSlot = new(295, 143, 426, 201);
 	private static readonly Vector2 ProgressAt = new(299, 364);
 	private static readonly Color Ink = new(0.08f, 0.07f, 0.05f);
-	// The map: Civ3's dark sea, lighter by the shore, and land no one holds.
-	private static readonly Color Ocean = Color.Color8(24, 57, 64);
-	private static readonly Color Sea = Color.Color8(29, 70, 76);
-	private static readonly Color Coast = Color.Color8(38, 90, 92);
-	private static readonly Color Land = Color.Color8(82, 92, 62);
+	// Civ3's replay map colors, measured on the user's screenshot of it
+	// against the same game's save (2026-11-11: 99.8% of tiles matched).
+	private static readonly Dictionary<string, Color> TerrainColors = new() {
+		{ "desert", Color.Color8(148, 148, 115) },
+		{ "plains", Color.Color8(132, 107, 66) },
+		{ "grassland", Color.Color8(90, 99, 49) },
+		{ "tundra", Color.Color8(132, 140, 140) },
+		{ "flood plain", Color.Color8(74, 49, 33) },
+		{ "hills", Color.Color8(49, 74, 49) },
+		{ "mountains", Color.Color8(123, 123, 123) },
+		{ "forest", Color.Color8(57, 82, 49) },
+		{ "jungle", Color.Color8(33, 66, 24) },
+		{ "marsh", Color.Color8(74, 90, 66) },
+		{ "volcano", Color.Color8(99, 66, 49) },
+		{ "coast", Color.Color8(41, 107, 107) },
+		{ "sea", Color.Color8(33, 90, 90) },
+		{ "ocean", Color.Color8(24, 57, 66) },
+	};
+	private static readonly Color Ocean = Color.Color8(24, 57, 66);
+	// A civ's land: half the terrain under it plus 60% of the civ's color
+	// (Civ3's, from the same measurement).
+	private const float OwnedTerrain = 0.5f, OwnedCiv = 0.6f;
 
 	private readonly GameData gameData;
 	private readonly Action onDone;
@@ -357,22 +374,28 @@ public partial class ReplayScreen : Control {
 	}
 
 	// Each tile a diamond (8x4 pixels, Civ3's map shape), stretched over the
-	// slot as Civ3 does; the cities standing that turn as white dots.
+	// slot as Civ3 does: the terrain softened, a civ's land a crisp diamond
+	// over it, the cities standing that turn as white dots.
 	private void DrawMap(int turn) {
 		GameMap map = gameData.map;
-		Color[] colors = gameData.players.Select(p => p.isBarbarians ? Land : TextureLoader.LoadColor(p.GetPlayerColor())).ToArray();
-		Array.Clear(pixels);
+		bool wrap = map.wrapHorizontally;
+		terrain ??= TerrainPixels();
+		Array.Copy(terrain, pixels, pixels.Length);
+		Color[] colors = gameData.players.Select(p => TextureLoader.LoadColor(p.GetPlayerColor())).ToArray();
 		for (int i = 0; i < map.tiles.Count; i++) {
 			Tile t = map.tiles[i];
-			Color c = !t.baseTerrainType.isWater() ? Land
-				: t.baseTerrainType.Key == "ocean" ? Ocean
-				: t.baseTerrainType.Key == "sea" ? Sea
-				: Coast;
 			int owner = owners[i];
-			if (owner > 0 && owner <= colors.Length && !t.baseTerrainType.isWater()) {
-				c = colors[owner - 1];
+			if (owner <= 0 || owner > colors.Length || t.baseTerrainType.isWater()) {
+				continue;
 			}
-			Diamond(t.XCoordinate * 4, t.YCoordinate * 2, c, map.wrapHorizontally);
+			Color civ = colors[owner - 1];
+			(int cx, int cy) = Center(t.XCoordinate, t.YCoordinate);
+			Diamond(cx, cy, wrap, (x, y) => {
+				int at = (y * width + x) * 4;
+				pixels[at] = Mix(terrain[at], civ.R8);
+				pixels[at + 1] = Mix(terrain[at + 1], civ.G8);
+				pixels[at + 2] = Mix(terrain[at + 2], civ.B8);
+			});
 		}
 		Dictionary<string, (int x, int y)> cities = new();
 		foreach (ReplayHistory.Event e in history.events.Where(e => e.turn <= turn && e.city != null)) {
@@ -383,9 +406,10 @@ public partial class ReplayScreen : Control {
 			}
 		}
 		foreach ((int x, int y) in cities.Values) {
-			for (int dy = -1; dy <= 0; dy++) {
-				for (int dx = -1; dx <= 0; dx++) {
-					Put(x * 4 + dx, y * 2 + dy, Colors.White, map.wrapHorizontally);
+			(int cx, int cy) = Center(x, y);
+			for (int dy = -1; dy <= 1; dy++) {
+				for (int dx = -1; dx <= 1; dx++) {
+					Put(cx + dx, cy + dy, Colors.White, wrap);
 				}
 			}
 		}
@@ -393,12 +417,76 @@ public partial class ReplayScreen : Control {
 		texture.Update(image);
 	}
 
-	// The rows of a tile's diamond: 2, 6, 6 and 2 pixels wide.
-	private void Diamond(int cx, int cy, Color c, bool wrap) {
+	private static byte Mix(byte terrain, int civ) => (byte)Math.Min(255, (int)Math.Round(OwnedTerrain * terrain + OwnedCiv * civ));
+
+	// A tile's middle in the map image (Civ3's places, a row lower than the
+	// tile's own y).
+	private static (int x, int y) Center(int x, int y) => (x * 4, y * 2 + 2);
+
+	// The terrain, once: each tile's color, then softened as Civ3's is.
+	private byte[] terrain;
+	private byte[] TerrainPixels() {
+		GameMap map = gameData.map;
+		Array.Clear(pixels);
+		foreach (Tile t in map.tiles) {
+			TerrainType type = t.baseTerrainType.isWater() ? t.baseTerrainType : t.overlayTerrainType;
+			Color c = TerrainColors.GetValueOrDefault(type.Key, TerrainColors.GetValueOrDefault(t.baseTerrainType.Key, Ocean));
+			(int cx, int cy) = Center(t.XCoordinate, t.YCoordinate);
+			Diamond(cx, cy, map.wrapHorizontally, (x, y) => Put(x, y, c, false));
+		}
+		// Whatever no tile covers (the edges) is ocean.
+		for (int at = 0; at < pixels.Length; at += 4) {
+			if (pixels[at + 3] == 0) {
+				Put(at / 4 % width, at / 4 / width, Ocean, false);
+			}
+		}
+		return Blur(pixels, map.wrapHorizontally);
+	}
+
+	// A box blur 5 pixels wide and 3 high (a tile is 8x4).
+	private byte[] Blur(byte[] source, bool wrap) {
+		byte[] across = new byte[source.Length];
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				for (int ch = 0; ch < 3; ch++) {
+					int sum = 0;
+					for (int d = -2; d <= 2; d++) {
+						int sx = wrap ? ((x + d) % width + width) % width : Math.Clamp(x + d, 0, width - 1);
+						sum += source[(y * width + sx) * 4 + ch];
+					}
+					across[(y * width + x) * 4 + ch] = (byte)(sum / 5);
+				}
+				across[(y * width + x) * 4 + 3] = 255;
+			}
+		}
+		byte[] result = new byte[source.Length];
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				for (int ch = 0; ch < 3; ch++) {
+					int sum = 0;
+					for (int d = -1; d <= 1; d++) {
+						sum += across[(Math.Clamp(y + d, 0, height - 1) * width + x) * 4 + ch];
+					}
+					result[(y * width + x) * 4 + ch] = (byte)(sum / 3);
+				}
+				result[(y * width + x) * 4 + 3] = 255;
+			}
+		}
+		return result;
+	}
+
+	// The pixels of a tile's diamond, rows 2, 6, 6 and 2 wide, inside the image.
+	private void Diamond(int cx, int cy, bool wrap, Action<int, int> pixel) {
 		for (int dy = -2; dy <= 1; dy++) {
 			int half = dy is -2 or 1 ? 1 : 3;
 			for (int dx = -half; dx < half; dx++) {
-				Put(cx + dx, cy + dy, c, wrap);
+				int x = cx + dx, y = cy + dy;
+				if (wrap) {
+					x = ((x % width) + width) % width;
+				}
+				if (x >= 0 && x < width && y >= 0 && y < height) {
+					pixel(x, y);
+				}
 			}
 		}
 	}
@@ -427,7 +515,8 @@ public partial class ReplayScreen : Control {
 		Vector2 scale = new(MapSlot.Size.X / gameData.map.numTilesWide, MapSlot.Size.Y / Math.Max(1, gameData.map.numTilesTall));
 		foreach (var l in lines.Where(l => l.e.x >= 0 && l.e.turn <= turn && l.e.turn > turn - RingTurns)) {
 			float fade = 1f - (turn - l.e.turn) / (float)RingTurns;
-			Vector2 at = new Vector2(l.e.x, l.e.y) * scale;
+			(int cx, int cy) = Center(l.e.x, l.e.y);
+			Vector2 at = new Vector2(cx / 4f, cy / 2f) * scale;
 			rings.DrawArc(at, 7, 0, Mathf.Tau, 24, new Color(0, 0, 0, 0.6f * fade), 3.5f);
 			rings.DrawArc(at, 7, 0, Mathf.Tau, 24, new Color(1, 1, 1, fade), 2f);
 		}
