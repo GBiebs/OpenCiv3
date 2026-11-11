@@ -64,9 +64,11 @@ public partial class CityScreen : Control {
 	private BaseButton draftButton;
 	private BaseButton governorButton;
 
-	// Civ3's commerce on the three green bars, each with its count beside
-	// it: taxes, science (and at its start, in red, what corruption takes),
-	// luxuries.
+	// Civ3's commerce on the three green bars (the user's screenshot,
+	// 2026-11-11): each bar's commerce as coins from its tip, and past the
+	// tip what it goes to (the treasury's chest, science's beaker, the
+	// luxuries' face) with "amount (slider%)"; on the science bar's start,
+	// what corruption takes in red coins, their count under them.
 	private sealed class CommerceRow {
 		public Control row;
 		public Control icons;
@@ -75,13 +77,17 @@ public partial class CityScreen : Control {
 	}
 	private CommerceRow taxesRow, scienceRow, luxuriesRow;
 
+	// Civ3's titles over the bars: "PRODUCTION  14 per turn".
+	private Label productionPerTurn, foodPerTurn, commercePerTurn;
+	private static readonly Color Ink = new(0.08f, 0.06f, 0.03f);
+
 	// The production box (the scene's grid's place): every shield the same
 	// size, in columns of up to ShieldBoxRows, the columns closer together
 	// (overlapping in the end) as the cost grows.
 	private Control shieldBox;
 	private const int ShieldBoxRows = 5;
 	private static readonly Vector2 ShieldBoxSpacing = new(18, 20);
-	private ImageTexture taxTexture, scienceTexture, luxuryTexture, corruptGoldTexture;
+	private ImageTexture taxTexture, scienceTexture, luxuryTexture, treasuryTexture, corruptGoldTexture;
 	// (Their icons scaled to sit inside the 21-pixel bars.)
 	private const float CommerceIconHeight = 18;
 
@@ -153,11 +159,19 @@ public partial class CityScreen : Control {
 		taxTexture = TextureLoader.Load("icons.commerce");
 		scienceTexture = TextureLoader.Load("icons.commerce_science");
 		luxuryTexture = TextureLoader.Load("icons.commerce_luxury");
+		treasuryTexture = TextureLoader.Load("icons.commerce_treasury");
 		corruptGoldTexture = TextureLoader.Load("icons.penalty_commerce");
 		// (The green bars' tops in the background.)
-		taxesRow = AddCommerceRow(626);
-		scienceRow = AddCommerceRow(657);
-		luxuriesRow = AddCommerceRow(690);
+		taxesRow = AddCommerceRow(626, treasuryTexture);
+		scienceRow = AddCommerceRow(657, scienceTexture);
+		luxuriesRow = AddCommerceRow(690, luxuryTexture);
+
+		// Civ3's section titles (the scene's two labels made way for them).
+		productionLabel.Visible = false;
+		foodLabel.Visible = false;
+		productionPerTurn = AddSectionTitle("PRODUCTION", new Vector2(291, 507));
+		foodPerTurn = AddSectionTitle("FOOD", new Vector2(291, 554));
+		commercePerTurn = AddSectionTitle("COMMERCE", new Vector2(291, 606));
 
 		TextureLoader.SetButtonTextures(productionButton, "city_screen.buttons.production");
 		productionButton.Pressed += () => { this.productionMenu.Visible = !this.productionMenu.Visible; };
@@ -357,30 +371,38 @@ public partial class CityScreen : Control {
 		}
 	}
 
+	// Civ3's Luxuries Box (the user's screenshot, 2026-11-11): each luxury
+	// the city has, "(how many reach it)", its icon, and a happy face for
+	// each citizen it makes happy here (City.LuxuryFaces: a Marketplace
+	// makes more).
+	private static readonly Vector2 LuxuryRowSize = new(120, 23);
+	private static readonly (float x, float width) LuxuryFacesColumn = (57, 60);
+
 	private void RenderLuxuries(GameData gameData, City city) {
-		Dictionary<C7GameData.Resource, int> resourceCounter = city.GetLuxuries(gameData);
-
-		foreach (var child in luxuriesContainer.GetChildren()) {
+		foreach (Node child in luxuriesContainer.GetChildren()) {
 			luxuriesContainer.RemoveChild(child);
+			child.QueueFree();
 		}
+		luxuriesContainer.AddThemeConstantOverride("separation", 0);
 
-		foreach ((C7GameData.Resource resource, int count) in resourceCounter) {
-			HBoxContainer resourceContainer = new();
-
-			Label resourceCount = new() {
-				Text = "(" + count.ToString() + ")"
+		foreach ((C7GameData.Resource luxury, int count, int faces) in city.LuxuryFaces(gameData)) {
+			Control row = new() {
+				CustomMinimumSize = LuxuryRowSize,
+				TooltipText = $"{luxury.Name}: {count} reach the city; {(faces == 1 ? "makes 1 citizen" : $"make {faces} citizens")} happy.",
+				MouseFilter = MouseFilterEnum.Stop,
 			};
-
-			var texture = TextureLoader.Load("resources.small", resource, useCache: true);
-
-			TextureRect resourceRect = new() {
-				Texture = texture,
-			};
-
-			resourceContainer.AddChild(resourceCount);
-			resourceContainer.AddChild(resourceRect);
-
-			luxuriesContainer.AddChild(resourceContainer);
+			Label number = new() { Text = $"({count})", Position = new Vector2(2, 2), MouseFilter = MouseFilterEnum.Ignore };
+			number.AddThemeFontSizeOverride("font_size", 12);
+			number.AddThemeColorOverride("font_color", Ink);
+			row.AddChild(number);
+			ImageTexture icon = TextureLoader.Load("resources.small", luxury, useCache: true);
+			row.AddChild(new TextureRect {
+				Texture = icon,
+				Position = new Vector2(24, (LuxuryRowSize.Y - icon.GetHeight()) / 2),
+				MouseFilter = MouseFilterEnum.Ignore,
+			});
+			IconColumn(row, luxuryTexture, faces, LuxuryFacesColumn, new Vector2(13, 15), Colors.White, top: 4);
+			luxuriesContainer.AddChild(row);
 		}
 	}
 
@@ -482,7 +504,7 @@ public partial class CityScreen : Control {
 
 	// `count` icons from the column's left edge, a pixel apart, or closer
 	// (overlapping) so the last one still ends inside it.
-	private static void IconColumn(Control row, ImageTexture texture, int count, (float x, float width) column, Vector2 size, Color tint) {
+	private static void IconColumn(Control row, ImageTexture texture, int count, (float x, float width) column, Vector2 size, Color tint, float top = EffectsTop) {
 		float step = count > 1 ? Math.Min(size.X + 1, (column.width - size.X) / (count - 1)) : 0;
 		for (int i = 0; i < count; ++i) {
 			row.AddChild(new TextureRect {
@@ -490,7 +512,7 @@ public partial class CityScreen : Control {
 				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 				StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 				TextureFilter = TextureFilterEnum.Linear,
-				Position = new Vector2(column.x + i * step, EffectsTop),
+				Position = new Vector2(column.x + i * step, top),
 				Size = size,
 				Modulate = tint,
 				MouseFilter = MouseFilterEnum.Ignore,
@@ -537,11 +559,11 @@ public partial class CityScreen : Control {
 			growthStr = "Starving!";
 			foodLostPerTurn = Math.Abs(city.FoodGrowthPerTurn());
 		} else {
-			growthStr = $"Growth in {turnsUntilGrowth} turns.";
+			growthStr = $"Growth in {turnsUntilGrowth} turns";
 			foodSurplus = city.FoodGrowthPerTurn();
 		}
 		growthInLabel.Text = growthStr;
-		foodLabel.Text = $"{city.CurrentFoodYield()} per turn";
+		foodPerTurn.Text = $"{city.CurrentFoodYield()} per turn";
 
 		RenderFoodBox(city.FoodNeededToGrow(), city.foodStored, foodLostPerTurn, hasGranary: city.HasGranary());
 		RenderFoodRow(city.FoodConsumedPerTurn(), foodSurplus);
@@ -558,12 +580,14 @@ public partial class CityScreen : Control {
 		int spacerWidth = foodSurplus > 0 ? 100 : 0;
 		int spacePerIcon = (width - spacerWidth) / (foodEatenPerTurn + foodSurplus);
 
+		// (The food eaten side by side from the start, as Civ3's; the
+		// surplus spaced out at the tip.)
 		int xOffset = 0;
 		for (int i = 0; i < foodEatenPerTurn; ++i) {
 			TextureRect icon = new() { Texture = eatenFoodTexture };
 			foodRowContainer.AddChild(icon);
 			icon.SetPosition(new Vector2(xOffset, 0));
-			xOffset += Math.Min(spacePerIcon, iconWidth + 10);
+			xOffset += Math.Min(spacePerIcon, iconWidth - 2);
 		}
 
 		xOffset = width - iconWidth;
@@ -727,36 +751,71 @@ public partial class CityScreen : Control {
 
 	private void RenderCommerceDetails(City city) {
 		CommerceBreakdown breakdown = city.CurrentCommerceYield();
-		RenderCommerceRow(taxesRow, taxTexture, breakdown.taxes, $"Taxes: {breakdown.taxes} gold a turn");
-		RenderCommerceRow(scienceRow, scienceTexture, breakdown.beakers, $"Science: {breakdown.beakers} beakers a turn"
-			+ (breakdown.corrupted > 0 ? $"\nCorruption: {breakdown.corrupted} commerce lost a turn (in red, on the left)" : ""), breakdown.corrupted);
-		RenderCommerceRow(luxuriesRow, luxuryTexture, breakdown.happiness, $"Luxuries: {breakdown.happiness} a turn");
+		Player owner = city.owner;
+		commercePerTurn.Text = $"{breakdown.taxes + breakdown.beakers + breakdown.happiness + breakdown.corrupted} per turn";
+		RenderCommerceRow(taxesRow, breakdown.taxes, owner.taxRate, $"Taxes: {breakdown.taxes} gold a turn");
+		RenderCommerceRow(scienceRow, breakdown.beakers, owner.scienceRate, $"Science: {breakdown.beakers} beakers a turn"
+			+ (breakdown.corrupted > 0 ? $"\nCorruption: {breakdown.corrupted} commerce lost a turn (the red coins)" : ""), breakdown.corrupted);
+		RenderCommerceRow(luxuriesRow, breakdown.happiness, owner.luxuryRate, $"Luxuries: {breakdown.happiness} a turn");
 	}
 
-	// A green bar (`top` its top edge): its icons and count, and the
-	// tooltip over both.
-	private CommerceRow AddCommerceRow(int top) {
+	// A green bar (`top` its top edge): its coins, past its tip what it
+	// goes to (`label`) and its count, and the tooltip over all of them.
+	private CommerceRow AddCommerceRow(int top, ImageTexture label) {
 		CommerceRow row = new() {
 			row = new Control { Position = new Vector2(289, top - 4), Size = new Vector2(479, 29), MouseFilter = MouseFilterEnum.Stop },
 			icons = new Control { Size = new Vector2(385, 29), MouseFilter = MouseFilterEnum.Ignore },
-			count = new Label { Theme = yieldDetailsFontTheme, MouseFilter = MouseFilterEnum.Ignore },
-			lost = new Label { Theme = yieldDetailsFontTheme, MouseFilter = MouseFilterEnum.Ignore },
+			count = new Label {
+				Position = new Vector2(426, 0),
+				Size = new Vector2(53, 29),
+				HorizontalAlignment = HorizontalAlignment.Right,
+				VerticalAlignment = VerticalAlignment.Center,
+				MouseFilter = MouseFilterEnum.Ignore,
+			},
+			// (Under the red coins, as Civ3's.)
+			lost = new Label { Position = new Vector2(10, 25), MouseFilter = MouseFilterEnum.Ignore },
 		};
-		row.lost.AddThemeColorOverride("font_color", new Color(0.75f, 0.05f, 0.05f));
-		HBoxContainer counts = new() { Position = new Vector2(401, 0), MouseFilter = MouseFilterEnum.Ignore };
-		counts.AddThemeConstantOverride("separation", 10);
-		counts.AddChild(row.count);
-		counts.AddChild(row.lost);
+		foreach (Label text in new[] { row.count, row.lost }) {
+			text.AddThemeFontSizeOverride("font_size", 13);
+			text.AddThemeColorOverride("font_color", Ink);
+		}
+		// The label's middle 15 px past the bar's tip (its icons end at 385).
+		row.row.AddChild(new TextureRect {
+			Texture = label,
+			Position = new Vector2(414 - label.GetWidth() / 2f, (29 - label.GetHeight()) / 2f),
+			Size = label.GetSize(),
+			MouseFilter = MouseFilterEnum.Ignore,
+		});
 		row.row.AddChild(row.icons);
-		row.row.AddChild(counts);
+		row.row.AddChild(row.count);
+		row.row.AddChild(row.lost);
 		background.AddChild(row.row);
 		return row;
 	}
 
+	// Civ3's title over a bar, its "N per turn" (returned) beside it in
+	// smaller letters.
+	private Label AddSectionTitle(string title, Vector2 at) {
+		HBoxContainer box = new() { Position = at, MouseFilter = MouseFilterEnum.Ignore };
+		box.AddThemeConstantOverride("separation", 10);
+		Label name = new() { Text = title, VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
+		name.AddThemeFontSizeOverride("font_size", 14);
+		Label perTurn = new() { VerticalAlignment = VerticalAlignment.Bottom, MouseFilter = MouseFilterEnum.Ignore };
+		perTurn.AddThemeFontSizeOverride("font_size", 11);
+		foreach (Label text in new[] { name, perTurn }) {
+			text.AddThemeColorOverride("font_color", Ink);
+			box.AddChild(text);
+		}
+		background.AddChild(box);
+		return perTurn;
+	}
+
 	// As Civ3's, and the shield row: `lost` red coins from the bar's left
-	// end, `amount` icons up to its tip, squeezed together when they
-	// wouldn't fit.
-	private void RenderCommerceRow(CommerceRow row, ImageTexture icon, int amount, string tooltip, int lost = 0) {
+	// end, `amount` coins up to its tip, squeezed together when they
+	// wouldn't fit; past the tip the amount and its slider's share (`rate`
+	// tenths).
+	private void RenderCommerceRow(CommerceRow row, int amount, int rate, string tooltip, int lost = 0) {
+		ImageTexture icon = taxTexture;
 		foreach (Node child in row.icons.GetChildren()) {
 			row.icons.RemoveChild(child);
 			child.QueueFree();
@@ -764,7 +823,10 @@ public partial class CityScreen : Control {
 		static Vector2 Fitted(ImageTexture texture) => texture.GetSize() * Math.Min(1, CommerceIconHeight / texture.GetHeight());
 		Vector2 lostSize = Fitted(corruptGoldTexture), iconSize = Fitted(icon);
 		float room = row.icons.Size.X - 10;
-		float width = lost * lostSize.X + amount * iconSize.X;
+		// (Civ3's coins overlap by about a quarter even with room to spare.)
+		const float CoinStep = 0.72f;
+		float lostStep = lostSize.X * CoinStep, step = iconSize.X * CoinStep;
+		float width = lost * lostStep + amount * step + iconSize.X - step;
 		float squeeze = lost + amount > 1 && width > room ? (width - room) / (lost + amount - 1) : 0;
 		void Place(ImageTexture texture, Vector2 size, float x) {
 			TextureRect rect = new() {
@@ -780,12 +842,12 @@ public partial class CityScreen : Control {
 			row.icons.AddChild(rect);
 		}
 		for (int i = 0; i < lost; ++i) {
-			Place(corruptGoldTexture, lostSize, i * (lostSize.X - squeeze));
+			Place(corruptGoldTexture, lostSize, i * (lostStep - squeeze));
 		}
 		for (int i = 1; i <= amount; ++i) {
-			Place(icon, iconSize, room - iconSize.X - (i - 1) * (iconSize.X - squeeze));
+			Place(icon, iconSize, room - iconSize.X - (i - 1) * (step - squeeze));
 		}
-		row.count.Text = amount.ToString();
+		row.count.Text = $"{amount} ({rate * 10}%)";
 		row.lost.Text = lost.ToString();
 		row.lost.Visible = lost > 0;
 		row.row.TooltipText = tooltip;
@@ -795,7 +857,7 @@ public partial class CityScreen : Control {
 		CorruptableValue shields = city.CurrentProductionYield();
 		RenderShieldBox(city.owner.ShieldCost(city.itemBeingProduced), city.shieldsStored);
 		RenderShieldRow(shields.useful, shields.corrupt);
-		productionLabel.Text = $"PRODUCTION: {shields.useful + shields.corrupt} per turn";
+		productionPerTurn.Text = $"{shields.useful + shields.corrupt} per turn";
 		completeInLabel.Text = city.TurnsUntilProductionFinished() == int.MaxValue ? "--" : $"Complete in {city.TurnsUntilProductionFinished()} turns";
 
 		foreach (Node child in productionButton.GetChildren()) {

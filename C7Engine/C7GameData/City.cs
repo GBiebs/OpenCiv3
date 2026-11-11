@@ -1589,11 +1589,7 @@ namespace C7GameData {
 			contentToHappyMoves += CurrentCommerceYield(respectCivilDisorder: false).happiness;
 
 			// As do luxury resources, which can be boosted by marketplaces.
-			int effectiveLux = GetLuxuries(gameData).Keys.Count;
-			if (WorkingBuildings().Any(x => x.building.increasesLuxuryTrade)) {
-				effectiveLux = (int)(Math.Floor(effectiveLux / 2f) * Math.Ceiling(effectiveLux / 2f) + Math.Ceiling(effectiveLux / 2f));
-			}
-			contentToHappyMoves += effectiveLux;
+			contentToHappyMoves += LuxuryFaces(gameData).Sum(l => l.faces);
 
 			if (contentToHappyMoves >= 0) {
 				if (unhappyToContentMoves >= 0) {
@@ -1687,6 +1683,20 @@ namespace C7GameData {
 
 		public Dictionary<Resource, int> GetLuxuries(GameData gameData) {
 			return ListResourceAccess(gameData, ResourceCategory.LUXURY);
+		}
+
+		// Each luxury the city has, how many of it reach the city, and the
+		// citizens it makes happy (the city screen's Luxuries Box, as Civ3's):
+		// see FacesOfLuxury.
+		public List<(Resource luxury, int count, int faces)> LuxuryFaces(GameData gameData) {
+			bool marketplace = WorkingBuildings().Any(x => x.building.increasesLuxuryTrade);
+			return GetLuxuries(gameData).Select((pair, i) => (pair.Key, pair.Value, FacesOfLuxury(i + 1, marketplace))).ToList();
+		}
+
+		// The `nth` luxury makes one citizen happy; with a Marketplace,
+		// ceil(nth / 2): 1, 1, 2, 2, 3, ... (Civ3's, as its city screen shows).
+		public static int FacesOfLuxury(int nth, bool marketplace) {
+			return marketplace ? (nth + 1) / 2 : 1;
 		}
 	}
 }

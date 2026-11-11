@@ -348,9 +348,15 @@ textures.icons = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 98, 5, 23, 22 },
   },
-  -- The city screen's commerce rows: taxes are the coins above, science
-  -- a beaker, luxuries a happy face (the user's choice, 2026-11-11: was
-  -- the glass at { 7, 2, 18, 27 }) (corruption the red coins).
+  -- The city screen's commerce rows, as Civ3's (the user's screenshot,
+  -- 2026-11-11): every row's commerce the coins above, and at each row's
+  -- end what it goes to: the treasury's chest, science's beaker,
+  -- luxuries' happy face (until then a glass, { 7, 2, 18, 27 }); the
+  -- luxuries' face is also the Luxuries Box's (corruption the red coins).
+  commerce_treasury = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 748, 2, 24, 28 },
+  },
   commerce_science = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 39, 3, 16, 28 },
