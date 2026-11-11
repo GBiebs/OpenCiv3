@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using C7.UIElements;
 using Godot;
 
@@ -115,7 +116,99 @@ public partial class Preferences : Control {
 
 		TextureLoader.SetButtonTextures(close, "ui.exit");
 		close.Pressed += HidePreferences;
+		LayOutPage();
 		AddCiv3Options();
+	}
+
+	// Every option the same size, two to a row; the page scrolls inside the
+	// parchment's border when it doesn't fit.
+	private static readonly Vector2 OptionSize = new(428, 24);
+	private const int OptionFontSize = 14;
+	private ScrollContainer scroller;
+	// The page's sections (moved into the scroller, so found from here).
+	private VBoxContainer rows;
+
+	private void LayOutPage() {
+		rows = GetNode<VBoxContainer>("Background/Rows");
+		scroller = new() {
+			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			Position = new Vector2(72, 70),
+			Size = new Vector2(884, 644),
+		};
+		background.AddChild(scroller);
+		// (Under the close button, which must keep its clicks.)
+		background.MoveChild(scroller, rows.GetIndex());
+		rows.Reparent(scroller, keepGlobalTransform: false);
+		rows.Position = Vector2.Zero;
+		rows.CustomMinimumSize = new Vector2(866, 0);
+		rows.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+		rows.AddThemeConstantOverride("separation", 8);
+		foreach (Control section in rows.GetChildren().OfType<Control>()) {
+			section.SizeFlagsVertical = SizeFlags.Fill;
+		}
+		// Rows one height apart, the autosaves' box included.
+		foreach (GridContainer grid in new[] { rows.GetNode<GridContainer>("GameSection/GameGrid"), rows.GetNode<GridContainer>("UnitsSection/UnitsGrid") }) {
+			grid.AddThemeConstantOverride("v_separation", 0);
+		}
+
+		VScrollBar bar = scroller.GetVScrollBar();
+		bar.CustomMinimumSize = new Vector2(10, 0);
+		bar.AddThemeStyleboxOverride("scroll", new StyleBoxFlat { BgColor = new Color(0.35f, 0.25f, 0.12f, 0.12f) });
+		foreach (string grabber in new[] { "grabber", "grabber_highlight", "grabber_pressed" }) {
+			bar.AddThemeStyleboxOverride(grabber, new StyleBoxFlat {
+				BgColor = new Color(0.35f, 0.25f, 0.12f, grabber == "grabber" ? 0.55f : 0.8f),
+				CornerRadiusTopLeft = 4,
+				CornerRadiusTopRight = 4,
+				CornerRadiusBottomLeft = 4,
+				CornerRadiusBottomRight = 4,
+			});
+		}
+
+		// The research question, full screen and the autosaves: cells of the
+		// game's grid like the others (they shared a column of their own).
+		GridContainer gameGrid = rows.GetNode<GridContainer>("GameSection/GameGrid");
+		Node firstColumn = gameGrid.GetNode("GameFirstCol");
+		promptForResearch.Reparent(gameGrid, keepGlobalTransform: false);
+		gameGrid.MoveChild(promptForResearch, 0);
+		if (autosaveRow != null) {
+			autosaveRow.Reparent(gameGrid, keepGlobalTransform: false);
+			gameGrid.MoveChild(fullscreen, 1);
+			gameGrid.MoveChild(autosaveRow, 2);
+			autosaveRow.CustomMinimumSize = OptionSize;
+			autosaveRow.AddThemeConstantOverride("separation", 8);
+			if (autosaveToggle is Civ3Checkbox toggle) {
+				// Its own label, as every other option has.
+				toggle.Text = "Number of autosaves";
+				toggle.FontSize = OptionFontSize;
+				toggle.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+				autosaveLabel.Visible = false;
+			}
+			// A small box on the parchment, no taller than a checkbox.
+			autosaveCount.CustomMinimumSize = new Vector2(34, 18);
+			autosaveCount.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			autosaveCount.AddThemeFontSizeOverride("font_size", 12);
+			autosaveCount.AddThemeColorOverride("font_color", new Color(0.129412f, 0.0980392f, 0.054902f));
+			foreach (string state in new[] { "normal", "focus" }) {
+				autosaveCount.AddThemeStyleboxOverride(state, new StyleBoxFlat {
+					BgColor = new Color(1, 0.97f, 0.88f, 0.7f),
+					BorderColor = new Color(0.35f, 0.25f, 0.12f, state == "focus" ? 0.9f : 0.5f),
+					BorderWidthLeft = 1,
+					BorderWidthTop = 1,
+					BorderWidthRight = 1,
+					BorderWidthBottom = 1,
+					ContentMarginLeft = 4,
+					ContentMarginRight = 4,
+					ContentMarginTop = 0,
+					ContentMarginBottom = 0,
+				});
+			}
+		}
+		gameGrid.RemoveChild(firstColumn);
+		firstColumn.QueueFree();
+		foreach (Civ3Checkbox box in new[] { promptForResearch, fullscreen }) {
+			box.CustomMinimumSize = OptionSize;
+			box.FontSize = OptionFontSize;
+		}
 	}
 
 	// Raised when one of Civ3's preferences changes (the game applies it).
@@ -123,12 +216,14 @@ public partial class Preferences : Control {
 
 	// Civ3's preferences (Civ3Preferences): the game's and the units' two to
 	// a row in their grids, the sound switches with the volumes, and the map
-	// scroll speed. Those the game can't act on yet are greyed, saying why.
+	// scroll speed. Those the game can't act on yet (the Civilopedia cursor,
+	// the tutorial, color blind help, fewer multiplayer popups) aren't shown
+	// for now.
 	private void AddCiv3Options() {
-		GridContainer gameGrid = GetNode<GridContainer>("Background/Rows/GameSection/GameGrid");
-		GridContainer unitsGrid = GetNode<GridContainer>("Background/Rows/UnitsSection/UnitsGrid");
-		VBoxContainer gameSection = GetNode<VBoxContainer>("Background/Rows/GameSection");
-		VBoxContainer audio = GetNode<VBoxContainer>("Background/Rows/AudioSection");
+		GridContainer gameGrid = rows.GetNode<GridContainer>("GameSection/GameGrid");
+		GridContainer unitsGrid = rows.GetNode<GridContainer>("UnitsSection/UnitsGrid");
+		VBoxContainer gameSection = rows.GetNode<VBoxContainer>("GameSection");
+		VBoxContainer audio = rows.GetNode<VBoxContainer>("AudioSection");
 		gameGrid.Columns = 2;
 		unitsGrid.Columns = 2;
 		// (The four animation settings below replace these two.)
@@ -138,13 +233,9 @@ public partial class Preferences : Control {
 		HBoxContainer soundRow = new();
 		audio.AddChild(soundRow);
 		audio.MoveChild(soundRow, 1);
-		foreach (Civ3Preferences.Option option in Civ3Preferences.All) {
-			Civ3Checkbox box = new() { Text = option.label, CustomMinimumSize = new Vector2(option.section == Civ3Preferences.Sound ? 200 : 420, 18) };
+		foreach (Civ3Preferences.Option option in Civ3Preferences.All.Where(o => o.unavailable == null)) {
+			Civ3Checkbox box = new() { Text = option.label, CustomMinimumSize = option.section == Civ3Preferences.Sound ? new Vector2(200, OptionSize.Y) : OptionSize };
 			box.SetPressed(Civ3Preferences.Get(option.key));
-			if (option.unavailable != null) {
-				box.Disabled = true;
-				box.TooltipText = option.unavailable;
-			}
 			box.Toggled += on => {
 				Civ3Preferences.Set(option.key, on);
 				if (option.section == Civ3Preferences.Sound) {
@@ -156,12 +247,15 @@ public partial class Preferences : Control {
 		}
 
 		HBoxContainer scroll = new();
+		scroll.AddThemeConstantOverride("separation", 12);
 		Label scrollLabel = new() { Text = "Map Scroll Speed", CustomMinimumSize = new Vector2(140, 0) };
 		scrollLabel.AddThemeFontSizeOverride("font_size", 13);
+		scrollLabel.AddThemeColorOverride("font_color", new Color(0.129412f, 0.0980392f, 0.054902f));
 		scroll.AddChild(scrollLabel);
 		HSlider speed = new() { MinValue = 25, MaxValue = 200, Step = 5, Value = Civ3Preferences.GetMapScrollSpeed(), CustomMinimumSize = new Vector2(240, 20) };
 		Label speedValue = new() { Text = $"{Civ3Preferences.GetMapScrollSpeed()}%", CustomMinimumSize = new Vector2(52, 0) };
 		speedValue.AddThemeFontSizeOverride("font_size", 13);
+		speedValue.AddThemeColorOverride("font_color", new Color(0.129412f, 0.0980392f, 0.054902f));
 		speed.ValueChanged += value => {
 			Civ3Preferences.SetMapScrollSpeed((int)value);
 			speedValue.Text = $"{(int)value}%";
@@ -169,6 +263,20 @@ public partial class Preferences : Control {
 		scroll.AddChild(speed);
 		scroll.AddChild(speedValue);
 		gameSection.AddChild(scroll);
+
+		// Each option in a cell of one size, so the rows are evenly spaced
+		// (a Civ3Checkbox sizes itself to its contents, the autosaves' row
+		// is a little taller).
+		foreach (GridContainer grid in new[] { gameGrid, unitsGrid }) {
+			foreach (Control content in grid.GetChildren().OfType<Control>().Where(c => c.Visible).ToList()) {
+				int index = content.GetIndex();
+				HBoxContainer cell = new() { CustomMinimumSize = OptionSize };
+				grid.AddChild(cell);
+				grid.MoveChild(cell, index);
+				content.Reparent(cell, keepGlobalTransform: false);
+				content.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+			}
+		}
 	}
 
 	// Civ3's sound switches: everything, the music, the effects (muting the
@@ -215,6 +323,27 @@ public partial class Preferences : Control {
 
 	public void ShowPreferences() {
 		Show();
+		FitToWindow();
+		if (scroller != null) {
+			scroller.ScrollVertical = 0;
+		}
+	}
+
+	// A window smaller than the page (1024 by 768) shows it scaled down to
+	// fit, title and close button included. (The whole screen is scaled
+	// about its middle: a container would undo a scale on the page.)
+	private void FitToWindow() {
+		Vector2 window = GetViewportRect().Size;
+		Vector2 page = background.Texture.GetSize();
+		float scale = Mathf.Min(1, Mathf.Min(window.X / page.X, window.Y / page.Y));
+		PivotOffset = Size / 2;
+		Scale = new Vector2(scale, scale);
+	}
+
+	public override void _Notification(int what) {
+		if (what == NotificationResized && IsVisibleInTree()) {
+			FitToWindow();
+		}
 	}
 
 	public void HidePreferences() {

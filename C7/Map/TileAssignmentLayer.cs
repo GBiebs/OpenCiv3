@@ -81,7 +81,8 @@ namespace C7.Map {
 		}
 
 		// Civ3's "Show Food and Shields on Map": each land tile we know shows
-		// what it would yield us (not when zoomed far out, where they'd be
+		// what it would yield us, as small, half-transparent icons that don't
+		// crowd the map (not when zoomed far out, where they'd be
 		// unreadable).
 		private void DrawMapYields(LooseView looseView, Tile tile, Vector2 tileCenter) {
 			if (!C7.UIElements.Civ3Preferences.Get(C7.UIElements.Civ3Preferences.ShowFoodAndShieldsOnMap) || !tile.IsLand()
@@ -97,22 +98,30 @@ namespace C7.Map {
 				.. Enumerable.Repeat(shieldTexture, tile.ProductionYield(viewer).yield),
 				.. Enumerable.Repeat(goldTexture, tile.CommerceYield(viewer).yield),
 			];
-			DrawYieldRow(looseView, tileCenter, icons);
+			DrawYieldRow(looseView, tileCenter, icons, MapYieldScale, MapYieldAlpha);
 		}
+
+		// The map's yields: half the city screen's size, half transparent.
+		private const float MapYieldScale = 0.5f;
+		private const float MapYieldAlpha = 0.5f;
 
 		// One row of icons across the tile, squeezed together when they
 		// wouldn't fit it. (The city screen always shows the map at its own
-		// zoom, so they're the city info's size.)
-		private static void DrawYieldRow(LooseView looseView, Vector2 tileCenter, List<ImageTexture> icons) {
+		// zoom, so they're the city info's size; the map's own yields are
+		// smaller and fainter.)
+		private static void DrawYieldRow(LooseView looseView, Vector2 tileCenter, List<ImageTexture> icons, float scale = 1, float alpha = 1) {
 			if (icons.Count == 0) {
 				return;
 			}
-			float width = icons.Sum(icon => icon.GetWidth());
-			float squeeze = icons.Count > 1 && width > yieldRowWidth ? (width - yieldRowWidth) / (icons.Count - 1) : 0;
-			float x = -Math.Min(width, yieldRowWidth) / 2;
+			float rowWidth = yieldRowWidth * scale;
+			float width = icons.Sum(icon => icon.GetWidth() * scale);
+			float squeeze = icons.Count > 1 && width > rowWidth ? (width - rowWidth) / (icons.Count - 1) : 0;
+			float x = -Math.Min(width, rowWidth) / 2;
+			Color tint = new(1, 1, 1, alpha);
 			foreach (ImageTexture icon in icons) {
-				looseView.DrawTexture(icon, tileCenter + new Vector2(x, -icon.GetHeight() / 2));
-				x += icon.GetWidth() - squeeze;
+				Vector2 size = icon.GetSize() * scale;
+				looseView.DrawTextureRect(icon, new Rect2(tileCenter + new Vector2(x, -size.Y / 2), size), false, tint);
+				x += size.X - squeeze;
 			}
 		}
 
