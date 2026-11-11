@@ -72,6 +72,42 @@ public class ReplayHistoryTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains(replay.events, e => e.kind == ReplayHistory.Kind.CityGone && e.text == "Seat is destroyed.");
 	}
 
+	// Civ3's list on the replay screen: founded, captured, destroyed, created.
+	[Fact]
+	public void Civ3sLines() {
+		ReplayHistory replay = gameData.replay;
+		int t0 = gameData.turn;
+		replay.Record(gameData);
+		Tile far = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity() && t.unitsOnTile.Count == 0
+			&& gameData.cities.All(c => c.location.DistanceTo(t) > 8));
+		City outpost = CityInteractions.BuildCity(far, us, "Outpost");
+		gameData.turn++;
+		replay.Record(gameData);
+		CultureFlip.Flip(gameData, outpost, gameData.players.First(p => p != us && !p.isBarbarians));
+		City seat = gameData.cities.Single(c => c.name == "Seat");
+		Building wonder = gameData.Buildings.First(b => b.IsGreatWonder());
+		new MsgWonderCompleted(us, seat, wonder).send();
+		// A wonder in a save from before wonders had their own kind, and news
+		// that isn't on Civ3's list.
+		replay.events.Add(new ReplayHistory.Event() { turn = gameData.turn, kind = ReplayHistory.Kind.News, text = "The Romans complete The Hanging Gardens in Rome." });
+		replay.events.Add(new ReplayHistory.Event() { turn = gameData.turn, kind = ReplayHistory.Kind.News, text = "The Romans declare war on the Maya." });
+		gameData.turn++;
+		replay.Record(gameData);
+		CityInteractions.DestroyCity(seat);
+		gameData.turn++;
+		replay.Record(gameData);
+
+		Assert.Equal([
+			$"Outpost founded in {t0 + 1}",
+			$"{wonder.name} created in {t0 + 1}",
+			$"The Hanging Gardens created in {t0 + 1}",
+			$"Outpost captured in {t0 + 2}",
+			$"Seat destroyed in {t0 + 3}",
+		], replay.Lines().Select(l => ReplayHistory.Text(l.line, l.name, l.e.turn.ToString())).ToList());
+		Assert.Contains(replay.Lines(), l => l.line == ReplayHistory.Line.Created && l.e.x == seat.location.XCoordinate);
+		Assert.Contains(replay.events, e => e.kind == ReplayHistory.Kind.Wonder && e.name == wonder.name);
+	}
+
 	[Fact]
 	public void TheHistoryIsSaved() {
 		gameData.replay.Record(gameData);

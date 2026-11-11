@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using C7Engine;
 
 namespace C7GameData {
@@ -12,12 +13,13 @@ namespace C7GameData {
 	// Owners are kept as the player's place in GameData.players plus one (0
 	// for nobody): the first frame whole, then each turn's changes.
 	public class ReplayHistory {
-		public enum Kind { City, CityGone, News }
+		// (Wonder since 2026-11-11: before, a wonder was News, named only in its text.)
+		public enum Kind { City, CityGone, News, Wonder }
 
 		public class Event {
 			public int turn;
 			public Kind kind;
-			// The city's id and name, for its events.
+			// The city's id and name, for its events; a wonder's name.
 			public string city;
 			public string name;
 			public int player = -1;
@@ -105,8 +107,8 @@ namespace C7GameData {
 			}
 			switch (msg) {
 				case MsgWonderCompleted m:
-					Add(gameData, Kind.News, m.city.location, gameData.players.IndexOf(m.builder), null,
-						$"The {m.builder.civilization.noun} complete {m.wonder.name} in {m.city.name}.");
+					Add(gameData, Kind.Wonder, m.city.location, gameData.players.IndexOf(m.builder), null,
+						$"The {m.builder.civilization.noun} complete {m.wonder.name} in {m.city.name}.", m.wonder.name);
 					break;
 				case MsgWarDeclarationNotification m:
 					Add(gameData, Kind.News, null, gameData.players.IndexOf(m.aggressor), null,
@@ -121,6 +123,42 @@ namespace C7GameData {
 					break;
 			}
 		}
+
+		// Civ3's replay list (Conquests' labels.txt): "$CITY0 founded in
+		// $DATE1", "captured in", "destroyed in", "$WONDER0 created in". A
+		// city's first event is its founding (none for the cities already
+		// there when recording began), each later one a capture: flips and
+		// trades too, Civ3 has no other words. War, peace and civs destroyed
+		// aren't on Civ3's list.
+		public enum Line { Founded, Captured, Destroyed, Created }
+
+		public static string Text(Line line, string name, string date) => line switch {
+			Line.Founded => $"{name} founded in {date}",
+			Line.Captured => $"{name} captured in {date}",
+			Line.Destroyed => $"{name} destroyed in {date}",
+			_ => $"{name} created in {date}",
+		};
+
+		public IEnumerable<(Event e, Line line, string name)> Lines() {
+			HashSet<string> seen = new();
+			foreach (Event e in events) {
+				if (e.kind == Kind.City) {
+					bool first = seen.Add(e.city);
+					if (e.text != "") {
+						yield return (e, first ? Line.Founded : Line.Captured, e.name);
+					}
+				} else if (e.kind == Kind.CityGone) {
+					yield return (e, Line.Destroyed, e.name);
+				} else if (e.kind == Kind.Wonder) {
+					yield return (e, Line.Created, e.name);
+				} else if (OlderWonder.Match(e.text) is { Success: true } m) {
+					yield return (e, Line.Created, m.Groups[1].Value);
+				}
+			}
+		}
+
+		// A wonder recorded before it had its own kind.
+		private static readonly Regex OlderWonder = new(@"^The .+? complete (.+) in [^.]+\.$");
 
 		private void Add(GameData gameData, Kind kind, Tile at, int player, string city, string text, string name = null) {
 			events.Add(new Event() {

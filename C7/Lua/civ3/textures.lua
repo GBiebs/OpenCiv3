@@ -25,6 +25,10 @@ local POPUP_BORDERS = "Art/popupborders.pcx"
 
 local CURSORS = "Art/Cursor.pcx"
 
+local REPLAY = "Art/Replay/"
+local REPLAY_NAV = "Art/Replay/replay_nav.pcx"
+local SCROLL = "Art/scroll.pcx"
+
 -- Texture definitions
 local textures = {}
 
@@ -187,6 +191,37 @@ textures.screens = {
   demographics = {
     background = ADVISORS .. "demographics.pcx",
   },
+  -- Civ3's Summary Replay: the map goes in the background's magenta slot.
+  replay = {
+    background = REPLAY .. "replay_background.pcx",
+    progress = { path = REPLAY .. "replay_progressbar.pcx", shadows = false },
+    -- The buttons: back to the start, a turn back, stop, play, a turn on.
+    start = {
+      normal = { path = REPLAY_NAV, crop_region = { 198, 1, 61, 29 }, shadows = false },
+      hover = { path = REPLAY_NAV, crop_region = { 198, 31, 61, 29 }, shadows = false },
+      pressed = { path = REPLAY_NAV, crop_region = { 198, 61, 61, 29 }, shadows = false },
+    },
+    back = {
+      normal = { path = REPLAY_NAV, crop_region = { 1, 1, 52, 29 }, shadows = false },
+      hover = { path = REPLAY_NAV, crop_region = { 1, 31, 52, 29 }, shadows = false },
+      pressed = { path = REPLAY_NAV, crop_region = { 1, 61, 52, 29 }, shadows = false },
+    },
+    stop = {
+      normal = { path = REPLAY_NAV, crop_region = { 99, 1, 43, 29 }, shadows = false },
+      hover = { path = REPLAY_NAV, crop_region = { 99, 31, 43, 29 }, shadows = false },
+      pressed = { path = REPLAY_NAV, crop_region = { 99, 61, 43, 29 }, shadows = false },
+    },
+    play = {
+      normal = { path = REPLAY_NAV, crop_region = { 54, 1, 44, 29 }, shadows = false },
+      hover = { path = REPLAY_NAV, crop_region = { 54, 31, 44, 29 }, shadows = false },
+      pressed = { path = REPLAY_NAV, crop_region = { 54, 61, 44, 29 }, shadows = false },
+    },
+    forward = {
+      normal = { path = REPLAY_NAV, crop_region = { 143, 1, 54, 29 }, shadows = false },
+      hover = { path = REPLAY_NAV, crop_region = { 143, 31, 54, 29 }, shadows = false },
+      pressed = { path = REPLAY_NAV, crop_region = { 143, 61, 54, 29 }, shadows = false },
+    },
+  },
 
 }
 
@@ -286,6 +321,21 @@ textures.ui = {
       path = EXIT_BOX,
       crop_region = { 144, 0, 72, 48 },
     },
+  },
+  -- Civ3's list scroll bar (Art/scroll.pcx): green arrows, the track, the thumb.
+  scroll = {
+    down = {
+      normal = { path = SCROLL, crop_region = { 2, 2, 20, 20 }, shadows = false },
+      hover = { path = SCROLL, crop_region = { 25, 2, 20, 20 }, shadows = false },
+      pressed = { path = SCROLL, crop_region = { 48, 2, 20, 20 }, shadows = false },
+    },
+    up = {
+      normal = { path = SCROLL, crop_region = { 2, 25, 20, 20 }, shadows = false },
+      hover = { path = SCROLL, crop_region = { 25, 25, 20, 20 }, shadows = false },
+      pressed = { path = SCROLL, crop_region = { 48, 25, 20, 20 }, shadows = false },
+    },
+    track = { path = SCROLL, crop_region = { 9, 139, 20, 20 }, shadows = false },
+    thumb = { path = SCROLL, crop_region = { 46, 139, 20, 20 }, shadows = false },
   },
   cursor = {
       bombard_deny = {
