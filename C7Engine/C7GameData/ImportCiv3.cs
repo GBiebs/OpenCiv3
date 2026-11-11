@@ -1519,10 +1519,10 @@ namespace C7GameData {
 			if (prto.Irrigate) yield return TerraformKey.Irrigate;
 			if (prto.ClearJungle) yield return TerraformKey.ClearWetlands;
 			if (prto.ClearForest) yield return TerraformKey.ClearForest;
+			if (prto.PlantForest) yield return TerraformKey.PlantForest;
 			if (prto.BuildBarricade) yield return TerraformKey.BuildBarricade;
 			if (prto.BuildFortress) yield return TerraformKey.BuildFortress;
-			// Civ3's "clean pollution". (Plant Forest has no effect yet, so
-			// it's left out.)
+			// Civ3's "clean pollution".
 			if (prto.ClearPollution) yield return TerraformKey.ClearDamage;
 			if (prto.BuildColony) yield return TerraformKey.BuildColony;
 			if (prto.BuildAirfield) yield return TerraformKey.BuildAirfield;

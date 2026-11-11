@@ -447,16 +447,20 @@ public class StructuresImportTest {
 		SaveGame save = ImportCiv3.ImportBiq(scenario, PathUtils.defaultBicPath,
 			_ => PathUtils.defaultPediaIconsPath, _ => PathUtils.defaultCivilopediaTextPath);
 		ID Job(string key) => save.TerraForms.Single(t => t.Improvement == key).Id;
-		int workers = 0;
+		ID plantForest = save.TerraForms.Single(t => t.Name == "Plant Forest").Id;
+		int workers = 0, planters = 0;
 		foreach (QueryCiv3.Biq.PRTO prto in BiqData.LoadFile(scenario).Prto) {
 			SaveUnitPrototype unit = save.UnitPrototypes.Find(u => u.name == prto.Name);
 			Assert.Equal(prto.BuildColony, unit.terraformActions.Contains(Job(COLONY)));
 			Assert.Equal(prto.BuildOutpost, unit.terraformActions.Contains(Job(OUTPOST)));
 			Assert.Equal(prto.BuildAirfield, unit.terraformActions.Contains(Job(AIRFIELD)));
 			Assert.Equal(prto.BuildRadarTower, unit.terraformActions.Contains(Job(RADAR_TOWER)));
+			Assert.Equal(prto.PlantForest, unit.terraformActions.Contains(plantForest));
 			workers += prto.BuildColony && prto.BuildOutpost && prto.BuildAirfield && prto.BuildRadarTower ? 1 : 0;
+			planters += prto.PlantForest ? 1 : 0;
 		}
 		Assert.True(workers > 0);
+		Assert.True(planters > 0);
 	}
 
 	// Structures and their owners come from the SAV's records.

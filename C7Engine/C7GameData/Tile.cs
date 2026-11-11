@@ -571,6 +571,31 @@ namespace C7GameData {
 			overlayTerrainType = baseTerrainType;
 		}
 
+		// Civ3's Plant Forest: on terrain that allows it (grassland, plains
+		// and tundra: allowedFoliageAction), not a city's tile, and not over
+		// a resource a forest can't have (it would be lost; my choice).
+		public bool CanPlantForest() {
+			TerrainType forest = EngineStorage.gameData?.terrainTypes.Find(t => t.Key == "forest");
+			return forest != null && overlayTerrainType.allowedFoliageAction == TerrainType.Civ3FoliageAction.PlantForest
+				&& !HasCity() && (Resource == null || Resource == Resource.NONE || forest.allowedResources.Contains(Resource.Name));
+		}
+
+		// The tile becomes forest (pines on tundra, as the map generator makes
+		// them, and two in five elsewhere by the tile's place); irrigation or
+		// a mine, which give nothing on a forest, goes.
+		public void PlantForest() {
+			if (!CanPlantForest()) {
+				return;
+			}
+			TerrainType forest = EngineStorage.gameData.terrainTypes.Find(t => t.Key == "forest");
+			overlayTerrainType = forest;
+			isPineForest = baseTerrainType.Key == "tundra" || (XCoordinate * 7 + YCoordinate * 13) % 5 < 2;
+			TerrainImprovement development = overlays.ImprovementAtLayer(TerrainImprovement.Layer.ResourceDevelopment);
+			if (development != null && new[] { YieldType.Food, YieldType.Production, YieldType.Commerce }.All(y => development.GetYieldBonus(forest, y) <= 0)) {
+				overlays.Remove(development);
+			}
+		}
+
 		public bool HasImprovements => overlays.HasBeenImproved();
 	}
 }

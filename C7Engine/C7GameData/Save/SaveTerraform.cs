@@ -95,6 +95,7 @@ public class SaveTerraform {
 			TerraformKey.Irrigate => "irrigate",
 			TerraformKey.ClearWetlands => "clear_wetlands",
 			TerraformKey.ClearForest => "clear_forest",
+			TerraformKey.PlantForest => "plant_forest",
 			TerraformKey.ClearDamage => "clear_damage",
 			TerraformKey.BuildColony or TerraformKey.BuildOutpost or TerraformKey.BuildAirfield or TerraformKey.BuildRadarTower => "structure",
 			_ => null,
@@ -107,6 +108,7 @@ public class SaveTerraform {
 		switch (tfKey) {
 			case TerraformKey.ClearWetlands:
 			case TerraformKey.ClearForest:
+			case TerraformKey.PlantForest:
 			case TerraformKey.ClearDamage:
 				Effects.Add($"terraforms.effects.{actionPath}");
 				break;

@@ -151,6 +151,7 @@ namespace C7GameData.Save {
 			}
 
 			ConvertTerrainImprovements(data);
+			UpdateOlderPlantForest();
 			ConvertTerraforms(data);
 			// convert technologies earlier than the player data,
 			// because we need to fill in current research and research queues
@@ -324,6 +325,22 @@ namespace C7GameData.Save {
 			};
 
 			return data;
+		}
+
+		// Saves from before Plant Forest worked (2026-11-11) kept the job
+		// without its Lua check and effect, and gave it to no unit. Civ3
+		// gives it to the units that clear forests (the Worker): so do they.
+		private void UpdateOlderPlantForest() {
+			SaveTerraform plant = TerraForms.Find(t => t.UIAction == C7Action.UnitPlantForest);
+			SaveTerraform clear = TerraForms.Find(t => t.UIAction == C7Action.UnitClearForest);
+			if (plant == null || plant.Validators.Count > 0 || clear == null) {
+				return;
+			}
+			plant.Validators.Add("terraforms.validators.plant_forest");
+			plant.Effects.Add("terraforms.effects.plant_forest");
+			foreach (SaveUnitPrototype unit in UnitPrototypes.Where(u => u.terraformActions.Contains(clear.Id) && !u.terraformActions.Contains(plant.Id))) {
+				unit.terraformActions.Add(plant.Id);
+			}
 		}
 
 		private void ConvertTerraforms(GameData data) {
