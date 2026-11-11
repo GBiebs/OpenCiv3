@@ -708,12 +708,15 @@ public partial class MapView : Node2D {
 		terrainView.layers.Add(new MarshLayer());
 		terrainView.layers.Add(new HillsLayer());
 		terrainView.layers.Add(new TntLayer());
-		terrainView.layers.Add(new TileOverlayLayer());
+		TileOverlayLayer improvements = new();
+		terrainView.layers.Add(improvements);
 		terrainView.layers.Add(new ResourceLayer());
 		this.gridLayer = new GridLayer();
 		terrainView.layers.Add(this.gridLayer);
-		terrainView.layers.Add(new BuildingLayer());
+		BuildingLayer campsAndHuts = new();
+		terrainView.layers.Add(campsAndHuts);
 		terrainView.layers.Add(new BorderLayer());
+		cleanMapLayers = [improvements, campsAndHuts];
 
 		LooseView cityView = new(this);
 		this.cityLayer = new();
@@ -748,6 +751,25 @@ public partial class MapView : Node2D {
 		looseViews.Add(unitView);
 		AddChild(otherView);
 		looseViews.Add(otherView);
+		cleanMapViews = [cityView, tileAssignmentView, unitView, otherView];
+	}
+
+	// Civ3's clean map (Ctrl-Shift-M, the same again or Escape to go back):
+	// the land without units, cities or improvements (roads, irrigation,
+	// mines, fortresses and the like, camps and huts), to read the terrain
+	// and its resources. Borders, rivers and the fog stay.
+	public bool cleanMap { get; private set; }
+	private LooseLayer[] cleanMapLayers = [];
+	private LooseView[] cleanMapViews = [];
+
+	public void SetCleanMap(bool on) {
+		cleanMap = on;
+		foreach (LooseLayer layer in cleanMapLayers) {
+			layer.visible = !on;
+		}
+		foreach (LooseView view in cleanMapViews) {
+			view.Visible = !on;
+		}
 	}
 
 	public override void _Process(double delta) {

@@ -44,7 +44,15 @@ public static class C7Action {
 	public const string SoundPreferences = "sound_preferences"; // Shift-S
 	public const string HideInterface = "hide_interface"; // Delete
 	public const string ShowVersion = "show_version"; // Ctrl-F4
-	public const string CleanUpMap = "clean_up_map"; // Ctrl-Shift-M: notes, routes and targeting off the map
+	public const string CleanUpMap = "clean_up_map"; // Ctrl-Shift-M: Civ3's clean map, the land without units, cities or improvements
+	public const string NextUnit = "next_unit"; // ]
+	public const string PreviousUnit = "previous_unit"; // [
+	public const string NextUnitOfType = "next_unit_of_type"; // Shift-] (})
+	public const string PreviousUnitOfType = "previous_unit_of_type"; // Shift-[ ({)
+	public const string NextCity = "next_city"; // . (in the city screen too)
+	public const string PreviousCity = "previous_city"; // ,
+	public const string NextCityInDisorder = "next_city_in_disorder"; // Shift-. (>)
+	public const string PreviousCityInDisorder = "previous_city_in_disorder"; // Shift-, (<)
 	public const string ToggleUnitButtons = "toggle_unit_buttons"; // Backspace: the unit buttons in rows or columns
 	public const string CityGovernor = "city_governor"; // G in the city screen (Hurry is H)
 	public const string CityLoadQueue = "city_load_queue"; // Q in the city screen (saving is Shift-Q)

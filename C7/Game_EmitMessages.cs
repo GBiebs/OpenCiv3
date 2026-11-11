@@ -799,8 +799,10 @@ public partial class Game {
 				"Mobilization",
 				"Set mobilization level to...",
 				options,
+				// (An advisor needs a mood: there's no face for none, and the
+				// popup failed to show without one.)
 				Advisor.Domestic,
-				Mood.None,
+				Mood.Happy,
 				350,
 				margins: new Margins(top: 100)
 			)

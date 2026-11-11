@@ -1887,6 +1887,39 @@ public partial class Game : Node {
 		SelectUnit(unit, screenPos);
 	}
 
+	// Civ3's ] and [ (with Shift, only the selected unit's type): the next
+	// or previous of our units that can take orders this turn (not one
+	// fortified, sentried, automated or on its way: selecting it would
+	// wake it).
+	private void CycleUnits(int step, bool sameType) {
+		if (CurrentState != GameState.PlayerTurn) {
+			return;
+		}
+		MapUnit current = IsMapUnitValid(CurrentlySelectedUnit) ? CurrentlySelectedUnit : null;
+		List<MapUnit> units = controller.units.Where(u => u.movementPoints.canMove && u.CanBeActive() && !u.IsBusy()
+			&& (!sameType || u.unitType == current?.unitType)).ToList();
+		if (units.Count == 0) {
+			return;
+		}
+		int at = current == null ? -1 : units.IndexOf(current);
+		int next = at < 0 ? (step > 0 ? 0 : units.Count - 1) : ((at + step) % units.Count + units.Count) % units.Count;
+		SelectUnit(units[next]);
+	}
+
+	// Civ3's . and , (with Shift, only cities in disorder): the map on the
+	// next or previous of our cities.
+	private City cycledCity;
+	private void CycleCities(int step, bool inDisorder) {
+		List<City> cities = controller.cities.Where(c => !inDisorder || c.isInCivilDisorder).ToList();
+		if (cities.Count == 0) {
+			return;
+		}
+		int at = cycledCity == null ? -1 : cities.IndexOf(cycledCity);
+		int next = at < 0 ? (step > 0 ? 0 : cities.Count - 1) : ((at + step) % cities.Count + cities.Count) % cities.Count;
+		cycledCity = cities[next];
+		mapView.centerCameraOnTile(cycledCity.location);
+	}
+
 	private void HandleRightMouseButton(InputEventMouseButton eventMouseButton) {
 		this.SetGotoMode(false);
 
@@ -1993,41 +2026,17 @@ public partial class Game : Node {
 			ToggleObserverMode();
 		}
 
-		if (eventKeyDown.Keycode == Godot.Key.P && eventKeyDown.IsCommandOrControlPressed()) {
-			if (preferences.Visible) {
-				preferences.HidePreferences();
-			} else {
-				preferences.ShowPreferences();
-			}
-			return;
-		}
+		// (Ctrl-P, G and Ctrl-G are in the input map, matched exactly: handled
+		// here as well they toggled twice, the preferences and the grid
+		// coming straight back off.)
 
 
-		// For inputs that have the same keys mapped to multiple actions like G
-		// we need to manually handle what is triggered by adding extra conditions.
-		// Otherwise when pressing CTRL + G for example, both the go-to
-		// and the toggle grid actions are triggered, because godot does not distinguish
-		// single key presses from combos, it sends both signals.
-		// Sometimes even worse, when pressing CTRL + G, it only sends the go-to signal.
-		// We continue to map these to an action and not call them directly,
-		// because we could add a button in the ui that does the same and this would call the action too.
-		if (eventKeyDown.Keycode == Godot.Key.G) {
-			// Toggle Coordinates
-			if (eventKeyDown.IsCommandOrControlPressed()
-				&& eventKeyDown.ShiftPressed
-				&& eventKeyDown.AltPressed) {
-				ProcessAction(C7Action.ToggleCoordinates);
-			}
-			// Toggle Grid (Ctrl-Shift-G is Go to City, in the input map)
-			else if (eventKeyDown.IsCommandOrControlPressed() && !eventKeyDown.ShiftPressed) {
-				ProcessAction(C7Action.ToggleGrid);
-			}
-			// Trigger Unit go-to
-			else if (!eventKeyDown.IsCommandOrControlPressed()
-					   && !eventKeyDown.ShiftPressed
-					   && !eventKeyDown.AltPressed) {
-				ProcessAction(C7Action.UnitGoto);
-			}
+		// Ctrl-Shift-Alt-G toggles the tiles' coordinates (a developer key,
+		// not in the input map). G (go-to), Ctrl-G (the grid) and
+		// Ctrl-Shift-G (go to city) are the input map's, matched exactly.
+		if (eventKeyDown.Keycode == Godot.Key.G && eventKeyDown.IsCommandOrControlPressed()
+			&& eventKeyDown.ShiftPressed && eventKeyDown.AltPressed) {
+			ProcessAction(C7Action.ToggleCoordinates);
 		}
 	}
 
@@ -2317,6 +2326,13 @@ public partial class Game : Node {
 				EngineStorage.ReadGameData(_ => new MsgDisplayHurryProductionPopup(shown, shown.GetHurryProductionDetails()).sendFromScreens());
 				return;
 			}
+			// , and . the previous and next city, with Shift those in
+			// disorder (the screen's arrows).
+			if (currentAction is C7Action.NextCity or C7Action.PreviousCity or C7Action.NextCityInDisorder or C7Action.PreviousCityInDisorder) {
+				cityScreen.SwitchCity(currentAction is C7Action.NextCity or C7Action.NextCityInDisorder ? 1 : -1,
+					inDisorder: currentAction is C7Action.NextCityInDisorder or C7Action.PreviousCityInDisorder);
+				return;
+			}
 		}
 
 		// never poll for actions if UI elements are visible
@@ -2364,6 +2380,9 @@ public partial class Game : Node {
 				hud.Visible = !hud.Visible;
 				return;
 			case C7Action.CleanUpMap:
+				// Civ3's clean map: the land without units, cities or
+				// improvements, and nothing over it (the same key or Escape
+				// brings them back).
 				HideTileInfo();
 				SetGotoMode(false);
 				setBombard(null);
@@ -2372,6 +2391,15 @@ public partial class Game : Node {
 				foreach (TemporaryPopup note in GetChildren().OfType<TemporaryPopup>()) {
 					note.Hide();
 				}
+				mapView.SetCleanMap(!mapView.cleanMap);
+				return;
+			case C7Action.NextUnit or C7Action.PreviousUnit or C7Action.NextUnitOfType or C7Action.PreviousUnitOfType:
+				CycleUnits(currentAction is C7Action.NextUnit or C7Action.NextUnitOfType ? 1 : -1,
+					sameType: currentAction is C7Action.NextUnitOfType or C7Action.PreviousUnitOfType);
+				return;
+			case C7Action.NextCity or C7Action.PreviousCity or C7Action.NextCityInDisorder or C7Action.PreviousCityInDisorder:
+				CycleCities(currentAction is C7Action.NextCity or C7Action.NextCityInDisorder ? 1 : -1,
+					inDisorder: currentAction is C7Action.NextCityInDisorder or C7Action.PreviousCityInDisorder);
 				return;
 			case C7Action.ToggleUnitButtons:
 				GetNode<UnitButtons>("CanvasLayer/Control/UnitButtons").ToggleLayout();
@@ -2434,6 +2462,11 @@ public partial class Game : Node {
 
 		if (currentAction == C7Action.ToggleCoordinates) {
 			ToggleGridCoordinates();
+		}
+
+		if (currentAction == C7Action.Escape && mapView.cleanMap) {
+			mapView.SetCleanMap(false);
+			return;
 		}
 
 		if (currentAction == C7Action.Escape && this.gotoInfo == null) {

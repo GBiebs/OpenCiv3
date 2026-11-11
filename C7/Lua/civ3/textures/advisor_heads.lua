@@ -43,6 +43,9 @@ function advisor_heads:map_object_to_sprite(details)
     mood_col = 2
   elseif details.mood == details.mood.Surprised then
     mood_col = 3
+  else
+    -- No face for this mood (None): the happy one, rather than no popup.
+    mood_col = 0
   end
 
   return {

@@ -1107,23 +1107,26 @@ public partial class CityScreen : Control {
 		}
 	}
 
-	private void SwitchToNextCity() {
-		EngineStorage.ReadGameData((GameData gameData) => {
-			City currentCity = tileAssignmentLayer.city;
-			List<City> cities = currentCity.owner.cities;
-			City nextCity = cities[(cities.IndexOf(currentCity) + 1) % cities.Count];
-			Game.RefreshMoods(nextCity, gameData);
-			OnShowCityScreenLocked(gameData, new ParameterWrapper<City>(nextCity));
-		});
-	}
+	private void SwitchToNextCity() => SwitchCity(1);
 
-	private void SwitchToPreviousCity() {
+	private void SwitchToPreviousCity() => SwitchCity(-1);
+
+	// The city `step` places along from this one in the owner's list (the
+	// arrows, and Civ3's . and ,); `inDisorder` (Shift) only cities in
+	// disorder. Stays put when there's no other.
+	public void SwitchCity(int step, bool inDisorder = false) {
 		EngineStorage.ReadGameData((GameData gameData) => {
 			City currentCity = tileAssignmentLayer.city;
 			List<City> cities = currentCity.owner.cities;
-			City previousCity = cities[(cities.IndexOf(currentCity) + cities.Count - 1) % cities.Count];
-			Game.RefreshMoods(previousCity, gameData);
-			OnShowCityScreenLocked(gameData, new ParameterWrapper<City>(previousCity));
+			int at = cities.IndexOf(currentCity);
+			for (int i = 1; i < cities.Count; ++i) {
+				City other = cities[((at + i * step) % cities.Count + cities.Count) % cities.Count];
+				if (!inDisorder || other.isInCivilDisorder) {
+					Game.RefreshMoods(other, gameData);
+					OnShowCityScreenLocked(gameData, new ParameterWrapper<City>(other));
+					return;
+				}
+			}
 		});
 	}
 
