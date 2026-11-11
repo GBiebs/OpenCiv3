@@ -99,6 +99,7 @@ public partial class CityScreen : Control {
 	private ImageTexture eatenFoodTexture;
 
 	private ImageTexture smileyFaceTexture;
+	private ImageTexture contentFaceTexture;
 	private ImageTexture goodShieldTexture;
 	private ImageTexture beakerTexture;
 	private ImageTexture goodGoldTexture;
@@ -191,6 +192,7 @@ public partial class CityScreen : Control {
 		eatenFoodTexture = TextureLoader.Load("icons.eaten_food");
 		// effects
 		smileyFaceTexture = TextureLoader.Load("icons.effect_smiley_face");
+		contentFaceTexture = TextureLoader.Load("icons.small_content_face");
 		goodGoldTexture = TextureLoader.Load("icons.effect_good_gold");
 		beakerTexture = TextureLoader.Load("icons.effect_beaker");
 		wastedGoldTexture = TextureLoader.Load("icons.effect_wasted_gold");
@@ -394,24 +396,125 @@ public partial class CityScreen : Control {
 		governorButton.TooltipText = ours ? $"Governor: how {city.name} is run (citizens, moods, production)" : "Governor: not our city";
 	}
 
-	private void RenderExistingBuildings(City city) {
-		foreach (var node in existingBuildings.GetChildren()) {
-			existingBuildings.RemoveChild(node);
-		}
+	// Civ3's Improvements Roster: each building's small picture and name,
+	// and under the name the citizens it makes content here (a face each)
+	// and the culture it makes a turn. Clicking one offers to sell it.
+	private static readonly Vector2 BuildingRowSize = new(132, 34);
+	private const int MaxFacesDrawn = 4;
+	private static readonly Color RosterInk = new(0.129412f, 0.0980392f, 0.054902f);
 
-		// Clicking a building offers to sell it, as in Civ3.
-		foreach (CityBuilding building in city.GetBuildings()) {
-			Button button = new() {
-				Text = building.building.name,
-				Flat = true,
-				Alignment = HorizontalAlignment.Left,
-				TooltipText = readOnly ? "" : "Click to sell",
-				Disabled = readOnly,
-			};
-			Building b = building.building;
-			button.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).sendFromScreens();
-			existingBuildings.AddChild(button);
+	private void RenderExistingBuildings(City city) {
+		foreach (Node node in existingBuildings.GetChildren()) {
+			existingBuildings.RemoveChild(node);
+			node.QueueFree();
 		}
+		existingBuildings.AddThemeConstantOverride("separation", 2);
+
+		foreach (CityBuilding cb in city.GetBuildings()) {
+			Building b = cb.building;
+			bool works = b.Works(city.owner);
+			int faces = works ? b.contentFacesInCity - b.unhappyFacesInCity : 0;
+			int culture = city.CulturePerTurnFrom(cb);
+
+			Button row = new() {
+				CustomMinimumSize = BuildingRowSize,
+				TooltipText = BuildingTooltip(city, b, works, faces, culture),
+				Disabled = readOnly,
+				FocusMode = FocusModeEnum.None,
+			};
+			foreach (string state in new[] { "normal", "disabled", "focus" }) {
+				row.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+			}
+			foreach (string state in new[] { "hover", "pressed" }) {
+				row.AddThemeStyleboxOverride(state, new StyleBoxFlat { BgColor = new Color(0.35f, 0.25f, 0.12f, state == "hover" ? 0.15f : 0.25f) });
+			}
+			row.Pressed += () => new MsgDisplaySellBuildingPopup(city, b).sendFromScreens();
+
+			row.AddChild(new TextureRect {
+				Texture = TextureLoader.Load("building_icons.small", b, useCache: true),
+				Position = new Vector2(0, 1),
+				Size = new Vector2(32, 32),
+				MouseFilter = MouseFilterEnum.Ignore,
+			});
+			// (Centered beside the picture when there's nothing under it.)
+			bool effects = faces != 0 || culture != 0;
+			Label name = new() {
+				Text = b.name,
+				Position = new Vector2(36, effects ? -1 : 7),
+				Size = new Vector2(BuildingRowSize.X - 36, 18),
+				ClipText = true,
+				TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+				MouseFilter = MouseFilterEnum.Ignore,
+			};
+			name.AddThemeFontSizeOverride("font_size", 13);
+			name.AddThemeColorOverride("font_color", works ? RosterInk : RosterInk with { A = 0.55f });
+			row.AddChild(name);
+			if (effects) {
+				row.AddChild(BuildingEffects(faces, culture));
+			}
+			existingBuildings.AddChild(row);
+		}
+	}
+
+	// The faces (one each, up to MaxFacesDrawn, then a count; red for a
+	// building that makes citizens unhappy) and the culture.
+	private HBoxContainer BuildingEffects(int faces, int culture) {
+		HBoxContainer effects = new() { Position = new Vector2(36, 17), MouseFilter = MouseFilterEnum.Ignore };
+		effects.AddThemeConstantOverride("separation", 1);
+		Color tint = faces < 0 ? new Color(1, 0.35f, 0.35f) : Colors.White;
+		int count = Math.Abs(faces);
+		for (int i = 0; i < Math.Min(count, MaxFacesDrawn); ++i) {
+			effects.AddChild(new TextureRect {
+				Texture = contentFaceTexture,
+				StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+				Modulate = tint,
+				MouseFilter = MouseFilterEnum.Ignore,
+			});
+		}
+		if (count > MaxFacesDrawn) {
+			effects.AddChild(SmallLabel($"x{count}", faces < 0 ? new Color(0.75f, 0.05f, 0.05f) : RosterInk));
+		}
+		if (culture != 0) {
+			if (count > 0) {
+				effects.AddChild(new Control { CustomMinimumSize = new Vector2(5, 0), MouseFilter = MouseFilterEnum.Ignore });
+			}
+			effects.AddChild(SmallLabel($"{culture} culture", CultureInk));
+		}
+		return effects;
+	}
+
+	private static readonly Color CultureInk = new(0.36f, 0.16f, 0.45f);
+
+	private static Label SmallLabel(string text, Color color) {
+		Label label = new() { Text = text, MouseFilter = MouseFilterEnum.Ignore, VerticalAlignment = VerticalAlignment.Center };
+		label.AddThemeFontSizeOverride("font_size", 11);
+		label.AddThemeColorOverride("font_color", color);
+		return label;
+	}
+
+	private string BuildingTooltip(City city, Building b, bool works, int faces, int culture) {
+		List<string> lines = [b.name];
+		if (faces > 0) {
+			lines.Add(faces == 1 ? "Makes 1 unhappy citizen content." : $"Makes {faces} unhappy citizens content.");
+		} else if (faces < 0) {
+			lines.Add(faces == -1 ? "Makes 1 content citizen unhappy." : $"Makes {-faces} content citizens unhappy.");
+		}
+		int everywhere = b.Works(city.owner) ? b.contentFacesInAllCities - b.unhappyFacesInAllCities : 0;
+		if (everywhere != 0) {
+			lines.Add(everywhere > 0
+				? $"Makes {everywhere} unhappy {(everywhere == 1 ? "citizen" : "citizens")} content in each of our other cities."
+				: $"Makes {-everywhere} content {(everywhere == -1 ? "citizen" : "citizens")} unhappy in each of our other cities.");
+		}
+		if (culture != 0) {
+			lines.Add($"Culture: {culture} a turn.");
+		}
+		if (!works) {
+			lines.Add(b.IsObsolete(city.owner) ? "Obsolete: its effects have stopped." : $"Works only under {b.requiredGovernment?.name}.");
+		}
+		if (!readOnly) {
+			lines.Add("Click to sell.");
+		}
+		return string.Join("\n", lines);
 	}
 
 	private void RenderFoodDetails(City city) {

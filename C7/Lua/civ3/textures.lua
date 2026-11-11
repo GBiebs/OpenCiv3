@@ -349,14 +349,20 @@ textures.icons = {
     crop_region = { 98, 5, 23, 22 },
   },
   -- The city screen's commerce rows: taxes are the coins above, science
-  -- a beaker, luxuries a glass (corruption the red coins).
+  -- a beaker, luxuries a happy face (the user's choice, 2026-11-11: was
+  -- the glass at { 7, 2, 18, 27 }) (corruption the red coins).
   commerce_science = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 39, 3, 16, 28 },
   },
   commerce_luxury = {
     path = CITY_SCREEN_ICONS,
-    crop_region = { 7, 2, 18, 27 },
+    crop_region = { 382, 9, 13, 15 },
+  },
+  -- The city screen's improvements: the citizens a building makes content.
+  small_content_face = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 599, 9, 13, 15 },
   },
   wasted_gold = {
     path = CITY_SCREEN_ICONS,
