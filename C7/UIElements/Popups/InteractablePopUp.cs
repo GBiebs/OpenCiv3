@@ -21,6 +21,7 @@ public class InteractablePopUp {
 	public AdvisorGraphicsDetails advisorDetails { get; init; }
 	public LineEditComponent lineEditComponent { get; init; }
 	public DropdownComponent dropdownComponent { get; init; }
+	public ListComponent listComponent { get; init; }
 	public int contollerEraIndex { get; init; } = 0;
 	public List<ButtonAction> buttonActions { get; init; }
 	public bool hasConfirm { get; init; }
@@ -63,4 +64,15 @@ public class LineEditComponent {
 public class DropdownComponent {
 	public List<string> items;
 	public int selected;
+}
+
+// A list under the text where one click picks (or the arrow keys and
+// Enter, or typing the first letters of an item); it scrolls once there
+// are more than `visibleRows` items.
+public class ListComponent {
+	public List<string> items;
+	// Shown greyed; can't be picked.
+	public HashSet<int> disabled = [];
+	public Action<int> onChosen;
+	public int visibleRows = 12;
 }

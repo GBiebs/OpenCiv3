@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using C7Engine;
 using Godot;
 using Serilog;
@@ -49,6 +50,12 @@ public partial class InteractablePopUpController : Control {
 	private MarginContainer dropdownContainer;
 	private OptionButton dropdown;
 	private DropdownComponent dropdownComponent;
+
+	// The one-click list, under the drop-down (made here too).
+	private MarginContainer listContainer;
+	private ItemList list;
+	private ListComponent listComponent;
+	private const int ListRowSpacing = 4;
 
 	private float defaultOffsetTop;
 	private float defaultOffsetBottom;
@@ -101,6 +108,50 @@ public partial class InteractablePopUpController : Control {
 		this.dropdownContainer.AddChild(this.dropdown);
 		this.lineEditContainer.AddSibling(this.dropdownContainer);
 
+		this.listContainer = new MarginContainer();
+		foreach (string side in new[] { "left", "right" }) {
+			this.listContainer.AddThemeConstantOverride($"margin_{side}", 30);
+		}
+		foreach (string side in new[] { "top", "bottom" }) {
+			this.listContainer.AddThemeConstantOverride($"margin_{side}", 5);
+		}
+		this.list = new ItemList() { AllowSearch = true, SelectMode = ItemList.SelectModeEnum.Single };
+		this.list.AddThemeFontOverride("font", GD.Load<Font>("res://Fonts/NotoSans-Regular.ttf"));
+		this.list.AddThemeFontSizeOverride("font_size", 14);
+		foreach (string color in new[] { "font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color" }) {
+			this.list.AddThemeColorOverride(color, Colors.Black);
+		}
+		this.list.AddThemeConstantOverride("v_separation", ListRowSpacing);
+		// (Ink on the parchment: the drop-down's border, a light shade under
+		// the mouse and a darker one on the item Enter would pick.)
+		this.list.AddThemeStyleboxOverride("panel", new StyleBoxFlat() {
+			BgColor = new Color(1, 1, 1, 0.2f),
+			BorderColor = Color.Color8(50, 50, 50, 220),
+			BorderWidthBottom = 2,
+			BorderWidthLeft = 2,
+			BorderWidthRight = 2,
+			BorderWidthTop = 2,
+			ContentMarginLeft = 4,
+			ContentMarginRight = 4,
+			ContentMarginTop = 4,
+			ContentMarginBottom = 4,
+		});
+		this.list.AddThemeStyleboxOverride("hovered", new StyleBoxFlat() { BgColor = new Color(0, 0, 0, 0.1f) });
+		foreach (string state in new[] { "selected", "selected_focus", "hovered_selected", "hovered_selected_focus" }) {
+			this.list.AddThemeStyleboxOverride(state, new StyleBoxFlat() { BgColor = new Color(0, 0, 0, 0.2f) });
+		}
+		foreach (string state in new[] { "focus", "cursor", "cursor_unfocused" }) {
+			this.list.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+		}
+		this.list.ItemClicked += (index, atPosition, button) => {
+			if (button == (long)MouseButton.Left) {
+				this.ChooseFromList((int)index);
+			}
+		};
+		this.list.ItemActivated += index => this.ChooseFromList((int)index);
+		this.listContainer.AddChild(this.list);
+		this.dropdownContainer.AddSibling(this.listContainer);
+
 		this.CloseAndDelete();
 
 		this.SetUpConfirmButton();
@@ -122,10 +173,13 @@ public partial class InteractablePopUpController : Control {
 			if (eventKey.Keycode == Key.Enter || eventKey.Keycode == Key.KpEnter) {
 				this.OnConfirm();
 			}
-			if (eventKey.Keycode == Key.Up) {
+			// (The list takes its own keys while it has the focus; this is
+			// for after a click elsewhere on the popup.)
+			if (this.listComponent != null && eventKey.Keycode is Key.Up or Key.Down) {
+				this.list.GrabFocus();
+			} else if (eventKey.Keycode == Key.Up) {
 				this.Cycle(false);
-			}
-			if (eventKey.Keycode == Key.Down) {
+			} else if (eventKey.Keycode == Key.Down) {
 				this.Cycle(true);
 			}
 		}
@@ -193,6 +247,10 @@ public partial class InteractablePopUpController : Control {
 			this.dropdownContainer.Show();
 		}
 
+		if (value.listComponent != null) {
+			this.ShowList(value.listComponent);
+		}
+
 		if (value.buttonActions is { Count: > 0 }) {
 			this.buttonContainer.Show();
 			buttonGroup = new ButtonGroup();
@@ -227,12 +285,67 @@ public partial class InteractablePopUpController : Control {
 		this.mainContainer.OffsetRight += value.margins.right;
 
 		this.Show();
+		if (this.listComponent != null) {
+			this.list.GrabFocus();
+		}
 
 		// wait for the UI layout to settle
 		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 
 		// this should always be done at the very end, so the height is correct based on the dynamic elements
 		this.bgTextureRect.Texture = this.CreateTextureBackGround((int)this.mainBgContainer.GetSize().X, (int)this.mainBgContainer.GetSize().Y);
+	}
+
+	private void ShowList(ListComponent component) {
+		this.listComponent = component;
+		this.list.Clear();
+		for (int i = 0; i < component.items.Count; ++i) {
+			this.list.AddItem(component.items[i]);
+			if (component.disabled.Contains(i)) {
+				this.list.SetItemDisabled(i, true);
+				this.list.SetItemCustomFgColor(i, new Color(0, 0, 0, 0.45f));
+			}
+		}
+		// Every item when they fit, else `visibleRows` of them and a scroll bar.
+		this.list.AutoHeight = component.items.Count <= component.visibleRows;
+		if (!this.list.AutoHeight) {
+			float row = this.list.GetThemeFont("font").GetHeight(this.list.GetThemeFontSize("font_size"));
+			float height = component.visibleRows * (row + ListRowSpacing) - ListRowSpacing + this.list.GetThemeStylebox("panel").GetMinimumSize().Y;
+			this.list.CustomMinimumSize = new Vector2(0, height);
+		} else {
+			this.list.CustomMinimumSize = Vector2.Zero;
+		}
+		int first = Enumerable.Range(0, component.items.Count).FirstOrDefault(i => !component.disabled.Contains(i), -1);
+		if (first >= 0) {
+			this.list.Select(first);
+		}
+		this.list.GetVScrollBar().Value = 0;
+		this.listContainer.Show();
+	}
+
+	private void ChooseFromList(int index) {
+		ListComponent chosen = this.listComponent;
+		if (chosen == null || index < 0 || index >= chosen.items.Count || chosen.disabled.Contains(index)) {
+			return;
+		}
+		this.audioManager.PlayUIAudio("buttons.button_ok");
+		this.CloseAndDelete();
+		chosen.onChosen?.Invoke(index);
+		new MsgUiDisengaged().send();
+	}
+
+	// The frame it last closed on, so the key that closed it (Space is also
+	// "no orders", Enter End Turn) isn't an order on the map as well: Godot
+	// hands keys to the popup earlier in the same frame than the game reads
+	// them (deferring the close doesn't help: deferred calls run in between).
+	private ulong closedOnFrame = ulong.MaxValue;
+	public bool ClosedThisFrame => !this.Visible && this.closedOnFrame == Engine.GetProcessFrames();
+
+	public override void _Notification(int what) {
+		base._Notification(what);
+		if (what == NotificationVisibilityChanged && !this.Visible) {
+			this.closedOnFrame = Engine.GetProcessFrames();
+		}
 	}
 
 	protected BaseButton AddOptionButton(Node parent, string label, bool pressed, Action action, ButtonGroup buttonGroup = null) {
@@ -267,6 +380,9 @@ public partial class InteractablePopUpController : Control {
 	}
 
 	private void Cycle(bool forward = true) {
+		if (buttonGroup == null) {
+			return;
+		}
 		var btns = buttonGroup.GetButtons();
 		if (btns.Count < 1) {
 			return;
@@ -297,6 +413,13 @@ public partial class InteractablePopUpController : Control {
 	}
 
 	private void OnConfirm() {
+		if (this.listComponent != null) {
+			int[] selected = this.list.GetSelectedItems();
+			if (selected.Length > 0) {
+				this.ChooseFromList(selected[0]);
+			}
+			return;
+		}
 		if (this.lastPressedButton != null)
 			this.lastPressedButton.EmitSignal(BaseButton.SignalName.Pressed);
 
@@ -362,6 +485,9 @@ public partial class InteractablePopUpController : Control {
 		this.lineEditComponent = null;
 		this.dropdownContainer.Hide();
 		this.dropdownComponent = null;
+		this.listContainer.Hide();
+		this.list.ReleaseFocus();
+		this.listComponent = null;
 		this.cancelAction = null;
 
 		foreach (var child in buttonContainer.GetChildren()) {

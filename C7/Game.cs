@@ -2213,7 +2213,7 @@ public partial class Game : Node {
 			return;
 		}
 
-		if (interactablePopUpController.Visible) {
+		if (interactablePopUpController.Visible || interactablePopUpController.ClosedThisFrame) {
 			return;
 		}
 

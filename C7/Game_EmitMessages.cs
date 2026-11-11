@@ -5,6 +5,7 @@ using System.Text;
 using C7.UIElements;
 using C7.UIElements.Popups;
 using C7Engine;
+using C7Engine.Pathing;
 using C7GameData;
 using Godot;
 using static AdvisorHead;
@@ -1422,29 +1423,41 @@ public partial class Game {
 	}
 
 	// Ctrl-Shift-G (Civ3's Go to City): the selected unit sets off for one
-	// of our cities, by the same route a go-to would take.
+	// of our cities, by the same route a go-to would take. One click on the
+	// list sends it (user, 2026-11-11); each city shows the turns the go-to
+	// cursor would, and those it can't reach are greyed.
 	private void EmitGotoCity(MapUnit unit) {
-		List<City> cities = controller.cities.Where(c => c.location != unit.location).OrderBy(c => c.name).ToList();
+		List<(City city, int turns)> cities = [];
+		EngineStorage.ReadGameData((GameData gameData) => {
+			PathingAlgorithm pathing = PathingAlgorithmChooser.GetAlgorithm(unit);
+			foreach (City city in controller.cities.Where(c => c.location != unit.location).OrderBy(c => c.name)) {
+				TilePath path = pathing.PathFrom(unit.location, city.location, unit);
+				cities.Add((city, path?.PathCost(unit.owner, unit.location, unit.MovementPerTurn(), unit.movementPoints.remaining) ?? -1));
+			}
+		});
 		if (cities.Count == 0) {
 			return;
 		}
-		DropdownComponent list = new() { items = cities.Select(c => c.name).ToList(), selected = 0 };
-		OptionsPopUp popup = new(controller.id, "Go to City", $"Where should the {unit.unitType.name} go?", [
-			new ButtonAction() {
-				message = "Go there.",
-				action = () => {
-					City target = cities[list.selected];
-					SetGotoMode(false);
-					gotoInfo = GetGotoInfo(target.location);
-					if (gotoInfo.moveCost == -1) {
-						new MsgShowTemporaryPopup($"There is no way to {target.name} from here.", unit.location).sendFromScreens();
-					} else {
-						ResolveMovement(gotoInfo);
-					}
-					SetGotoMode(false);
-				},
+		ListComponent list = new() {
+			items = cities.Select(c => c.turns < 0 ? $"{c.city.name} (no route)" : $"{c.city.name} ({c.turns} {(c.turns == 1 ? "turn" : "turns")})").ToList(),
+			disabled = Enumerable.Range(0, cities.Count).Where(i => cities[i].turns < 0).ToHashSet(),
+			onChosen = i => {
+				City target = cities[i].city;
+				SetGotoMode(false);
+				gotoInfo = GetGotoInfo(target.location);
+				if (gotoInfo.moveCost == -1) {
+					new MsgShowTemporaryPopup($"There is no way to {target.name} from here.", unit.location).sendFromScreens();
+				} else {
+					ResolveMovement(gotoInfo);
+				}
+				SetGotoMode(false);
 			},
-		], Advisor.None, Mood.None, 380) { dropdownComponent = list };
+		};
+		InformationPopup popup = new(controller.id, "Go to City", $"Where should the {unit.unitType.name} go?", Advisor.None, Mood.None, 380) {
+			listComponent = list,
+			hasConfirm = false,
+			hasCancel = true,
+		};
 		EmitSignal(SignalName.InteractivePopUp, new ParameterWrapper<InteractablePopUp>(popup));
 	}
 
