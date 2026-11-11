@@ -75,4 +75,8 @@ public class ListComponent {
 	public HashSet<int> disabled = [];
 	public Action<int> onChosen;
 	public int visibleRows = 12;
+	// Against misclicks: a first click only marks an item, a second click
+	// on it (or a double click) picks it. Enter and Space still pick the
+	// marked one.
+	public bool clickTwice;
 }

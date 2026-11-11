@@ -56,6 +56,9 @@ public partial class InteractablePopUpController : Control {
 	private ItemList list;
 	private ListComponent listComponent;
 	private const int ListRowSpacing = 4;
+	// The item a first click marked (`clickTwice`), and that click's frame.
+	private int markedItem = -1;
+	private ulong lastListClickFrame = ulong.MaxValue;
 
 	private float defaultOffsetTop;
 	private float defaultOffsetBottom;
@@ -144,11 +147,24 @@ public partial class InteractablePopUpController : Control {
 			this.list.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
 		}
 		this.list.ItemClicked += (index, atPosition, button) => {
-			if (button == (long)MouseButton.Left) {
+			if (button != (long)MouseButton.Left) {
+				return;
+			}
+			this.lastListClickFrame = Engine.GetProcessFrames();
+			if (this.listComponent?.clickTwice == true && this.markedItem != (int)index) {
+				this.markedItem = (int)index;
+				return;
+			}
+			this.ChooseFromList((int)index);
+		};
+		// Enter or Space. (A double click also activates, but its second
+		// click was just handled above: a double click whose clicks land on
+		// two items mustn't pick the second.)
+		this.list.ItemActivated += index => {
+			if (this.lastListClickFrame != Engine.GetProcessFrames()) {
 				this.ChooseFromList((int)index);
 			}
 		};
-		this.list.ItemActivated += index => this.ChooseFromList((int)index);
 		this.listContainer.AddChild(this.list);
 		this.dropdownContainer.AddSibling(this.listContainer);
 
@@ -298,6 +314,7 @@ public partial class InteractablePopUpController : Control {
 
 	private void ShowList(ListComponent component) {
 		this.listComponent = component;
+		this.markedItem = -1;
 		this.list.Clear();
 		for (int i = 0; i < component.items.Count; ++i) {
 			this.list.AddItem(component.items[i]);
@@ -488,6 +505,7 @@ public partial class InteractablePopUpController : Control {
 		this.listContainer.Hide();
 		this.list.ReleaseFocus();
 		this.listComponent = null;
+		this.markedItem = -1;
 		this.cancelAction = null;
 
 		foreach (var child in buttonContainer.GetChildren()) {

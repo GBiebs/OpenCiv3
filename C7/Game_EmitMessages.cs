@@ -1423,9 +1423,10 @@ public partial class Game {
 	}
 
 	// Ctrl-Shift-G (Civ3's Go to City): the selected unit sets off for one
-	// of our cities, by the same route a go-to would take. One click on the
-	// list sends it (user, 2026-11-11); each city shows the turns the go-to
-	// cursor would, and those it can't reach are greyed.
+	// of our cities, by the same route a go-to would take. Clicking a city
+	// twice sends it (user, 2026-11-11: a list instead of the drop-down,
+	// then two clicks against misclicks); each city shows the turns the
+	// go-to cursor would, and those it can't reach are greyed.
 	private void EmitGotoCity(MapUnit unit) {
 		List<(City city, int turns)> cities = [];
 		EngineStorage.ReadGameData((GameData gameData) => {
@@ -1441,6 +1442,7 @@ public partial class Game {
 		ListComponent list = new() {
 			items = cities.Select(c => c.turns < 0 ? $"{c.city.name} (no route)" : $"{c.city.name} ({c.turns} {(c.turns == 1 ? "turn" : "turns")})").ToList(),
 			disabled = Enumerable.Range(0, cities.Count).Where(i => cities[i].turns < 0).ToHashSet(),
+			clickTwice = true,
 			onChosen = i => {
 				City target = cities[i].city;
 				SetGotoMode(false);
@@ -1453,7 +1455,7 @@ public partial class Game {
 				SetGotoMode(false);
 			},
 		};
-		InformationPopup popup = new(controller.id, "Go to City", $"Where should the {unit.unitType.name} go?", Advisor.None, Mood.None, 380) {
+		InformationPopup popup = new(controller.id, "Go to City", $"Where should the {unit.unitType.name} go? Click a city twice to send it there.", Advisor.None, Mood.None, 380) {
 			listComponent = list,
 			hasConfirm = false,
 			hasCancel = true,
