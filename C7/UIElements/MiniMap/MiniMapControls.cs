@@ -7,8 +7,14 @@ public partial class MiniMapControls : Control {
 		MouseFilter = MouseFilterEnum.Stop;
 	}
 
-	/// Render the viewport bounds as a rectangle on the minimap image
-	public void DrawBounds(Image mapImage, GameMap map, MapView.VisibleRegion vr) {
+	// The bounds image's pixels per tile (2: a line a pixel thin on the
+	// screen, as Civ3's).
+	private int scale = 1;
+
+	/// Render the viewport bounds as a rectangle on the minimap image, which
+	/// has `scale` pixels per tile across and per two rows down
+	public void DrawBounds(Image mapImage, GameMap map, MapView.VisibleRegion vr, int scale = 1) {
+		this.scale = scale;
 		// TODO: Handle draws over map edges, maybe with Mathf.Wrap
 
 		// Bounds, in minimap draw space
@@ -97,6 +103,10 @@ public partial class MiniMapControls : Control {
 	/// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 	/// </summary>
 	private void DrawLineOnImage(Image image, int x0, int y0, int x1, int y1, Color color) {
+		x0 *= scale;
+		y0 *= scale;
+		x1 *= scale;
+		y1 *= scale;
 		int dx = Math.Abs(x1 - x0);
 		int dy = Math.Abs(y1 - y0);
 		int sx = x0 < x1 ? 1 : -1;

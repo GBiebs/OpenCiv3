@@ -7,7 +7,8 @@ public partial class MiniMapFrame : TextureRect {
 
 	private MapView mapView;
 	private TextureRect mapTextureRect;
-	private ImageTexture mapTexture;
+	// The view's bounds, over the map.
+	private TextureRect boundsRect;
 
 	private Vector2I miniMapFrameSize = new (280, 130);
 	private Vector2I miniMapSize = new (229, 105);
@@ -29,10 +30,24 @@ public partial class MiniMapFrame : TextureRect {
 		AddChild(mapFrameRect);
 
 		// Draw the map inside the frame
-		mapTextureRect = new TextureRect();
+		mapTextureRect = new TextureRect {
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.Scale,
+		};
 		mapTextureRect.SetSize(miniMapSize);
 		AddChild(mapTextureRect);
+		boundsRect = new TextureRect {
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.Scale,
+			TextureFilter = TextureFilterEnum.Nearest,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		boundsRect.SetSize(miniMapSize);
+		AddChild(boundsRect);
 	}
+
+	// The map's size on the screen.
+	public Vector2 PictureSize => miniMapSize;
 
 	public override void _Ready() {
 		MouseFilter = MouseFilterEnum.Pass;
@@ -43,13 +58,17 @@ public partial class MiniMapFrame : TextureRect {
 		var vp = GetViewportRect().Size;
 		mapFrameRect.SetPosition(frameOffset + new Vector2(0, vp.Y - miniMapFrameSize.Y));
 		mapTextureRect.SetPosition(frameOffset + new Vector2(0, vp.Y - miniMapSize.Y) + mapOffset);
+		boundsRect.SetPosition(mapTextureRect.Position);
 	}
 
-	public void RenderImage(Image mapImage) {
-		mapTexture = ImageTexture.CreateFromImage(mapImage);
-		mapTexture.SetSizeOverride(miniMapSize);
+	public void ShowPicture(Texture2D picture) {
+		mapTextureRect.Texture = picture;
+		mapTextureRect.SetSize(miniMapSize);
+	}
 
-		mapTextureRect.Texture = mapTexture;
+	public void ShowBounds(Texture2D bounds) {
+		boundsRect.Texture = bounds;
+		boundsRect.SetSize(miniMapSize);
 	}
 
 	// A click or drag on the minimap only moves the camera: it's handled
