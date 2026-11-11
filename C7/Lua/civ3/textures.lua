@@ -359,10 +359,18 @@ textures.icons = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 382, 9, 13, 15 },
   },
-  -- The city screen's improvements: the citizens a building makes content.
+  -- The city screen's improvements, as Civ3's: the citizens a building
+  -- makes content (a face each), its culture (a note a point) and its
+  -- upkeep (tile_lost_commerce's red coin a gold).
   small_content_face = {
     path = CITY_SCREEN_ICONS,
     crop_region = { 599, 9, 13, 15 },
+  },
+  culture_note = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 567, 8, 14, 16 },
+    -- (Solid black, as Civ3 draws it: its black is a shadow shade.)
+    shadows = false,
   },
   wasted_gold = {
     path = CITY_SCREEN_ICONS,

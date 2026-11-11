@@ -99,7 +99,7 @@ public partial class CityScreen : Control {
 	private ImageTexture eatenFoodTexture;
 
 	private ImageTexture smileyFaceTexture;
-	private ImageTexture contentFaceTexture;
+	private ImageTexture contentFaceTexture, cultureNoteTexture, upkeepCoinTexture;
 	private ImageTexture goodShieldTexture;
 	private ImageTexture beakerTexture;
 	private ImageTexture goodGoldTexture;
@@ -193,6 +193,8 @@ public partial class CityScreen : Control {
 		// effects
 		smileyFaceTexture = TextureLoader.Load("icons.effect_smiley_face");
 		contentFaceTexture = TextureLoader.Load("icons.small_content_face");
+		cultureNoteTexture = AsInk(TextureLoader.Load("icons.culture_note"));
+		upkeepCoinTexture = TextureLoader.Load("icons.tile_lost_commerce");
 		goodGoldTexture = TextureLoader.Load("icons.effect_good_gold");
 		beakerTexture = TextureLoader.Load("icons.effect_beaker");
 		wastedGoldTexture = TextureLoader.Load("icons.effect_wasted_gold");
@@ -396,29 +398,35 @@ public partial class CityScreen : Control {
 		governorButton.TooltipText = ours ? $"Governor: how {city.name} is run (citizens, moods, production)" : "Governor: not our city";
 	}
 
-	// Civ3's Improvements Roster: each building's small picture and name,
-	// and under the name the citizens it makes content here (a face each)
-	// and the culture it makes a turn. Clicking one offers to sell it.
-	private static readonly Vector2 BuildingRowSize = new(132, 34);
-	private const int MaxFacesDrawn = 4;
+	// Civ3's Improvements Roster (as its city screen, the user's screenshot,
+	// 2026-11-11): each building's small picture and name, and under the
+	// name three columns: its upkeep (a red coin a gold), its culture (a
+	// note a point) and the citizens it makes content here (a face each),
+	// each column's icons closer together, overlapping, when they don't
+	// fit. Clicking one offers to sell it.
+	private static readonly Vector2 BuildingRowSize = new(132, 32);
 	private static readonly Color RosterInk = new(0.129412f, 0.0980392f, 0.054902f);
+	// The columns under the name: left edge and width.
+	private static readonly (float x, float width) UpkeepColumn = (37, 28), CultureColumn = (70, 32), FacesColumn = (104, 28);
+	private const float EffectsTop = 15;
 
 	private void RenderExistingBuildings(City city) {
 		foreach (Node node in existingBuildings.GetChildren()) {
 			existingBuildings.RemoveChild(node);
 			node.QueueFree();
 		}
-		existingBuildings.AddThemeConstantOverride("separation", 2);
+		existingBuildings.AddThemeConstantOverride("separation", 0);
 
 		foreach (CityBuilding cb in city.GetBuildings()) {
 			Building b = cb.building;
 			bool works = b.Works(city.owner);
 			int faces = works ? b.contentFacesInCity - b.unhappyFacesInCity : 0;
 			int culture = city.CulturePerTurnFrom(cb);
+			int upkeep = city.MaintenanceCostOf(cb);
 
 			Button row = new() {
 				CustomMinimumSize = BuildingRowSize,
-				TooltipText = BuildingTooltip(city, b, works, faces, culture),
+				TooltipText = BuildingTooltip(city, b, works, faces, culture, upkeep),
 				Disabled = readOnly,
 				FocusMode = FocusModeEnum.None,
 			};
@@ -432,67 +440,65 @@ public partial class CityScreen : Control {
 
 			row.AddChild(new TextureRect {
 				Texture = TextureLoader.Load("building_icons.small", b, useCache: true),
-				Position = new Vector2(0, 1),
+				Position = Vector2.Zero,
 				Size = new Vector2(32, 32),
 				MouseFilter = MouseFilterEnum.Ignore,
 			});
-			// (Centered beside the picture when there's nothing under it.)
-			bool effects = faces != 0 || culture != 0;
 			Label name = new() {
 				Text = b.name,
-				Position = new Vector2(36, effects ? -1 : 7),
-				Size = new Vector2(BuildingRowSize.X - 36, 18),
+				Position = new Vector2(36, -3),
+				Size = new Vector2(BuildingRowSize.X - 36, 17),
 				ClipText = true,
 				TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
 				MouseFilter = MouseFilterEnum.Ignore,
 			};
-			name.AddThemeFontSizeOverride("font_size", 13);
+			name.AddThemeFontSizeOverride("font_size", 11);
 			name.AddThemeColorOverride("font_color", works ? RosterInk : RosterInk with { A = 0.55f });
 			row.AddChild(name);
-			if (effects) {
-				row.AddChild(BuildingEffects(faces, culture));
-			}
+			IconColumn(row, upkeepCoinTexture, upkeep, UpkeepColumn, new Vector2(14, 14), Colors.White);
+			IconColumn(row, cultureNoteTexture, culture, CultureColumn, new Vector2(13, 15), Colors.White);
+			// (Red faces for a building that makes citizens unhappy.)
+			IconColumn(row, contentFaceTexture, Math.Abs(faces), FacesColumn, new Vector2(13, 15), faces < 0 ? new Color(1, 0.35f, 0.35f) : Colors.White);
 			existingBuildings.AddChild(row);
 		}
 	}
 
-	// The faces (one each, up to MaxFacesDrawn, then a count; red for a
-	// building that makes citizens unhappy) and the culture.
-	private HBoxContainer BuildingEffects(int faces, int culture) {
-		HBoxContainer effects = new() { Position = new Vector2(36, 17), MouseFilter = MouseFilterEnum.Ignore };
-		effects.AddThemeConstantOverride("separation", 1);
-		Color tint = faces < 0 ? new Color(1, 0.35f, 0.35f) : Colors.White;
-		int count = Math.Abs(faces);
-		for (int i = 0; i < Math.Min(count, MaxFacesDrawn); ++i) {
-			effects.AddChild(new TextureRect {
-				Texture = contentFaceTexture,
-				StretchMode = TextureRect.StretchModeEnum.KeepCentered,
+	// Civ3's note is drawn for its parchment: its edges are blended with
+	// the parchment's color, and some with the sheet's magenta (pink). As
+	// black ink, each pixel as opaque as it is dark, it's clean on ours.
+	private static ImageTexture AsInk(ImageTexture texture) {
+		Image image = texture.GetImage();
+		image.Convert(Image.Format.Rgba8);
+		const float paper = 0.84f, ink = 0.08f;
+		for (int y = 0; y < image.GetHeight(); ++y) {
+			for (int x = 0; x < image.GetWidth(); ++x) {
+				Color c = image.GetPixel(x, y);
+				float darkness = Math.Clamp((paper - c.Luminance) / (paper - ink), 0, 1);
+				image.SetPixel(x, y, new Color(0, 0, 0, c.A * darkness));
+			}
+		}
+		return ImageTexture.CreateFromImage(image);
+	}
+
+	// `count` icons from the column's left edge, a pixel apart, or closer
+	// (overlapping) so the last one still ends inside it.
+	private static void IconColumn(Control row, ImageTexture texture, int count, (float x, float width) column, Vector2 size, Color tint) {
+		float step = count > 1 ? Math.Min(size.X + 1, (column.width - size.X) / (count - 1)) : 0;
+		for (int i = 0; i < count; ++i) {
+			row.AddChild(new TextureRect {
+				Texture = texture,
+				ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+				StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+				TextureFilter = TextureFilterEnum.Linear,
+				Position = new Vector2(column.x + i * step, EffectsTop),
+				Size = size,
 				Modulate = tint,
 				MouseFilter = MouseFilterEnum.Ignore,
 			});
 		}
-		if (count > MaxFacesDrawn) {
-			effects.AddChild(SmallLabel($"x{count}", faces < 0 ? new Color(0.75f, 0.05f, 0.05f) : RosterInk));
-		}
-		if (culture != 0) {
-			if (count > 0) {
-				effects.AddChild(new Control { CustomMinimumSize = new Vector2(5, 0), MouseFilter = MouseFilterEnum.Ignore });
-			}
-			effects.AddChild(SmallLabel($"{culture} culture", CultureInk));
-		}
-		return effects;
 	}
 
-	private static readonly Color CultureInk = new(0.36f, 0.16f, 0.45f);
-
-	private static Label SmallLabel(string text, Color color) {
-		Label label = new() { Text = text, MouseFilter = MouseFilterEnum.Ignore, VerticalAlignment = VerticalAlignment.Center };
-		label.AddThemeFontSizeOverride("font_size", 11);
-		label.AddThemeColorOverride("font_color", color);
-		return label;
-	}
-
-	private string BuildingTooltip(City city, Building b, bool works, int faces, int culture) {
+	private string BuildingTooltip(City city, Building b, bool works, int faces, int culture, int upkeep) {
 		List<string> lines = [b.name];
 		if (faces > 0) {
 			lines.Add(faces == 1 ? "Makes 1 unhappy citizen content." : $"Makes {faces} unhappy citizens content.");
@@ -507,6 +513,9 @@ public partial class CityScreen : Control {
 		}
 		if (culture != 0) {
 			lines.Add($"Culture: {culture} a turn.");
+		}
+		if (upkeep != 0) {
+			lines.Add($"Upkeep: {upkeep} gold a turn.");
 		}
 		if (!works) {
 			lines.Add(b.IsObsolete(city.owner) ? "Obsolete: its effects have stopped." : $"Works only under {b.requiredGovernment?.name}.");

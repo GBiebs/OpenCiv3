@@ -133,11 +133,17 @@ public class WonderEffectsTest : IClassFixture<SaveGameFixture>, IDisposable {
 		int upkeep = city.MaintenanceCostsRaw();
 		int tradeUpkeep = trade.Sum(name => Building(name).maintenanceCost);
 		Assert.True(tradeUpkeep > 0 && upkeep > tradeUpkeep);
+		// Each building's own (the city screen's red coins) adds up to it.
+		Assert.Equal(upkeep, city.GetBuildings().Sum(city.MaintenanceCostOf));
+		CityBuilding marketplace = city.constructed_buildings.First(cb => cb.building.name == "Marketplace");
+		Assert.Equal(Building("Marketplace").maintenanceCost, city.MaintenanceCostOf(marketplace));
 
 		Tile site = gameData.map.tiles.First(t => Tile.IsTileValid(t) && t.IsLand() && !t.HasCity()
 			&& gameData.cities.All(c => c.location.DistanceTo(t) > 3));
 		CityInteractions.BuildCity(site, us, "Trading").AddBuilding(Building("Smith's Trading Company"), gameData);
 		Assert.Equal(upkeep - tradeUpkeep, city.MaintenanceCostsRaw());
+		Assert.Equal(0, city.MaintenanceCostOf(marketplace));
+		Assert.Equal(upkeep - tradeUpkeep, city.GetBuildings().Sum(city.MaintenanceCostOf));
 	}
 
 	// A full food box: overfilled, since it's capped at full after the turn's

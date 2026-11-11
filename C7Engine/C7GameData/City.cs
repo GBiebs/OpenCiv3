@@ -871,20 +871,28 @@ namespace C7GameData {
 		}
 
 		public int MaintenanceCostsRaw() {
-			int result = 0;
-			// Smith's Trading Company pays for the trade buildings (Civilopedia:
-			// Harbors, Marketplaces, Banks, Airports, Commercial Docks and Stock
-			// Exchanges, which are the buildings with the commercial trait).
-			bool tradePaidFor = owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.PaysTradeMaintenance));
-			// (Obsolete buildings still cost their upkeep: Civ3 lets them be
-			// sold.)
-			foreach (CityBuilding cb in constructed_buildings) {
-				if (tradePaidFor && cb.building.traits.Contains(Civilization.Trait.Commercial)) {
-					continue;
-				}
-				result += cb.building.maintenanceCost;
-			}
-			return result;
+			bool tradePaidFor = TradeMaintenancePaidFor();
+			return constructed_buildings.Sum(cb => MaintenanceCostOf(cb, tradePaidFor));
+		}
+
+		// The gold one of this city's buildings costs a turn (the city
+		// screen's red coins). A building a wonder grants (not in
+		// constructed_buildings) costs nothing.
+		public int MaintenanceCostOf(CityBuilding cb) {
+			return constructed_buildings.Contains(cb) ? MaintenanceCostOf(cb, TradeMaintenancePaidFor()) : 0;
+		}
+
+		// (Obsolete buildings still cost their upkeep: Civ3 lets them be
+		// sold.)
+		private static int MaintenanceCostOf(CityBuilding cb, bool tradePaidFor) {
+			return tradePaidFor && cb.building.traits.Contains(Civilization.Trait.Commercial) ? 0 : cb.building.maintenanceCost;
+		}
+
+		// Smith's Trading Company pays for the trade buildings (Civilopedia:
+		// Harbors, Marketplaces, Banks, Airports, Commercial Docks and Stock
+		// Exchanges, which are the buildings with the commercial trait).
+		private bool TradeMaintenancePaidFor() {
+			return owner.OwnsBuilding(b => b.HasWonderFlag(SaveBuilding.WonderFlag.PaysTradeMaintenance));
 		}
 
 		[MoonSharpHidden]
