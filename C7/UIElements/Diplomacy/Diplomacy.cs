@@ -112,7 +112,9 @@ public partial class Diplomacy : CenterContainer {
 		this.Show();
 	}
 
-	public void ShowTalkScreenForPlayer(ID humanPlayer, ID opponentPlayer) {
+	// `afterDeal`: back from a deal the computer just made with us (an order
+	// not played yet, so a peace in it hasn't ended their refusal to talk).
+	public void ShowTalkScreenForPlayer(ID humanPlayer, ID opponentPlayer, bool afterDeal = false) {
 		RemoveOtherScreens();
 
 		GameData gd = EngineStorage.gameData;
@@ -125,10 +127,13 @@ public partial class Diplomacy : CenterContainer {
 			int refused = HumanDiplomacy.EnvoysRefusedFor(gd, human, opponent);
 			if (refused > 0 && HumanDiplomacy.Between(gd, human, opponent)?.to != human.id) {
 				new MsgDiplomacyNews(human.id, $"The {opponent.civilization.noun} have asked us not to send envoys for {refused} more turns.", good: false).sendFromScreens();
+				// (Closed, if open: the engine may be waiting for it.)
+				Hide();
 				return;
 			}
-		} else if (!opponent.WillAcceptCommunicationFrom(human, gd.turn)) {
+		} else if (!afterDeal && !opponent.WillAcceptCommunicationFrom(human, gd.turn)) {
 			new MsgRefuseContact(opponentPlayer).sendFromScreens();
+			Hide();
 			return;
 		}
 

@@ -330,7 +330,7 @@ public partial class DealScreen : TextureRect {
 			if (opponentPlayer.WouldAcceptDealFrom(gD, humanPlayer, humanOffer, opponentOffer)) {
 				new MsgTradeWithComputer(opponentPlayerId, DealTerms.Of(humanOffer).ToOffer(gD), DealTerms.Of(opponentOffer).ToOffer(gD)).send();
 
-				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId);
+				GetParent<Diplomacy>().ShowTalkScreenForPlayer(humanPlayerId, opponentPlayerId, afterDeal: true);
 			} else if (humanOffer.partOfPeaceTreaty && PeaceAI.PeaceValue(gD, opponentPlayer, humanPlayer) is null) {
 				opponentResponse.Text = "\"Not likely! This war shall go on.\"";
 			} else if (!humanOffer.partOfPeaceTreaty && Agreements.Embargoed(opponentPlayer, humanPlayer)) {
