@@ -33,6 +33,11 @@ public partial class ScenarioSetup : Control {
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready() {
 		SaveGame save = GetSave();
+		// A scenario of rules alone has no players to pick from: its game is
+		// set up as a new one (see ScenarioPlay).
+		if (ScenarioPlay.SetUpAsNewGame(save, GetNode<GlobalSingleton>("/root/GlobalSingleton").LoadGamePath, GetTree())) {
+			return;
+		}
 
 		// Set up buttons for the civs the player can play as.
 		civilizations = save.Civilizations;

@@ -101,6 +101,7 @@ public partial class MainMenu : Node {
 		LanSession.ResumeGame = null;
 		Global.WatchNextGame = false;
 		Global.Scenario = GameScenario.None;
+		ScenarioPlay.Clear();
 
 		LoadDialog.SetDirectoryForLoadingSaves();
 		LoadScenarioDialog.SetDirectoryForLoadingScenarios();

@@ -320,14 +320,17 @@ public partial class WorldSetup : Control {
 			return;
 		}
 		SaveGame rules = null;
-		if (mdj) {
+		if (ScenarioPlay.RulesForNewGame != null) {
+			// A scenario of rules alone, from Load Scenario.
+			rules = ScenarioPlay.RulesForNewGame;
+		} else if (mdj) {
 			try {
 				rules = GameSetup.LoadMdjRules(GamePaths.GameModesDir, GamePaths.GameMode);
 			} catch (Exception e) {
 				log.Error(e, "Could not load MPTournamentMDJ's rules; playing under the usual ones");
 			}
 		}
-		mdjRulesLoaded = rules != null;
+		mdjRulesLoaded = mdj && rules != null;
 		_saveGame = rules ?? GameMode.Load(GamePaths.GameModesDir, GamePaths.GameMode).GetSave();
 		// The player setup screen shows the civs' leaders, whose Civ3 art
 		// MDJ keeps in the scenario's folders (the Sengoku conquest's; none
@@ -351,6 +354,22 @@ public partial class WorldSetup : Control {
 	// before coming back to this screen.
 	private void AddGameTypeSelector() {
 		GlobalSingleton global = GetNodeOrNull<GlobalSingleton>("/root/GlobalSingleton");
+		// A scenario of rules alone (see ScenarioPlay) is the game type.
+		if (ScenarioPlay.RulesForNewGame != null) {
+			Label scenarioName = new() {
+				Position = new Vector2(432, 17),
+				CustomMinimumSize = new Vector2(160, 32),
+				VerticalAlignment = VerticalAlignment.Center,
+				Text = ScenarioPlay.Title,
+				TooltipText = "The scenario being set up: its rules, on a world made for it.",
+				MouseFilter = Control.MouseFilterEnum.Pass,
+			};
+			scenarioName.AddThemeFontSizeOverride("font_size", 15);
+			scenarioName.AddThemeColorOverride("font_color", Colors.Black);
+			background.AddChild(scenarioName);
+			ChooseGameType(global, GameScenario.None);
+			return;
+		}
 		OptionButton selector = new() {
 			Position = new Vector2(432, 17),
 			CustomMinimumSize = new Vector2(160, 32),
@@ -595,6 +614,9 @@ public partial class WorldSetup : Control {
 		};
 
 		Global.SaveGame = _saveGame;
+		// The scenario's rules go with the game; a new game after it is on the
+		// usual ones.
+		ScenarioPlay.Clear();
 
 		// Remembered once the game starts, with the choices made on the
 		// player setup screen.

@@ -172,8 +172,12 @@ namespace C7GameData {
 		public MainArt GetUnitMainArt(string civilopediaEntry) {
 			if (!unitArtMapping.TryGetValue(civilopediaEntry, out string artName)) {
 				log.Warning($"Could not find #ANIMNAME_{civilopediaEntry} in PediaIcons file '{pediaIconsPath}");
-				artName = unitArtMapping.First(e => e.Key.StartsWith(civilopediaEntry)).Value;
-				artName = artName.Replace($"{civilopediaEntry}_", "");
+				KeyValuePair<string, string> similar = unitArtMapping.FirstOrDefault(e => e.Key.StartsWith(civilopediaEntry));
+				// A unit with no art named at all (a mod's PediaIcons file that
+				// leaves one out) gets the name its entry gives, and the game
+				// draws it with a stock unit's art if no art has that name
+				// (see AnimationManager.FallbackArtFor).
+				artName = similar.Value?.Replace($"{civilopediaEntry}_", "") ?? civilopediaEntry.Replace("PRTO_", "");
 			}
 
 			var variations = unitArtMapping
@@ -197,10 +201,23 @@ namespace C7GameData {
 			};
 		}
 
+		// A unit with no icons in the PediaIcons file (a mod's file that leaves
+		// one out, as QC 1.70's Minuteman) shows a Warrior's, or another stock
+		// unit's, as its art falls back to a stock unit's (see GetUnitMainArt).
 		public PediaArt GetUnitCivilopediaArt(string civilopediaEntry) {
+			bool hasIcons(string entry) => civilopediaLargeIcons.ContainsKey(entry) && civilopediaSmallIcons.ContainsKey(entry);
+			string entry = hasIcons(civilopediaEntry) ? civilopediaEntry
+				: hasIcons("PRTO_Warrior") ? "PRTO_Warrior"
+				: civilopediaLargeIcons.Keys.FirstOrDefault(k => k.StartsWith("PRTO_") && hasIcons(k));
+			if (entry != civilopediaEntry) {
+				log.Warning($"Could not find the icons of {civilopediaEntry} in PediaIcons file '{pediaIconsPath}'; using {entry ?? "none"}");
+			}
+			if (entry == null) {
+				return new PediaArt();
+			}
 			return new PediaArt() {
-				large = civilopediaLargeIcons[civilopediaEntry],
-				small = civilopediaSmallIcons[civilopediaEntry],
+				large = civilopediaLargeIcons[entry],
+				small = civilopediaSmallIcons[entry],
 			};
 		}
 

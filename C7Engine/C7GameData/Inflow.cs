@@ -76,10 +76,14 @@ public class Inflow : IProducible {
 public struct LocalYield {
 	public InflowYield yieldType { get; set; }
 	public readonly Func<ScriptContext, int> yieldCalculation;
+	// The Lua function it comes from, kept for saving: the inflow's name
+	// needn't match it, since a mod may call its Wealth anything.
+	public readonly string yieldCalculationPath;
 
 	public LocalYield() { }
 	public LocalYield(InflowYield type, BehaviorEngine rulesEngine, string yieldCalculation = null) {
 		this.yieldType = type;
+		this.yieldCalculationPath = yieldCalculation;
 		if (yieldCalculation != null) {
 			this.yieldCalculation = rulesEngine.ImportFunc<Func<ScriptContext, int>>(yieldCalculation);
 		}

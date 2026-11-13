@@ -2792,7 +2792,7 @@ namespace C7GameData {
 			for (int i = 0; i < theBiq.Tfrm.Length; ++i) {
 				TFRM t = theBiq.Tfrm[i];
 
-				TerraformKey tfKey = ConvertCiv3Order(t.Order);
+				TerraformKey tfKey = ConvertCiv3Order(t.Order, i);
 
 				SaveTerraform tf = new() {
 					Id = ids.CreateID("Terraform"),
@@ -2842,7 +2842,19 @@ namespace C7GameData {
 			}
 		}
 
-		private static TerraformKey ConvertCiv3Order(string order) {
+		// Civ3's worker jobs, in the order its rules list them. A scenario
+		// may rename a job and its order ("Determines the verbiage used to
+		// explain the orders of a worker", Civ3's editor help) but has the
+		// same jobs in the same places: Space Opera's "Build Station" is the
+		// fortress.
+		private static readonly TerraformKey[] Civ3JobOrder = [
+			TerraformKey.BuildMine, TerraformKey.Irrigate, TerraformKey.BuildFortress, TerraformKey.BuildRoad,
+			TerraformKey.BuildRailroad, TerraformKey.PlantForest, TerraformKey.ClearForest, TerraformKey.ClearWetlands,
+			TerraformKey.ClearDamage, TerraformKey.BuildAirfield, TerraformKey.BuildRadarTower, TerraformKey.BuildOutpost,
+			TerraformKey.BuildBarricade,
+		];
+
+		private static TerraformKey ConvertCiv3Order(string order, int index) {
 			return order switch {
 				"Build Mine" => TerraformKey.BuildMine,
 				"Irrigate" => TerraformKey.Irrigate,
@@ -2857,6 +2869,7 @@ namespace C7GameData {
 				"Build Radar Tower" => TerraformKey.BuildRadarTower,
 				"Build Outpost" => TerraformKey.BuildOutpost,
 				"Build Barricade" or "Build Barricades" => TerraformKey.BuildBarricade,
+				_ when index >= 0 && index < Civ3JobOrder.Length => Civ3JobOrder[index],
 				_ => throw new NotSupportedException($"Unknown order: {order}"),
 			};
 		}

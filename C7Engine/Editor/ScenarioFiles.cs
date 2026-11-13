@@ -131,8 +131,11 @@ public static class ScenarioFiles {
 
 	// A scenario starts a game, so it carries nothing a game played so far
 	// would: no history, no replay, no record of how it went, no plans the
-	// computer players made, and fresh random numbers.
+	// computer players made, and fresh random numbers. Nor a difficulty: as
+	// in Civ3, the player chooses one when starting it.
 	private static void Clean(SaveGame save) {
+		save.GameDifficulty = new Difficulty();
+		save.GameDifficultyIndex = null;
 		save.TurnNumber = 0;
 		save.RngState = null;
 		save.History = new();

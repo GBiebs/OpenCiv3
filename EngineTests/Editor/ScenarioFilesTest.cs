@@ -148,6 +148,20 @@ public class ScenarioFilesTest : IClassFixture<SaveGameFixture> {
 		Assert.Empty(saved.History);
 	}
 
+	// A scenario has no difficulty of its own, as in Civ3: the player
+	// chooses one to play it at. The editor shows it at the usual one.
+	[Fact]
+	public void AScenarioHasNoDifficultyOfItsOwn() {
+		SaveGame game = ScenarioFiles.ForEditing(fixture.saveGame);
+		C7GameData.GameData gameData = Edit(game);
+		Assert.Equal(NewGameChoices.DefaultDifficulty, gameData.gameDifficulty.Name);
+		Assert.Contains(gameData.gameDifficulty, gameData.difficulties);
+
+		SaveGame saved = ScenarioFiles.ToScenario(gameData, game.Scenario);
+		Assert.Null(saved.GameDifficultyIndex);
+		Assert.Null(saved.GameDifficulty.Name);
+	}
+
 	// A scenario with a map starts a game as it is, as Load Scenario does.
 	[Fact]
 	public async Task AGameStartsFromAScenario() {
@@ -157,8 +171,12 @@ public class ScenarioFilesTest : IClassFixture<SaveGameFixture> {
 		string path = dir.File("start.json");
 		ScenarioFiles.Save(scenario, path);
 
-		Player human = await CreateGame.createGame(SaveGame.Load(path, s => s), _ => fixture.behaviors);
+		// As Load Scenario does, the player chooses the difficulty.
+		SaveGame opened = SaveGame.Load(path, s => s);
+		opened.GameDifficulty = opened.Difficulties.Last();
+		Player human = await CreateGame.createGame(opened, _ => fixture.behaviors);
 		Assert.True(human.isHuman);
+		Assert.Equal(opened.Difficulties.Last().Name, EngineStorage.gameData.gameDifficulty.Name);
 		Assert.Equal(edited.cities.Count, EngineStorage.gameData.cities.Count);
 		Assert.Equal(0, EngineStorage.gameData.turn);
 	}

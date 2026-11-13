@@ -12,7 +12,7 @@ public class SaveInflow {
 	public SaveInflow(Inflow inflow) {
 		this.name = inflow.name;
 		this.iconRowIndex = inflow.iconRowIndex;
-		this.localYield = inflow.localYield.ConvertAll(y => new SaveLocalYield(y.yieldType, GetYieldCalc(y.yieldType)));
+		this.localYield = inflow.localYield.ConvertAll(y => new SaveLocalYield(y.yieldType, y.yieldCalculationPath ?? GetYieldCalc(y.yieldType)));
 	}
 
 	public string GetYieldCalc(InflowYield yieldType) {

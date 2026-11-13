@@ -14,6 +14,11 @@ public static class ScenarioEditing {
 	// Makes the scenario the game's data, dropping whatever game was there.
 	public static GameData Open(SaveGame scenario, BehaviorEngine behaviors) {
 		EngineStorage.ResetForNewGame();
+		// A scenario has no difficulty of its own: the player chooses one to
+		// play it at (see ScenarioFiles.Clean). It's shown at the usual one.
+		if (scenario.GameDifficultyIndex == null && scenario.GameDifficulty?.Name == null && scenario.Difficulties.Count > 0) {
+			scenario.GameDifficulty = new NewGameChoices().ChosenDifficulty(scenario.Difficulties);
+		}
 		GameData gameData = scenario.ToGameData(behaviors);
 		EngineStorage.gameData = gameData;
 		gameData.observerMode = true;
