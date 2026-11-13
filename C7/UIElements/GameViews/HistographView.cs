@@ -62,6 +62,11 @@ public partial class HistographView : Control {
 			measureButtons[m] = button;
 			side.AddChild(button);
 		}
+		// Not Civ3's: the statistics kept each turn (see StatisticsView).
+		Button statistics = MakeToggle("Statistics");
+		statistics.ToggleMode = false;
+		statistics.Pressed += () => this.GetParent<GameViews>().ShowStatistics();
+		side.AddChild(statistics);
 
 		side.AddChild(AdvisorUtils.MakeSpacer(8));
 		side.AddChild(AdvisorUtils.MakeLabel("Scale by", 15));

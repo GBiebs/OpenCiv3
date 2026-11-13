@@ -89,6 +89,20 @@ public class UnitedNationsTest : System.IDisposable {
 		Assert.Equal([rome, egypt], UnitedNations.Candidates(gameData));
 	}
 
+	// A candidate needs "more than 25% of land or population" (Perez's
+	// decompile, Round 2; owner's ruling 2026-11-12): exactly a quarter isn't
+	// enough.
+	[Fact]
+	public void ExactlyAQuarterIsNotEnoughToStand() {
+		Player rome = MakePlayer("Romans", 2);
+		MakePlayer("Egyptians", 2);
+		Player greece = MakePlayer("Greeks", 4);
+		BuildUnitedNations(rome);
+
+		// Egypt has exactly 2 of 8 citizens.
+		Assert.Equal([rome, greece], UnitedNations.Candidates(gameData));
+	}
+
 	// "At maximum, there can be three candidates".
 	[Fact]
 	public void ThereAreAtMostThreeCandidates() {
@@ -538,15 +552,15 @@ public class UnitedNationsTest : System.IDisposable {
 		UnitedNations.ElectionResult result = UnitedNations.ProcessEndOfRound(gameData);
 		Assert.Null(result.winner);
 		Assert.Null(gameData.unitedNations.secretaryGeneral);
-		// "The choice for the founder of the UN to have elections comes
-		// around every 11 turns".
-		Assert.Equal(11, UnitedNations.ElectionInterval);
+		// The vote comes "every 10 turns" (Perez's decompile, Round 2;
+		// owner's ruling 2026-11-12, superseding the FAQ's 11).
+		Assert.Equal(10, UnitedNations.ElectionInterval);
 		Assert.Equal(-1, gameData.unitedNations.votingTurn);
 		Assert.Equal(49 + UnitedNations.ElectionInterval, gameData.unitedNations.offerTurn);
 	}
 
 	[Fact]
-	public void FailedVoteOffersTheNextElectionElevenTurnsAfterTheLast() {
+	public void FailedVoteOffersTheNextElectionTenTurnsAfterTheLast() {
 		Player rome = MakePlayer("Romans", 3);
 		Player egypt = MakePlayer("Egyptians", 4);
 		MakePlayer("Greeks", 2);
@@ -579,7 +593,7 @@ public class UnitedNationsTest : System.IDisposable {
 
 		// Nothing happens until then.
 		Befriend(greece, rome);
-		for (gameData.turn = 51; gameData.turn < 61; ++gameData.turn) {
+		for (gameData.turn = 51; gameData.turn < 60; ++gameData.turn) {
 			Assert.Null(UnitedNations.ProcessEndOfRound(gameData));
 			Assert.Equal(-1, gameData.unitedNations.votingTurn);
 		}
@@ -587,13 +601,13 @@ public class UnitedNationsTest : System.IDisposable {
 		// Now Greece would vote for Rome.
 		Assert.True(UnitedNations.AIHoldsElection(gameData, rome));
 		Assert.Null(UnitedNations.ProcessEndOfRound(gameData));
-		Assert.Equal(61, gameData.unitedNations.votingTurn);
+		Assert.Equal(60, gameData.unitedNations.votingTurn);
 		Assert.Equal(rome.id.ToString(), gameData.unitedNations.candidateA);
 		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgShowUnitedNationsElectionOffer>());
 	}
 
-	// "The choice for the founder of the UN to have elections comes around
-	// every 11 turns" (https://civfanatics.com/civ3/faq/).
+	// The founder is offered an election "every 10 turns" (Perez's
+	// decompile, Round 2; owner's ruling 2026-11-12).
 	[Fact]
 	public void AHumanFounderChoosesToHoldAnElection() {
 		Player human = MakePlayer("Romans", 3, human: true);
@@ -636,10 +650,12 @@ public class UnitedNationsTest : System.IDisposable {
 		Assert.Equal(50 + UnitedNations.ElectionInterval, gameData.unitedNations.offerTurn);
 	}
 
-	// "it's 11 turns whether the vote is inconclusive or the option
-	// declined" (https://forums.civfanatics.com/threads/diplomatic-victory.53460/).
+	// The interval is the same whether the vote is inconclusive or the
+	// option declined (MadScot,
+	// https://forums.civfanatics.com/threads/diplomatic-victory.53460/,
+	// whose 11 turns Perez's decompile corrects to 10).
 	[Fact]
-	public void AHumanFounderWhoDeclinesIsAskedAgainElevenTurnsLater() {
+	public void AHumanFounderWhoDeclinesIsAskedAgainTenTurnsLater() {
 		Player human = MakePlayer("Romans", 3, human: true);
 		Player egypt = MakePlayer("Egyptians", 7);
 		BuildUnitedNations(human);
@@ -647,13 +663,13 @@ public class UnitedNationsTest : System.IDisposable {
 		UnitedNations.ProcessEndOfRound(gameData);
 
 		Assert.True(UnitedNations.AnswerElectionOffer(gameData, human, false));
-		Assert.Equal(61, gameData.unitedNations.offerTurn);
+		Assert.Equal(60, gameData.unitedNations.offerTurn);
 		Assert.Equal(-1, gameData.unitedNations.votingTurn);
 		Assert.False(UnitedNations.FounderShouldBeAsked(gameData, human));
 		UnitedNations.AskHumanToVote(gameData, human);
 		Assert.Empty(EngineStorage.messagesToUI.OfType<MsgShowUnitedNationsElectionOffer>());
 
-		for (gameData.turn = 51; gameData.turn < 61; ++gameData.turn) {
+		for (gameData.turn = 51; gameData.turn < 60; ++gameData.turn) {
 			Assert.Null(UnitedNations.ProcessEndOfRound(gameData));
 			Assert.False(UnitedNations.FounderShouldBeAsked(gameData, human));
 		}
@@ -675,7 +691,7 @@ public class UnitedNationsTest : System.IDisposable {
 		gameData.turn = 51;
 		Assert.Null(UnitedNations.ProcessEndOfRound(gameData));
 		Assert.Equal(-1, gameData.unitedNations.votingTurn);
-		Assert.Equal(61, gameData.unitedNations.offerTurn);
+		Assert.Equal(60, gameData.unitedNations.offerTurn);
 		Assert.False(UnitedNations.FounderShouldBeAsked(gameData, human));
 		Assert.False(UnitedNations.AnswerElectionOffer(gameData, human, true));
 	}

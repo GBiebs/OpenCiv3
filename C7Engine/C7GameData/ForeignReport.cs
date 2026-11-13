@@ -16,6 +16,20 @@ namespace C7GameData {
 		Embargo,
 	}
 
+	// The three faces of a leader's small portrait, in the order of the rows
+	// of Civ3's Art/Advisors/<civ>_all.pcx.
+	public enum LeaderFace {
+		Pleased,
+		Neutral,
+		Angry,
+	}
+
+	// A leader's small portrait with a given face, for the texture config
+	// (leader_heads), which takes the row of the art to show from it.
+	public record LeaderPortrait(Player player, LeaderFace face) {
+		public int row => (int)face;
+	}
+
 	// What two civs that have met have between them.
 	public record ForeignTie(Player first, Player second, bool atWar, bool mutualProtection, bool rightOfPassage,
 			bool lockedAlliance, List<Player> allianceAgainst, List<Player> embargoAgainst) {
@@ -115,6 +129,28 @@ namespace C7GameData {
 			}
 			return Attitudes.Level(gameData, civ, viewer);
 		}
+
+		// The face a leader's portrait on the Foreign Advisor wears: Civ3
+		// draws our own leader pleased and every other leader by its
+		// attitude toward us, pleased while gracious or polite, neutral while
+		// cautious and angry while annoyed or furious (Civ3 FUN_00538830: the
+		// switch on FUN_004428b0's attitude, jump table at 0x5390c8, picks
+		// the row of the leader's <civ>_all.pcx, whose rows are those three
+		// faces). War doesn't change the face, only the attitude does. A
+		// civ with no attitude we work out (a human player) looks neutral.
+		public static LeaderFace FaceToward(AttitudeLevel? attitude, bool isViewer) {
+			if (isViewer) {
+				return LeaderFace.Pleased;
+			}
+			return attitude switch {
+				AttitudeLevel.Gracious or AttitudeLevel.Polite => LeaderFace.Pleased,
+				AttitudeLevel.Annoyed or AttitudeLevel.Furious => LeaderFace.Angry,
+				_ => LeaderFace.Neutral,
+			};
+		}
+
+		public static LeaderFace FaceToward(GameData gameData, Player viewer, Player civ) =>
+			FaceToward(AttitudeTowardViewer(gameData, viewer, civ), civ == viewer);
 
 		// The civ's name as the advisor uses it after "the", as in "the Romans".
 		public static string CivNoun(Player civ) => civ?.civilization?.noun ?? civ?.civilization?.name ?? "";

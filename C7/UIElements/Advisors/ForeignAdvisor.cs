@@ -382,7 +382,8 @@ public partial class ForeignWeb : Control {
 			};
 			frame.AddThemeStyleboxOverride("panel", CircleStyle(_headSize));
 			AddChild(frame);
-			Texture2D art = LeaderHead(civ);
+			// Its face as it feels toward us (ForeignReport.FaceToward).
+			Texture2D art = LeaderHead(civ, ForeignReport.FaceToward(gameData, viewer, civ));
 			if (art != null) {
 				frame.AddChild(new TextureRect {
 					Texture = art,
@@ -439,9 +440,9 @@ public partial class ForeignWeb : Control {
 		return style;
 	}
 
-	private static Texture2D LeaderHead(Player civ) {
+	private static Texture2D LeaderHead(Player civ, LeaderFace face) {
 		try {
-			return LeaderHeadTextures.Get(civ);
+			return LeaderHeadTextures.Get(civ, face);
 		} catch (Exception) {
 			// Art that isn't there (TextureLoader logs it) gets the drawn
 			// initial instead.

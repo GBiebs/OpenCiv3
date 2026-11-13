@@ -65,12 +65,19 @@ namespace C7Engine.AI {
 		public const int TURNS_AFTER_CONTACT_BEFORE_DEMANDS = 10;
 		public const int MIN_GOLD_DEMANDED = 20;
 
-		public static async Task MakeDemands(Player us, GameData gameData) {
+		// Playing by email, the computer players make their demands of a human
+		// at the start of the human's turn, onlyWith them (see
+		// PlayByEmail.HearFromAIs).
+		public static async Task MakeDemands(Player us, GameData gameData, Player onlyWith = null) {
 			if (us.isHuman || us.IsIndependent || us.defeated || us.cities.Count == 0) {
 				return;
 			}
 			foreach (Player them in gameData.players.ToList()) {
-				// A LAN guest who has left can't answer, so isn't asked.
+				if (onlyWith != null && them != onlyWith) {
+					continue;
+				}
+				// A LAN guest who has left can't answer, so isn't asked, nor
+				// is a human away playing by email.
 				if (!WouldDemandFrom(us, them, gameData) || !EngineStorage.IsPlayerReachable(them.id)) {
 					continue;
 				}

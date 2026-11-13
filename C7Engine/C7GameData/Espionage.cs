@@ -123,11 +123,15 @@ namespace C7Engine {
 			public bool success;
 			// Whether the agents were caught (only for a failed mission).
 			public bool caught;
+			// Whether the agent of a successful mission was exposed and lost
+			// anyway (see ExposedAfterSuccessPercent).
+			public bool exposed;
 			public int goldSpent;
 			public string message;
 			public Tech stolenTech;
 			public CityReport report;
-			// The capital an embassy was established in.
+			// The capital an embassy was established in, or the investigated
+			// city, which the player is shown on the city screen.
 			public City city;
 			public Player exposedSpyOwner;
 			// Propaganda: how many citizens were persuaded.
@@ -374,7 +378,22 @@ namespace C7Engine {
 				default:
 					return 0;
 			}
-			return (int)Math.Min(cost, int.MaxValue);
+			// The final price: "((2*size - nativesOfSpyCiv + 1) * (cost +
+			// (sizeClass+1)*DAT_009e5ce4)) / (2*size + 1): a city full of
+			// citizens of the spy's nationality is much cheaper to work on"
+			// (Perez's decompile of Civ3 Conquests,
+			// doc/perez-findings/Civ3_Findings.md, Round 2d "Espionage";
+			// authoritative per the owner's 2026-11-12 ruling). The decompile
+			// doesn't name DAT_009e5ce4; (sizeClass+1) is the study's
+			// "level", and the editor help's "further modified, taking into
+			// consideration ... the distance of the target, the target city's
+			// population level, the ratio of citizens between the initiating
+			// civ and the target civ" (compendium 06, section 6.11) makes it
+			// the study's "dist". UNVERIFIED: that it is the distance as
+			// Distance measures it.
+			int natives = measured?.residents.Count(r => r.nationality == actor.civilization) ?? 0;
+			cost = cost * (2L * pop - natives + 1) / (2L * pop + 1);
+			return (int)Math.Clamp(cost, 0, int.MaxValue);
 		}
 
 		// The study's chance, in per cent, of a planted spy getting away
@@ -396,8 +415,40 @@ namespace C7Engine {
 			};
 		}
 
-		// "There is an 80% chance of succeeding if not getting caught."
+		// "There is an 80% chance of succeeding if not getting caught." Only
+		// for Steal Technology and Steal World Map: "after a successful first
+		// roll, `Rand(100) < 80` completes the mission; the remaining 20% give
+		// "mission failed" without being caught" (Perez's decompile of Civ3
+		// Conquests, doc/perez-findings/Civ3_Findings.md, Round 2d
+		// "Espionage"; authoritative per the owner's 2026-11-12 ruling).
+		// Steal Plans, Sabotage Production and Expose Enemy Spy use the
+		// success roll alone, and their agents may be exposed afterwards
+		// (ExposedAfterSuccessPercent).
 		public const int SuccessIfNotCaughtPercent = 80;
+
+		// Whether a mission has the second, 80% roll (see
+		// SuccessIfNotCaughtPercent), so it can fail without its agents being
+		// caught.
+		public static bool HasSecondRoll(EspionageMission mission) {
+			return mission is EspionageMission.StealTechnology or EspionageMission.StealWorldMap;
+		}
+
+		// The chance, in per cent, that the agent of a successful mission is
+		// exposed and lost anyway: "Exposed afterwards (the spy is lost even
+		// though the mission worked): Steal Plans 10%, Sabotage Production
+		// 20%, Expose Mole 10%" (Perez's decompile, Round 2d; owner's ruling
+		// 2026-11-12). Civ3 has its own messages for it (script.txt,
+		// #ESPIONAGE_MISSION_STEAL_PLANS_SUCCESS_EXPOSED,
+		// #ESPIONAGE_MISSION_SABOTAGE_PRODUCTION_SUCCESS_EXPOSED,
+		// #ESPIONAGE_MISSION_EXPOSE_MOLE_SUCCESS_EXPOSED).
+		public static int ExposedAfterSuccessPercent(EspionageMission mission) {
+			return mission switch {
+				EspionageMission.StealPlans => 10,
+				EspionageMission.SabotageProduction => 20,
+				EspionageMission.ExposeEnemySpy => 10,
+				_ => 0,
+			};
+		}
 
 		// The study's chances of planting a spy: regular 50%, veteran 60%.
 		// (It also gives, in brackets, conscript 20% and elite 75%, which no
@@ -426,7 +477,8 @@ namespace C7Engine {
 					if (mission == EspionageMission.ExposeEnemySpy && !HasSpy(target, actor)) {
 						return 0;
 					}
-					return GetawayPercent(AgentFor(actor, target, mission), risk) * SuccessIfNotCaughtPercent / 100;
+					int getaway = GetawayPercent(AgentFor(actor, target, mission), risk);
+					return HasSecondRoll(mission) ? getaway * SuccessIfNotCaughtPercent / 100 : getaway;
 				default:
 					return 0;
 			}
@@ -658,11 +710,15 @@ namespace C7Engine {
 
 		// Performs the mission if possible. The roll, 0-99, is random if not
 		// given. For a mission that can be caught, below the success chance
-		// succeeds, below the chance of getting away fails unnoticed, and
+		// succeeds, below the chance of getting away fails unnoticed (only
+		// for the missions with a second roll, see HasSecondRoll), and
 		// otherwise the agents are caught. For propaganda it is each
-		// citizen's roll against their chance of being persuaded.
+		// citizen's roll against their chance of being persuaded. The
+		// exposedRoll, 0-99 and random if not given, decides whether the
+		// agent of a successful mission is exposed afterwards (see
+		// ExposedAfterSuccessPercent).
 		public static MissionResult Perform(GameData gameData, Player actor, EspionageMission mission, Player target, City city, int? roll = null,
-				EspionageRisk risk = EspionageRisk.Immediately) {
+				EspionageRisk risk = EspionageRisk.Immediately, int? exposedRoll = null) {
 			if (!TargetsCity(mission)) {
 				city = null;
 			}
@@ -691,10 +747,12 @@ namespace C7Engine {
 			}
 
 			int chance = SuccessPercent(gameData, actor, mission, target, city, risk);
+			// Only the missions with a second roll can fail unnoticed; for the
+			// others, failing the success roll is being caught.
 			int getaway = mission switch {
 				EspionageMission.EstablishEmbassy or EspionageMission.InvestigateCity => 100,
-				EspionageMission.PlantSpy => chance,
-				_ => GetawayPercent(agent, risk),
+				_ when HasSecondRoll(mission) => GetawayPercent(agent, risk),
+				_ => chance,
 			};
 			int r = roll ?? GameData.rng.Next(100);
 			result.success = r < chance;
@@ -727,6 +785,14 @@ namespace C7Engine {
 				log.Information("{Actor}'s {Mission} against {Target} was caught", actor, mission, target);
 				return result;
 			}
+
+			// Whether the agent is exposed although the mission worked (see
+			// ExposedAfterSuccessPercent). Civ3's messages for it end
+			// "$TITLE $LEADER is not pleased", so it counts as an incident
+			// (below). UNVERIFIED: that it is one, as a caught mission is.
+			int exposedChance = ExposedAfterSuccessPercent(mission);
+			result.exposed = exposedChance > 0 && (exposedRoll ?? GameData.rng.Next(100)) < exposedChance;
+			string actorAdjective = actor.civilization.adjective ?? actor.civilization.noun;
 
 			switch (mission) {
 				case EspionageMission.EstablishEmbassy: {
@@ -761,8 +827,13 @@ namespace C7Engine {
 						break;
 					}
 				case EspionageMission.InvestigateCity:
+					// As in Civ3, the city is then shown on the city screen.
+					// Civ3's words (script.txt,
+					// #ESPIONAGE_MISSION_INVESTIGATE_CITY_SUCCESS): "We have
+					// conducted an investigation of the city of $CITY1."
 					result.report = Investigate(city, gameData.turn);
-					result.message = DescribeReport(result.report);
+					result.city = city;
+					result.message = $"We have conducted an investigation of the city of {city.name}.";
 					break;
 				case EspionageMission.StealTechnology: {
 						List<Tech> stealable = StealableTechs(gameData, actor, target);
@@ -775,7 +846,18 @@ namespace C7Engine {
 				case EspionageMission.SabotageProduction:
 					city.SetStoredShields(0);
 					result.message = $"Our agents have sabotaged production in {city.name}.";
-					NotifyTarget(target, result.newsEvent, $"Saboteurs have destroyed the production in {city.name}!");
+					// Civ3's words when exposed (script.txt,
+					// #ESPIONAGE_MISSION_SABOTAGE_PRODUCTION_SUCCESS_EXPOSED):
+					// "Unfortunately, our agent (known only as 'Gweeto') was
+					// [caught in the act] and removed."; the target's
+					// (#ESPIONAGE_CAUGHT_SABOTAGING_SUCCESS): "Production in
+					// $CITY3 has been sabotaged! A spy of $TITLE0 $LEADER1 of
+					// the $CIVNOUN2 was caught."
+					if (result.exposed) {
+						result.message += " Unfortunately, our agent was caught in the act and removed.";
+					}
+					NotifyTarget(target, result.newsEvent, $"Saboteurs have destroyed the production in {city.name}!"
+						+ (result.exposed ? $" We caught the {actorAdjective} spy responsible." : ""));
 					break;
 				case EspionageMission.PlantSpy:
 					ours.hasSpy = true;
@@ -788,7 +870,15 @@ namespace C7Engine {
 					ours.espionageIncidents++;
 					result.exposedSpyOwner = target;
 					result.message = $"We have exposed a {target.civilization.adjective ?? target.civilization.noun} spy in our capital!";
-					NotifyTarget(target, result.newsEvent, $"Our spy among the {actor.civilization.noun} has been exposed!");
+					// Civ3's words when exposed (script.txt,
+					// #ESPIONAGE_MISSION_EXPOSE_MOLE_SUCCESS_EXPOSED): "The
+					// threat has been neutralized but our agent's affiliation
+					// was compromised."
+					if (result.exposed) {
+						result.message += " The threat has been neutralized, but our agent's affiliation was compromised.";
+					}
+					NotifyTarget(target, result.newsEvent, $"Our spy among the {actor.civilization.noun} has been exposed!"
+						+ (result.exposed ? $" We have caught the {actorAdjective} agent who exposed them." : ""));
 					break;
 				case EspionageMission.StealWorldMap:
 					result.tilesRevealed = StealWorldMap(actor, target);
@@ -797,9 +887,30 @@ namespace C7Engine {
 				case EspionageMission.StealPlans:
 					result.unitTiles = StealPlans(actor, target);
 					result.message = $"Our spy has stolen the {target.civilization.adjective ?? target.civilization.noun} military plans: their troops are shown on the map until next turn.";
+					// Civ3's words when exposed (script.txt,
+					// #ESPIONAGE_MISSION_STEAL_PLANS_SUCCESS_EXPOSED):
+					// "However, our agent was caught and executed."; the
+					// target's (#ESPIONAGE_CAUGHT_STEALING_PLANS_SUCCESS): "Our
+					// military plans have been stolen! An agent of $TITLE0
+					// $LEADER1 of the $CIVNOUN2 was caught."
+					if (result.exposed) {
+						result.message += " However, our agent was caught and executed.";
+						NotifyTarget(target, result.newsEvent, $"Our military plans have been stolen! We caught the {actorAdjective} agent responsible.");
+					}
 					break;
 			}
 			log.Information("{Actor}'s {Mission} against {Target} succeeded: {Message}", actor, mission, target, result.message);
+
+			// The agent of some missions may be exposed and lost although the
+			// mission worked. Civ3's messages end "$TITLE $LEADER is not
+			// pleased", so it counts as an incident. UNVERIFIED: that it is
+			// one, as a caught mission is.
+			// An exposed agent is lost, and an incident.
+			if (result.exposed) {
+				ours.hasSpy = false;
+				theirs.espionageIncidents++;
+				log.Information("{Actor}'s agent was exposed after its {Mission} against {Target}", actor, mission, target);
+			}
 			return result;
 		}
 

@@ -82,7 +82,7 @@ public partial class UnitSelector : Node {
 
 		bool shouldSkipForMovement = outOfMovesOrDead && notAttentionWorthy;
 		bool shouldSkipFortified = unit.isFortified && !KeepCSUWhenFortified;
-		bool shouldSkipAutomated = unit.isAutomated;
+		bool shouldSkipAutomated = unit.isAutomated || unit.IsAutoBombarding();
 
 		return shouldSkipForMovement || shouldSkipFortified || shouldSkipAutomated;
 	}

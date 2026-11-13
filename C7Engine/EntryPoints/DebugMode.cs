@@ -167,6 +167,9 @@ namespace C7Engine {
 	// only in the player's own cities: in another civ's, Civ3's city screen
 	// takes only Escape and Enter.
 	public abstract class DebugMessage : MessageToEngine {
+		// Cheats aren't game actions (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		protected override bool IsAllowed() {
 			return DebugMode.IsOn(EngineStorage.gameData) && base.IsAllowed();
 		}

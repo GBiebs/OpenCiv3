@@ -54,7 +54,22 @@ namespace C7GameData {
 		public bool isSentried { get; set; }
 		public bool sentryEnemyOnly { get; set; }
 
-		public bool isAutomated { get; set; }
+		// Taking a unit out of automation ends its kind of worker automation
+		// too.
+		public bool isAutomated {
+			get => automated;
+			set {
+				automated = value;
+				if (!value) {
+					workerAutomation = null;
+				}
+			}
+		}
+		private bool automated;
+
+		// One of Civ3's kinds of worker automation while the unit is
+		// automated, or null for plain automation (see WorkerAutomation).
+		public WorkerAutomation workerAutomation { get; set; }
 
 		//sentry, etc. will come later.  For now, let's just have a couple things so we can cycle through units that aren't fortified.
 		public int defensiveBombardsRemaining;
@@ -88,6 +103,10 @@ namespace C7GameData {
 		public ID loadedOnUnitId { get; set; }
 
 		public UnitAI currentAI;
+		// The automation a unit loaded from a save resumes on its next turn
+		// ("work" or "explore", see AutomationKind), since its plan isn't
+		// saved.
+		public string resumeAutomation;
 
 		public MapUnit(ID id) {
 			this.id = id;
@@ -102,7 +121,7 @@ namespace C7GameData {
 		}
 
 		public bool IsBusy() {
-			return isFortified || isSentried || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
+			return isFortified || isSentried || IsAutoBombarding() || (path != null && path.PathLength() > 0) || WorkerJob != null || isAutomated;
 		}
 
 		public bool IsLandUnit() {
@@ -493,7 +512,15 @@ namespace C7GameData {
 			if (role.Defending()) {
 				// "There is no defensive bonus for fortified ships"
 				// (https://forums.civfanatics.com/threads/do-ships-get-a-defense-bonus-when-fortified.95400/).
-				if (isFortified && !IsWaterUnit())
+				// The bonus also needs movement points left: "the fortified
+				// bonus requires the unit to be fortified *and have movement
+				// points remaining*" (Perez's decompile of Civ3 Conquests,
+				// doc/perez-findings/Civ3_Findings.md, 3.2 "Combat";
+				// authoritative per the owner's 2026-11-12 ruling). Moves are
+				// restored as each round begins (TurnHandling.InitTurnData),
+				// so a unit that fortifies having spent its moves only gets
+				// the bonus from then on.
+				if (isFortified && !IsWaterUnit() && movementPoints.canMove)
 					yield return gD.fortificationBonus;
 
 				yield return location.overlayTerrainType.defenseBonus;
@@ -968,8 +995,9 @@ namespace C7GameData {
 		// https://forums.civfanatics.com/threads/useful-patches-for-civ-3-conquests-v1-22.526285/page-4,
 		// #62). So a regular has an even chance against a regular, and a
 		// conscript opponent makes it likelier than a veteran one.
+		// Barbarians never retreat from an attack (see Fight).
 		public double RetreatChance(MapUnit opponent, bool isAttacking) {
-			if (!IsFastAgainst(opponent))
+			if (!IsFastAgainst(opponent) || (isAttacking && owner?.isBarbarians == true))
 				return 0.0;
 			(int own, int theirs) = RetreatBonuses(opponent, isAttacking);
 			return Math.Min(1.0, (double)own / (theirs + 50));
@@ -1288,24 +1316,25 @@ namespace C7GameData {
 			return IsLoadable() && IsLoaded() && tile.IsLand();
 		}
 
+		// The transports (or, on the player's order, armies) on the tile this
+		// unit could board, the one it boards unasked first: one that already
+		// carries units, then the one with the most room. The Load order asks
+		// which when there are several (Civ3's "What Transport?" popup,
+		// script.txt's SELECT_TRANSPORT).
+		public List<MapUnit> TransportsToBoard(Tile tile, bool explicitLoad = false) {
+			if (!IsLoadable() || !Tile.IsTileValid(tile))
+				return [];
+			return tile.unitsOnTile
+				.Where(u => u != this && u.CanCarryUnits() && (explicitLoad || !u.IsArmy()) && u.CanLoad(this))
+				.OrderBy(t => t.IsEmpty())
+				.ThenByDescending(t => t.FreeCapacity())
+				.ToList();
+		}
+
+		// UNVERIFIED (no Civ3 source found): moving onto a tile with several
+		// transports picks one unasked, rather than asking as Load does.
 		private MapUnit SelectTransportToBoard(Tile tile, bool explicitLoad = false) {
-			// TODO: Let human player choose via UI which transport to load unit in
-
-			var availableTransports = tile.unitsOnTile
-				.Where(u => u != this && u.CanCarryUnits() && (explicitLoad || !u.IsArmy()))
-				.Where(u => !u.IsFull());
-
-			// Sort candidates by free capacity, but prefer transports that already have units
-			availableTransports = availableTransports
-				.OrderBy(t => !t.IsEmpty())
-				.ThenByDescending(t => t.FreeCapacity());
-
-			foreach (var transport in availableTransports) {
-				if (transport.CanLoad(this))
-					return transport;
-			}
-
-			return null;
+			return TransportsToBoard(tile, explicitLoad).FirstOrDefault();
 		}
 
 		private MapUnit FindTransportToUnboard(Tile tile, ID transport) {
@@ -1434,6 +1463,12 @@ namespace C7GameData {
 				return false;
 			}
 			if (location.HasCity() || !location.IsAllowCities()) {
+				return false;
+			}
+			// A city may be founded inside another civ's borders, which at
+			// peace declares war on it (see BuildCity), so not in the land of
+			// a civ we're locked in peace with, such as a teammate.
+			if (location.PeacefulOwnerFor(owner) is Player landOwner && EngineStorage.gameData?.AreInLockedPeace(owner, landOwner) == true) {
 				return false;
 			}
 			foreach (Tile tile in location.neighbors.Values) {
@@ -1576,6 +1611,11 @@ namespace C7GameData {
 				result.Add(UnitAction.Sacrifice);
 			}
 			AddAvailableAirMissions(result);
+			foreach (AutoBombardMode mode in new[] { AutoBombardMode.Bombard, AutoBombardMode.Bombing, AutoBombardMode.PrecisionBombing }) {
+				if (CanAutomateBombard(mode) && movementPoints.canMove) {
+					result.Add(ActionFor(mode));
+				}
+			}
 
 			// Eventually we will have advanced actions too, whose availability will rely on their base actions' availability.
 			// unit.availableActions.Add("rename");

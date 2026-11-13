@@ -228,6 +228,21 @@ namespace C7GameData {
 		// 0 or less, volcanoes never erupt. See Volcano.
 		public int VolcanoEruptionPeriod = 5000;
 
+		// A scenario's plague: the BIQ GAME section's Disasters settings
+		// (PermitPlagues is 0 in conquests.biq, so the standard rules have
+		// none). The times are in years. See Plague.
+		public bool PermitPlagues = false;
+		public string PlagueName = "Plague";
+		public int PlagueEarliestStart;
+		// How far past the earliest start the first outbreak may come, as a
+		// percentage of the grace period.
+		public int PlagueVariance;
+		public int PlagueDuration;
+		// 0 to 100.
+		public int PlagueStrength;
+		public int PlagueGracePeriod;
+		public int PlagueMaxOccurrences;
+
 		// The civilopedia name of the first era, which civs start a new game
 		// in.
 		public string FirstEraCivilopediaName = "ERAS_Ancient_Times";
@@ -274,10 +289,13 @@ namespace C7GameData {
 		// them yet. The defaults are only for saves made before they were
 		// imported.
 
-		// How fast borders grow with culture, and the base for the culture
-		// thresholds at which they do.
-		public int BorderExpansionMultiplier = 3;
-		public int BorderFactor = 2;
+		// The civ-wide culture level multiplier (the editor's "Lvl.
+		// Multiplier"), and the base for the city culture thresholds at
+		// which borders grow (City.GetBorderExpansionLevel): levels at 10,
+		// 100, 1000 ... with the standard 10. Saves made before they were
+		// imported get Civ3's defaults.
+		public int BorderExpansionMultiplier = 1000;
+		public int BorderFactor = 10;
 		// The cost of each future tech.
 		public int FutureTechCost;
 		// The chance, in per cent, that a city in disorder riots.

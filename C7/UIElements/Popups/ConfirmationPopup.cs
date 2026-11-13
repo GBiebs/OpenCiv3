@@ -18,6 +18,11 @@ public partial class ConfirmationPopup : Popup {
 	// a deal someone is waiting on), rather than just closing the popup.
 	public bool escapeMeansNo = false;
 
+	// The advisor asking, and how they look: the Domestic advisor, surprised,
+	// unless the question is another's (as script.txt's #advisor gives it).
+	public AdvisorHead.Advisor advisor = AdvisorHead.Advisor.Domestic;
+	public AdvisorHead.Mood mood = AdvisorHead.Mood.Surprised;
+
 	public ConfirmationPopup(string message, string yesText, string noText, Action yesAction, Action noAction = null) {
 		alignment = BoxContainer.AlignmentMode.End;
 		margins = new Margins(right: 10);
@@ -36,7 +41,7 @@ public partial class ConfirmationPopup : Popup {
 		base._Ready();
 
 		TextureRect advisorHead = new TextureRect();
-		advisorHead.Texture = AdvisorHead.GetPopupImage(AdvisorHead.Advisor.Domestic, AdvisorHead.Mood.Surprised, eraIndex: 0);
+		advisorHead.Texture = AdvisorHead.GetPopupImage(advisor, mood, eraIndex: 0);
 		//Appears at 400, 110 in game, but leftmost 25px are transparent with default graphics
 		advisorHead.SetPosition(new Vector2(375, 0));
 		AddChild(advisorHead);
@@ -56,7 +61,7 @@ public partial class ConfirmationPopup : Popup {
 		int height = Math.Max(320, noTop + 40);
 
 		// Dimensions in-game are 530x320, more for a long message; the top
-		// 110px are for the advisor's head (the Domestic advisor's here).
+		// 110px are for the advisor's head.
 		// The size is set as a transparent texture would, so the parent can
 		// align the popup.
 		AddTexture(530, height);
@@ -64,7 +69,7 @@ public partial class ConfirmationPopup : Popup {
 		// Behind the message, which was added first to measure it.
 		MoveChild(GetChild(GetChildCount() - 1), 1);
 
-		AddHeader("Domestic Advisor", 120);
+		AddHeader(advisor == AdvisorHead.Advisor.Culture ? "Cultural Advisor" : $"{advisor} Advisor", 120);
 
 		AddButton(yesText, yesTop, confirmed);
 		AddButton(noText, noTop, cancel);

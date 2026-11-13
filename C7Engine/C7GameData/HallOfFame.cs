@@ -113,9 +113,15 @@ namespace C7GameData {
 		}
 
 		// Adds an entry to the file, making it if there's none. Returns
-		// whether it was saved.
+		// whether it was saved. A game is in it once: the same save played
+		// to the same end again (as the owner's Cultural win, loaded and won
+		// three times, 2026-11-12) is the entry already there.
 		public static bool Add(string path, HallOfFameEntry entry) {
 			List<HallOfFameEntry> entries = Load(path);
+			if (entries.Any(e => IsSameGame(e, entry))) {
+				log.Information("The Hall of Fame already has this game");
+				return true;
+			}
 			entries.Add(entry);
 			try {
 				string directory = Path.GetDirectoryName(path);
@@ -133,6 +139,11 @@ namespace C7GameData {
 				return false;
 			}
 		}
+
+		// Whether two entries are the same game ending the same way: everything
+		// but when it was recorded is the same.
+		public static bool IsSameGame(HallOfFameEntry a, HallOfFameEntry b) =>
+			a with { RecordedAt = default } == b with { RecordedAt = default };
 
 		// The leaders with games in the Hall of Fame, for its "List high
 		// scores for" choice, after "Everyone".

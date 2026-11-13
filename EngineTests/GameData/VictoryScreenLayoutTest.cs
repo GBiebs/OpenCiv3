@@ -218,4 +218,74 @@ public class VictoryScreenLayoutTest {
 		Assert.Equal("So, this game is, like, over.", gameOver.Text);
 		Assert.Equal(["Good! I'm done!", "Wait, lemme just play 'couple more turns..."], gameOver.Choices);
 	}
+
+	[Fact]
+	public void RetiringIsShownAsADefeat() {
+		// Retiring shows the defeat layout, with the player beaten up in the
+		// middle and the rest gloating round them, and the loss's
+		// announcement ("You have suffered a humiliating loss.").
+		Player us = Civ("Romans"), greeks = Civ("Greeks"), egyptians = Civ("Egyptians");
+		int screen = VictoryScreenLayout.ScreenFor(GameEndReason.Retirement, false);
+		Assert.Equal(VictoryScreenLayout.RetirementScreen, screen);
+		Assert.Equal("Art/VictoryScreen/defeat.pcx", VictoryScreenLayout.Background(screen));
+		Assert.Equal(VictoryScreenLayout.Place(VictoryScreenLayout.DefeatScreen, 0), VictoryScreenLayout.Place(screen, 0));
+		Assert.Equal(VictoryScreenLayout.Place(VictoryScreenLayout.DefeatScreen, 3), VictoryScreenLayout.Place(screen, 3));
+
+		List<VictoryScreenHead> heads = Heads(screen, [greeks, us, egyptians], us, null);
+		Assert.Equal([(us, 0, VictoryScreenLayout.LargeHurt), (greeks, 1, VictoryScreenLayout.SmallHappy), (egyptians, 2, VictoryScreenLayout.SmallHappy)],
+			heads.Select(h => (h.Player, h.Slot, h.Mood)));
+		Assert.Equal(("END_GAME_LOSS", 0x243), VictoryScreenLayout.Announcement(GameEndReason.Retirement, false, true));
+		Assert.Equal(("END_GAME_LOSS", 0x24c), VictoryScreenLayout.Announcement(GameEndReason.Retirement, false, false));
+	}
+
+	[Fact]
+	public void OurFramesShowTheMoods() {
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Glory, VictoryScreenLayout.FrameFor(VictoryScreenLayout.Happy));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Glory, VictoryScreenLayout.FrameFor(VictoryScreenLayout.SmallHappy));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Love, VictoryScreenLayout.FrameFor(VictoryScreenLayout.LargeKiss));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Love, VictoryScreenLayout.FrameFor(VictoryScreenLayout.SmallKiss));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Love, VictoryScreenLayout.FrameFor(VictoryScreenLayout.InLove));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Angry, VictoryScreenLayout.FrameFor(VictoryScreenLayout.Angry));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Hurt, VictoryScreenLayout.FrameFor(VictoryScreenLayout.LargeHurt));
+		Assert.Equal(VictoryScreenLayout.FrameStyle.Hurt, VictoryScreenLayout.FrameFor(VictoryScreenLayout.Hurt));
+	}
+
+	[Fact]
+	public void ACivsFacesAreFoundByItsEntryOrItsNames() {
+		Civilization rome = new("Rome") { noun = "Romans", adjective = "Roman", civilopediaEntry = "RACE_ROMANS" };
+		Assert.Equal("RACE_ROMANS", VictoryScreenLayout.RaceKeys(rome)[0]);
+		// A game saved before civs kept their Civilopedia entry.
+		Civilization babylon = new("Babylon") { noun = "Babylonians", adjective = "Babylonian" };
+		Assert.Contains("RACE_BABYLON", VictoryScreenLayout.RaceKeys(babylon));
+		Civilization maya = new("Maya") { noun = "Maya", adjective = "Mayan" };
+		Assert.Contains("RACE_MAYANS", VictoryScreenLayout.RaceKeys(maya));
+		Assert.Empty(VictoryScreenLayout.RaceKeys(null));
+	}
+
+	[Fact]
+	public void WithoutCiv3sTextOurOwnWordsStandIn() {
+		Civ3EndGameText own = Civ3EndGameText.OwnWording();
+		// Every announcement and every remark the screen can pick.
+		foreach (string key in new[] { "END_GAME_WIN", "END_GAME_WIN2", "END_GAME_LOSS" }) {
+			Civ3EndGameText.ScriptPopup popup = own.Popup(key);
+			Assert.False(string.IsNullOrWhiteSpace(popup.Caption));
+			Assert.False(string.IsNullOrWhiteSpace(popup.Text));
+		}
+		Assert.Contains("$TYPE0", own.Popup("END_GAME_LOSS").Text);
+		for (int label = 0x23c; label <= 0x254; label++) {
+			Assert.False(string.IsNullOrWhiteSpace(own.Label(label)), $"label {label:x}");
+		}
+		for (int label = 0x265; label <= 0x2ad; label++) {
+			Assert.False(string.IsNullOrWhiteSpace(own.Label(label)), $"label {label:x}");
+		}
+		// Retiring: the loss's announcement and the rivals' mockery.
+		Player us = Civ("Romans"), greeks = Civ("Greeks");
+		(string scriptKey, int? typeLabel) = VictoryScreenLayout.Announcement(GameEndReason.Retirement, false, false);
+		Assert.Equal("a shameful defeat", own.Label(typeLabel.Value));
+		Assert.NotNull(own.Popup(scriptKey));
+		Assert.All(VictoryScreenLayout.Remarks(VictoryScreenLayout.RetirementScreen, us, null, greeks, true, false, false, null, null, true),
+			label => Assert.False(string.IsNullOrWhiteSpace(own.Label(label))));
+		// The game over question keeps its own fallback (EndOfGame.ShowGameOver).
+		Assert.Null(own.Popup("GAMEOVERMAN"));
+	}
 }

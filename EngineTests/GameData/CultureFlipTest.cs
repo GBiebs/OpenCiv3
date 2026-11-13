@@ -15,6 +15,7 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 	private readonly C7GameData.GameData gameData;
 	private readonly Player us;
 	private readonly Player them;
+	private readonly Random originalRng = C7GameData.GameData.rng;
 
 	public CultureFlipTest(SaveGameFixture fixture) {
 		this.fixture = fixture;
@@ -35,7 +36,22 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 	}
 
 	public void Dispose() {
+		C7GameData.GameData.rng = originalRng;
 		while (EngineStorage.TryDequeueNextMessageToUI(out _)) { }
+	}
+
+	// Every roll comes up 0.
+	private class ZeroRandom : Random {
+		public override int Next(int maxValue) => 0;
+		public override int Next(int minValue, int maxValue) => minValue;
+		protected override double Sample() => 0.0;
+	}
+
+	// No city's flip cooldown, as when they were all founded long ago.
+	private void ClearCooldowns() {
+		foreach (City c in gameData.cities) {
+			c.flipCooldown = 0;
+		}
 	}
 
 	private static bool IsEmptyLand(Tile t) {
@@ -48,6 +64,7 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 			&& (where == null || where(t)));
 		City city = CityInteractions.BuildCity(tile, owner, owner.GetNextCityName());
 		city.ownerChangedTurn = -1;
+		ClearCooldowns();
 		return city;
 	}
 
@@ -79,6 +96,30 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		return (ourCapital, theirCapital, city);
 	}
 
+	// The binary's order of operations, in integer math (Civ3 binary,
+	// doc/perez-findings/Civ3_Findings.md, culture-flip appendix).
+	[Fact]
+	public void TheScoreFollowsTheBinarysFormula() {
+		// The first two foreign tiles don't count; the base is capped at 10.
+		Assert.Equal(0, CultureFlip.BaseScore(0, 2));
+		Assert.Equal(3, CultureFlip.BaseScore(0, 5));
+		Assert.Equal(6, CultureFlip.BaseScore(3, 5));
+		Assert.Equal(10, CultureFlip.BaseScore(9, 8));
+
+		// Perez's example: 6, doubled by local culture, equal totals.
+		Assert.Equal(12, CultureFlip.ApplyMultipliers(6, false, true, 100, 100, false));
+		// Disorder doubles, celebrating halves (after the culture scaling).
+		Assert.Equal(24, CultureFlip.ApplyMultipliers(6, true, true, 100, 100, false));
+		Assert.Equal(3, CultureFlip.ApplyMultipliers(6, false, false, 100, 100, true));
+		// Over four times the culture is a fixed x4.
+		Assert.Equal(40, CultureFlip.ApplyMultipliers(10, false, false, 0, 1000, false));
+		Assert.Equal(160, CultureFlip.ApplyMultipliers(10, true, true, 0, 1000000, false));
+		// Otherwise (B+1)*S/(A+1), which can shrink S to nothing.
+		Assert.Equal(30, CultureFlip.ApplyMultipliers(10, false, false, 99, 299, false));
+		Assert.Equal(1, CultureFlip.ApplyMultipliers(10, false, false, 99, 9, false));
+		Assert.Equal(0, CultureFlip.ApplyMultipliers(10, false, false, 999, 9, false));
+	}
+
 	[Fact]
 	public void TheChanceFollowsTheFormula() {
 		(_, _, City city) = Setup();
@@ -90,29 +131,32 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(2, chance.memoryFactor);
 		Assert.Equal(2, chance.moodFactor);
 		Assert.Equal(0, chance.garrison);
-		double ratio = (double)CultureReport.TotalCulture(them) / CultureReport.TotalCulture(us);
-		Assert.Equal(ratio, chance.cultureRatio, 6);
-		double expected = (chance.foreigners + chance.tiles) * 2 * 2 / (CultureFlip.DistanceFactor * chance.distanceRatio);
-		Assert.Equal(Math.Clamp(expected, 0, 1), chance.probability, 6);
+		int a = CultureReport.TotalCulture(us);
+		int b = CultureReport.TotalCulture(them);
+		int s = Math.Min(10, Math.Max(chance.tiles - 2, 0) + chance.foreigners) * 2 * 2;
+		s = (a + 1) * 4 < b + 1 ? s * 4 : (b + 1) * s / (a + 1);
+		Assert.Equal(s, chance.score);
+		Assert.Equal(CultureFlip.Range(city, us, them), chance.range);
+		Assert.Equal((double)s / chance.range, chance.probability, 9);
 	}
 
-	// Soren Johnson's example: 16 influence, "Snoopy has 4 units and has
-	// twice as much total culture as the Greeks. That would be 16 - (4 X 2)
-	// = 8": the culture ratio scales the garrison.
+	// G = military land units times the difficulty's citizens quelled per
+	// unit (DIFF+0x78, Difficulty.MilitaryLaw), subtracted from the score
+	// whatever the culture ratio (superseding the owner's 2026-10-20 ruling
+	// that the ratio scales it).
 	[Fact]
-	public void TheCultureRatioScalesTheGarrison() {
-		(City ourCapital, City theirCapital, City city) = Setup();
-		ourCapital.perPlayerCulture[us] = 400;
-		theirCapital.perPlayerCulture[them] = 200;
+	public void TheGarrisonIsSubtractedTimesTheQuellPerUnit() {
+		(_, _, City city) = Setup();
+		int unguarded = CultureFlip.ChanceOfFlippingTo(gameData, city, them).score;
 		UnitPrototype spearman = gameData.unitPrototypes.First(u => u.name == "Spearman");
 		for (int i = 0; i < 2; ++i) {
 			gameData.SpawnUnit(us, spearman, city.location);
 		}
+		int quell = CultureFlip.QuellPerUnit(gameData, us);
+		Assert.Equal(gameData.DifficultyFor(us)?.MilitaryLaw ?? 1, quell);
 		CultureFlip.Chance chance = CultureFlip.ChanceOfFlippingTo(gameData, city, them);
-		Assert.Equal(2, chance.garrison);
-		double influence = (chance.foreigners + chance.tiles) * chance.memoryFactor * chance.moodFactor;
-		double expected = (influence - 2 * 2) / (CultureFlip.DistanceFactor * chance.distanceRatio);
-		Assert.Equal(Math.Clamp(expected, 0, 1), chance.probability, 6);
+		Assert.Equal(2 * quell, chance.garrison);
+		Assert.Equal(Math.Max(0, unguarded - 2 * quell), chance.score);
 	}
 
 	// Soren Johnson: each civ that might take the city has its own roll,
@@ -137,15 +181,48 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(0.5, CultureFlip.ChanceOfFlippingTo(gameData, city, them).moodFactor);
 	}
 
+	// Civ3's tile distance: max(dx,dy) - (((dx+dy)/2 - min(dx,dy)) + 1)/2.
 	[Fact]
-	public void TheDistanceRatioIsCapped() {
+	public void TileDistanceIsCiv3s() {
+		Tile origin = gameData.map.tileAt(20, 20);
+		Assert.Equal(0, CultureFlip.TileDistance(origin, origin));
+		// Side- and corner-adjacent tiles are 1 away.
+		Assert.Equal(1, CultureFlip.TileDistance(origin, gameData.map.tileAt(21, 21)));
+		Assert.Equal(1, CultureFlip.TileDistance(origin, gameData.map.tileAt(22, 20)));
+		Assert.Equal(1, CultureFlip.TileDistance(origin, gameData.map.tileAt(20, 22)));
+		// Two corner steps are 3, two side steps 2.
+		Assert.Equal(3, CultureFlip.TileDistance(origin, gameData.map.tileAt(24, 20)));
+		Assert.Equal(2, CultureFlip.TileDistance(origin, gameData.map.tileAt(22, 22)));
+	}
+
+	// R = clamp(2000 * d(theirs) / d(ours), 500, 8000), or 2000 if either
+	// capital is missing.
+	[Fact]
+	public void TheRangeIsCappedAndDefaultsTo2000() {
 		(City ourCapital, City theirCapital, City city) = Setup();
-		double d = CultureFlip.DistanceRatio(city, us, them);
-		Assert.InRange(d, CultureFlip.MinDistanceRatio, CultureFlip.MaxDistanceRatio);
-		// A capital is as close to its owner as can be.
-		Assert.Equal(CultureFlip.MaxDistanceRatio, CultureFlip.DistanceRatio(ourCapital, us, them));
-		Assert.Equal(CultureFlip.MinDistanceRatio, CultureFlip.DistanceRatio(ourCapital, them, us));
+		int ours = CultureFlip.TileDistance(city.location, ourCapital.location);
+		int theirs = CultureFlip.TileDistance(city.location, theirCapital.location);
+		Assert.Equal(Math.Clamp(2000 * theirs / ours, 500, 8000), CultureFlip.Range(city, us, them));
+		Assert.Equal(CultureFlip.MinRange, CultureFlip.Range(ourCapital, them, us));
 		Assert.Equal(0, CultureFlip.DistanceToCapital(theirCapital, them));
+
+		theirCapital.capital = false;
+		Assert.Equal(-1, CultureFlip.DistanceToCapital(city, them));
+		Assert.Equal(CultureFlip.DefaultRange, CultureFlip.Range(city, us, them));
+		theirCapital.capital = true;
+		ourCapital.capital = false;
+		Assert.Equal(CultureFlip.DefaultRange, CultureFlip.Range(city, us, them));
+	}
+
+	[Fact]
+	public void CapitalsNeverFlip() {
+		(City ourCapital, _, _) = Setup();
+		AddResidents(ourCapital, them.civilization, 10);
+		Assert.True(CultureFlip.ChanceOfFlippingTo(gameData, ourCapital, them).baseScore > 0);
+		Assert.Null(CultureFlip.BestChance(gameData, ourCapital));
+		C7GameData.GameData.rng = new ZeroRandom();
+		CultureFlip.ProcessEndOfRound(gameData);
+		Assert.Equal(us, ourCapital.owner);
 	}
 
 	[Fact]
@@ -180,6 +257,15 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		warrior.attack = 1;
 		warrior.defense = 0;
 		Assert.Equal(0, CultureFlip.Garrison(city));
+	}
+
+	// Military land units of any owner on the city tile count.
+	[Fact]
+	public void OtherCivsUnitsInTheCityCountAsAGarrison() {
+		(_, _, City city) = Setup();
+		UnitPrototype warrior = gameData.unitPrototypes.First(p => p.IsLandUnit() && p.defense > 0 && p.attack > 0);
+		gameData.SpawnUnit(them, warrior, city.location);
+		Assert.Equal(1, CultureFlip.Garrison(city));
 	}
 
 	// A city "remembers the total amount of culture generated by any civ who
@@ -218,33 +304,113 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(2, CultureFlip.ChanceOfFlippingTo(gameData, city, us).memoryFactor);
 	}
 
-	// "The ratio of distances to the respective capitals of both cities":
-	// being closer to the other civ's capital than to the owner's makes a
-	// flip likelier.
+	// A city closer to the other civ's capital than to its owner's gets a
+	// smaller range, so a likelier flip.
 	[Fact]
 	public void ACityNearTheOtherCapitalIsLikelierToFlip() {
-		(City ourCapital, City theirCapital, City city) = Setup();
+		(City ourCapital, City theirCapital, _) = Setup();
 		City nearThem = BuildCity(us, t => t.DistanceTo(theirCapital.location) + 3 < t.DistanceTo(ourCapital.location));
-		nearThem.perPlayerCulture[us] = 0;
-		AddResidents(nearThem, them.civilization, 6);
 		City nearUs = BuildCity(us, t => t.DistanceTo(ourCapital.location) + 3 < t.DistanceTo(theirCapital.location));
-		nearUs.perPlayerCulture[us] = 0;
-		AddResidents(nearUs, them.civilization, 6);
+		Assert.True(CultureFlip.Range(nearThem, us, them) < CultureFlip.DefaultRange);
+		Assert.True(CultureFlip.Range(nearUs, us, them) > CultureFlip.DefaultRange);
+	}
 
-		Assert.True(CultureFlip.DistanceRatio(nearThem, us, them) < 1);
-		Assert.True(CultureFlip.DistanceRatio(nearUs, us, them) > 1);
-		CultureFlip.Chance near = CultureFlip.ChanceOfFlippingTo(gameData, nearThem, them);
-		CultureFlip.Chance far = CultureFlip.ChanceOfFlippingTo(gameData, nearUs, them);
-		// Per unit of influence, so the tiles in their borders don't matter.
-		Assert.True(near.probability / (near.foreigners + near.tiles) > far.probability / (far.foreigners + far.tiles));
+	// The cooldown: founding sets 10, and the city is skipped while it is at
+	// least 1, each check counting it down.
+	[Fact]
+	public void AFoundedCityWaitsTenChecks() {
+		(_, _, City city) = Setup();
+		CultureFlip.SetFlipCooldown(gameData, city, CultureFlip.Cooldown);
+		Assert.Equal(10, city.flipCooldown);
+		Assert.Null(CultureFlip.BestChance(gameData, city));
+		C7GameData.GameData.rng = new ZeroRandom();
+		for (int i = 0; i < 10; ++i) {
+			CultureFlip.ProcessEndOfRound(gameData);
+			Assert.Equal(us, city.owner);
+		}
+		Assert.Equal(0, city.flipCooldown);
+		CultureFlip.ProcessEndOfRound(gameData);
+		Assert.Equal(them, city.owner);
 	}
 
 	[Fact]
-	public void ACityDoesNotFlipOnTheTurnItChangedHands() {
+	public void BuildingACitySetsTheCooldown() {
+		Setup();
+		City founded = CityInteractions.BuildCity(gameData.map.tiles.First(t => IsEmptyLand(t) && t.IsAllowCities()
+			&& t.neighbors.Values.All(n => n == Tile.NONE || !n.HasCity())), us, us.GetNextCityName());
+		Assert.Equal(CultureFlip.Cooldown, founded.flipCooldown);
+	}
+
+	// A flip or peaceful transfer sets 10; a conquest 1, so a conquered
+	// city can't flip on the first check after it was taken.
+	[Fact]
+	public void APeacefulTransferSetsTenAndAConquestOne() {
 		(_, _, City city) = Setup();
-		Assert.NotNull(CultureFlip.BestChance(gameData, city));
-		city.ownerChangedTurn = gameData.turn;
-		Assert.Null(CultureFlip.BestChance(gameData, city));
+		CityInteractions.TransferCity(city, them);
+		Assert.Equal(CultureFlip.Cooldown, city.flipCooldown);
+
+		ClearCooldowns();
+		CityInteractions.TransferCity(city, us);
+		ClearCooldowns();
+		CultureFlip.Flip(gameData, city, them);
+		Assert.Equal(CultureFlip.Cooldown, city.flipCooldown);
+
+		ClearCooldowns();
+		foreach (MapUnit u in city.location.unitsOnTile.ToList()) {
+			gameData.RemoveUnit(u);
+		}
+		CityInteractions.CaptureCity(city, us);
+		Assert.Equal(us, city.owner);
+		Assert.Equal(CultureFlip.ConquestCooldown, city.flipCooldown);
+	}
+
+	// Setting a city's cooldown raises other owners' cities near it to at
+	// least as much, but not the owner's own cities, nor far ones.
+	[Fact]
+	public void TheCooldownShieldsForeignNeighbours() {
+		(City ourCapital, City theirCapital, City city) = Setup();
+		City near = BuildCity(them, t => t.RankDistanceTo(city.location) == 3);
+		City ownNear = BuildCity(us, t => t.RankDistanceTo(city.location) == 3 && t.RankDistanceTo(near.location) > 1);
+		City far = BuildCity(them, t => t.RankDistanceTo(city.location) > 6);
+		near.flipCooldown = 12;
+		CultureFlip.SetFlipCooldown(gameData, city, 5);
+		Assert.Equal(5, city.flipCooldown);
+		Assert.Equal(12, near.flipCooldown);
+		near.flipCooldown = 2;
+		CultureFlip.SetFlipCooldown(gameData, city, 5);
+		Assert.Equal(5, near.flipCooldown);
+		Assert.Equal(0, ownNear.flipCooldown);
+		Assert.Equal(0, far.flipCooldown);
+		Assert.Equal(76, CultureFlip.CooldownTiles(gameData.map.tileAt(30, 30)).Count());
+		Assert.All(CultureFlip.CooldownTiles(gameData.map.tileAt(30, 30)), t => Assert.True(t.RankDistanceTo(gameData.map.tileAt(30, 30)) <= 5));
+	}
+
+	[Fact]
+	public void TheCooldownIsSaved() {
+		(_, _, City city) = Setup();
+		city.flipCooldown = 7;
+		SaveCity saved = new(city);
+		Assert.Equal(7, saved.flipCooldown);
+		city.flipCooldown = 0;
+		Assert.Null(new SaveCity(city).flipCooldown);
+	}
+
+	// Each civ rolls in player order, and the first whose roll succeeds
+	// takes the city, however likelier a later one is.
+	[Fact]
+	public void TheCivsRollInPlayerOrder() {
+		(_, _, City city) = Setup();
+		Player third = gameData.players.First(p => !p.isBarbarians && p != us && p != them);
+		// AIs all, so the first roll takes the city at once.
+		third.isHuman = false;
+		City thirdCapital = BuildCity(third, t => t.DistanceTo(city.location) > 8);
+		thirdCapital.perPlayerCulture[third] = 1000;
+		AddResidents(city, third.civilization, 3);
+		Player first = gameData.players.IndexOf(third) < gameData.players.IndexOf(them) ? third : them;
+		Assert.True(CultureFlip.ChanceOfFlippingTo(gameData, city, first).probability > 0);
+		C7GameData.GameData.rng = new ZeroRandom();
+		CultureFlip.ProcessEndOfRound(gameData);
+		Assert.Equal(first, city.owner);
 	}
 
 	[Fact]
@@ -302,12 +468,12 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		(_, _, City city) = Setup();
 		// Certain to flip, but for the rule.
 		gameData.rules.AllowCultureFlips = false;
-		AddResidents(city, them.civilization, 20000);
+		C7GameData.GameData.rng = new ZeroRandom();
 		CultureFlip.ProcessEndOfRound(gameData);
 		Assert.Equal(us, city.owner);
 
 		gameData.rules.AllowCultureFlips = true;
-		Assert.Equal(1, CultureFlip.BestChance(gameData, city).probability);
+		Assert.True(CultureFlip.BestChance(gameData, city).probability > 0);
 		CultureFlip.ProcessEndOfRound(gameData);
 		Assert.Equal(them, city.owner);
 	}
@@ -321,11 +487,11 @@ public class CultureFlipTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Null(new SaveCity(city).ownerChangedTurn);
 	}
 
-	// The city's people rise up for the other civ: certain to flip.
+	// The city's people rise up for the other civ: every roll succeeds.
 	private City CityCertainToFlip() {
 		(_, _, City city) = Setup();
-		AddResidents(city, them.civilization, 20000);
-		Assert.Equal(1, CultureFlip.BestChance(gameData, city).probability);
+		Assert.True(CultureFlip.BestChance(gameData, city).probability > 0);
+		C7GameData.GameData.rng = new ZeroRandom();
 		return city;
 	}
 

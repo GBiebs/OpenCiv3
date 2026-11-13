@@ -74,21 +74,24 @@ buildings.unit_production_effects = {
 buildings.tile_modifiers = {
   -- The Harbor: "Coastal, sea, and ocean squares produce one extra food."
   -- (Conquests Civilopedia, BLDG_Harbor), so an Ocean tile's none becomes
-  -- one. A polluted tile makes nothing, so it gets none either.
+  -- one. A tile under fallout makes nothing, so it gets none either. The
+  -- Harbor, Offshore Platform and Commercial Dock work only on bodies of
+  -- water larger than 20 tiles, not lakes: Civ3 binary
+  -- (doc/perez-findings/Civ3_Findings.md, Economy).
   increases_food_in_water = NATIVE_DEFAULT("buildings.tile_modifiers.increases_food_in_water", function(yield)
-    if yield.type == YieldType.Food and yield.tile:IsWater() and not yield.tile:HasPollution() and not yield.tile:HasFallout() then
+    if yield.type == YieldType.Food and yield.tile:IsInLargeBodyOfWater() and not yield.tile:HasFallout() then
       yield.bonus = yield.bonus + 1
     end
   end),
 
   increases_shields_in_water = NATIVE_DEFAULT("buildings.tile_modifiers.increases_shields_in_water", function(yield)
-    if yield.type == YieldType.Production and yield.tile:IsWater() then
+    if yield.type == YieldType.Production and yield.tile:IsInLargeBodyOfWater() then
       yield.bonus = yield.bonus + 1
     end
   end),
 
   increases_trade_in_water = NATIVE_DEFAULT("buildings.tile_modifiers.increases_trade_in_water", function(yield)
-    if yield.type == YieldType.Commerce and yield.tile:IsWater() and yield.baseYield > 0 then
+    if yield.type == YieldType.Commerce and yield.tile:IsInLargeBodyOfWater() and yield.baseYield > 0 then
       yield.bonus = yield.bonus + 1
     end
   end),

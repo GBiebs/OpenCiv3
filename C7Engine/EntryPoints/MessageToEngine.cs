@@ -28,6 +28,12 @@ namespace C7Engine {
 		[JsonIgnore]
 		public virtual bool IsLocal => false;
 
+		// Whether this is one of the player's orders or decisions, counted as a
+		// game action in the statistics (see PlayerStats.actions), rather than
+		// the UI's or the engine's own housekeeping.
+		[JsonIgnore]
+		public virtual bool IsGameAction => !IsLocal;
+
 		public void send() {
 			playerID ??= EngineStorage.uiControllerID;
 			EngineStorage.SendToEngine(this);
@@ -54,6 +60,9 @@ namespace C7Engine {
 			}
 			// The play log notes what humans do (see PlayLog.PlayRecorder).
 			PlayLog.PlayRecorder.Entry recorded = PlayLog.PlayRecorder.Active ? PlayLog.PlayRecorder.Begin(this) : null;
+			if (IsGameAction && Sender is Player sender) {
+				sender.stats.RecordAction(sender, EngineStorage.gameData);
+			}
 			Task handling = ProcessAllowedAsync();
 			PlayLog.PlayRecorder.End(recorded, handling.IsCompleted);
 			return handling;
@@ -160,6 +169,46 @@ namespace C7Engine {
 		}
 	}
 
+	// Civ3's Upgrade All (Shift-U): every unit of the given unit's type that
+	// can upgrade, if the gold covers them all (MapUnit.UpgradeAll).
+	public class MsgUpgradeAll : MessageToEngine {
+		public ID unitID;
+
+		public MsgUpgradeAll(ID unitID) {
+			this.unitID = unitID;
+		}
+
+		protected override void ProcessAllowed() {
+			MapUnit unit = SendersUnit(unitID);
+			if (unit == null) {
+				return;
+			}
+			foreach (MapUnit upgraded in MapUnit.UpgradeAll(unit.owner, unit.unitType)) {
+				if (upgraded.owner.isHuman) {
+					new MsgUnitMoved(upgraded).send();
+				}
+			}
+		}
+	}
+
+	// Civ3's Rename Unit (Shift-N; MapUnit.Rename).
+	public class MsgRenameUnit : MessageToEngine {
+		public ID unitID;
+		public string name;
+
+		public MsgRenameUnit(ID unitID, string name) {
+			this.unitID = unitID;
+			this.name = name;
+		}
+
+		protected override void ProcessAllowed() {
+			MapUnit unit = SendersUnit(unitID);
+			if (unit != null && unit.Rename(name)) {
+				new MsgUnitMoved(unit).send();
+			}
+		}
+	}
+
 	public class MsgSentry : MessageToEngine {
 		public ID unitID;
 		public bool enemyOnly;
@@ -255,6 +304,30 @@ namespace C7Engine {
 		}
 	}
 
+	// Sets a unit bombarding the tile automatically, every turn (see
+	// MapUnit_AutoBombard.cs).
+	public class MsgAutoBombard : MessageToEngine {
+		public ID unitID;
+		public MapUnit.AutoBombardMode mode;
+		public Tile tile;
+
+		public MsgAutoBombard(ID unitID, MapUnit.AutoBombardMode mode, Tile tile) {
+			this.unitID = unitID;
+			this.mode = mode;
+			this.tile = tile;
+		}
+
+		protected override async Task ProcessAllowedAsync() {
+			MapUnit unit = SendersUnit(unitID);
+			if (unit == null || tile == null || tile == Tile.NONE) return;
+
+			await unit.StartAutoBombard(mode, tile);
+			if (unit.owner.isHuman) {
+				new MsgUnitMoved(unit).send();
+			}
+		}
+	}
+
 	// An aircraft's mission (see MapUnit_Air.cs), a paratrooper's airdrop,
 	// or an airlift (see MapUnit_Airlift.cs), at the tile. Air superiority needs no tile.
 	public class MsgAirMission : MessageToEngine {
@@ -332,21 +405,27 @@ namespace C7Engine {
 		}
 	}
 
+	// Unloads a transport's passengers: all of them, or with `only` just
+	// that one, as Civ3's unload popup offers ("Disembark?", with "Unload
+	// all." or one unit from the list; script.txt's DISEMBARK).
 	public class MsgUnloadTransport : MessageToEngine {
 		public ID transportUnitId;
+		public ID only;
 
-		public MsgUnloadTransport(ID transportUnitId) {
+		public MsgUnloadTransport(ID transportUnitId, ID only = null) {
 			this.transportUnitId = transportUnitId;
+			this.only = only;
 		}
 
 		protected override void ProcessAllowed() {
-			// TODO: more selective unload, let human player choose
 			MapUnit transportUnit = SendersUnit(transportUnitId);
 			// Armies can only be unloaded when the game option allows it.
 			if (transportUnit == null || !transportUnit.CanTransport())
 				return;
 			foreach (MapUnit unit in transportUnit.Passengers()) {
-				unit.UnboardTransport(transportUnit);
+				if (only == null || unit.id == only) {
+					unit.UnboardTransport(transportUnit);
+				}
 			}
 			new
 				MsgTransportUnloaded(transportUnit).send();
@@ -397,7 +476,7 @@ namespace C7Engine {
 					unit.Explore();
 					break;
 				case Command.Automate:
-					unit.Automate();
+					unit.Automate(null);
 					break;
 				case Command.FormArmy:
 					MapUnit army = unit.FormArmy();
@@ -426,9 +505,37 @@ namespace C7Engine {
 		}
 	}
 
+	// One of Civ3's kinds of worker automation (see WorkerAutomation): the
+	// tile is the destination of road and rail to, and otherwise unused.
+	public class MsgAutomateWorker : MessageToEngine {
+		public ID unitID;
+		public WorkerAutomation.Kind kind;
+		public Tile tile;
+
+		public MsgAutomateWorker(ID unitID, WorkerAutomation.Kind kind, Tile tile = null) {
+			this.unitID = unitID;
+			this.kind = kind;
+			this.tile = tile;
+		}
+
+		protected override void ProcessAllowed() {
+			MapUnit unit = SendersUnit(unitID);
+			if (unit == null || !unit.unitType.isWorker) return;
+
+			WorkerAutomation how = new(kind);
+			if (how.NeedsDestination) {
+				how.target = tile;
+			}
+			unit.Automate(how);
+		}
+	}
+
 	// The player selected a unit, which takes it out of automation, cancels
 	// its path and wakes it up.
 	public class MsgSelectUnit : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		public ID unitID;
 
 		public MsgSelectUnit(ID unitID) {
@@ -449,6 +556,9 @@ namespace C7Engine {
 				unit.isAutomated = false;
 				unit.currentAI = null;
 			}
+			// Selecting a unit stops its automated bombarding, even once it
+			// has fired for the turn.
+			unit.StopAutoBombard();
 			if (unit.movementPoints.canMove) {
 				unit.Wake();
 			}
@@ -598,6 +708,46 @@ namespace C7Engine {
 			City city = EngineStorage.gameData.GetCity(cityID);
 			if (IsSendersCity(city)) {
 				city.ClearProductionQueue();
+				new MsgCityChanged(city).send();
+			}
+		}
+	}
+
+	// Shift-Q on the city screen: the city's production queue saved under a
+	// name, for the player to load into a city later (see
+	// SavedProductionQueue).
+	public class MsgSaveProductionQueue : MessageToEngine {
+		public ID cityID;
+		public string name;
+
+		public MsgSaveProductionQueue(ID cityID, string name) {
+			this.cityID = cityID;
+			this.name = name;
+		}
+
+		protected override void ProcessAllowed() {
+			City city = EngineStorage.gameData.GetCity(cityID);
+			if (IsSendersCity(city)) {
+				SavedProductionQueue.Save(city.owner, name, city.productionQueue);
+			}
+		}
+	}
+
+	// Q on the city screen: one of the player's saved production queues
+	// becomes the city's.
+	public class MsgLoadProductionQueue : MessageToEngine {
+		public ID cityID;
+		public string name;
+
+		public MsgLoadProductionQueue(ID cityID, string name) {
+			this.cityID = cityID;
+			this.name = name;
+		}
+
+		protected override void ProcessAllowed() {
+			City city = EngineStorage.gameData.GetCity(cityID);
+			if (IsSendersCity(city) && SavedProductionQueue.Find(city.owner, name) is SavedProductionQueue saved) {
+				saved.LoadInto(EngineStorage.gameData, city);
 				new MsgCityChanged(city).send();
 			}
 		}
@@ -787,6 +937,9 @@ namespace C7Engine {
 	// Sent by the UI at the start of the player's turn: asks them what to
 	// research next if they have nothing to research.
 	public class MsgAskWhatToResearch : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		protected override void ProcessAllowed() {
 			Sender.AskWhatToResearch(EngineStorage.gameData);
 		}
@@ -796,6 +949,9 @@ namespace C7Engine {
 	// science isn't wasted if they dismiss the science selection popup. A free
 	// tech the player has coming is left for them to choose.
 	public class MsgPickDefaultResearch : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		protected override void ProcessAllowed() {
 			Player player = Sender;
 			GameData gameData = EngineStorage.gameData;
@@ -937,7 +1093,34 @@ namespace C7Engine {
 		}
 	}
 
+	// Playing by email: the human whose turn it is is at the computer (and
+	// has given their password), so the computer players can have their say
+	// with them (PlayByEmail.HearFromAIs) before the turn begins.
+	public class MsgHearFromAIs : MessageToEngine {
+		protected override Task ProcessAllowedAsync() {
+			return PlayByEmail.HearFromAIs(Sender);
+		}
+	}
+
+	// Hotseat and play by email: the sender's password (empty for none),
+	// which they give before their empire is shown on their turns.
+	public class MsgSetPassword : MessageToEngine {
+		public string password;
+
+		public MsgSetPassword(string password) {
+			this.password = password;
+		}
+
+		// Only on the sender's own turn, whose handoff asks for it.
+		protected override void ProcessAllowed() {
+			Sender.SetPassword(password ?? "");
+		}
+	}
+
 	public class MsgEndTurn : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		// The turn the sender means to end, if they say. An end that arrives
 		// once that turn is over is ignored, rather than ending the next.
 		public int? turn;
@@ -1075,6 +1258,9 @@ namespace C7Engine {
 	}
 
 	public class MsgSetAnimationsEnabled : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		public bool enabled;
 
 		public MsgSetAnimationsEnabled(bool enabled) {
@@ -1188,7 +1374,8 @@ namespace C7Engine {
 				return;
 			}
 
-			if (opponent.isHuman && opponentAgreed) {
+			// Playing by email, the other human isn't at this computer to agree.
+			if (opponent.isHuman && opponentAgreed && !PlayByEmail.IsOn(gD)) {
 				bool done = opponent.ExecuteDeal(gD, proposer, senderGives, senderWants);
 				new MsgDealResult(proposer, opponent, done).send();
 				return;
@@ -1497,6 +1684,9 @@ namespace C7Engine {
 	}
 
 	public class MsgDiplomacyCompleted : MessageToEngine {
+		// Not a game action (see IsGameAction).
+		public override bool IsGameAction => false;
+
 		// While an AI waits on a human to answer it, only that human can end
 		// the talks; the active player may still be the last human to play.
 		protected override bool IsAllowed() {

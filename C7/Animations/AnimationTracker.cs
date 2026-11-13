@@ -92,12 +92,13 @@ public partial class AnimationTracker {
 	// Starts the animation, or if it can't be started, triggers its completion
 	// event right away so the engine doesn't wait for it forever. Returns
 	// whether it was started.
-	private bool startAnimation(Dictionary<ID, ActiveAnimation> anims, long currentTimeMS, ID id, Func<C7Animation> getAnim, Action completionEvent, AnimationEnding ending, string description) {
+	private bool startAnimation(Dictionary<ID, ActiveAnimation> anims, long currentTimeMS, ID id, Func<C7Animation> getAnim, Action completionEvent, AnimationEnding ending, string description,
+			long maxDurationMS = long.MaxValue) {
 		C7Animation anim;
 		long animDurationMS;
 		try {
 			anim = getAnim();
-			animDurationMS = (long)(anim.getDuration());
+			animDurationMS = Math.Min((long)(anim.getDuration()), maxDurationMS);
 		} catch (Exception e) {
 			log.Error(e, "Couldn't start animation {Animation}", description);
 			completeSafely(completionEvent, description);
@@ -137,9 +138,20 @@ public partial class AnimationTracker {
 		}
 	}
 
+	// The longest a step from one tile to the next takes: a Warrior's run
+	// animation (WarriorRun.flc, 10 frames a direction at 66 ms). A step
+	// plays the unit's whole run animation, and ships' are much longer
+	// (FrigateRun.flc 14 at 125 ms, 1.75 s; CarrierRun.flc 15 at 142 ms,
+	// 2.1 s), which made them crawl, though Civ3 moves every unit at one
+	// pace: its unit INIs give ships and soldiers alike "Normal Speed=225".
+	// A longer run animation is played faster to fit. Adapted from
+	// GBiebs/OpenCiv3.
+	public const long MaxStepDurationMS = 660;
+
 	public void startAnimation(MapUnit unit, MapUnit.AnimatedAction action, Action completionEvent, AnimationEnding ending) {
 		string description = $"{action} of {unit}";
-		if (!startAnimation(activeAnims, getCurrentTimeMS(), unit.id, () => civ3AnimData.forUnit(unit, action), completionEvent, ending, description))
+		if (!startAnimation(activeAnims, getCurrentTimeMS(), unit.id, () => civ3AnimData.forUnit(unit, action), completionEvent, ending, description,
+				action == MapUnit.AnimatedAction.RUN ? MaxStepDurationMS : long.MaxValue))
 			return;
 		ActiveAnimation aa = activeAnims[unit.id];
 		aa.tileX = unit.location.XCoordinate;

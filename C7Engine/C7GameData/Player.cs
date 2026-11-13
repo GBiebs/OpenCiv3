@@ -148,6 +148,63 @@ namespace C7GameData {
 		// Null when no name was given.
 		public string name;
 
+		// Hotseat and play by email: the password the player gives before
+		// their empire is shown, as Civ3's ("Please Enter New Password (Leave
+		// blank for none)"), empty for none. Kept as a slow salted hash, as
+		// the save travels to the other players by email. passwordChosen is
+		// set once they've been asked to choose one, so it's asked only once.
+		public string passwordHash = "";
+		public bool passwordChosen = false;
+
+		// Play by email: what this player was told while the others played,
+		// kept in the save for their turn (see PlayByEmail.KeepNews), and the
+		// turn the computer players last had their say with them (see
+		// PlayByEmail.HearFromAIs).
+		public List<string> newsWhileAway = new();
+		public int heardFromAIsOnTurn = -1;
+
+		// The production queues the player saved under a name, by name (see
+		// SavedProductionQueue).
+		public List<SavedProductionQueue> savedProductionQueues = new();
+
+		private const int PasswordIterations = 100_000;
+
+		public bool HasPassword() => !string.IsNullOrEmpty(passwordHash);
+
+		// Sets the player's password; empty for none.
+		public void SetPassword(string password) {
+			passwordChosen = true;
+			if (string.IsNullOrEmpty(password)) {
+				passwordHash = "";
+				return;
+			}
+			byte[] salt = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+			passwordHash = $"pbkdf2:{PasswordIterations}:{Convert.ToBase64String(salt)}:{Convert.ToBase64String(HashPassword(password, salt, PasswordIterations))}";
+		}
+
+		// Whether this is the player's password (anything is, without one).
+		public bool CheckPassword(string password) {
+			if (!HasPassword()) {
+				return true;
+			}
+			string[] parts = passwordHash.Split(':');
+			if (parts.Length != 4 || parts[0] != "pbkdf2" || !int.TryParse(parts[1], out int iterations) || iterations <= 0) {
+				return false;
+			}
+			try {
+				byte[] expected = Convert.FromBase64String(parts[3]);
+				byte[] given = HashPassword(password ?? "", Convert.FromBase64String(parts[2]), iterations);
+				return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(given, expected);
+			} catch (FormatException) {
+				return false;
+			}
+		}
+
+		private static byte[] HashPassword(string password, byte[] salt, int iterations) {
+			return System.Security.Cryptography.Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations,
+				System.Security.Cryptography.HashAlgorithmName.SHA256, 32);
+		}
+
 		// Has this player been defeated?
 		public bool defeated = false;
 
@@ -317,6 +374,13 @@ namespace C7GameData {
 		// The rules of this game.
 		public Rules rules;
 
+		// Statistics recorded each turn, for the statistics screen.
+		public PlayerStats stats = new();
+
+		// Future techs learned, once every advance was known. They count only
+		// for the score (see ScoreVictory.ComputeTurnScore).
+		public int futureTechs;
+
 		public List<City> citiesWithCorruptionWonders = new();
 
 		// The number of free techs this player has remaining. Free techs can
@@ -483,6 +547,12 @@ namespace C7GameData {
 		}
 
 		public void SetCurrentlyResearchedTech(ID id) {
+			// The beakers gathered while nothing was being researched, such
+			// as a human's on the turn they learned a tech and are asked what
+			// to research next (CompletePaidResearch runs before the turn's
+			// beakers are added), go to the tech chosen.
+			(int beakers, int turns) unassigned = currentlyResearchedTech == null ? (beakers, turnsResearched) : (0, 0);
+
 			// Award a free tech if the player has one.
 			if (id != null && freeTechsRemaining > 0) {
 				--freeTechsRemaining;
@@ -506,6 +576,10 @@ namespace C7GameData {
 				CompleteResearchAndBeginNew(gameData, tech);
 				if (first) {
 					MapUnit.RollForScientificLeader(gameData, this, tech);
+				}
+				if (unassigned.beakers > 0) {
+					beakers += unassigned.beakers;
+					turnsResearched += unassigned.turns;
 				}
 				return;
 			}
@@ -545,6 +619,9 @@ namespace C7GameData {
 				beakers = stored;
 				turnsResearched = turns;
 				abandonedResearch = null;
+			} else if (id != null) {
+				beakers = unassigned.beakers;
+				turnsResearched = unassigned.turns;
 			}
 		}
 
@@ -944,15 +1021,19 @@ namespace C7GameData {
 		// The same as CalculateGoldPerTurn, from per-city flows computed
 		// earlier and the current unit support cost.
 		private int GoldPerTurnFrom(CityFlows[] cityFlows, int unitSupport) {
+			return FlowsFrom(cityFlows, unitSupport).Netflows();
+		}
+
+		private PlayerCommerceBreakdown FlowsFrom(CityFlows[] cityFlows, int unitSupport) {
 			if (cityFlows.Length == 0) {
-				return 0;
+				return new();
 			}
 			PlayerCommerceBreakdown result = new();
 			int interestBuildings = 0;
 			foreach (CityFlows flows in cityFlows) {
 				AddCityFlows(ref result, ref interestBuildings, flows);
 			}
-			return AddEmpireFlows(result, interestBuildings, unitSupport).Netflows();
+			return AddEmpireFlows(result, interestBuildings, unitSupport);
 		}
 
 		public int MaintenanceCosts() {
@@ -1203,7 +1284,23 @@ namespace C7GameData {
 
 		// Like EstimateTurnsToResearch, with the beakers per turn (from
 		// BeakersPerTurn) computed once by a caller estimating many techs.
+		//
+		// This is the number of turns until the tech is learned: research is
+		// paid for over BeakerTurnsLeft turns, and the tech arrives one turn
+		// later, as "a tech is gained on the turn *after* progress >= cost"
+		// (Perez's decompile of Civ3 Conquests,
+		// doc/perez-findings/Civ3_Findings.md, Round 2b "Research";
+		// authoritative per the owner's 2026-11-12 ruling). See
+		// CompletePaidResearch.
 		public int EstimateTurnsToResearch(GameData gameData, Tech tech, int beakersPerTurn) {
+			int turns = BeakerTurnsLeft(gameData, tech, beakersPerTurn);
+			return turns == int.MaxValue ? int.MaxValue : turns + 1;
+		}
+
+		// How many more turns of beakers the tech needs before it is paid
+		// for, within the rules' minimum and maximum research times; 0 once
+		// it is paid for, int.MaxValue if no research is happening.
+		private int BeakerTurnsLeft(GameData gameData, Tech tech, int beakersPerTurn) {
 			int remainingCost = gameData.TechCostFor(tech, this);
 			if (remainingCost > 0 && beakersPerTurn == 0) {
 				// No research is happening.
@@ -1213,21 +1310,32 @@ namespace C7GameData {
 			// A tech that's already paid for is done, even with no science.
 			int turnsRemaining = remainingCost <= 0 ? 0 : (int)Math.Ceiling((double)remainingCost / beakersPerTurn);
 
-			int maxTurnsRemaining = rules.MaximumResearchTime - turnsResearched;
-			int minTurnsRemaining = rules.MinimumResearchTime - turnsResearched;
+			// Only the tech being researched has turns spent on it.
+			int turnsSpent = currentlyResearchedTech == tech.id ? turnsResearched : 0;
+			int maxTurnsRemaining = rules.MaximumResearchTime - turnsSpent;
+			int minTurnsRemaining = rules.MinimumResearchTime - turnsSpent;
 
 			int result = Math.Min(turnsRemaining, maxTurnsRemaining);
 			result = Math.Max(result, minTurnsRemaining);
 
-			return result;
+			return Math.Max(result, 0);
 		}
 
 		public string SummarizeScience(GameData gD) {
 			Tech tech = Tech.FindById(gD.techs, currentlyResearchedTech);
 			if (tech == null) {
-				return "Not selected (-- turns)";
+				return SummarizeFutureTech(gD, BeakersPerTurn()) ?? "Not selected (-- turns)";
 			}
 			return SummarizeScience(tech, EstimateTurnsToResearch(gD, tech));
+		}
+
+		// "Future Tech 3 (5 turns)" once every advance is known, else null.
+		private string SummarizeFutureTech(GameData gD, int beakersPerTurn) {
+			if (!KnowsEveryTech(gD)) {
+				return null;
+			}
+			int turns = EstimateTurnsToFutureTech(gD, beakersPerTurn);
+			return turns == int.MaxValue ? $"Future Tech {futureTechs + 1} (-- turns)" : $"Future Tech {futureTechs + 1} ({Math.Max(turns, 1)} turns)";
 		}
 
 		// Like SummarizeScience, with the beakers per turn (from
@@ -1235,7 +1343,7 @@ namespace C7GameData {
 		public string SummarizeScience(GameData gD, int beakersPerTurn) {
 			Tech tech = Tech.FindById(gD.techs, currentlyResearchedTech);
 			if (tech == null) {
-				return "Not selected (-- turns)";
+				return SummarizeFutureTech(gD, beakersPerTurn) ?? "Not selected (-- turns)";
 			}
 			return SummarizeScience(tech, EstimateTurnsToResearch(gD, tech, beakersPerTurn));
 		}
@@ -1249,12 +1357,8 @@ namespace C7GameData {
 		}
 
 		// Get a fresh research queue that overrides any current or previous queues.
-		// This queue is being reversed in the end, to provide the actual queue
-		// that the player would go through
 		public void CalculateFreshTechQueueAndAssignNewCurrent(Tech tech) {
-			ResearchQueue.Clear();
-			IEnumerable<Tech> techQueue = GetResearchQueueFor(tech, ResearchQueue, new HashSet<Tech>()).Reverse();
-			ResearchQueue = new Queue<Tech>(techQueue);
+			ResearchQueue = GetResearchQueueFor(tech);
 
 			if (ResearchQueue.Count > 0)
 				SetCurrentlyResearchedTech(ResearchQueue.Peek().id);
@@ -1262,68 +1366,44 @@ namespace C7GameData {
 
 		// Append a new queue at the tail end of the current queue
 		public void CalculateTechQueueAndAppendToCurrentQueue(Tech tech) {
-			IEnumerable<Tech> techQueue = GetResearchQueueFor(tech, new Queue<Tech>(), new HashSet<Tech>()).Reverse();
 			HashSet<Tech> alreadyQueued = new(ResearchQueue);
-			foreach (Tech t in techQueue) {
+			foreach (Tech t in GetResearchQueueFor(tech)) {
 				if (alreadyQueued.Add(t)) {
 					AddTechItemToResearchQueue(t);
 				}
 			}
 		}
 
-		/// <summary>
-		/// This produces a queue, but in reverse order, going from the last tech to the first.
-		/// We can't reverse when returning from this method, because of its recursive nature,
-		/// so this must be done from the caller method.
-		/// </summary>
-		/// <param name="tech"></param>
-		/// <param name="tempQueue">The queue being built.</param>
-		/// <param name="inQueue">The techs in tempQueue, for fast lookups. Must start out matching tempQueue.</param>
-		/// <returns></returns>
-		private Queue<Tech> GetResearchQueueFor(Tech tech, Queue<Tech> tempQueue, HashSet<Tech> inQueue) {
-			return GetResearchQueueFor(tech, tempQueue, inQueue, new HashSet<Tech>());
+		// The techs to research to reach the given one, in research order:
+		// depth first, every unknown prerequisite comes before the tech that
+		// needs it, and the given tech comes last. Adapted from
+		// GBiebs/OpenCiv3.
+		private Queue<Tech> GetResearchQueueFor(Tech tech) {
+			Queue<Tech> queue = new();
+			if (tech == null) {
+				return queue;
+			}
+			HashSet<Tech> visited = new() { tech };
+			foreach (Tech t in OrderTechs(tech.Prerequisites)) {
+				AddWithPrerequisites(t, queue, visited);
+			}
+			queue.Enqueue(tech);
+			return queue;
 		}
 
-		// expanded holds the techs this has already been called for. Once a
-		// call for a tech returns, every unknown tech it leads back to is in
+		// visited holds every tech this has been called for. Once a call for
+		// a tech returns, it and every unknown tech it leads back to are in
 		// the queue, so calling it again would add nothing; skipping it keeps
 		// a tech tree with many paths to the same tech (which the full tree
-		// has) from being walked once per path, without changing the result.
-		private Queue<Tech> GetResearchQueueFor(Tech tech, Queue<Tech> tempQueue, HashSet<Tech> inQueue, HashSet<Tech> expanded) {
-
-			if (tech == null) {
-				return new Queue<Tech>();
+		// has) from being walked once per path.
+		private void AddWithPrerequisites(Tech tech, Queue<Tech> queue, HashSet<Tech> visited) {
+			if (knownTechs.Contains(tech.id) || !visited.Add(tech)) {
+				return;
 			}
-
-			if (!expanded.Add(tech)) {
-				return tempQueue;
+			foreach (Tech t in OrderTechs(tech.Prerequisites)) {
+				AddWithPrerequisites(t, queue, visited);
 			}
-
-			List<Tech> requiredTechs = OrderTechs(tech.Prerequisites);
-
-			// first, add the tech the user clicked
-			if (inQueue.Add(tech)) {
-				tempQueue.Enqueue(tech);
-			}
-
-			// second, get the direct required techs
-			foreach (Tech t in requiredTechs) {
-				if (!knownTechs.Contains(t.id)) {
-					if (inQueue.Add(t)) {
-						tempQueue.Enqueue(t);
-					}
-				}
-			}
-
-			// last, recursively get the required techs of these required techs
-			foreach (Tech t in requiredTechs) {
-				if (!knownTechs.Contains(t.id)) {
-					if (t.Prerequisites.Count > 0) {
-						GetResearchQueueFor(t, tempQueue, inQueue, expanded);
-					}
-				}
-			}
-			return tempQueue;
+			queue.Enqueue(tech);
 		}
 
 		/// <summary>
@@ -1692,7 +1772,9 @@ namespace C7GameData {
 					$"We have insufficient gold to continue supporting all our units.\nWe had to disband: {string.Join(", ", disbandedUnits)}.", happy: false).send();
 			}
 
-			lastGoldPerTurn = GoldPerTurnFrom(cityFlows, unitSupportCost);
+			PlayerCommerceBreakdown turnFlows = FlowsFrom(cityFlows, unitSupportCost);
+			stats.RecordFinances(turnFlows);
+			lastGoldPerTurn = turnFlows.Netflows();
 			gold = Math.Max(0, gold + lastGoldPerTurn);
 		}
 
@@ -1755,7 +1837,8 @@ namespace C7GameData {
 		}
 
 		public void HandleCityUpdates(GameData gameData) {
-			foreach (City c in cities) {
+			// A copy, since a city may starve to nothing on the way.
+			foreach (City c in cities.ToList()) {
 				// Barbarian cities (only a scenario can give barbarians one)
 				// build nothing and gain no culture: in Debug mode "The
 				// Barbarian city was not able to build anything (no buildings
@@ -1777,7 +1860,16 @@ namespace C7GameData {
 				}
 
 				c.UpdateResistance(gameData);
-				c.HandleCityGrowth(gameData);
+				int sizeBefore = c.residents.Count;
+				bool starvedOut = c.HandleCityGrowth(gameData);
+				if ((starvedOut || c.residents.Count < sizeBefore) && IsToldNews) {
+					// Civ3's Script.txt, STARVE.
+					new MsgShowDomesticAdvisorPopup(this, $"Starvation at {c.name}!").send();
+				}
+				if (starvedOut) {
+					CityInteractions.DestroyCity(c);
+					continue;
+				}
 				if (active) {
 					c.HandleCityProduction(gameData);
 				}
@@ -1791,11 +1883,45 @@ namespace C7GameData {
 			Disease.StrikeFortifiedUnits(this);
 		}
 
-		public void DoPerTurnScienceUpdates(GameData gameData) {
+		// Learns the tech being researched if an earlier turn's beakers paid
+		// for it. Runs at the start of the turn's processing, before that
+		// turn's beakers are added (DoPerTurnFinanceUpdates), so a tech whose
+		// progress reaches its cost is learned the turn after: "a tech is
+		// gained on the turn *after* progress >= cost" (Perez's decompile of
+		// Civ3 Conquests, doc/perez-findings/Civ3_Findings.md, Round 2b
+		// "Research"; authoritative per the owner's 2026-11-12 ruling).
+		// Research has no overflow: beakers beyond the cost are lost
+		// (CompleteResearchingTech resets them), and the turn's new beakers go
+		// to the next tech (see SetCurrentlyResearchedTech for a human who
+		// has yet to choose it).
+		public void CompletePaidResearch(GameData gameData) {
 			if (currentlyResearchedTech == null) {
+				ResearchFutureTech(gameData);
+				return;
+			}
+			Tech tech = Tech.FindById(gameData.techs, currentlyResearchedTech);
+			// Whether it's paid for doesn't depend on this turn's beakers (any
+			// positive rate gives the same answer), only on the beakers stored
+			// and the turns spent.
+			if (tech == null || BeakerTurnsLeft(gameData, tech, beakersPerTurn: 1) > 0) {
 				return;
 			}
 
+			// Being the first to research a tech may bring a scientific
+			// leader (see MapUnit_ScientificLeader.cs).
+			bool first = IsFirstToLearn(gameData, tech);
+			CompleteResearchAndBeginNew(gameData, tech);
+			if (first) {
+				MapUnit.RollForScientificLeader(gameData, this, tech);
+			}
+		}
+
+		// Counts the turn's research towards the maximum research time, once
+		// DoPerTurnFinanceUpdates has added the turn's beakers. A tech paid
+		// for this turn is learned at the next turn's CompletePaidResearch. A
+		// turn funded while a human chooses the next tech counts for the tech
+		// they choose (see SetCurrentlyResearchedTech).
+		public void DoPerTurnScienceUpdates(GameData gameData) {
 			// Only turns that put beakers into the tech count towards the
 			// maximum research time: "You cannot use up more than 50 turns of
 			// actual research, no matter how little you spend, as long as you
@@ -1808,21 +1934,56 @@ namespace C7GameData {
 				turnsResearched++;
 			}
 			researchFundedThisTurn = false;
+		}
 
-			// Check to see if the player has finished researching their
-			// tech, and if they have, add it to the list of known techs
-			Tech tech = Tech.FindById(gameData.techs, currentlyResearchedTech);
-			if (EstimateTurnsToResearch(gameData, tech) > 0) {
+		// Whether there's no advance left to learn.
+		public bool KnowsEveryTech(GameData gameData) {
+			return gameData.techs.Count > 0 && gameData.techs.All(t => knownTechs.Contains(t.id));
+		}
+
+		// With every advance known, research goes on to future techs: "When
+		// your civilization accumulates enough scientific research to finish
+		// one unit of Future Technology, you can research another" (Civ3
+		// manual, p.125). Each takes FutureTechCostFor's beakers, within the
+		// rules' least and most turns of research like an advance.
+		private void ResearchFutureTech(GameData gameData) {
+			if (!KnowsEveryTech(gameData)) {
 				return;
 			}
-
-			// Being the first to research a tech may bring a scientific
-			// leader (see MapUnit_ScientificLeader.cs).
-			bool first = IsFirstToLearn(gameData, tech);
-			CompleteResearchAndBeginNew(gameData, tech);
-			if (first) {
-				MapUnit.RollForScientificLeader(gameData, this, tech);
+			// Like an advance (see CompletePaidResearch), it is learned the
+			// turn after it is paid for, whatever this turn's science; the
+			// turns of research are counted by DoPerTurnScienceUpdates.
+			if (FutureTechBeakerTurnsLeft(gameData, beakersPerTurn: 1) > 0) {
+				return;
 			}
+			futureTechs++;
+			beakers = 0;
+			turnsResearched = 0;
+			log.Information("{Player} discovered Future Tech {Number}", this, futureTechs);
+			if (IsToldNews) {
+				new MsgShowScienceAdvisorPopup(this, $"Our scientists have discovered Future Tech {futureTechs}!",
+					MsgShowScienceAdvisorPopup.Mood.Happy).send();
+			}
+		}
+
+		// Like EstimateTurnsToResearch, for the next future tech: the turns
+		// until it is learned, one more than the turns of beakers it needs.
+		public int EstimateTurnsToFutureTech(GameData gameData, int beakersPerTurn) {
+			int turns = FutureTechBeakerTurnsLeft(gameData, beakersPerTurn);
+			return turns == int.MaxValue ? int.MaxValue : turns + 1;
+		}
+
+		// Like BeakerTurnsLeft, for the next future tech.
+		private int FutureTechBeakerTurnsLeft(GameData gameData, int beakersPerTurn) {
+			int remainingCost = Math.Max(gameData.FutureTechCostFor(this) - beakers, 0);
+			if (remainingCost > 0 && beakersPerTurn <= 0) {
+				// No research is happening.
+				return int.MaxValue;
+			}
+			int turnsRemaining = remainingCost <= 0 ? 0 : (int)Math.Ceiling((double)remainingCost / beakersPerTurn);
+			turnsRemaining = Math.Min(turnsRemaining, rules.MaximumResearchTime - turnsResearched);
+			turnsRemaining = Math.Max(turnsRemaining, rules.MinimumResearchTime - turnsResearched);
+			return Math.Max(turnsRemaining, 0);
 		}
 
 		// Whether no other civ knows the tech yet. Barbarians don't count.
@@ -2950,7 +3111,7 @@ namespace C7GameData {
 			foreach (City c in cities.ToArray()) {
 				foreach (CityBuilding cb in c.constructed_buildings) {
 					bool isGreatWonder = cb.building.greatWonderProperties != null;
-					if (isGreatWonder && cb.building.isGreatWonderObsolete(this)) {
+					if (cb.building.IsObsoleteFor(this)) {
 						continue;
 					}
 					if (cb.building.allowsLargerArmies) {
@@ -2961,7 +3122,7 @@ namespace C7GameData {
 					}
 					// Combat and movement effects (the Great Wall, the Great
 					// Lighthouse, Magellan's Voyage, the Heroic Epic) come from
-					// any of our buildings but an obsolete great wonder.
+					// any of our buildings but an obsolete one.
 					AddCombatAndMovementEffects(snapshot, cb.building);
 					if (!isGreatWonder) {
 						continue;
@@ -3139,7 +3300,8 @@ namespace C7GameData {
 			// A house rule may make it cheaper still (see AiHouseRules).
 			costFactor *= AiHouseRules.CostFactor(this);
 			// Accelerated Production halves the shield box (see
-			// City.AcceleratedProduction).
+			// City.AcceleratedProduction), as it does tech costs
+			// (GameData.TechCostFor).
 			if (City.AcceleratedProduction(this)) {
 				costFactor *= 0.5f;
 			}

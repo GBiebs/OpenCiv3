@@ -77,7 +77,7 @@ public class ScientificLeaderTest : IClassFixture<SaveGameFixture> {
 			.First(t => !gameData.players.Any(p => p.knownTechs.Contains(t.id)));
 		us.SetCurrentlyResearchedTech(tech.id);
 		us.turnsResearched = 1000;
-		WithRandom(sample, () => { us.DoPerTurnScienceUpdates(gameData); return 0; });
+		WithRandom(sample, () => { us.CompletePaidResearch(gameData); return 0; });
 		Assert.Contains(tech.id, us.knownTechs);
 		return tech;
 	}
@@ -120,7 +120,7 @@ public class ScientificLeaderTest : IClassFixture<SaveGameFixture> {
 		them.knownTechs.Add(tech.id);
 		us.SetCurrentlyResearchedTech(tech.id);
 		us.turnsResearched = 1000;
-		WithRandom(0.0, () => { us.DoPerTurnScienceUpdates(gameData); return 0; });
+		WithRandom(0.0, () => { us.CompletePaidResearch(gameData); return 0; });
 
 		Assert.Contains(tech.id, us.knownTechs);
 		Assert.Null(ScientificLeader());

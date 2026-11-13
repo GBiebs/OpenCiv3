@@ -11,6 +11,7 @@ namespace EngineTests.GameData;
 
 // Disease from unhealthy terrain (see Disease).
 public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
+	private readonly SaveGameFixture fixture;
 	private readonly C7GameData.GameData gameData;
 	private readonly Player player;
 	private readonly City city;
@@ -19,6 +20,7 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 	private readonly TerrainType grassland;
 
 	public DiseaseTest(SaveGameFixture fixture) {
+		this.fixture = fixture;
 		gameData = fixture.saveGame.ToGameData(fixture.behaviors);
 		EngineStorage.InitializeGameDataForTests(gameData);
 		player = gameData.players.First(p => p.isHuman);
@@ -98,23 +100,32 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		floodPlain.diseaseStrength = 70;
 		SaveGame save = SaveGame.FromGameData(gameData);
 		SaveGame loaded = SaveGame.FromJSON(save.ToCompactJSON());
+		floodPlain.diseaseStrength = 50;
 		TerrainType reloaded = loaded.TerrainTypes.Single(t => t.Key == "flood plain");
 		Assert.True(reloaded.causesDisease);
 		Assert.True(reloaded.diseaseCanBeCured);
 		Assert.Equal(70, reloaded.diseaseStrength);
 	}
 
-	// Half a percent a turn (strength 50 / 10, in thousandths) for any
-	// unhealthy terrain in the radius, the strongest counting.
+	// The Civ3 binary's roll: Rand(0x300 - strength * 512 / 100), 512 at
+	// strength 50, for any unhealthy terrain in the radius, the strongest
+	// counting.
 	[Fact]
-	public void UnhealthyTerrainInTheRadiusGivesTheCityAChance() {
+	public void UnhealthyTerrainInTheRadiusGivesTheCityARoll() {
 		GrowTo(3);
-		Assert.Equal(0, Disease.Chance(city));
+		Assert.Equal(0, Disease.IllnessRange(city));
 		city.location.overlayTerrainType = floodPlain;
-		Assert.Equal(5, Disease.Chance(city));
+		Assert.Equal(512, Disease.IllnessRange(city));
 		// More unhealthy tiles don't add up.
 		Working().tileWorked.overlayTerrainType = jungle;
-		Assert.Equal(5, Disease.Chance(city));
+		Assert.Equal(512, Disease.IllnessRange(city));
+		// The strongest counts.
+		jungle.diseaseStrength = 100;
+		try {
+			Assert.Equal(0x300 - 512, Disease.IllnessRange(city));
+		} finally {
+			jungle.diseaseStrength = 50;
+		}
 	}
 
 	// Sanitation's flag cures flood plains, as intended, not tech number 8
@@ -129,10 +140,10 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal("Writing", writing.Name);
 		player.knownTechs.Add(writing.id);
 		Assert.True(Disease.IsUnhealthy(floodPlain, player));
-		Assert.Equal(5, Disease.Chance(city));
+		Assert.Equal(512, Disease.IllnessRange(city));
 		player.knownTechs.Add(cure.id);
 		Assert.False(Disease.IsUnhealthy(floodPlain, player));
-		Assert.Equal(0, Disease.Chance(city));
+		Assert.Equal(0, Disease.IllnessRange(city));
 		Assert.True(Disease.IsUnhealthy(jungle, player));
 	}
 
@@ -142,7 +153,7 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		GrowTo(2);
 		Tile unworked = city.location.neighbors.Values.First(t => t != Tile.NONE && !t.IsWater() && t.personWorkingTile == null);
 		unworked.overlayTerrainType = jungle;
-		Assert.Equal(5, Disease.Chance(city));
+		Assert.Equal(512, Disease.IllnessRange(city));
 	}
 
 	[Fact]
@@ -160,41 +171,69 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Contains(EngineStorage.messagesToUI.OfType<MsgShowDomesticAdvisorPopup>(), m => m.message == $"Disease strikes {city.name}.");
 	}
 
-	// A strike takes one citizen, half the time another the next turn
-	// whatever the roll, and the city is then spared for a while (owner's
-	// ruling, 2026-10-23).
+	// A city falls ill when Rand(512) < size, loses a citizen that turn
+	// and every turn it stays ill, and recovers when Rand(128) > size.
 	[Fact]
-	public void AStrikeCostsOneOrTwoCitizensAndSparesTheCityAWhile() {
+	public void AnIllCityLosesACitizenEveryTurnUntilItRecovers() {
 		GrowTo(6);
 		city.location.overlayTerrainType = floodPlain;
-		// A roll of 0 strikes, and takes the second citizen too.
-		C7GameData.GameData.rng = new FixedRandom(0);
+		// A roll at its size spares it.
+		C7GameData.GameData.rng = new FixedRandom(6);
+		Assert.False(Disease.MaybeStrike(city, 10));
+		Assert.False(city.ill);
+		Assert.Equal(6, city.residents.Count);
+
+		// A roll below its size: it falls ill and loses a citizen.
+		C7GameData.GameData.rng = new FixedRandom(5);
 		Assert.True(Disease.MaybeStrike(city, 10));
+		Assert.True(city.ill);
 		Assert.Equal(5, city.residents.Count);
-		Assert.True(city.diseaseStrikesNextTurn);
-		C7GameData.GameData.rng = new FixedRandom(999);
+		Assert.Equal(10, city.lastDiseaseTurn);
+
+		// Ill, it loses another whatever the roll, and a recovery roll not
+		// above its new size (4) keeps it ill.
+		C7GameData.GameData.rng = new FixedRandom(4);
 		Assert.True(Disease.MaybeStrike(city, 11));
 		Assert.Equal(4, city.residents.Count);
-		Assert.False(city.diseaseStrikesNextTurn);
+		Assert.True(city.ill);
 
-		C7GameData.GameData.rng = new FixedRandom(0);
-		Assert.False(Disease.MaybeStrike(city, 12));
-		Assert.False(Disease.MaybeStrike(city, 11 + Disease.ImmuneTurns));
-		Assert.Equal(4, city.residents.Count);
-
-		// Without the second citizen.
-		C7GameData.GameData.rng = new SequenceRandom(0, 99);
-		Assert.True(Disease.MaybeStrike(city, 12 + Disease.ImmuneTurns));
+		// A recovery roll above its size cures it, after the citizen is lost.
+		C7GameData.GameData.rng = new FixedRandom(4);
+		Assert.True(Disease.MaybeStrike(city, 12));
 		Assert.Equal(3, city.residents.Count);
-		Assert.False(city.diseaseStrikesNextTurn);
+		Assert.False(city.ill);
+	}
+
+	// Healthy terrain doesn't cure an ill city: it recovers only by the roll.
+	[Fact]
+	public void AnIllCityStaysIllWithoutUnhealthyTerrain() {
+		GrowTo(4);
+		city.ill = true;
+		C7GameData.GameData.rng = new FixedRandom(0);
+		Assert.True(Disease.MaybeStrike(city, 1));
+		Assert.Equal(3, city.residents.Count);
+		Assert.True(city.ill);
 	}
 
 	[Fact]
-	public void TheSecondStrikeSurvivesASave() {
-		city.diseaseStrikesNextTurn = true;
+	public void IllnessSurvivesASave() {
+		city.ill = true;
 		SaveGame save = SaveGame.FromGameData(gameData);
 		SaveGame loaded = SaveGame.FromJSON(save.ToCompactJSON());
-		Assert.True(loaded.Cities.Single(c => c.name == city.name).diseaseStrikesNextTurn);
+		SaveCity saved = loaded.Cities.Single(c => c.name == city.name);
+		Assert.True(saved.ill);
+		Assert.False(saved.diseaseStrikesNextTurn);
+	}
+
+	// An older save's city that was to lose a second citizen loads ill.
+	[Fact]
+	public void AnOlderSavesSecondStrikeLoadsAsIllness() {
+		SaveGame save = SaveGame.FromGameData(gameData);
+		SaveCity saved = save.Cities.Single(c => c.name == city.name);
+		saved.ill = false;
+		saved.diseaseStrikesNextTurn = true;
+		C7GameData.GameData loaded = save.ToGameData(fixture.behaviors);
+		Assert.True(loaded.cities.Single(c => c.name == city.name).ill);
 	}
 
 	[Fact]
@@ -205,15 +244,16 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(42, loaded.Cities.Single(c => c.name == city.name).lastDiseaseTurn);
 	}
 
+	// A size 1 city may fall ill, but doesn't shrink.
 	[Fact]
-	public void ASizeOneCityIsNeverStruck() {
+	public void ASizeOneCityNeverShrinks() {
 		Assert.Single(city.residents);
 		city.location.overlayTerrainType = floodPlain;
-		C7GameData.GameData.rng = new Random(7);
-		int expected = new Random(7).Next();
+		C7GameData.GameData.rng = new FixedRandom(0);
 		Assert.False(Disease.MaybeStrike(city, 1));
+		Assert.True(city.ill);
+		Assert.False(Disease.MaybeStrike(city, 2));
 		Assert.Single(city.residents);
-		Assert.Equal(expected, C7GameData.GameData.rng.Next());
 	}
 
 	[Fact]
@@ -226,27 +266,35 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.Equal(expected, C7GameData.GameData.rng.Next());
 	}
 
+	// A size 3 city falls ill 3/512 of its healthy turns, and an outbreak
+	// almost always costs two citizens (one each turn, then recovery at
+	// 124/128).
 	[Fact]
-	public void DiseaseStrikesAboutHalfAPercentOfItsTurns() {
+	public void IllnessStrikesAtTheBinarysRate() {
 		GrowTo(3);
 		city.location.overlayTerrainType = floodPlain;
 		C7GameData.GameData.rng = new GameRandom(1234);
 		int outbreaks = 0;
-		int exposed = 0;
+		int healthyTurns = 0;
+		int lost = 0;
 		for (int turn = 0; turn < 40000; ++turn) {
-			if (city.lastDiseaseTurn < 0 || turn - city.lastDiseaseTurn > Disease.ImmuneTurns) {
-				++exposed;
+			bool wasIll = city.ill;
+			if (!wasIll) {
+				++healthyTurns;
 			}
-			bool second = city.diseaseStrikesNextTurn;
-			if (Disease.MaybeStrike(city, turn)) {
-				if (!second) {
-					++outbreaks;
-				}
+			int before = city.residents.Count;
+			Disease.MaybeStrike(city, turn);
+			lost += before - city.residents.Count;
+			if (!wasIll && city.ill) {
+				++outbreaks;
+			}
+			if (!city.ill) {
 				GrowTo(3);
 			}
 		}
-		// 0.5% of the turns it wasn't spared.
-		Assert.InRange(outbreaks, exposed * 0.005 * 0.7, exposed * 0.005 * 1.3);
+		double expected = healthyTurns * 3.0 / 512;
+		Assert.InRange(outbreaks, expected * 0.8, expected * 1.2);
+		Assert.InRange((double)lost / outbreaks, 2.0, 2.1);
 	}
 
 	private Tile JungleNextToTheCity() {
@@ -257,7 +305,7 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 
 	// Only fortified units die of disease, and not workers.
 	[Fact]
-	public void OnlyFortifiedUnitsOnUnhealthyTerrainCanDie() {
+	public void OnlyFortifiedUnitsInJungleCanDie() {
 		Tile tile = JungleNextToTheCity();
 		MapUnit unit = gameData.SpawnUnit(player, gameData.unitPrototypes.Single(p => p.name == "Warrior"), tile);
 		Assert.False(Disease.CanStrikeUnit(unit));
@@ -272,31 +320,38 @@ public class DiseaseTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(Disease.CanStrikeUnit(unit));
 		tile.overlayTerrainType = jungle;
 
-		// A roll under the strength (50 in 50,000) kills it.
-		C7GameData.GameData.rng = new FixedRandom(49);
+		// Flood plains and marsh don't kill units, only jungle (Civ3
+		// binary, Unit_StartOfTurn).
+		tile.overlayTerrainType = floodPlain;
+		Assert.False(Disease.CanStrikeUnit(unit));
+		tile.overlayTerrainType = Terrain("marsh");
+		Assert.False(Disease.CanStrikeUnit(unit));
+		tile.overlayTerrainType = jungle;
+
+		// A roll of 0 in 1000 kills it.
+		C7GameData.GameData.rng = new FixedRandom(0);
 		Assert.Contains(unit, Disease.StrikeFortifiedUnits(player));
 		Assert.DoesNotContain(unit, player.units);
 		Assert.Contains(worker, player.units);
 		Assert.Contains(EngineStorage.messagesToUI.OfType<MsgShowMilitaryAdvisorPopup>(), m => m.message == "Our Warrior has died of disease from the jungle!");
 	}
 
+	// The chance is 1 in 1000 whatever the jungle's disease strength.
 	[Fact]
-	public void ARollAtTheStrengthSparesTheUnit() {
+	public void ARollAboveZeroSparesTheUnit() {
 		MapUnit unit = gameData.SpawnUnit(player, gameData.unitPrototypes.Single(p => p.name == "Warrior"), JungleNextToTheCity());
 		unit.isFortified = true;
-		C7GameData.GameData.rng = new FixedRandom(50);
-		Assert.Empty(Disease.StrikeFortifiedUnits(player));
+		jungle.diseaseStrength = 1000;
+		C7GameData.GameData.rng = new FixedRandom(1);
+		try {
+			Assert.Empty(Disease.StrikeFortifiedUnits(player));
+		} finally {
+			jungle.diseaseStrength = 50;
+		}
 		Assert.Contains(unit, player.units);
 	}
 
 	// Rolls the given number for every Next(max).
-	// Rolls the given numbers for Next(max) in turn, the last one after.
-	private class SequenceRandom(params int[] rolls) : Random {
-		private int next;
-		public override int Next(int maxValue) => Math.Min(rolls[Math.Min(next++, rolls.Length - 1)], maxValue - 1);
-		protected override double Sample() => 0.0;
-	}
-
 	private class FixedRandom(int roll) : Random {
 		public override int Next(int maxValue) => Math.Min(roll, maxValue - 1);
 		protected override double Sample() => 0.0;

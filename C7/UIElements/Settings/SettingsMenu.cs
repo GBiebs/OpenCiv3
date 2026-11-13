@@ -126,6 +126,7 @@ public partial class SettingsMenu : Control {
 
 		AddGameSettings(column);
 		AddGraphicsSettings(column);
+		AddWindowSettings(column);
 		AddAudioSettings(column);
 		AddOnlineSettings(column);
 		AddMapGenerationSettings(column);
@@ -240,6 +241,58 @@ public partial class SettingsMenu : Control {
 			column.AddChild(MakeRow("Interface scale", slider, value));
 			column.AddChild(MakeNote("Ctrl + and Ctrl - also change the scale, and Ctrl 0 fits it to the screen."));
 		}
+	}
+
+	// How the game's window shows, and the map's scrolling at its edges.
+	private void AddWindowSettings(VBoxContainer column) {
+		column.AddChild(MakeHeading("Window"));
+
+		if (displayScale != null) {
+			HBoxContainer modes = new();
+			modes.AddThemeConstantOverride("separation", 24);
+			ButtonGroup group = new();
+			foreach ((string name, bool fullscreen) in new[] { ("Windowed", false), ("Fullscreen", true) }) {
+				Civ3Checkbox mode = new() {
+					Text = name,
+					FontSize = 16,
+					ToggleMode = true,
+					ButtonGroup = group,
+					ButtonPressed = DisplayScale.Fullscreen == fullscreen,
+					// Its label is drawn over it rather than sized into it, so
+					// it's given the room for the text.
+					CustomMinimumSize = new Vector2(130, 0),
+					SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+				};
+				mode.Toggled += (bool on) => {
+					if (!on || DisplayScale.Fullscreen == fullscreen) {
+						return;
+					}
+					PlayClick();
+					displayScale.SetFullscreen(fullscreen);
+					log.Information("Display mode set to {Mode}", name);
+				};
+				modes.AddChild(mode);
+			}
+			column.AddChild(MakeRow("Display mode", modes, new Control()));
+			column.AddChild(MakeNote("Fullscreen fills the screen, with no window frame or taskbar. Windowed keeps the " +
+				"window maximized on the desktop."));
+		}
+
+		Civ3Checkbox edgeScrolling = new() {
+			Text = "Edge scrolling",
+			FontSize = 16,
+			ToggleMode = true,
+			ButtonPressed = EdgeScrolling.Enabled,
+			SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
+		};
+		edgeScrolling.Toggled += (bool on) => {
+			PlayClick();
+			EdgeScrolling.SetEnabled(on);
+			log.Information("Edge scrolling turned {State}", on ? "on" : "off");
+		};
+		column.AddChild(edgeScrolling);
+		column.AddChild(MakeNote("Scrolls the map while the mouse rests at an edge of the window. Dragging the map " +
+			"works either way."));
 	}
 
 	private void AddAudioSettings(VBoxContainer column) {

@@ -105,8 +105,10 @@ namespace C7GameData.Save {
 				VictoryConditions = data.victoryConditions,
 				GameOver = data.gameOver,
 				SimultaneousTurns = data.simultaneousTurns,
+				PlayByEmail = data.playByEmail,
 				DebugMode = data.debugMode,
 				UnitedNations = data.unitedNations,
+				Plague = data.plague,
 				// Left out of games without Staging.
 				Staging = data.rules.StagingUnits ? data.staging : null,
 				// Left out of games without Rising Tide.
@@ -178,6 +180,7 @@ namespace C7GameData.Save {
 			data.victoryBonus = VictoryBonus;
 			data.nuclearEvents = NuclearEvents;
 			data.simultaneousTurns = SimultaneousTurns;
+			data.playByEmail = PlayByEmail;
 			data.debugMode = DebugMode;
 
 			BeginHistory(data);
@@ -399,6 +402,7 @@ namespace C7GameData.Save {
 				gameHistory = new GameHistory { Events = Replay ?? new() },
 				GreatWondersBuilt = GreatWondersBuilt,
 				unitedNations = UnitedNations ?? new UnitedNationsState(),
+				plague = Plague ?? new PlagueState(),
 				staging = Staging ?? new StagingState(),
 				risingTide = RisingTide ?? new RisingTideState(),
 				tutorial = Tutorial ?? new TutorialState(),
@@ -764,10 +768,14 @@ namespace C7GameData.Save {
 		public int NuclearEvents { get; set; }
 		// Older saves, without it, have the humans take turns one by one.
 		public bool SimultaneousTurns { get; set; }
+		// See GameData.playByEmail. Older saves, without it, aren't.
+		public bool PlayByEmail { get; set; }
 		// See GameData.debugMode. Older saves, without it, aren't in debug
 		// mode.
 		public bool DebugMode { get; set; }
 		public UnitedNationsState UnitedNations = new();
+		// A scenario's plague; saves from before it have none under way.
+		public PlagueState Plague = new();
 		// The turn's Staging (see C7Engine.Staging); null in games without it.
 		public StagingState Staging;
 		// The tide (see C7Engine.RisingTide); null in games without it.

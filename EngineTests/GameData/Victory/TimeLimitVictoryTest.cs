@@ -1,3 +1,4 @@
+using System.Linq;
 using C7Engine;
 using C7GameData;
 using Xunit;
@@ -28,5 +29,33 @@ public class TimeLimitVictoryTest {
 
 		Assert.Equal(42, status.CurrentTurn);
 		Assert.False(victory.HasVictory(status));
+	}
+
+	// "a warning 20 turns before g_LastTurn" (Perez's decompile, Round 2;
+	// owner's ruling 2026-11-12), in Civ3's words (script.txt,
+	// #RETIREWARNING), to each human, once.
+	[Fact]
+	public void HumansAreWarnedTwentyTurnsBeforeTheEnd() {
+		C7GameData.GameData gameData = new() { turn = 179, timeOptions = new TimeOptions() };
+		gameData.victories.Add(new TimeLimitVictory(turnLimit: 200));
+		Player human = new() { isHuman = true, civilization = new Civilization("Rome") };
+		Player ai = new() { civilization = new Civilization("Egypt") };
+		gameData.players.Add(human);
+		gameData.players.Add(ai);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		EngineStorage.messagesToUI.Clear();
+		try {
+			Assert.False(TimeLimitVictory.MaybeWarn(gameData));
+			gameData.turn = 180;
+			Assert.True(TimeLimitVictory.MaybeWarn(gameData));
+			MsgShowDomesticAdvisorPopup warning = Assert.Single(EngineStorage.messagesToUI.OfType<MsgShowDomesticAdvisorPopup>());
+			Assert.Equal(human, warning.recipient);
+			Assert.StartsWith("MANDATORY RETIREMENT YEAR!", warning.message);
+			Assert.Contains("GAME WILL END AT", warning.message);
+			gameData.turn = 181;
+			Assert.False(TimeLimitVictory.MaybeWarn(gameData));
+		} finally {
+			EngineStorage.messagesToUI.Clear();
+		}
 	}
 }

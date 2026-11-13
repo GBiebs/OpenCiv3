@@ -163,6 +163,10 @@ retreat bonus, see `QueryCiv3/BiqSections/Expr.cs`), so it is not a source eithe
 - **Upgrading a unit heals it fully** (community). Pyrrhos (thread 266551, #9): "Now there remains only one, rarely used,
   way to heal even redlined troops in one turn to mention - to upgrade them." massa (thread 113864, #3), on the
   no-move rule for healing: "Exceptions are upgrades and promotions."
+- **A human's fortified unit wakes once fully healed (binary finding).** Perez's decompile of the Conquests
+  executable (`doc/perez-findings/Civ3_Findings.md`, Round 2b "Units", `Unit_HealPerTurn`): "A fully healed fortified
+  unit of a human player wakes up." The owner ruled on 2026-11-12 that this finding is authoritative. AI units stay
+  fortified.
 - **Ships heal only in port; in C3C their passengers heal at sea** (community). The Professor (thread 266551, #2):
   "Ships can only heal in port". PaperBeetle (same thread, #11, C3C): passengers heal aboard; "To get this healing, you
   need to be in friendly or neutral waters." UNVERIFIED by a test.
@@ -404,6 +408,10 @@ retreat bonus, see `QueryCiv3/BiqSections/Expr.cs`), so it is not a source eithe
 
 ## 1.5 Retreat (withdrawal)
 
+- **Barbarians never retreat from an attack (binary finding).** Perez's decompile
+  (`doc/perez-findings/Civ3_Findings.md`, 3.2 "Combat"): "Retreat (only the attacker, never barbarians)"; the owner
+  ruled on 2026-11-12 that this is authoritative. The engine still lets a barbarian defender withdraw by the rules
+  below (that part of the finding is not applied).
 - **Fast units withdraw when losing, unless the opponent is also fast.** PEDIA `PRTO_Horseman`: "move fast and will
   [withdraw] from combat if losing (unless fighting another fast unit)." (`PRTO_Cavalry` has the same wording.)
 - **Since 1.17f, withdrawal is a die roll that depends on experience.** README-V 1.17f: "Mobile units now have to make
@@ -585,6 +593,10 @@ retreat bonus, see `QueryCiv3/BiqSections/Expr.cs`), so it is not a source eithe
 - **Terrain under a city still counts.** CFC-CSE (Xerxes314): "Terrain under a city does affect its defense value."
   The printed manual (p. 110, quoted by royfurr in thread 7886): "Terrain bonuses are figured in BEFORE THE CITY SIZE
   AND WALLS TAKE EFFECT."
+- **Fortify needs movement points left (binary finding).** Perez's decompile (`doc/perez-findings/Civ3_Findings.md`,
+  3.2 "Combat"): "the fortified bonus requires the unit to be fortified *and have movement points remaining*"; the owner
+  ruled on 2026-11-12 that this is authoritative. A unit that fortifies after spending its moves gets no bonus until
+  its moves are restored at the start of the next turn.
 - **Fortify.** +25%; fortify, fortress and walls stack per EDHELP's "cumulative" wording. Some players believed the
   wall or fortress replaces fortify (https://forums.civfanatics.com/threads/defense-bonuses-question.21715). See
   Disputed. Which units cannot fortify is UNVERIFIED. Sentry gives the same bonus, per two C3X-THREAD posters
@@ -764,6 +776,18 @@ retreat bonus, see `QueryCiv3/BiqSections/Expr.cs`), so it is not a source eithe
 - **Bombard can hit tile improvements outside cities, and PTW+ airfields, outposts and radar towers.**
   README-PTW 1.01f: "You can destroy through bombarding Airfields, Outposts and Radar Towers." README-PTW: "Fixed bug
   where auto-bombard would not auto-bomb multiple terrain improvements in neutral territory."
+- **Automated bombard fires at one chosen square every turn until nothing is left there** (community). labels.txt
+  (#UNIT_ACTIONS): "Automate:^Bombard (Shift-B)", "Automate:^Bombing (Shift-B)", "Automate:^Precision Bombing
+  (Shift-P)". https://forums.civfanatics.com/threads/stack-bombardment.87621: "You press Shift-B then select your
+  target. What it does is cause your bombard units to keep firing on that same target, turn after turn, until there is
+  nothing left to bombard." Bucephalus (https://forums.civfanatics.com/threads/how-exactly-do-i-use-auto-bombard.276907/,
+  #2): "press the auto-bombard button then indicate the square you wish to bombard by clicking on it"; Gosnork (#5):
+  "Auto-bombard just tells 1 Artillery to bombard the same square every turn." meriadoc
+  (https://codehappy.net/apolyton/threads/71619-1.htm): "until either the square can't be bombarded or you stop the
+  unit"; there "Wake when next to enemy unit" cancels it, and WarpStorm: "It does work fine for ships and planes
+  though." README-PTW: "ICBM's can no longer auto-bombard." UNVERIFIED: whether it can hit a civ we're at peace with
+  (C3 only fires at civs at war with us, owner's decision), and when in the turn it fires (C3: at once, then at the
+  start of each turn).
 - **Ships in port are extra vulnerable** (C3C). PEDIA `GCON_Bombardment_in_Ports`: "naval units "in port" (i.e., in a
   coastal city square being bombarded) are especially vulnerable to bombardment attacks." The size of the effect is UNVERIFIED.
 - **Lethal bombard (editor ability since 1.21f; used by stock units in C3C only).** README-V 1.21f: "Editor: Added new
@@ -1041,6 +1065,13 @@ retreat bonus, see `QueryCiv3/BiqSections/Expr.cs`), so it is not a source eithe
   loaded onto another transport-unit." Flintlock (post-16667922, page-114 #2273): "transports are the
   only units that never stack", and (#2269) "Units track what unit they're contained in but container
   units don't track what units are inside them."
+- **A go-to doesn't board a ship at sea** (community). Reviewing OpenCiv3's transport PR
+  (https://github.com/C7-Game/OpenCiv3/pull/936), stavrosfa: to send a land unit onto a transport on a sea tile next
+  to the shore "I can't use the go-to (this is faithful to the original)"; the last step is a manual move. C3 keeps it
+  so. Loading asks which transport when several could take the unit (script.txt `SELECT_TRANSPORT`: "What
+  Transport?", "Select a transport to board:"), and unloading asks which units (script.txt `DISEMBARK`:
+  "Disembark?", "Never mind.", "Unload all."). UNVERIFIED: whether moving onto a tile with several transports asks too
+  (C3 picks one).
 - **Ships can enter a land tile only if it holds a city; doing so unloads everything** (code reading). Flintlock
   (C3X-THREAD post-16787843, page-134 #2662): "It's technically already possible for sea units to enter
   land tiles, if those tiles have cities on them." / (paraphrase from a summarised fetch) "Moving a transport onto a land tile triggers the
@@ -1471,6 +1502,8 @@ bombard defense 16 (README-V 1.17f, BIQ, alexman's tests) are now in the main te
   tile; whether a stealth fighter can intercept (MoonWolf, thread 86619: "stealth fighters haven't the ability to
   shoot down incoming bombers/fighters").
 - Nukes: whether "2:1" means a 2/3 or 1/2 kill chance; the fallout pattern; launch restrictions.
+- Automated bombard: whether it may hit civs we're at peace with, when in the turn it fires, and whether it fires at
+  once when ordered (§1.7). Whether a go-to can board a ship at sea rests on one review comment (§1.10).
 - Capture: whether capturing counts as declaring war; whether a Leader caught alone is captured or killed.
 - Pillage: order of improvements removed (one untested statement, Vasyl-67, §1.13).
 - Capture: the nationality of units the AI captures. Spoonwood (C3X-THREAD post-16305156, page-41 #808): "captured

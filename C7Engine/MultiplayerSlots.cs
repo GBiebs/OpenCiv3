@@ -17,11 +17,14 @@ public enum SlotKind {
 
 // The Multiplayer Setup screen's game types (Civ3's "Game Type:"): people
 // sharing this computer, or joining over the local network, or over the
-// internet as well (through the online relay; see OnlineRelay).
+// internet as well (through the online relay; see OnlineRelay), or each
+// playing their turn on their own computer and emailing the save on (see
+// PlayByEmail).
 public enum MultiplayerGameType {
 	Hotseat,
 	Lan,
 	Internet,
+	PlayByEmail,
 }
 
 // Civ3's game modes (its "Game Mode:" list), each a preset of the special
@@ -59,6 +62,14 @@ public static class MultiplayerSlots {
 
 	public static string DefaultGameName(string playerName) => playerName + GameNameSuffix;
 
+	// Whether the game's other people are set up here, each Open slot a
+	// person the host names and chooses the civilization of, as in hotseat
+	// and play by email; otherwise they join over the network and choose in
+	// the lobby.
+	public static bool SeatsSetUpHere(MultiplayerGameType type) {
+		return type is MultiplayerGameType.Hotseat or MultiplayerGameType.PlayByEmail;
+	}
+
 	// The plan for the host playing hostCivilization (null or Random for a
 	// random one nobody else has) with the given rivals' slots. In hotseat
 	// an Open slot is a person at this computer; otherwise it's a seat for
@@ -74,7 +85,7 @@ public static class MultiplayerSlots {
 		HashSet<string> taken = host == null ? [] : [host.name];
 		List<Civilization> slotCivs = slots.Select(slot => {
 			Civilization civ = slot.kind == SlotKind.Closed ? null : Chosen(slot.civilization);
-			bool networkSeat = slot.kind == SlotKind.Open && type != MultiplayerGameType.Hotseat;
+			bool networkSeat = slot.kind == SlotKind.Open && !SeatsSetUpHere(type);
 			return civ != null && !networkSeat && taken.Add(civ.name) ? civ : null;
 		}).ToList();
 		plan.playerCivilization = host ?? NewGameChoices.RandomCivilization(civilizations, taken, random);
@@ -87,7 +98,7 @@ public static class MultiplayerSlots {
 						? new SelectedOpponent { isRandom = true, aiType = slot.aiType }
 						: new SelectedOpponent { Name = slotCivs[i].name, aiType = slot.aiType });
 					break;
-				case SlotKind.Open when type == MultiplayerGameType.Hotseat:
+				case SlotKind.Open when SeatsSetUpHere(type):
 					plan.hotseatPlayers.Add(new HotseatPlayer {
 						civilization = slotCivs[i],
 						name = NewGameChoices.HotseatName(slot.name, plan.hotseatPlayers.Count + 2),
@@ -103,9 +114,11 @@ public static class MultiplayerSlots {
 		if (humans + plan.opponents.Count == 0) {
 			plan.problem = "Every other slot is Closed. Set a slot to Open for another player, or to Computer.";
 		} else if (humans == 0) {
-			plan.problem = type == MultiplayerGameType.Hotseat
-				? "Set a slot to Open for each other player at this computer."
-				: "Set a slot to Open for each player who will join.";
+			plan.problem = type switch {
+				MultiplayerGameType.Hotseat => "Set a slot to Open for each other player at this computer.",
+				MultiplayerGameType.PlayByEmail => "Set a slot to Open for each other player to send the game to.",
+				_ => "Set a slot to Open for each player who will join.",
+			};
 		}
 		return plan;
 	}
@@ -176,7 +189,7 @@ public static class MultiplayerSlots {
 		List<PlayerSlot> slots = [];
 		for (int i = 0; i < count; ++i) {
 			string civ = i < choices.Opponents.Count ? choices.Opponents[i] : NewGameChoices.Random;
-			bool open = type == MultiplayerGameType.Hotseat ? choices.HotseatSlots.ContainsKey(i) : choices.LanSlots.Contains(i);
+			bool open = SeatsSetUpHere(type) ? choices.HotseatSlots.ContainsKey(i) : choices.LanSlots.Contains(i);
 			SlotKind kind = open ? SlotKind.Open : choices.ClosedSlots.Contains(i) ? SlotKind.Closed : SlotKind.Computer;
 			slots.Add(new PlayerSlot(kind, civ, choices.HotseatSlots.GetValueOrDefault(i), choices.AiTypeOf(i)));
 		}
@@ -191,7 +204,7 @@ public static class MultiplayerSlots {
 		// the AI it had.
 		choices.AdvancedAiSlots = new(Enumerable.Range(0, slots.Count).Where(i => slots[i].aiType == AiType.Advanced));
 		IEnumerable<int> open = Enumerable.Range(0, slots.Count).Where(i => slots[i].kind == SlotKind.Open);
-		if (type == MultiplayerGameType.Hotseat) {
+		if (SeatsSetUpHere(type)) {
 			choices.HotseatSlots = new(open.ToDictionary(i => i, i => slots[i].name ?? ""));
 		} else {
 			// As the player setup screen does when hosting: this game has no

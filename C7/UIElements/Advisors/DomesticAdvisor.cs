@@ -404,13 +404,13 @@ public partial class DomesticAdvisor : Control {
 			int goldPerTurn = totalIncome.Netflows();
 			if (goldPerTurn > 0) {
 				sumSummary.Text = $"Net gain: +{goldPerTurn}";
-				growth.Text = "Growing!";
+				growth.Text = "Growing.";
 			} else if (goldPerTurn < 0) {
 				sumSummary.Text = $"Net loss: {goldPerTurn}";
 				growth.Text = "Shrinking!";
 			} else {
 				sumSummary.Text = $"Neutral: {goldPerTurn}";
-				growth.Text = "Balanced";
+				growth.Text = "Breaking even.";
 			}
 
 			//TODO: Randomize or set logically

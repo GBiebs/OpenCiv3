@@ -96,6 +96,26 @@ public class HallOfFameTest : IDisposable {
 		Assert.Equal([first, second], HallOfFame.Load(FilePath));
 	}
 
+	// The owner's Cultural win was listed three times, 2026-11-12: the same
+	// save loaded and won three times.
+	[Fact]
+	public void TheSameGameEndingTheSameWayIsRecordedOnce() {
+		HallOfFameEntry win = HallOfFame.ForVictory(gameData, us, us, new CulturalVictory(20000, 100000), "1868 AD", Day);
+		HallOfFameEntry again = HallOfFame.ForVictory(gameData, us, us, new CulturalVictory(20000, 100000), "1868 AD",
+			Day.AddHours(3));
+		Assert.True(HallOfFame.Add(FilePath, win));
+		Assert.True(HallOfFame.Add(FilePath, again));
+		Assert.Equal([win], HallOfFame.Load(FilePath));
+
+		// A game that ended otherwise, or later, is another entry.
+		gameData.turn = 301;
+		HallOfFameEntry later = HallOfFame.ForVictory(gameData, us, us, new CulturalVictory(20000, 100000), "1870 AD", Day);
+		HallOfFameEntry retired = HallOfFame.ForRetirement(gameData, us, "1870 AD", Day);
+		Assert.True(HallOfFame.Add(FilePath, later));
+		Assert.True(HallOfFame.Add(FilePath, retired));
+		Assert.Equal([win, later, retired], HallOfFame.Load(FilePath));
+	}
+
 	[Fact]
 	public void AnUnreadableFileHasNoEntries() {
 		Directory.CreateDirectory(directory);

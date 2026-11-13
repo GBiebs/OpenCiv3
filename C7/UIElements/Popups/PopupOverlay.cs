@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using C7Engine;
 using C7GameData;
 using Serilog;
 
@@ -32,8 +33,22 @@ public partial class PopupOverlay : HBoxContainer {
 
 	// A popup asked for while another one is up waits here until the one in
 	// front of it closes, rather than replacing it: the one in front could be
-	// something the player has to answer, like a deal proposal.
-	private readonly LinkedList<(Control child, PopupCategory? category)> waiting = new();
+	// something the player has to answer, like a deal proposal. Each popup
+	// may belong to a flow that has claimed the screen (see Claims).
+	private readonly LinkedList<(Control child, PopupCategory? category, ScreenClaim claim)> waiting = new();
+
+	// The flows that have the screen to themselves (see ScreenClaim): while
+	// one does, only its own popups come up, and the rest wait for it to
+	// end, in order.
+	public readonly ScreenClaims Claims = new();
+
+	public PopupOverlay() {
+		Claims.Released += () => {
+			if (currentChild is null && IsInsideTree()) {
+				ShowNextWaiting();
+			}
+		};
+	}
 
 	[Export]
 	private Control control;
@@ -57,25 +72,59 @@ public partial class PopupOverlay : HBoxContainer {
 			currentChild = null;
 		}
 
-		// Bring up the next popup that was waiting, if any, unless they're
-		// held back (see HoldWhile).
-		if (holdWhile != null) {
+		// Bring up the next popup that was waiting, if any may come up now
+		// (see Claims). A popup usually hides itself as the player answers
+		// it, before doing what the answer says, which may be to open a
+		// screen that claims the screen (the palace, a city screen); so the
+		// next one waits until that's done, at the end of the frame, rather
+		// than come up over the screen.
+		if (waiting.Count == 0) {
 			Hide();
 			return;
 		}
-		ShowNextWaiting();
+		if (!nextIsDue) {
+			nextIsDue = true;
+			Callable.From(ShowNextIfDue).CallDeferred();
+		}
+	}
+
+	// Set from a popup hiding until the next one waiting comes up, at the
+	// end of the frame; popups asked for meanwhile wait behind it.
+	private bool nextIsDue;
+
+	private void ShowNextIfDue() {
+		if (!nextIsDue) {
+			return;
+		}
+		nextIsDue = false;
+		if (currentChild is null) {
+			ShowNextWaiting();
+		}
 	}
 
 	private void ShowNextWaiting() {
-		while (waiting.Count > 0) {
-			var (child, category) = waiting.First.Value;
-			waiting.RemoveFirst();
-			if (IsInstanceValid(child)) {
-				Present(child, category);
-				return;
+		for (var node = waiting.First; node != null;) {
+			var next = node.Next;
+			if (!IsInstanceValid(node.Value.child)) {
+				waiting.Remove(node);
 			}
+			node = next;
 		}
-		Hide();
+		List<ScreenClaim> claims = new();
+		foreach (var (_, _, claim) in waiting) {
+			claims.Add(claim);
+		}
+		int index = Claims.NextToShow(claims);
+		if (index < 0) {
+			Hide();
+			return;
+		}
+		var chosen = waiting.First;
+		for (int i = 0; i < index; ++i) {
+			chosen = chosen.Next;
+		}
+		waiting.Remove(chosen);
+		Present(chosen.Value.child, chosen.Value.category, chosen.Value.claim);
 	}
 
 	// Closes the popup in front when the player presses Escape, unless it's
@@ -89,6 +138,20 @@ public partial class PopupOverlay : HBoxContainer {
 
 	public bool ShowingPopup => currentChild is not null;
 
+	// Whether the overlay hid in this frame. The key that closed a popup
+	// (Enter or Space picking from a list) reaches the popup earlier in the
+	// frame than the game polls its key actions, where it would also be an
+	// order on the map: Space "no orders" or Enter End Turn.
+	public bool HidThisFrame => !Visible && hiddenOnFrame == Engine.GetProcessFrames();
+	private ulong hiddenOnFrame = ulong.MaxValue;
+
+	public override void _Notification(int what) {
+		base._Notification(what);
+		if (what == NotificationVisibilityChanged && !Visible) {
+			hiddenOnFrame = Engine.GetProcessFrames();
+		}
+	}
+
 	/// <summary>The popup currently in front, or null.</summary>
 	public Control CurrentPopup => currentChild;
 
@@ -98,8 +161,10 @@ public partial class PopupOverlay : HBoxContainer {
 		player.Play();
 	}
 
-	// With no category, no sound plays (the popup may play its own).
-	public void ShowPopup(Popup child, PopupCategory? category) {
+	// With no category, no sound plays (the popup may play its own). A
+	// popup belonging to a flow that has claimed the screen (claim) comes up
+	// in front of anything else; any other waits while a flow has it.
+	public void ShowPopup(Popup child, PopupCategory? category, ScreenClaim claim = null) {
 		if (child is null) {
 			// not necessary if we don't pass null?
 			log.Error("Received request to show null popup");
@@ -118,36 +183,51 @@ public partial class PopupOverlay : HBoxContainer {
 
 		CloseTileInfo(replacement: child);
 
-		if (currentChild is not null || holdWhile != null) {
-			waiting.AddLast((child, category));
+		claim = Claims.OwnerOf(claim);
+		if (claim != null && claim.Active && claim == Claims.Top) {
+			// The flow's popup goes in front: one already up that isn't the
+			// flow's goes back to wait, first in line, for the flow to end.
+			if (currentChild is not null && !IsCurrentChildOf(claim)) {
+				Control preempted = currentChild;
+				Reconnect();
+				RemoveChild(preempted);
+				waiting.AddFirst((preempted, null, currentClaim));
+				currentChild = null;
+			}
+			if (currentChild is not null) {
+				waiting.AddFirst((child, category, claim));
+				return;
+			}
+		} else if (currentChild is not null || nextIsDue || !Claims.Admits(claim)) {
+			waiting.AddLast((child, category, claim));
 			return;
 		}
 
-		Present(child, category);
+		Present(child, category, claim);
 	}
 
-	// Popups wait while the condition holds, as while the player looks at
-	// the Science Advisor to choose what to research; then afterwards runs,
-	// before the next popup comes up.
-	private System.Func<bool> holdWhile;
-	private System.Action afterHold;
+	private bool IsCurrentChildOf(ScreenClaim claim) => currentChild is not null && currentClaim == claim;
 
-	public void HoldWhile(System.Func<bool> condition, System.Action afterwards = null) {
-		holdWhile = condition;
-		afterHold = afterwards;
+	// The claim the popup in front belongs to, if any, so that it can wait
+	// again in its place if a flow's popup takes over.
+	private ScreenClaim currentClaim;
+
+	// Whether a popup of the type is up or waiting.
+	public bool HasPopup<T>() where T : Control {
+		if (currentChild is T) {
+			return true;
+		}
+		foreach (var (child, _, _) in waiting) {
+			if (child is T && IsInstanceValid(child)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public override void _Process(double delta) {
-		if (holdWhile == null || holdWhile()) {
-			return;
-		}
-		System.Action afterwards = afterHold;
-		holdWhile = null;
-		afterHold = null;
-		afterwards?.Invoke();
-		if (currentChild is null) {
-			ShowNextWaiting();
-		}
+		// Flows whose screen has closed end, and what waited comes up.
+		Claims.Poll();
 	}
 
 	/// <summary>
@@ -183,9 +263,9 @@ public partial class PopupOverlay : HBoxContainer {
 			Reconnect();
 			RemoveChild(preempted);
 			currentChild = null;
-			waiting.AddFirst((preempted, null));
+			waiting.AddFirst((preempted, null, currentClaim));
 		}
-		Present(new Control(), null);
+		Present(new Control(), null, Claims.Top);
 	}
 
 	// Tile info is a passing look at a tile, so anything else replaces it
@@ -211,7 +291,9 @@ public partial class PopupOverlay : HBoxContainer {
 		}
 	}
 
-	private void Present(Control child, PopupCategory? category) {
+	private void Present(Control child, PopupCategory? category, ScreenClaim claim = null) {
+		currentClaim = claim;
+		nextIsDue = false;
 		if (child is Popup popup) {
 			Alignment = popup.alignment;
 			OffsetTop = popup.margins.top;
@@ -248,7 +330,7 @@ public partial class PopupOverlay : HBoxContainer {
 
 	public override void _ExitTree() {
 		// Popups still waiting aren't in the tree, so nothing else frees them.
-		foreach (var (child, _) in waiting) {
+		foreach (var (child, _, _) in waiting) {
 			if (IsInstanceValid(child)) {
 				child.QueueFree();
 			}

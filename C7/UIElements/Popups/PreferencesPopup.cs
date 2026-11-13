@@ -47,7 +47,8 @@ public partial class PreferencesPopup : Popup {
 		AddUnavailable(game, "Color Blind Help");
 		AddUnavailable(game, "Disable Population Limit Warnings");
 		AddUnavailable(game, "Always Renegotiate Deals");
-		AddUnavailable(game, "Show Advanced Unit Action Buttons");
+		AddOption(game, "Show Advanced Unit Action Buttons", Preferences.Option.ShowAdvancedUnitActionButtons,
+			"Shows buttons for the workers' other kinds of automation: Road to, Rail to, Build Trade and the rest.");
 		AddUnavailable(game, "Show Fewer Multiplayer Popups");
 		AddUnavailable(game, "Do not auto-select units in Multiplayer");
 

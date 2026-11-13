@@ -244,7 +244,7 @@ public static class SnapshotFilter {
 			.Select(u => view.players.Contains(u.owner) || u.path == null ? u : WithoutPath(u))
 			.ToList();
 		filtered.Cities = FilterCities(snapshot, view);
-		filtered.Players = snapshot.Players.ConvertAll(p => FilterPlayer(p, view, known));
+		filtered.Players = snapshot.Players.ConvertAll(p => FilterPlayer(p, view, known, snapshot.GameOver));
 		filtered.UnitedNations = FilterVotes(snapshot.UnitedNations, view);
 		filtered.HostFacts = FactsFor(view, known);
 		return filtered;
@@ -350,7 +350,7 @@ public static class SnapshotFilter {
 			.ToList();
 	}
 
-	private static SavePlayer FilterPlayer(SavePlayer player, View view, bool[] known) {
+	private static SavePlayer FilterPlayer(SavePlayer player, View view, bool[] known, bool gameOver) {
 		if (view.players.Contains(player.id)) {
 			return player;
 		}
@@ -360,6 +360,13 @@ public static class SnapshotFilter {
 		filtered.knownTileIndices = SavePlayer.EncodeIndices(territory.Where(i => i < known.Length && known[i]));
 		filtered.tileKnowledge = [];
 		filtered.outdatedTiles = [];
+		// The production queues a player saved are their own.
+		filtered.savedProductionQueues = [];
+		// So are their statistics until the game is over, when the
+		// Statistics screen compares every civ (see StatisticsView).
+		if (!gameOver) {
+			filtered.stats = null;
+		}
 
 		if (!view.embassies.Contains(player.id)) {
 			filtered.currentlyResearchedTech = null;

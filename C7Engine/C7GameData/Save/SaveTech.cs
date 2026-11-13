@@ -28,7 +28,8 @@ namespace C7GameData.Save {
 			// https://sullla.com/Civ3/CQ/CQ_techs.html). Used by
 			// Tech.FindEmbassyTech.
 			EnablesDiplomats,
-			// TODO(consumer): disease (plague) isn't modelled yet.
+			// Cures disease from curable terrain and halves the plague (see
+			// Disease and Plague).
 			DisablesDiseases,
 			// TODO(consumer): drafting citizens into units.
 			EnablesConscription,

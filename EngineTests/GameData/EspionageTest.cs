@@ -221,6 +221,9 @@ public class EspionageTest : IClassFixture<SaveGameFixture>, System.IDisposable 
 		Assert.Equal(17, result.report.shieldsStored);
 		Assert.Contains(result.report.buildings, b => b == city.constructed_buildings[0].building.name);
 		Assert.Equal(target.gold, result.report.ownerGold);
+		// As in Civ3, the city is shown on the city screen, with Civ3's words.
+		Assert.Equal(city, result.city);
+		Assert.Equal($"We have conducted an investigation of the city of {city.name}.", result.message);
 	}
 
 	[Fact]
@@ -267,20 +270,67 @@ public class EspionageTest : IClassFixture<SaveGameFixture>, System.IDisposable 
 		Assert.False(Espionage.HasSpy(actor, target));
 	}
 
-	// Between the success chance and the chance of getting away, the
-	// mission fails but nobody notices.
+	// Between the success chance and the chance of getting away, a theft
+	// fails but nobody notices: the 80% second roll is for Steal Technology
+	// and Steal World Map only (Perez's decompile, Round 2d).
 	[Fact]
-	public void FailedMissionsCanGoUnnoticed() {
+	public void FailedTheftsCanGoUnnoticed() {
+		SetUpSpy();
+		int success = Espionage.SuccessPercent(gameData, actor, EspionageMission.StealWorldMap, target, null);
+		Assert.Equal(Espionage.GetawayPercent(Espionage.Agent.RegularSpy) * 80 / 100, success);
+
+		Espionage.MissionResult result = Espionage.Perform(gameData, actor, EspionageMission.StealWorldMap, target, null, success);
+		Assert.False(result.success);
+		Assert.False(result.caught);
+		Assert.Equal(0, target.playerRelationships[actor.id].espionageIncidents);
+		Assert.True(Espionage.HasSpy(actor, target));
+	}
+
+	// Steal Plans, Sabotage Production and Expose Enemy Spy use the success
+	// roll alone: failing it is being caught (Perez's decompile, Round 2d).
+	[Fact]
+	public void SabotageHasNoSecondRoll() {
 		City city = SetUpSpy();
 		city.SetStoredShields(20);
 		int success = Espionage.SuccessPercent(gameData, actor, EspionageMission.SabotageProduction, target, city);
+		Assert.Equal(Espionage.GetawayPercent(Espionage.Agent.RegularSpy), success);
 
+		Espionage.MissionResult worked = Espionage.Perform(gameData, actor, EspionageMission.SabotageProduction, target, city, success - 1, exposedRoll: 99);
+		Assert.True(worked.success);
+		Assert.True(Espionage.HasSpy(actor, target));
+
+		city.SetStoredShields(20);
 		Espionage.MissionResult result = Espionage.Perform(gameData, actor, EspionageMission.SabotageProduction, target, city, success);
 		Assert.False(result.success);
-		Assert.False(result.caught);
+		Assert.True(result.caught);
 		Assert.Equal(20, city.shieldsStored);
-		Assert.Equal(0, target.playerRelationships[actor.id].espionageIncidents);
+		Assert.False(Espionage.HasSpy(actor, target));
+	}
+
+	// The spy may be exposed and lost even though the mission worked: Steal
+	// Plans 10%, Sabotage Production 20%, Expose Enemy Spy 10% (Perez's
+	// decompile, Round 2d).
+	[Fact]
+	public void ASuccessfulSpyMayBeExposedAnyway() {
+		Assert.Equal(10, Espionage.ExposedAfterSuccessPercent(EspionageMission.StealPlans));
+		Assert.Equal(20, Espionage.ExposedAfterSuccessPercent(EspionageMission.SabotageProduction));
+		Assert.Equal(10, Espionage.ExposedAfterSuccessPercent(EspionageMission.ExposeEnemySpy));
+		Assert.Equal(0, Espionage.ExposedAfterSuccessPercent(EspionageMission.StealTechnology));
+
+		City city = SetUpSpy();
+		city.SetStoredShields(20);
+		Espionage.MissionResult kept = Espionage.Perform(gameData, actor, EspionageMission.SabotageProduction, target, city, Succeed, exposedRoll: 20);
+		Assert.True(kept.success);
+		Assert.False(kept.exposed);
 		Assert.True(Espionage.HasSpy(actor, target));
+
+		city.SetStoredShields(20);
+		Espionage.MissionResult lost = Espionage.Perform(gameData, actor, EspionageMission.SabotageProduction, target, city, Succeed, exposedRoll: 19);
+		Assert.True(lost.success);
+		Assert.True(lost.exposed);
+		Assert.Equal(0, city.shieldsStored);
+		Assert.False(Espionage.HasSpy(actor, target));
+		Assert.Equal(1, target.playerRelationships[actor.id].espionageIncidents);
 	}
 
 	[Fact]
@@ -366,6 +416,20 @@ public class EspionageTest : IClassFixture<SaveGameFixture>, System.IDisposable 
 		Assert.Equal(distance + 10 * 4, Espionage.Cost(gameData, actor, EspionageMission.InvestigateCity, target, capital));
 		capital.SetStoredShields(25);
 		Assert.Equal(distance + 10 * 25, Espionage.Cost(gameData, actor, EspionageMission.SabotageProduction, target, capital));
+	}
+
+	// The final price is "((2*size - nativesOfSpyCiv + 1) * (cost +
+	// (sizeClass+1)*C)) / (2*size + 1)" (Perez's decompile, Round 2d): a city
+	// of our own people is cheaper to work on.
+	[Fact]
+	public void CitizensOfOurNationalityMakeMissionsCheaper() {
+		City capital = SetUpEmbassy();
+		int distance = actor.cities.Min(c => c.location.DistanceTo(capital.location));
+		capital.residents[0].nationality = actor.civilization;
+		capital.residents[1].nationality = actor.civilization;
+		// Size 4, 2 of ours: (8 - 2 + 1) / (8 + 1).
+		Assert.Equal((distance + 60) * 7 / 9, Espionage.Cost(gameData, actor, EspionageMission.PlantSpy, target, null));
+		Assert.Equal((distance + 10 * 4) * 7 / 9, Espionage.Cost(gameData, actor, EspionageMission.InvestigateCity, target, capital));
 	}
 
 	// The editor help's propaganda cost has a gold term: "BaseCost *
@@ -635,12 +699,37 @@ public class EspionageTest : IClassFixture<SaveGameFixture>, System.IDisposable 
 		Assert.True(Espionage.HasEmbassy(actor, target));
 	}
 
+	// Civ3's AI_ConsiderEspionage rolls Rand(range), range 200000 .. 20 by
+	// relationship level, halved with an embassy; 0-1 steal tech, 2 steal
+	// map, 3 steal plans, 4-5 propaganda, 6-7 sabotage, 8-9 expose mole
+	// (Perez's decompile, Round 2d). The level is the AI's attitude, most
+	// hostile most often.
+	[Fact]
+	public void AIEspionageFollowsCiv3sRolls() {
+		Assert.Equal(200000, C7Engine.AI.EspionageAI.RollRange(AttitudeLevel.Gracious, hasEmbassy: false));
+		Assert.Equal(1000, C7Engine.AI.EspionageAI.RollRange(AttitudeLevel.Cautious, hasEmbassy: true));
+		Assert.Equal(20, C7Engine.AI.EspionageAI.RollRange(AttitudeLevel.Furious, hasEmbassy: false));
+		Assert.Equal(10, C7Engine.AI.EspionageAI.RollRange(AttitudeLevel.Furious, hasEmbassy: true));
+		EspionageMission?[] expected = [
+			EspionageMission.StealTechnology, EspionageMission.StealTechnology, EspionageMission.StealWorldMap,
+			EspionageMission.StealPlans, EspionageMission.Propaganda, EspionageMission.Propaganda,
+			EspionageMission.SabotageProduction, EspionageMission.SabotageProduction,
+			EspionageMission.ExposeEnemySpy, EspionageMission.ExposeEnemySpy, null,
+		];
+		for (int roll = 0; roll < expected.Length; roll++) {
+			Assert.Equal(expected[roll], C7Engine.AI.EspionageAI.MissionForRoll(roll));
+		}
+	}
+
 	// Steal Technology needs only an embassy, which war closes, so the AI
-	// steals from civs at peace with it.
+	// steals from civs at peace with it. A furious AI, with an embassy,
+	// rolls Rand(10), stealing on 0-1.
 	[Fact]
 	public void AIStealsTechnologyThroughItsEmbassyAtPeace() {
 		SetUpEmbassy();
 		actor.isHuman = false;
+		actor.playerRelationships[target.id].espionageIncidents = 50;
+		Assert.Equal(AttitudeLevel.Furious, Attitudes.Level(gameData, actor, target));
 		Tech stealable = gameData.techs.First(t => t.Prerequisites.All(p => actor.knownTechs.Contains(p.id)) && !actor.knownTechs.Contains(t.id));
 		foreach (Tech t in gameData.techs) {
 			if (t != stealable && !actor.knownTechs.Contains(t.id)) {

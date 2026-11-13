@@ -7,9 +7,12 @@ using Godot;
 // renders at its full resolution while the game lays itself out in logical
 // pixels of window size / scale, so a bigger scale means bigger, still-crisp art
 // and text. The scale is kept in C7.ini and adjusted in-game with Ctrl + / - / 0.
+// It also puts the window in the display mode chosen on the settings page,
+// windowed (maximized, as project.godot opens it) or fullscreen.
 public partial class DisplayScale : Node {
 	private const string Section = "display";
 	private const string Key = "uiScale";
+	private const string FullscreenKey = "fullscreen";
 	public const float Step = 0.25f;
 	public const float Min = 0.5f;
 	public const float Max = 4f;
@@ -18,6 +21,22 @@ public partial class DisplayScale : Node {
 		Window window = GetTree().Root;
 		window.ContentScaleMode = Window.ContentScaleModeEnum.Disabled;
 		window.ContentScaleFactor = LoadScale();
+		if (Fullscreen) {
+			window.Mode = Window.ModeEnum.Fullscreen;
+		}
+	}
+
+	// Whether the game fills the screen, with no window frame or taskbar
+	// (Godot's borderless fullscreen), rather than a maximized window.
+	public static bool Fullscreen => C7Settings.GetSettingsValueOrDefault(Section, FullscreenKey, "false") == "true";
+
+	// Switches the window at once and remembers the choice for next time.
+	// The UI scale is the window's, so it carries over: the layout just
+	// gains or loses the room of the frame and taskbar.
+	public void SetFullscreen(bool on) {
+		C7Settings.SetValue(Section, FullscreenKey, on ? "true" : "false");
+		C7Settings.SaveSettings();
+		GetTree().Root.Mode = on ? Window.ModeEnum.Fullscreen : Window.ModeEnum.Maximized;
 	}
 
 	// With no saved scale, fit the game's 1080-line layout to the screen height,

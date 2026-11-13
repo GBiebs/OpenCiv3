@@ -48,16 +48,22 @@ public class FixEconomyGameTests : IClassFixture<SaveGameFixture>, System.IDispo
 		return wonder;
 	}
 
+	// Every tech's queue, from the starting techs and from nothing, has each
+	// unknown prerequisite of every queued tech before it, holds every
+	// unknown tech leading to the target once, and ends with the target.
 	[Fact]
-	public void ResearchQueuesOfTheRealTechTreeAreUnchanged() {
+	public void ResearchQueuesOfTheRealTechTreePutPrerequisitesFirst() {
 		Player player = attacker;
 		Assert.NotEmpty(gameData.techs);
 
 		void CheckAll() {
 			foreach (Tech target in gameData.techs) {
-				List<Tech> expected = FixEconomyTests.OldResearchQueue(player, target);
 				player.CalculateFreshTechQueueAndAssignNewCurrent(target);
-				Assert.Equal(expected, player.ResearchQueue.ToList());
+				List<Tech> queue = player.ResearchQueue.ToList();
+				FixEconomyTests.AssertPrerequisitesFirst(player);
+				Assert.Equal(target, queue[^1]);
+				Assert.Equal(queue.Count, queue.Distinct().Count());
+				Assert.Equal(UnknownAncestors(player, target).Count + 1, queue.Count);
 			}
 		}
 
@@ -65,6 +71,20 @@ public class FixEconomyGameTests : IClassFixture<SaveGameFixture>, System.IDispo
 		CheckAll();
 		player.knownTechs = new();
 		CheckAll();
+	}
+
+	private static HashSet<Tech> UnknownAncestors(Player player, Tech tech) {
+		HashSet<Tech> result = new();
+		Stack<Tech> todo = new(tech.Prerequisites);
+		while (todo.Count > 0) {
+			Tech t = todo.Pop();
+			if (t != tech && !player.knownTechs.Contains(t.id) && result.Add(t)) {
+				foreach (Tech p in t.Prerequisites) {
+					todo.Push(p);
+				}
+			}
+		}
+		return result;
 	}
 
 	[Fact]

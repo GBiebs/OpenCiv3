@@ -90,10 +90,25 @@ public static class C7Action {
 	public const string UnitJoinCity = "unit_join_city";
 	public const string UnitBuildBarricade = "unit_build_barricade";
 	public const string UnitAutomate = "unit_automate";
+	// Civ3's other kinds of worker automation (see WorkerAutomation), with
+	// labels.txt's keys.
+	public const string UnitRoadTo = "unit_road_to"; // Ctrl-R
+	public const string UnitRailTo = "unit_rail_to"; // Ctrl-Shift-R
+	public const string UnitAutoTradeNetwork = "unit_auto_trade_network"; // Ctrl-N
+	public const string UnitAutoIrrigateToCity = "unit_auto_irrigate_to_city"; // Ctrl-I
+	public const string UnitAutoClearForest = "unit_auto_clear_forest"; // Shift-F
+	public const string UnitAutoClearWetlands = "unit_auto_clear_wetlands"; // Shift-W
+	public const string UnitAutoClearDamage = "unit_auto_clear_damage"; // Shift-D
+	public const string UnitAutoCityOnly = "unit_auto_city_only"; // Shift-I
+	public const string UnitAutoNoAltering = "unit_auto_no_altering"; // Shift-A
+	public const string UnitAutoCityNoAltering = "unit_auto_city_no_altering"; // Ctrl-Shift-I
 	public const string UnitDisband = "unit_disband";
 	public const string UnitExplore = "unit_explore";
 	public const string UnitFortify = "unit_fortify";
 	public const string UnitGoto = "unit_goto";
+	// Civ3's Go to City (Ctrl-Shift-G), handled with the other G keys in
+	// Game.HandleKeyboardInput.
+	public const string UnitGotoCity = "unit_goto_city";
 	public const string UnitHold = "unit_hold";
 	public const string UnitSentry = "unit_sentry";
 	public const string UnitSentryEnemyOnly = "unit_sentry_enemy_only";
@@ -114,6 +129,12 @@ public static class C7Action {
 	public const string UnitRebase = "unit_rebase";
 	public const string UnitAirdrop = "unit_airdrop";
 	public const string UnitAirlift = "unit_airlift";
+	// Automated bombarding (see MapUnit_AutoBombard.cs): Shift-B, which an
+	// aircraft takes as its bombing, and its buttons. Shift-P, for
+	// automated precision bombing, is the pillage key (see Game).
+	public const string UnitAutoBombard = "unit_auto_bombard";
+	public const string UnitAutoBombing = "unit_auto_bombing";
+	public const string UnitAutoPrecisionBombing = "unit_auto_precision_bombing";
 
 	private static readonly Dictionary<string, UnitAction> toUnitAction = new() {
 		[UnitBuildCity] = UnitAction.BuildCity,
@@ -144,6 +165,9 @@ public static class C7Action {
 		[UnitRebase] = UnitAction.Rebase,
 		[UnitAirdrop] = UnitAction.Airdrop,
 		[UnitAirlift] = UnitAction.Airlift,
+		[UnitAutoBombard] = UnitAction.AutoBombard,
+		[UnitAutoBombing] = UnitAction.AutoBombing,
+		[UnitAutoPrecisionBombing] = UnitAction.AutoPrecisionBombing,
 	};
 
 	private static readonly Dictionary<string, string> toTooltip = new() {
@@ -166,6 +190,17 @@ public static class C7Action {
 		[UnitJoinCity] = "Join City",
 		[UnitBuildBarricade] = "Build Barricade",
 		[UnitAutomate] = "Automate",
+		// labels.txt's names (#UNIT_ACTIONS).
+		[UnitRoadTo] = "Road to",
+		[UnitRailTo] = "Rail to",
+		[UnitAutoTradeNetwork] = "Automate: Build Trade",
+		[UnitAutoIrrigateToCity] = "Automate: Irrigate to Nearest City",
+		[UnitAutoClearForest] = "Automate: Clear Forest",
+		[UnitAutoClearWetlands] = "Automate: Clear Wetlands",
+		[UnitAutoClearDamage] = "Automate: Clear Damage",
+		[UnitAutoCityOnly] = "Automate: This City Only",
+		[UnitAutoNoAltering] = "Automate: No Altering",
+		[UnitAutoCityNoAltering] = "Automate: No Altering/This City Only",
 		[UnitDisband] = "Disband",
 		[UnitExplore] = "Explore",
 		[UnitFortify] = "Fortify",
@@ -193,12 +228,59 @@ public static class C7Action {
 		[UnitAirdrop] = "Airdrop",
 		// labels.txt's "Airlif(T): Choose new airbase".
 		[UnitAirlift] = "Airlift",
+		// labels.txt's "Automate:^Bombard (Shift-B)", "Automate:^Bombing
+		// (Shift-B)" and "Automate:^Precision Bombing (Shift-P)".
+		[UnitAutoBombard] = "Automate: Bombard (Shift-B)",
+		[UnitAutoBombing] = "Automate: Bombing (Shift-B)",
+		[UnitAutoPrecisionBombing] = "Automate: Precision Bombing (Shift-P)",
 	};
 
 	// The unit actions that are aimed at a tile on the map.
 	public static bool IsTargetedAirMission(UnitAction action) {
 		return action is UnitAction.Bombing or UnitAction.PrecisionBombing or UnitAction.Recon
 			or UnitAction.Rebase or UnitAction.Airdrop or UnitAction.Airlift;
+	}
+
+	// The worker automation commands, in labels.txt's order (#UNIT_ACTIONS),
+	// and the kind each gives.
+	public static readonly (string action, WorkerAutomation.Kind kind)[] WorkerAutomations = [
+		(UnitRoadTo, WorkerAutomation.Kind.RoadTo),
+		(UnitRailTo, WorkerAutomation.Kind.RailTo),
+		(UnitAutoTradeNetwork, WorkerAutomation.Kind.TradeNetwork),
+		(UnitAutoIrrigateToCity, WorkerAutomation.Kind.IrrigateToCity),
+		(UnitAutoClearForest, WorkerAutomation.Kind.ClearForest),
+		(UnitAutoClearWetlands, WorkerAutomation.Kind.ClearWetlands),
+		(UnitAutoClearDamage, WorkerAutomation.Kind.ClearDamage),
+		(UnitAutoCityOnly, WorkerAutomation.Kind.ThisCityOnly),
+		(UnitAutoNoAltering, WorkerAutomation.Kind.NoAltering),
+		(UnitAutoCityNoAltering, WorkerAutomation.Kind.ThisCityNoAltering),
+	];
+
+	public static WorkerAutomation.Kind? ToWorkerAutomation(string action) {
+		foreach ((string a, WorkerAutomation.Kind kind) in WorkerAutomations) {
+			if (a == action) {
+				return kind;
+			}
+		}
+		return null;
+	}
+
+	// Whether the unit can be given the kind of worker automation: a worker
+	// that can automate, and for road and rail to, build them.
+	public static bool CanAutomate(MapUnit unit, WorkerAutomation.Kind kind) {
+		if (unit == null || !unit.unitType.isWorker || !unit.canAutomate()) {
+			return false;
+		}
+		string job = kind switch {
+			WorkerAutomation.Kind.RoadTo => UnitBuildRoad,
+			WorkerAutomation.Kind.RailTo => UnitBuildRailroad,
+			_ => null,
+		};
+		if (job == null) {
+			return true;
+		}
+		Terraform terraform = ToTerraform(job);
+		return terraform != null && unit.unitType.terraformActions.Contains(terraform) && unit.owner.HasTech(terraform.RequiredTech);
 	}
 
 	public static UnitAction? ToUnitAction(string action) {

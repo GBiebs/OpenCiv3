@@ -94,6 +94,8 @@ namespace C7Engine {
 			// Airlift defenders to threatened cities (see AirliftAI).
 			AirliftAI.PlayTurn(player);
 			await DoUnitActions(player);
+			// Units in enemy land pillage its improvements (see PillageAI).
+			await PillageAI.PlayTurn(player, gameData);
 			// A city under threat builds a defender, and gold goes first to
 			// hurrying what is needed; upgrades come after, with what's
 			// left (upgrading first spent the gold a threatened city's

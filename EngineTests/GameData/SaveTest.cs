@@ -121,6 +121,9 @@ public class SaveTests : IClassFixture<SaveGameFixture> {
 			case MsgCityProductionCompleted:
 			// The human's palace may have earned upgrades in the first turn.
 			case MsgShowPalaceUpgrade:
+			// A scenario within twenty turns of its turn limit warns the
+			// human that the game will end (TimeLimitVictory.MaybeWarn).
+			case MsgShowDomesticAdvisorPopup:
 			// The AIs that play before the human player may already hit the
 			// human's units, as AI bombers do in the WWII scenarios, before
 			// the human is made an AI too.

@@ -254,7 +254,8 @@ namespace C7Engine.PlayLog {
 		}
 
 		// Messages that only say what the UI shows.
-		private static bool Skipped(MessageToEngine msg) => msg is MsgSelectUnit or MsgAskWhatToResearch;
+		// A password isn't a move, and mustn't be written down.
+		private static bool Skipped(MessageToEngine msg) => msg is MsgSelectUnit or MsgAskWhatToResearch or MsgSetPassword;
 
 		private static ShadowAdvanced.State ShadowState(Player player) {
 			if (!shadowStates.TryGetValue(player.id, out ShadowAdvanced.State state)) {
@@ -302,6 +303,12 @@ namespace C7Engine.PlayLog {
 					row["city"] = c.name;
 					break;
 				case MsgClearProductionQueue m when gameData.GetCity(m.cityID) is City c:
+					row["city"] = c.name;
+					break;
+				case MsgSaveProductionQueue m when gameData.GetCity(m.cityID) is City c:
+					row["city"] = c.name;
+					break;
+				case MsgLoadProductionQueue m when gameData.GetCity(m.cityID) is City c:
 					row["city"] = c.name;
 					break;
 				case MsgChangeSliders:

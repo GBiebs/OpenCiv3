@@ -19,17 +19,27 @@ public static class LeaderHeadTextures {
 		return Get(civilization, civilization, 0);
 	}
 
+	// A player's leader head with the given face (the Foreign Advisor's,
+	// see ForeignReport.FaceToward). The neutral face is the one Get(player)
+	// shows.
+	public static ImageTexture Get(Player player, LeaderFace face) {
+		return Get(player, player.civilization, player.EraIndex(), face);
+	}
+
 	// Cached apart from Civ3's heads, so turning the overhaul on or off
 	// shows the other ones.
 	private const int RemadeKey = 1000;
 
-	private static ImageTexture Get(object playerOrCivilization, Civilization civilization, int eraIndex) {
+	private static ImageTexture Get(object playerOrCivilization, Civilization civilization, int eraIndex,
+			LeaderFace face = LeaderFace.Neutral) {
 		Dictionary<int, ImageTexture> byEra = cache.GetOrCreateValue(playerOrCivilization);
 		bool remade = UsesRemadeHead(civilization);
-		int key = remade ? RemadeKey : eraIndex;
+		// The remade portraits have one face for every era and mood.
+		int key = remade ? RemadeKey : eraIndex * 3 + (int)face;
 		if (!byEra.TryGetValue(key, out ImageTexture texture) || !GodotObject.IsInstanceValid(texture)) {
 			texture = remade ? RemadeHead(civilization) : null;
-			texture ??= TextureLoader.Load("leader_heads", playerOrCivilization);
+			texture ??= TextureLoader.Load("leader_heads", face == LeaderFace.Neutral || playerOrCivilization is not Player player
+				? playerOrCivilization : new LeaderPortrait(player, face));
 			byEra[key] = texture;
 		}
 		return texture;
@@ -45,6 +55,19 @@ public static class LeaderHeadTextures {
 	private static bool UsesRemadeHead(Civilization civilization) {
 		return !string.IsNullOrEmpty(civilization?.name) && ModernGraphics.Enabled && !C7Engine.C7Settings.UseStandaloneMode()
 			&& !Util.ScenarioHasArt(civilization.leaderArtFile) && ModernGraphics.HasRemadeArt(RemadePath(civilization));
+	}
+
+	// A civ's remade portrait for screens drawn in our own art (the end of
+	// the game's, with Modern graphics on or in standalone mode), or null if
+	// there's none to use: the civ isn't one of the game's, or a scenario
+	// has its own art of its leader.
+	public static ImageTexture Portrait(Civilization civilization) {
+		if (string.IsNullOrEmpty(civilization?.name)
+			|| (!C7Engine.C7Settings.UseStandaloneMode() && Util.ScenarioHasArt(civilization.leaderArtFile))
+			|| !ModernGraphics.HasRemadeArt(RemadePath(civilization))) {
+			return null;
+		}
+		return RemadeHead(civilization);
 	}
 
 	private static string RemadePath(Civilization civilization) => $"Art/Leaderheads/{civilization.name}.png";

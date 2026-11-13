@@ -28,16 +28,23 @@ namespace C7GameData {
 	}
 
 	public struct CorruptableValue {
-		public CorruptableValue(int value, float corruption) {
-			// Apply the corruption amount, ensuring that there is always at
-			// least one shield/commerce if we started with at least one.
-			useful = (int)Math.Round(value * (1 - corruption));
-			if (value > 0) {
-				useful = Math.Max(1, useful);
+		// Civ3's City_CalcCorruption rounds the amount lost, halves up, and
+		// then caps it at capTenths tenths of the amount, rounded down (90%
+		// less 10% for each courthouse-class building, see
+		// City.corruptionCapTenths). So 25 commerce at the 90% cap loses 22
+		// and keeps 3. Civ3 binary (doc/perez-findings/Civ3_Findings.md,
+		// Economy). With a cap of at most 90%, a city that makes anything
+		// always keeps at least one.
+		public CorruptableValue(int value, float corruption, int capTenths = 9) {
+			if (value <= 0) {
+				useful = value;
+				corrupt = 0;
+				return;
 			}
-
-			// Whatever is left over is corrupt.
-			corrupt = value - useful;
+			int lost = (int)Math.Floor(value * corruption + .5f);
+			lost = Math.Clamp(lost, 0, value * Math.Max(capTenths, 0) / 10);
+			corrupt = lost;
+			useful = value - lost;
 		}
 
 		public int useful;
@@ -112,6 +119,11 @@ namespace C7GameData {
 		// CalculateCorruption). Commerce is corrupted as usual.
 		public float celebrationWaste = 0;
 
+		// The most corruption and waste can take, in tenths of the amount:
+		// 9 less one per courthouse-class building and 7 per Forbidden
+		// Palace (see CalculateCorruption).
+		public int corruptionCapTenths = 9;
+
 		// The number of turns of unhappiness this city will experience due to
 		// pop rushing. Larger values result in larger numbers of citizens being
 		// unhappy as well, in addition to the time penalty.
@@ -147,6 +159,11 @@ namespace C7GameData {
 		// (see CultureFlip).
 		public int ownerChangedTurn = -1;
 
+		// Civ3's flip cooldown: while it is at least 1 the city can't flip,
+		// and each round's flip check counts it down by one instead (see
+		// CultureFlip.SetFlipCooldown). 0 in older saves.
+		public int flipCooldown;
+
 		// Kings & Nomads: the city was a city-state a civ took, so it needs
 		// an aqueduct to grow past the first size limit, fresh water or not
 		// (see CanGrowPopulationByOne).
@@ -180,12 +197,13 @@ namespace C7GameData {
 		// (see Tile.MaybeAwardForestClearingShields).
 		public bool receivedForestShields = false;
 
-		// The turn disease last struck the city, or -1 (see Disease).
+		// The turn disease last cost the city a citizen, or -1 (see
+		// Disease).
 		public int lastDiseaseTurn = -1;
 
-		// Disease struck the city this turn and takes a second citizen next
-		// turn (see Disease).
-		public bool diseaseStrikesNextTurn = false;
+		// Whether the city is ill: it loses a citizen every turn until it
+		// recovers (see Disease).
+		public bool ill = false;
 
 		// Whether the city is celebrating "We Love the King Day".
 		public bool celebrating = false;
@@ -393,7 +411,7 @@ namespace C7GameData {
 			internal List<CityBuilding> buildings;
 			internal int grantedStart;
 
-			// The same less any great wonder obsolete for the owner: the
+			// The same less any building obsolete for the owner: the
 			// buildings whose effects apply (see EffectiveBuildings). The
 			// same list as buildings when none is obsolete.
 			internal List<CityBuilding> active;
@@ -477,9 +495,9 @@ namespace C7GameData {
 
 			cache.buildings = result;
 			cache.active = result;
-			foreach (CityBuilding cb in constructed_buildings) {
-				if (cb.building.isGreatWonderObsolete(owner)) {
-					cache.active = result.Where(x => !x.building.isGreatWonderObsolete(owner)).ToList();
+			foreach (CityBuilding cb in result) {
+				if (cb.building.IsObsoleteFor(owner)) {
+					cache.active = result.Where(x => !x.building.IsObsoleteFor(owner)).ToList();
 					break;
 				}
 			}
@@ -489,12 +507,13 @@ namespace C7GameData {
 		}
 
 		// The buildings whose effects apply in this city: the same buildings
-		// as GetBuildings, without allocating, less any great wonder that is
-		// obsolete for the owner. An obsolete great wonder loses its effects,
-		// which the shipped game's code forgets to check, but keeps making
-		// culture (owner's decision, 2026-10-21): "The cultural benefits of a
-		// Wonder continue to accrue unless the Wonder is destroyed" (the
-		// manual, p.130; compendium 04). The list is shared and must not be
+		// as GetBuildings, without allocating, less any building that is
+		// obsolete for the owner (see Building.IsObsoleteFor). An obsolete
+		// great wonder loses its effects, which the shipped game's code
+		// forgets to check, but keeps making culture (owner's decision,
+		// 2026-10-21): "The cultural benefits of a Wonder continue to accrue
+		// unless the Wonder is destroyed" (the manual, p.130; compendium 04).
+		// Other obsolete buildings do the same. The list is shared and must not be
 		// modified, nor its granted entries (which GetBuildings hands out
 		// fresh copies of).
 		internal List<CityBuilding> EffectiveBuildings() {
@@ -629,8 +648,13 @@ namespace C7GameData {
 		// difficulty and "divided by 2 if accelerated production is on"
 		// (post-16848272, context unclear). The tiles'
 		// yields stay as they are, so a city grows and builds twice as fast
-		// on the same surplus, and its commerce is unchanged. See
-		// Player.ShieldCost for the shield box.
+		// on the same surplus, and its commerce is unchanged. It halves tech
+		// costs too: flag 0x200 "halves the food box, unit cost, improvement
+		// cost and tech cost base" (Perez's decompile of Civ3 Conquests,
+		// doc/perez-findings/Civ3_Findings.md, Round 2b; authoritative per the
+		// owner's 2026-11-12 ruling), so research also goes twice as fast. See
+		// Player.ShieldCost for the shield box and GameData.TechCostFor for
+		// research.
 		internal static bool AcceleratedProduction(Player owner) {
 			return owner?.rules?.AcceleratedProduction == true;
 		}
@@ -674,13 +698,16 @@ namespace C7GameData {
 		// in Civ3.
 		private bool HurryingFromAnEmptyBox() => shieldsStored == 0;
 
-		private int ShieldCostForHurrying() {
-			// If there are no shields in the box, hurrying costs double.
-			if (HurryingFromAnEmptyBox()) {
-				return owner.ShieldCost(itemBeingProduced) * 2;
-			}
+		// The shields still needed to finish the current item.
+		private int ShieldsLeftToHurry() {
 			return owner.ShieldCost(itemBeingProduced) - shieldsStored;
 		}
+
+		// Hurrying from an empty box costs double. Civ3's
+		// City_HurryProduction doubles the price, citizens or gold, after
+		// working it out for the shields still needed. Civ3 binary
+		// (doc/perez-findings/Civ3_Findings.md, 3.4 Hurry).
+		private int EmptyBoxFactor() => HurryingFromAnEmptyBox() ? 2 : 1;
 
 		// The gold it costs to buy the rest of the current item: the BIQ's
 		// "shield value in gold" (4 in the standard rules) for each shield
@@ -691,7 +718,17 @@ namespace C7GameData {
 		// turn)."
 		// https://apolyton.net/forum/civilization-series/civilization-iii/132835-food-shield-gold-explanation-help-please
 		internal int HurryGoldCost() {
-			return ShieldCostForHurrying() * owner.rules.ShieldValueInGold;
+			return ShieldsLeftToHurry() * owner.rules.ShieldValueInGold * EmptyBoxFactor();
+		}
+
+		// The citizens it costs to hurry the current item: those for the
+		// shields still needed, rounded up, then doubled from an empty box,
+		// "cost = ⌈remaining / shields-per-pop⌉, doubled with nothing
+		// invested", Civ3 binary (doc/perez-findings/Civ3_Findings.md, 3.4
+		// Hurry). So 30 shields at 20 a citizen from an empty box is 4
+		// citizens, not the 3 that doubling the shields first would give.
+		internal int HurryPopCost() {
+			return PopRushCost(ShieldsLeftToHurry(), owner.rules.CitizenValueInShields) * EmptyBoxFactor();
 		}
 
 		// The citizens it costs to hurry the given number of shields: each
@@ -730,8 +767,7 @@ namespace C7GameData {
 			if (itemBeingProduced == null) {
 				return new HurryProductionDetails() { errorMessage = "The city is not producing anything to hurry." };
 			}
-			int shieldCost = ShieldCostForHurrying();
-			if (shieldCost <= 0) {
+			if (ShieldsLeftToHurry() <= 0) {
 				return new HurryProductionDetails() { errorMessage = "There is nothing to hurry in this city." };
 			}
 
@@ -749,7 +785,7 @@ namespace C7GameData {
 					return new HurryProductionDetails() { errorMessage = "We cannot hurry production with this government." };
 
 				case Government.HurryProductionType.ForcedLabor:
-					int popCost = PopRushCost(shieldCost, rules.CitizenValueInShields);
+					int popCost = HurryPopCost();
 					if (popCost > residents.Count / 2f) {
 						return new HurryProductionDetails() { errorMessage = $"Hurrying production would take the lives of too many citizens ({popCost})." };
 					}
@@ -925,6 +961,7 @@ namespace C7GameData {
 				receivedForestShields = false;
 			}
 			if (producedItem is UnitPrototype prototype) {
+				owner.stats.RecordUnitBuilt(prototype);
 				SendToRallyPoint(AddUnit(prototype, gameData));
 			} else if (producedItem is Building building) {
 				if (building.isCenterOfEmpire) {
@@ -1073,31 +1110,42 @@ namespace C7GameData {
 			return best;
 		}
 
-		public void HandleCityGrowth(GameData gameData) {
+		// Stores the turn's food, then grows or starves the city. Returns
+		// true if it starved to nothing, for the caller to destroy (see
+		// Player.HandleCityUpdates).
+		public bool HandleCityGrowth(GameData gameData) {
 			int foodNeededToGrow = FoodNeededToGrow();
 			int foodGrowth = FoodGrowthPerTurn();
-			// In disorder "No excess food is stored" (Civilopedia,
-			// GCON_Disorder); a shortage still starves the city.
+			// In disorder the citizens eat everything the city makes, so it
+			// neither stores food nor starves: "In disorder upkeep =
+			// production, so surplus is 0". Civ3 binary
+			// (doc/perez-findings/Civ3_Findings.md, Food, growth, starvation).
 			if (isInCivilDisorder) {
-				foodGrowth = Math.Min(foodGrowth, 0);
+				foodGrowth = 0;
 			}
 			bool hasGranary = HasGranary();
 
 			foodStored += foodGrowth;
+			// Food beyond the box is thrown away, also every turn a city can't grow.
+			owner.stats.RecordGrowth(surplus: Math.Max(foodGrowth, 0), wasted: Math.Max(foodStored - foodNeededToGrow, 0));
 			foodStored = Math.Min(foodStored, foodNeededToGrow);
 
-			// Handle the city starving. A size 1 city can't shrink any further.
+			// Handle the city starving: "stock < 0 => stock 0 and lose 1
+			// citizen; if size reaches 0 the city is destroyed. This can
+			// happen to a size-1 city if its tile yield falls below its
+			// upkeep" (same source).
 			if (foodStored < 0) {
-				if (residents.Count > 1) {
-					RemoveStarvingCitizen();
-				}
 				foodStored = 0;
-				return;
+				if (residents.Count <= 1) {
+					return true;
+				}
+				RemoveStarvingCitizen();
+				return false;
 			}
 
 			// No growth necessary.
 			if (foodStored < foodNeededToGrow) {
-				return;
+				return false;
 			}
 
 			// With Longevity a full food box adds two citizens instead of one.
@@ -1122,6 +1170,7 @@ namespace C7GameData {
 					foodStored = 0;
 				}
 			}
+			return false;
 		}
 
 		// Whether a fresh water source is within the city's radius, as a
@@ -1326,13 +1375,18 @@ namespace C7GameData {
 		public IProducible ComputeTurnProduction() {
 			int shieldsBefore = shieldsStored;
 			int cost = owner.ShieldCost(itemBeingProduced);
-			shieldsStored += CurrentProductionYield().useful;
+			CorruptableValue production = CurrentProductionYield();
+			shieldsStored += production.useful;
+			// Shields beyond the cost are thrown away, whether the build finishes or not.
+			int excess = Math.Max(shieldsStored - cost, 0);
 
 			// Like a settler waiting for the city to grow, an army the empire
 			// can't support waits with its shields kept in the box.
 			bool unsupportedArmy = IsUnsupportedArmy(itemBeingProduced);
 			if (shieldsStored >= cost && residents.Count > itemBeingProduced.populationCost && !unsupportedArmy) {
 				shieldsStored = 0;
+				// Wealth turns all its shields into gold every turn.
+				RecordProductionStats(production, overflowed: itemBeingProduced is Inflow ? 0 : excess, capped: 0);
 				RemoveCitizens(itemBeingProduced.populationCost);
 				return itemBeingProduced;
 			}
@@ -1343,7 +1397,18 @@ namespace C7GameData {
 			}
 
 			shieldsStored = Math.Min(shieldsStored, owner.ShieldCost(itemBeingProduced));
+			RecordProductionStats(production, overflowed: 0, capped: excess);
 			return null;
+		}
+
+		// For the statistics (see PlayerStats.RecordProduction). In civil
+		// disorder or anarchy all the city's shields count as lost to it.
+		private void RecordProductionStats(CorruptableValue production, int overflowed, int capped) {
+			bool anarchy = owner.government.transitionType;
+			bool idle = anarchy || isInCivilDisorder;
+			int lost = idle ? production.corrupt : 0;
+			owner.stats.RecordProduction(produced: production.useful + production.corrupt, corrupted: idle ? 0 : production.corrupt,
+				lostToDisorder: anarchy ? 0 : lost, lostToAnarchy: anarchy ? lost : 0, overflowed, capped);
 		}
 
 		public int CurrentFoodYield() {
@@ -1377,7 +1442,7 @@ namespace C7GameData {
 				yield += r.tileWorked.ProductionYield(this, buildings).yield;
 			}
 			// A celebrating city wastes fewer shields (see CalculateCorruption).
-			CorruptableValue result = new(yield, celebrating ? celebrationWaste : corruption);
+			CorruptableValue result = new(yield, celebrating ? celebrationWaste : corruption, corruptionCapTenths);
 
 			// Using our value of corruption, figure out how much useful
 			// production we have to work with. Special case anarchy, where no
@@ -1627,7 +1692,7 @@ namespace C7GameData {
 			// disorder for the purpose of calculating whether a city would be
 			// happy at a certain luxury slider value even while the city is in
 			// civil disorder.
-			CorruptableValue commerce = new CorruptableValue(uncorruptedCommerce, corruption);
+			CorruptableValue commerce = new CorruptableValue(uncorruptedCommerce, corruption, corruptionCapTenths);
 			RecoverWithPolicemen(ref commerce);
 			bool inDisorder = isInCivilDisorder && respectCivilDisorder;
 			bool inAnarchy = owner.government.transitionType;
@@ -1639,13 +1704,7 @@ namespace C7GameData {
 			// TODO: Science/Luxury commerce doesn't seem to be tabulating correctly, can be negative in some cases with specialists, might be ImportCiv3 issue?
 			CommerceBreakdown result = new();
 			result.corrupted = commerce.corrupt;
-			// Civ3 rounds each share to the nearest whole value rather than
-			// down (8 commerce at 70% science is 6 beakers, not 5). Luxuries
-			// are rounded first, then science, from what's left, and taxes get
-			// the remainder.
-			result.happiness = RoundedShare(commerce.useful, owner.luxuryRate);
-			result.beakers = Math.Min(RoundedShare(commerce.useful, owner.scienceRate), commerce.useful - result.happiness);
-			result.taxes = commerce.useful - result.beakers - result.happiness;
+			(result.happiness, result.beakers, result.taxes) = SplitCommerce(commerce.useful);
 
 			// Each library, marketplace and similar building adds 50% to the
 			// share of commerce it affects, and each research-doubling wonder
@@ -1709,11 +1768,26 @@ namespace C7GameData {
 			if (commerce <= 0) {
 				return;
 			}
-			int happiness = RoundedShare(commerce, owner.luxuryRate);
-			int beakers = Math.Min(RoundedShare(commerce, owner.scienceRate), commerce - happiness);
+			(int happiness, int beakers, int taxes) = SplitCommerce(commerce);
 			result.happiness += happiness;
 			result.beakers += beakers;
-			result.taxes += commerce - happiness - beakers;
+			result.taxes += taxes;
+		}
+
+		// Shares out commerce by the owner's sliders as Civ3's
+		// City_RecalcTrade does: luxuries and science are each rounded to the
+		// nearest whole value, halves up (8 commerce at 70% science is 6
+		// beakers, not 5). If the two come to more than there is, science
+		// keeps its share and luxuries take the shortfall (5 commerce at
+		// 50%/50% is 2 luxuries and 3 beakers). Taxes get the rest. Civ3
+		// binary (doc/perez-findings/Civ3_Findings.md, Economy).
+		internal (int luxuries, int beakers, int taxes) SplitCommerce(int commerce) {
+			int luxuries = RoundedShare(commerce, owner.luxuryRate);
+			int beakers = RoundedShare(commerce, owner.scienceRate);
+			if (luxuries + beakers > commerce) {
+				luxuries = commerce - beakers;
+			}
+			return (luxuries, beakers, commerce - luxuries - beakers);
 		}
 
 		// The share of `commerce` a slider at `rate` (in tenths) gets, rounding
@@ -1773,35 +1847,9 @@ namespace C7GameData {
 				return 0;
 			}
 			EffectiveBuildingsCache cache = GetEffectiveBuildingsCache();
-			bool commercialUpkeepPaid = cache.wonders.paysTradeMaintenance;
 			int result = 0;
 			foreach (CityBuilding cb in constructed_buildings) {
-				Building b = cb.building;
-				// Civ3 charges nothing for a building one of the owner's
-				// wonders also provides (a granary alongside the Pyramids),
-				// and Smith's Trading Company pays for commercial buildings.
-				// The Conquests Civilopedia (BLDG_Trading_Company): "Pays
-				// maintenance costs for all trade-based city improvements
-				// (Harbors, Marketplaces, Banks, Airports, Commerical Dock and
-				// Stock Exchanges)", the buildings with the Commercial trait.
-				// Older lists of just Harbors, Marketplaces, Banks and Airports
-				// (https://civfanatics.com/civ3/civilopedia/wonders/) predate
-				// the Commercial Dock.
-				if (cache.providedByWonders.Contains(b)
-					|| (commercialUpkeepPaid && b.traits.Contains(Civilization.Trait.Commercial))) {
-					continue;
-				}
-				// Nor for an obsolete improvement: "Players are not supposed to
-				// pay maintenance for obsolete city improvements however they
-				// often do because the game does not recompute maintenance
-				// after a player unlocks a technology that obsoletes a city
-				// improvement" (the C3X mod's notes on the 1.22 executable,
-				// https://github.com/maxpetul/C3X/blob/master/default.c3x_config.ini).
-				// The intended rule, not the bug.
-				if (b.renderedObsoleteBy != null && owner != null && owner.knownTechs.Contains(b.renderedObsoleteBy.id)) {
-					continue;
-				}
-				result += b.maintenanceCost;
+				result += UpkeepOf(cb.building, cache);
 			}
 			// A house rule may cut the AI's upkeep (see AiHouseRules).
 			int percent = AiHouseRules.BuildingMaintenancePercent(owner);
@@ -1809,6 +1857,44 @@ namespace C7GameData {
 				result = (result * percent + 50) / 100;
 			}
 			return result;
+		}
+
+		// The gold a turn one of the city's buildings costs (the share of
+		// MaintenanceCostsRaw it accounts for, before any house rule), as
+		// the city screen shows it.
+		public int MaintenanceCostOf(CityBuilding cb) {
+			if (owner?.government != null && !owner.government.RequiresMaintenance()) {
+				return 0;
+			}
+			return UpkeepOf(cb.building, GetEffectiveBuildingsCache());
+		}
+
+		private int UpkeepOf(Building b, EffectiveBuildingsCache cache) {
+			// Civ3 charges nothing for a building one of the owner's
+			// wonders also provides (a granary alongside the Pyramids),
+			// and Smith's Trading Company pays for commercial buildings.
+			// The Conquests Civilopedia (BLDG_Trading_Company): "Pays
+			// maintenance costs for all trade-based city improvements
+			// (Harbors, Marketplaces, Banks, Airports, Commerical Dock and
+			// Stock Exchanges)", the buildings with the Commercial trait.
+			// Older lists of just Harbors, Marketplaces, Banks and Airports
+			// (https://civfanatics.com/civ3/civilopedia/wonders/) predate
+			// the Commercial Dock.
+			if (cache.providedByWonders.Contains(b)
+				|| (cache.wonders.paysTradeMaintenance && b.traits.Contains(Civilization.Trait.Commercial))) {
+				return 0;
+			}
+			// Nor for an obsolete improvement: "Players are not supposed to
+			// pay maintenance for obsolete city improvements however they
+			// often do because the game does not recompute maintenance
+			// after a player unlocks a technology that obsoletes a city
+			// improvement" (the C3X mod's notes on the 1.22 executable,
+			// https://github.com/maxpetul/C3X/blob/master/default.c3x_config.ini).
+			// The intended rule, not the bug.
+			if (b.IsObsoleteFor(owner)) {
+				return 0;
+			}
+			return b.maintenanceCost;
 		}
 
 		[MoonSharpHidden]
@@ -2218,14 +2304,7 @@ namespace C7GameData {
 			int wonders = 0;
 			for (int i = 0; i < cache.buildings.Count; ++i) {
 				CityBuilding cb = cache.buildings[i];
-				// Only the owner's own buildings make culture: a captured
-				// city's wonders make none for its captor.
-				if (cb.builtByPlayer != null && cb.builtByPlayer != owner) {
-					continue;
-				}
-				// Buildings granted by wonders never get old.
-				bool granted = i >= cache.grantedStart;
-				int culture = cb.building.culturePerTurn * (granted ? 1 : AgeMultiplier(cb, currentGameYear));
+				int culture = CultureOf(cb, i >= cache.grantedStart, currentGameYear);
 				if (cb.building.IsGreatWonder() || cb.building.isSmallWonder) {
 					wonders += culture;
 				} else {
@@ -2235,17 +2314,39 @@ namespace C7GameData {
 			return (improvements, wonders);
 		}
 
+		// The culture a turn one of the city's buildings makes (its share of
+		// GetCulturePerTurnRaw), as the city screen shows it. A building a
+		// wonder grants isn't among the city's constructed buildings.
+		public int CulturePerTurnOf(CityBuilding cb) {
+			return CultureOf(cb, !constructed_buildings.Contains(cb), CurrentGameYear());
+		}
+
+		private int CultureOf(CityBuilding cb, bool granted, int currentGameYear) {
+			// Only the owner's own buildings make culture: a captured
+			// city's wonders make none for its captor.
+			if (cb.builtByPlayer != null && cb.builtByPlayer != owner) {
+				return 0;
+			}
+			// Buildings granted by wonders never get old.
+			return cb.building.culturePerTurn * (granted ? 1 : AgeMultiplier(cb, currentGameYear));
+		}
+
 		private static int CurrentGameYear() {
 			GameData gameData = EngineStorage.gameData;
 			return gameData?.timeOptions?.GetRawNumber(gameData.turn) ?? 0;
 		}
 
-		// A building's culture doubles once it is more than a thousand years
-		// old, and only once: Civ3 saves show a temple from 1830 BC making 4
-		// culture a turn in 230 AD, not 8, and a library from 620 AD still
-		// making 3 in 1620 AD.
-		private static int AgeMultiplier(CityBuilding cb, int currentGameYear) {
-			return currentGameYear - cb.year > 1000 ? 2 : 1;
+		// A building's culture doubles once it is 1000 years old or more,
+		// and only once: "doubled when the building is 1000+ years old"
+		// (Civ3 binary, doc/perez-findings/Civ3_Findings.md, "Culture and
+		// flipping"), as the tourism bands start at 1000 years inclusive.
+		// Civ3 saves show a temple from 1830 BC making 4 culture a turn in
+		// 230 AD, not 8. A save with a library from 620 AD still making 3
+		// in 1620 AD reads as "more than 1000"; the project owner ruled the
+		// binary authoritative (2026-11-12). (Perhaps that save's culture
+		// was counted before the year advanced.)
+		internal static int AgeMultiplier(CityBuilding cb, int currentGameYear) {
+			return currentGameYear - cb.year >= 1000 ? 2 : 1;
 		}
 
 		// Conquests tourism: the gold a turn this city's great wonders with
@@ -2301,17 +2402,30 @@ namespace C7GameData {
 			return result;
 		}
 
+		// The city's culture level, 1 to 6, which sets its border radius:
+		// "Culture level = 1 + number of times g_RuleCultureBase fits into
+		// the owner's city culture, max 6" (Civ3 binary,
+		// doc/perez-findings/Civ3_Findings.md, "Culture and flipping"). We
+		// read "fits" as successive powers, as the editor describes the
+		// RULE section's Border Factor: "There are 6 levels of border
+		// expansion and under the default Border Factor of 10, they occur at
+		// 0, 10, 100, 1000, 10000, 100000" (compendium §3.10). So the base
+		// is Rules.BorderFactor, 10 in conquests.biq; a value below 2 is
+		// taken as 10.
 		public int GetBorderExpansionLevel() {
-			// Give ourselves a minimum of 1 culture to avoid taking the log of 0
-			int culture = Math.Max(1, GetCulture());
-
-			// Take the log10 of culture, rounding down (so a culture of 123
-			// would be 2, a culture of 5 would be 0, etc) and then add one to
-			// get the expansion level. With 0-9 culture our culture goal is 10^1
-			// and we have one tile of borders, with 10-99 our culture goal is
-			// 10^2 and we have two tiles of borders.
-			return (int)Math.Floor(Math.Log10(culture)) + 1;
+			int culture = GetCulture();
+			int factor = owner?.rules?.BorderFactor ?? EngineStorage.gameData?.rules?.BorderFactor ?? 10;
+			if (factor < 2) {
+				factor = 10;
+			}
+			int level = 1;
+			for (long threshold = factor; level < MaxBorderExpansionLevel && culture >= threshold; threshold *= factor) {
+				++level;
+			}
+			return level;
 		}
+
+		public const int MaxBorderExpansionLevel = 6;
 
 		public void AddBuilding(Building building) {
 			// A new power plant replaces any other one in the city.
@@ -2400,15 +2514,30 @@ namespace C7GameData {
 		// leads to "Destruction of existing city improvements" (Civilopedia,
 		// GCON_Disorder). Civ3 tells of it: "Civil Disorder intensifies in
 		// $CITYNAME0! The mob has destroyed $IMPROVEMENT1!" (script.txt).
-		// UNVERIFIED: a riot destroys one improvement picked at random, never
-		// a wonder or the palace.
+		// Civ3's City_UpdateDisorder (Civ3 binary,
+		// doc/perez-findings/Civ3_Findings.md, "Happiness, disorder,
+		// celebration" and Round 2b): never in the capital; Rand(100) <
+		// the chance, then for a town (size up to MaximumLevel1CitySize)
+		// a second Rand(100) < twice the chance; and it never destroys a
+		// wonder, a small wonder, a palace-class building or one that lets
+		// the city grow (aqueduct and sewer class).
+		// UNVERIFIED: which of the rest goes is picked at random among them.
+		// The binary makes up to size + 20 random picks, which may all miss.
 		public void MaybeRiot(GameData gameData) {
-			int chance = owner?.rules?.ChanceOfRioting ?? gameData.rules?.ChanceOfRioting ?? 0;
+			if (IsCapital()) {
+				return;
+			}
+			Rules rules = owner?.rules ?? gameData.rules;
+			int chance = rules?.ChanceOfRioting ?? 0;
 			if (chance <= 0 || GameData.rng.Next(100) >= chance) {
 				return;
 			}
+			if (rules != null && residents.Count <= rules.MaximumLevel1CitySize && GameData.rng.Next(100) >= 2 * chance) {
+				return;
+			}
 			List<CityBuilding> breakable = constructed_buildings
-				.Where(cb => !cb.building.IsGreatWonder() && !cb.building.isSmallWonder && !cb.building.isCenterOfEmpire)
+				.Where(cb => !cb.building.IsGreatWonder() && !cb.building.isSmallWonder && !cb.building.isCenterOfEmpire
+					&& !cb.building.allowsCitySize2 && !cb.building.allowsCitySize3)
 				.ToList();
 			if (breakable.Count == 0) {
 				return;
@@ -2656,9 +2785,9 @@ namespace C7GameData {
 
 			// Corruption maxes out at 90%, and this max can be reduced further
 			// via courthouses/police stations, and the forbidden palace/SPHQ.
-			float maxCorruption = Math.Max(
-				0,
-				.9f - (.1f * numAntiCorruptionBuildings + .7f * numCorruptionReducingSmallWondersInCity));
+			// The cap applies to the amounts themselves (see CorruptableValue).
+			corruptionCapTenths = Math.Max(0, 9 - numAntiCorruptionBuildings - 7 * numCorruptionReducingSmallWondersInCity);
+			float maxCorruption = corruptionCapTenths / 10f;
 			corruption = Math.Max(corruption, 0);
 			corruption = Math.Min(corruption, maxCorruption);
 			celebrationWaste = Math.Clamp(celebrationWaste, 0, maxCorruption);
@@ -2793,7 +2922,7 @@ namespace C7GameData {
 		//  - a wonder's faces in all cities (the Hanging Gardens' one, Cure
 		//    for Cancer's one, JS Bach's two), limited to the wonder's
 		//    continent when it has continental mood effects (JS Bach).
-		// An obsolete great wonder does none of this, not even in its own city.
+		// An obsolete building does none of this, not even in its own city.
 		//
 		// Assumption: the all-cities faces don't add to the wonder's own city,
 		// which only gets its in-city faces. That matches the Civilopedia: the
@@ -2806,7 +2935,7 @@ namespace C7GameData {
 		internal int BuildingContentFaces(List<CityBuilding> buildings) {
 			int result = 0;
 			foreach (CityBuilding cb in buildings) {
-				if (cb.building.isGreatWonderObsolete(owner)) {
+				if (cb.building.IsObsoleteFor(owner)) {
 					continue;
 				}
 				result -= cb.building.unhappyFacesInCity;

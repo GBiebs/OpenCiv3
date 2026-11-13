@@ -90,12 +90,15 @@ public class CityTest {
 		Assert.Single(city.residents);
 	}
 
+	// "stock < 0 => stock 0 and lose 1 citizen; if size reaches 0 the city
+	// is destroyed" (Civ3 binary, doc/perez-findings/Civ3_Findings.md, Food,
+	// growth, starvation): HandleCityGrowth tells the caller to destroy it.
 	[Fact]
-	public void SizeOneCityShouldNotStarveToZero() {
+	public void SizeOneCityStarvesToNothing() {
 		C7GameData.GameData gameData = new();
 		Player player = new();
 		player.government = new Government();
-		player.rules = new() { MaximumLevel1CitySize = 6 };
+		player.rules = new() { MaximumLevel1CitySize = 6, CityCenterFood = 0 };
 		Tile tile = new Tile(ID.None("tile"));
 
 		City city = new City(tile, player, "Gotham", ID.None("city"));
@@ -104,8 +107,7 @@ public class CityTest {
 
 		city.residents.Add(new CityResident());
 
-		city.HandleCityGrowth(gameData);
-		Assert.Single(city.residents);
+		Assert.True(city.HandleCityGrowth(gameData));
 		Assert.Equal(0, city.foodStored);
 	}
 

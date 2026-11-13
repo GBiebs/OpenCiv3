@@ -65,6 +65,7 @@
 
 	<nav aria-label="Versions">
 		<ul>
+			<li><a href="#v0.15.0">Version 0.15.0</a> <span class="muted">(November 13, 2026)</span></li>
 			<li><a href="#v0.14.1">Version 0.14.1</a> <span class="muted">(November 8, 2026)</span></li>
 			<li><a href="#v0.14.0">Version 0.14.0</a> <span class="muted">(November 8, 2026)</span></li>
 			<li><a href="#v0.13.1">Version 0.13.1</a> <span class="muted">(November 7, 2026)</span></li>
@@ -118,6 +119,47 @@
 		</ul>
 	</nav>
 	<p class="muted">A few words that come up a lot: <b>playing without Civ3</b> means playing on a computer that doesn't have the original Civilization III installed, using the game's own art and rules instead. The <b>Graphics Overhaul</b> is the game's own remade, sharper art for the map, which you can switch on or off in <kbd>Settings</kbd>. <b>Computer players</b> are the civilizations the game plays itself (the "AI").</p>
+
+	<h2 id="v0.15.0">Version 0.15.0 <span class="muted">(November 13, 2026)</span></h2>
+	<p>LAN and online games need everyone on 0.15.0.</p>
+	<p><b>New ways to play and look around:</b></p>
+	<ul>
+		<li><b>Play by email.</b> Choose Play By Email as the Game Type in Multiplayer Setup. At the end of your turn you name the save and send it to the next player. Each player can set a password, and the game never shows one player's turn to the next.</li>
+		<li>A <b>Statistics</b> screen, from the Histograph's Show list or the new button in the info box: how efficient your cities are, how lucky you've been in battle, the units you've built and the orders you've given. When the game is over it compares every civilization, start positions included.</li>
+		<li><b>Wonders of the World</b> (F7) shows each wonder's picture, who owns it, when it was built and where.</li>
+		<li>The <b>city screen</b> has Civ3's draft and governor buttons. Each improvement shows its upkeep, its culture and the citizens it makes content.</li>
+		<li>The <b>end-of-game</b> screens click through page by page: a click, Enter or Space goes on to the next one. With the Graphics Overhaul on, or without Civ3, the end-of-game screen shows the lifelike leader portraits on new backgrounds. <b>Retiring</b> now ends the game as a defeat, with the whole end-of-game sequence.</li>
+		<li>Nothing from the game interrupts the end of the game until you choose to keep playing or stop. The same goes for the Science Advisor after "What's the big picture?" and the screens a question opens, like the palace or a city.</li>
+		<li>New settings: <b>Fullscreen</b> and <b>edge scrolling</b>, which moves the map when the mouse rests at the edge of the window.</li>
+		<li>The Foreign Advisor's leaders look as they feel about you. On the Military Advisor you can pick a rival to see its army and compare it with yours.</li>
+	</ul>
+	<p><b>Civ3's orders and keys:</b></p>
+	<ul>
+		<li><b>Go to City</b> (Ctrl-Shift-G) lists your cities with the turns to each.</li>
+		<li>All of Civ3's <b>worker automation</b>: this city only, no altering, clear forests, wetlands or pollution, build trade routes, irrigate to the nearest city, road to and rail to. Workers and explorers stay automated when you load a game.</li>
+		<li><b>Automated bombarding</b> (Shift-B) and precision bombing (Shift-P) hit the target you pick every turn.</li>
+		<li>Choose which transport to board and which units to unload. "Wake Transported" is in the tile menu.</li>
+		<li>Rename a unit (Shift-N), upgrade every unit of a type (Shift-U), locate a city (Shift-L), re-base a stack of planes (J), establish an embassy (Ctrl-E), plant a spy (Ctrl-Shift-E), hide the interface (Delete), and move the unit buttons to the side (Backspace).</li>
+		<li>Save a city's production queue (Shift-Q) and load it into another city (Q).</li>
+		<li>Investigating a city shows it on the city screen.</li>
+	</ul>
+	<p><b>Plays more like Civ3</b>, checked against Civ3's own game code:</p>
+	<ul>
+		<li>Corruption, the science and luxury split, and rushing with citizens round as Civ3 does, so your numbers match Civ3's.</li>
+		<li>A city in disorder doesn't starve, and a starving city of one is lost. Pollution takes one from each of a tile's yields rather than all of them. Harbors don't work on lakes.</li>
+		<li>Riots never destroy buildings in your capital, nor your wonders, palace, aqueducts or sewers. Each nuclear plant has a 10% chance of meltdown in disorder.</li>
+		<li><b>Culture flips</b> follow Civ3's exact formula. A city can't flip for 10 turns after it's founded or changes hands, and capitals never flip.</li>
+		<li>A new advance arrives the turn after its research is complete. Accelerated Production halves research costs too.</li>
+		<li>Spy missions cost, succeed and get caught as in Civ3, and computer players send spies much less often.</li>
+		<li>Domination needs more than the land and population limits, the UN votes every 10 turns, and you're warned 20 turns before the last turn.</li>
+		<li>A unit gets its fortified bonus only with moves left, and wakes when it has healed. Barbarians never retreat.</li>
+		<li>When two civilizations make peace, each one's units in the other's land go home. Founding a city in the land of a civilization you're at peace with declares war on it.</li>
+		<li>Colonies and radar towers see the land around them. An obsolete building stops working, but its culture lasts.</li>
+		<li>Future techs count towards your score. Scenarios that allow plague have it.</li>
+		<li>Computer players pillage your land in wartime.</li>
+		<li>Ships move from tile to tile as quickly as land units.</li>
+	</ul>
+	<p>Thanks to GBiebs, whose OpenCiv3 fork inspired play by email, the Statistics screen, Go to City and several others.</p>
 
 	<h2 id="v0.14.1">Version 0.14.1 <span class="muted">(November 8, 2026)</span></h2>
 	<ul>

@@ -1138,6 +1138,31 @@ In this study a negative number is good.
   55198 (Jul 2002, 1.21f) has guesses only. Hurricane: "The exact number of
   units required is still unresolved, AFAIK." Fitz: "Contacting a
   settler/worker never brings up the war version of this demand."
+- **Engine ruling (owner, as in GBiebs/OpenCiv3 9999221c): on peace, each
+  side's units in the other's territory are moved out at once,** by the same
+  teleport as an ejection. The manual's peace terms (6.5: not to "even enter
+  the other's territory with military units") support it, but no Civ3 source
+  was found that describes units moving on signing itself. See open
+  question 12.
+- **A city may be founded inside another civ's borders, and at peace that is
+  an act of war (community).** Inverse Icarus (Apolyton "combat settlers",
+  https://apolyton.net/forum/civilization-series/civilization-iii/126826-combat-settlers
+  #1, Mar 2004): "Building a city in another civilizations land is an act of
+  war, but it can be done." CommandoBob (CFC "Anybody seen this?",
+  https://forums.civfanatics.com/threads/anybody-seen-this.325883 #3, Jun
+  2009): "If you build a city inside someone else's border, and you are at
+  peace, the act of building a city is considered an act of war", and
+  "you'll get a pop-up from the Foreign Advisor asking you to wimp-out and not
+  build the city" (that is `script.txt` `DECLARE_WAR`, "this will cause war
+  with the $CIVADJ0 people"). wilbill (CFC "other civs encrouching on my
+  borders", https://forums.civfanatics.com/threads/other-civs-encrouching-on-my-borders.113953
+  #17): "Actually you can, but it's considered a declaration of war with the
+  AI"; Brain (#2): "possible, but only if they are at war with you". Against:
+  Grogs (#3): "You can't build a city within another nation's borders";
+  Zanzin (Apolyton 126826 #7, C3C) found the option missing in one game.
+  The AI doesn't do it: SJ Frank (113953 #8): "they will never settle on your
+  land, not even during war"; eldar (#20): except when "reduced to a single
+  settler, they will settle in place (if they can)". See open question 13.
 
 ## 6.11 Espionage
 
@@ -1238,6 +1263,34 @@ In this study a negative number is good.
   Technology"
   (https://forums.civfanatics.com/threads/steal-technology.232487/post-5709659).
   Jazzmail, quote: "You have to multiply the values in the table by 0.8."
+- **Binary finding: the 80% roll is for the two thefts only, and a
+  successful spy can still be exposed.** Perez's decompile of the Conquests
+  executable (`doc/perez-findings/Civ3_Findings.md`, Round 2d "Espionage").
+  The owner ruled on 2026-11-12 that this finding is authoritative.
+  - Success roll `Rand(100) < successPct`; failing it is being caught.
+    "Second roll for Steal Tech and Steal World Map: after a successful first
+    roll, `Rand(100) < 80` completes the mission; the remaining 20% give
+    "mission failed" without being caught." *Superseded:* the study's "80% if
+    not caught" for every caught-able mission. Steal Plans, Sabotage
+    Production and Expose Enemy Spy use the success roll alone, so their
+    chance is the escape table itself (regular spy 60/75/85).
+  - "Exposed afterwards (the spy is lost even though the mission worked):
+    Steal Plans 10%, Sabotage Production 20%, Expose Mole 10%." Civ3's own
+    messages for it are in `script.txt`
+    (#ESPIONAGE_MISSION_STEAL_PLANS_SUCCESS_EXPOSED, "However, our agent was
+    caught and executed. $TITLE1 $LEADER2 is not pleased.";
+    #ESPIONAGE_MISSION_SABOTAGE_PRODUCTION_SUCCESS_EXPOSED;
+    #ESPIONAGE_MISSION_EXPOSE_MOLE_SUCCESS_EXPOSED). The engine counts the
+    exposure as an incident because of the "not pleased" line (UNVERIFIED).
+  - "The gold is charged first, always, and never refunded."
+- **Binary finding: the final price** (same source and ruling):
+  `((2*size - nativesOfSpyCiv + 1) * (cost + (sizeClass+1)*DAT_009e5ce4)) /
+  (2*size + 1)`, so a city full of the spy civ's own citizens is much cheaper.
+  `(sizeClass+1)` is the study's "level". The constant `DAT_009e5ce4` is not
+  named by the decompile; the engine takes it to be the study's "dist" (the
+  editor help above lists "the distance of the target" and "the ratio of
+  citizens between the initiating civ and the target civ" among the
+  modifiers). UNVERIFIED.
 - **Plant Spy modifiers by agent level** (Oystein, CFC 97042 page 3, Mar
   2005): "Conscript -30, Regular/Embassy 0, Veteran 10, Elite 25" (summarised
   list). An elite embassy had 75% to plant and 65% for the other spy missions.
@@ -1365,6 +1418,17 @@ In this study a negative number is good.
   2006): "They use propaganda and sabotage production, for sure." Manual
   p.~157: "Be aware that enemies can use all the same techniques against your
   civilization as you use against theirs."
+- **How often the AI spies (binary finding).** Perez's decompile
+  (`doc/perez-findings/Civ3_Findings.md`, Round 2d, `AI_ConsiderEspionage`;
+  authoritative per the owner's 2026-11-12 ruling): each turn, per civ,
+  `Rand(range)` with range 200000, 20000, 2000, 200, 20 for relationship
+  level 0..4, halved with an embassy (or "a positive counter"); 0-1 steal
+  tech, 2 steal map, 3 steal plans, 4-5 propaganda, 6-7 sabotage, 8-9 expose
+  mole; only allowed missions, and never one the target's government is
+  immune to. The decompile does not decode which relationship gives which
+  level. Engine reading (HEURISTIC): the AI's attitude, Gracious 0 to Furious
+  4, so a furious AI with an embassy tries a mission every turn and a
+  cautious one about 1 turn in 100.
 
 ## 6.12 United Nations (brief)
 
@@ -1377,8 +1441,15 @@ In this study a negative number is good.
   least 25% of the world's territory", or "at least 25% of the world's
   population". If only one civ is eligible, "the second candidate is the
   civilization with the largest population."
-- **The UN owner decides whether to hold the vote, every 11 turns.** Source:
-  CivFanatics FAQ. Quote: the choice "comes around every 11 turns". Also
+  - **Binary finding: more than 25%.** Perez's decompile of the Conquests
+    executable (`doc/perez-findings/Civ3_Findings.md`, Round 2 "Victory
+    conditions"): candidates "own a United-Nations-class wonder ... or more
+    than 25% of land or population". The owner ruled on 2026-11-12 that this
+    finding is authoritative. *Superseded:* the Civilopedia's "at least 25%".
+- **The UN owner decides whether to hold the vote, every 10 turns.** Binary
+  finding (same source and ruling): "vote every 10 turns". *Superseded:* the
+  CivFanatics FAQ's "comes around every 11 turns", and Turner's "every 11
+  turns" below. Also
   `script.txt` `DIPLOVICTORYVOTEOPTION`: "Would you like to hold elections for
   UN Secretary-General?" and "Election was inconclusive; no majority was
   found."
@@ -1623,3 +1694,12 @@ war (6.11, informal test).
 11. **Embassy-granting wonder** (Marco Polo's Embassy): its presence and
     effect per version were not checked here. It belongs to the wonders
     section.
+12. **Whether signing peace itself moves units out of the other's territory.**
+    The engine does (owner's ruling, 6.10). Civ3 sources only describe units
+    teleported out when told to leave; none was found for the signing. A test
+    in Civ3 (make peace with units inside the AI's borders) would settle it.
+13. **Founding a city inside another civ's borders.** The engine follows the
+    community reports (6.10): allowed; at peace the Foreign Advisor asks
+    (`DECLARE_WAR`) and founding declares war; the AI never does it. Two
+    reports say it is impossible; Zanzin (C3C) saw the option missing once,
+    possibly for another reason (spacing, terrain). Unverified in the game.

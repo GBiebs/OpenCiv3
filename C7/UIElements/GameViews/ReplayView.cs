@@ -39,6 +39,14 @@ public partial class ReplayView : Control {
 
 	private Action onExit;
 
+	// At the end of the game the replay is one of its pages (see
+	// EndOfGame): a click on it (off its controls), Enter, Space or its Next
+	// button goes on to the next one.
+	private bool EndOfGamePage => onExit != null;
+	private Button next;
+	private ulong shownAt;
+	private const ulong InputGraceMsec = 300;
+
 	// What is read from the game when the replay opens.
 	private readonly Dictionary<string, Color> civColors = new();
 	private readonly Dictionary<string, Player> civs = new();
@@ -87,8 +95,8 @@ public partial class ReplayView : Control {
 			// Without Civ3's art (standalone mode), a parchment in a frame,
 			// as the Hall of Fame has, for the dark ink of the labels and
 			// the Histograph.
-			AddChild(new ColorRect { Color = Color.Color8(196, 180, 140), Size = new Vector2(1024, 768) });
-			AddChild(new ColorRect { Color = Color.Color8(240, 226, 190), Position = new Vector2(140, 12), Size = new Vector2(744, 700) });
+			AddChild(new ColorRect { Color = Color.Color8(196, 180, 140), Size = new Vector2(1024, 768), MouseFilter = MouseFilterEnum.Pass });
+			AddChild(new ColorRect { Color = Color.Color8(240, 226, 190), Position = new Vector2(140, 12), Size = new Vector2(744, 700), MouseFilter = MouseFilterEnum.Pass });
 		}
 
 		Label title = AdvisorUtils.CreateLabel(this, "SUMMARY REPLAY", new Rect2(247, 21, 530, 26), 20);
@@ -97,7 +105,7 @@ public partial class ReplayView : Control {
 		// "Current Date:" (labels.txt) and the date.
 		dateLabel = AdvisorUtils.CreateLabel(this, "", new Rect2(402, 104, 300, 20), 14);
 
-		AddChild(new ColorRect { Position = MapArea.Position, Size = MapArea.Size, Color = new Color(0, 0, 0) });
+		AddChild(new ColorRect { Position = MapArea.Position, Size = MapArea.Size, Color = new Color(0, 0, 0), MouseFilter = MouseFilterEnum.Pass });
 		map = new TextureRect {
 			Position = MapArea.Position,
 			Size = MapArea.Size,
@@ -128,10 +136,10 @@ public partial class ReplayView : Control {
 		showLocation.AddThemeFontSizeOverride("font_size", 13);
 		AddChild(showLocation);
 
-		graph = new HistographGraph { Position = new Vector2(166, 468), Size = new Vector2(320, 208) };
+		graph = new HistographGraph { Position = new Vector2(166, 468), Size = new Vector2(320, 208), MouseFilter = MouseFilterEnum.Pass };
 		AddChild(graph);
 
-		eventScroll = new ScrollContainer { Position = new Vector2(530, 468), Size = new Vector2(320, 208), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+		eventScroll = new ScrollContainer { Position = new Vector2(530, 468), Size = new Vector2(320, 208), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, MouseFilter = MouseFilterEnum.Pass };
 		eventList = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		eventScroll.AddChild(eventList);
 		AddChild(eventScroll);
@@ -144,7 +152,62 @@ public partial class ReplayView : Control {
 		AddChild(eventBox);
 
 		TextureButton exit = AdvisorUtils.CreateExitButton(this);
-		exit.Pressed += () => GetParent<GameViews>().Hide();
+		exit.Pressed += Leave;
+
+		// labels.txt's "Next", beside the close button.
+		next = PlainButton("Next  ▸", 12);
+		next.Position = new Vector2(820, 724);
+		next.Size = new Vector2(118, 30);
+		next.FocusMode = FocusModeEnum.None;
+		next.Visible = EndOfGamePage;
+		next.Pressed += Leave;
+		AddChild(next);
+	}
+
+	private void Leave() => GetParent<GameViews>().Hide();
+
+	public override void _GuiInput(InputEvent @event) {
+		if (EndOfGamePage && @event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
+				&& Time.GetTicksMsec() - shownAt >= InputGraceMsec) {
+			AcceptEvent();
+			Leave();
+		}
+	}
+
+	public override void _Input(InputEvent @event) {
+		if (EndOfGamePage && IsVisibleInTree() && @event is InputEventKey { Pressed: true, Keycode: Key.Enter or Key.KpEnter or Key.Space }) {
+			GetViewport().SetInputAsHandled();
+			if (Time.GetTicksMsec() - shownAt >= InputGraceMsec) {
+				Leave();
+			}
+		}
+	}
+
+	// A dark button edged in gold, with light text, as the replay's buttons
+	// are without Civ3's art.
+	private static Button PlainButton(string label, int fontSize) {
+		Button plain = new() { Text = label, ClipText = true, TooltipText = label };
+		plain.AddThemeFontSizeOverride("font_size", fontSize);
+		StyleBoxFlat Box(Color fill) => new() {
+			BgColor = fill,
+			BorderColor = Color.Color8(170, 140, 70),
+			BorderWidthLeft = 1,
+			BorderWidthTop = 1,
+			BorderWidthRight = 1,
+			BorderWidthBottom = 1,
+			CornerRadiusTopLeft = 3,
+			CornerRadiusTopRight = 3,
+			CornerRadiusBottomLeft = 3,
+			CornerRadiusBottomRight = 3,
+		};
+		plain.AddThemeStyleboxOverride("normal", Box(Color.Color8(70, 55, 35)));
+		plain.AddThemeStyleboxOverride("hover", Box(Color.Color8(95, 75, 45)));
+		plain.AddThemeStyleboxOverride("pressed", Box(Color.Color8(50, 40, 25)));
+		plain.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+		foreach (string color in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) {
+			plain.AddThemeColorOverride(color, Color.Color8(245, 232, 200));
+		}
+		return plain;
 	}
 
 	// A button of replay_nav.pcx, whose rows are its looks (UNVERIFIED which
@@ -163,29 +226,8 @@ public partial class ReplayView : Control {
 				TooltipText = label,
 			};
 		} else {
-			Button plain = new() { Text = label, ClipText = true, TooltipText = label };
-			plain.AddThemeFontSizeOverride("font_size", 10);
 			// Dark buttons edged in gold, with light text, on the parchment.
-			StyleBoxFlat Box(Color fill) => new() {
-				BgColor = fill,
-				BorderColor = Color.Color8(170, 140, 70),
-				BorderWidthLeft = 1,
-				BorderWidthTop = 1,
-				BorderWidthRight = 1,
-				BorderWidthBottom = 1,
-				CornerRadiusTopLeft = 3,
-				CornerRadiusTopRight = 3,
-				CornerRadiusBottomLeft = 3,
-				CornerRadiusBottomRight = 3,
-			};
-			plain.AddThemeStyleboxOverride("normal", Box(Color.Color8(70, 55, 35)));
-			plain.AddThemeStyleboxOverride("hover", Box(Color.Color8(95, 75, 45)));
-			plain.AddThemeStyleboxOverride("pressed", Box(Color.Color8(50, 40, 25)));
-			plain.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
-			foreach (string color in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" }) {
-				plain.AddThemeColorOverride(color, Color.Color8(245, 232, 200));
-			}
-			button = plain;
+			button = PlainButton(label, 10);
 		}
 		button.Position = new Vector2(x, 392);
 		button.Size = new Vector2(width, 29);
@@ -196,6 +238,10 @@ public partial class ReplayView : Control {
 	// Opens the replay of the game; onExit runs once it is closed.
 	public void ShowView(Action onExit) {
 		this.onExit = onExit;
+		shownAt = Time.GetTicksMsec();
+		if (next != null) {
+			next.Visible = EndOfGamePage;
+		}
 		Show();
 		if (map == null) {
 			return;

@@ -433,11 +433,22 @@ namespace C7Engine.AI {
 		// Asks the civs we're at war with for peace, if the war is going
 		// badly for us (or demands a city for it, if it's going very well).
 		// A human is shown the offer and may accept it on the deal screen.
-		public static async Task ProposePeace(Player us, GameData gameData) {
+		// Playing by email, a human hears the offers at the start of their
+		// turn, onlyWith them (see PlayByEmail.HearFromAIs).
+		public static async Task ProposePeace(Player us, GameData gameData, Player onlyWith = null) {
 			if (us.isHuman || us.IsIndependent) {
 				return;
 			}
 			foreach (Player them in gameData.players.ToList()) {
+				if (onlyWith != null && them != onlyWith) {
+					continue;
+				}
+				// A human who can't answer now (a LAN guest who has left, or a
+				// human away playing by email) isn't asked, and the offer
+				// isn't spent on them.
+				if (them.isHuman && !EngineStorage.IsPlayerReachable(them.id)) {
+					continue;
+				}
 				if (them == us || them.IsIndependent || them.defeated
 					|| !TryGetRelationship(us, them, out PlayerRelationship ourView) || !ourView.AtWar()
 					|| gameData.AreInLockedWar(us, them)) {

@@ -261,17 +261,21 @@ public static class AdvisorUtils {
 	private static string scriptPath;
 
 	// Civ3's script.txt, from the scenario's folder or the install, read
-	// again only if that changes. Null without one, as in standalone mode.
+	// again only if that changes. Without one, as in standalone mode, the
+	// advisors say the same things in our words (AdvisorFallbackScript),
+	// where before they only said a line or two of their own, always
+	// smiling.
 	private static ScriptText Script() {
 		string path = Util.HasCiv3Media("Text/script.txt") ? Util.Civ3MediaPath("Text/script.txt") : null;
 		if (path != scriptPath) {
 			scriptPath = path;
 			script = path == null ? null : ScriptText.Load(path);
 		}
-		return script;
+		return script?.Count > 0 ? script : AdvisorFallbackScript.Text;
 	}
 
-	// Whether the advisors speak in the words of script.txt.
+	// Whether the advisors have words to speak (always, now that there's a
+	// fallback for script.txt).
 	public static bool HasScript() => Script()?.Count > 0;
 
 	/// <summary>

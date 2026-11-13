@@ -10,7 +10,7 @@ using C7Engine.AI.UnitAI;
 using Serilog;
 
 namespace C7Engine {
-	public class WorkerAI : UnitAI {
+	public partial class WorkerAI : UnitAI {
 		private static ILogger log = Log.ForContext<WorkerAI>();
 		private WorkerAIData data;
 
@@ -141,6 +141,12 @@ namespace C7Engine {
 		private const int MaxJobsLeavingOurLand = 3;
 
 		public static WorkerAIData MakeAiData(MapUnit unit, Player player) {
+			// Civ3's kinds of worker automation have their own jobs, but for
+			// No Altering, which is plain automation that keeps what's built
+			// (see GetTileImprovement).
+			if (unit.workerAutomation is WorkerAutomation how && how.kind != WorkerAutomation.Kind.NoAltering) {
+				return WorkerAutomationPlan(unit, player, how);
+			}
 			if (!CityStateRoadAI.IsOn(player)) {
 				return MakeAiData(unit, player, null, null, false);
 			}
@@ -563,7 +569,8 @@ namespace C7Engine {
 				}
 				return this.TryToMoveAlongPath(unit, ref data.pathToDestination);
 			}
-			Terraform? improvement = GetTileImprovement(unit.location, unit);
+			Terraform? improvement = unit.workerAutomation is WorkerAutomation how && how.kind != WorkerAutomation.Kind.NoAltering
+				? WorkerAutomationJobOnTheWay(unit, how) : GetTileImprovement(unit.location, unit);
 			if (improvement != null) {
 				return PerformWorkerMove(unit, improvement);
 			}
@@ -696,6 +703,9 @@ namespace C7Engine {
 		}
 
 		private static Terraform? GetTileImprovement(Tile t, MapUnit unit) {
+			if (unit.workerAutomation?.NoAlterations == true) {
+				return ComputeTileImprovement(t, unit, noAltering: true);
+			}
 			if (planningCaches.TryGetValue(unit.owner, out PlanningCache cache)) {
 				return cache.BestTerraform(t, unit);
 			}
@@ -733,7 +743,7 @@ namespace C7Engine {
 		// Colonies and outposts (whose terraform scores 0, see
 		// terraforms.ai_score.default) are planned in WorkerHoldingsAI, not
 		// here.
-		private static Terraform? ComputeTileImprovement(Tile t, MapUnit unit) {
+		private static Terraform? ComputeTileImprovement(Tile t, MapUnit unit, bool noAltering = false) {
 			if (!t.IsLand()) {
 				return null;
 			}
@@ -757,7 +767,7 @@ namespace C7Engine {
 			Terraform? best = null;
 			int bestScore = 0;
 			foreach (Terraform terraform in terraforms) {
-				if (!unit.CanPerformTerraformAction(terraform, t)) {
+				if (!unit.CanPerformTerraformAction(terraform, t) || (noAltering && AltersImprovement(terraform, t))) {
 					continue;
 				}
 				int aiScore = terraform.CalculateAIScore(player, t);

@@ -14,7 +14,14 @@ namespace C7GameData.Save {
 		public List<TileLocation> path;
 		public int hitPointsRemaining;
 		public float movePointsRemaining;
-		public string action; // "fortified", "sentry" or "sentryEnemyOnly"
+		// "fortified", "sentry", "sentryEnemyOnly", or for automated
+		// bombarding (see MapUnit_AutoBombard.cs) "autoBombard",
+		// "autoBombing" or "autoPrecisionBombing".
+		public string action;
+		// The tile an automated bombardment fires at, and the turn it last
+		// did. Older saves have neither, and no such action.
+		public TileLocation? autoBombardTarget;
+		public int autoBombardTurn = -1;
 		public TileDirection facingDirection = TileDirection.SOUTHEAST;
 		public string experience;
 		public float WorkerProgressTowardsJob;
@@ -24,6 +31,15 @@ namespace C7GameData.Save {
 		// True for multiple types of automation, including worker automation
 		// and automated exploring.
 		public bool isAutomated;
+		// Which one: "work" or "explore" (MapUnit.AutomationKind). Saves made
+		// before it was saved have none, and the unit guesses by its type.
+		public string automation;
+
+		// The kind of worker automation (a WorkerAutomation.Kind), or null
+		// for plain automation, and its city or destination. Older saves
+		// have neither, and their workers have plain automation.
+		public string workerAutomation;
+		public TileLocation? workerAutomationTarget;
 
 		// True if the unit held this turn before moving, so it still heals.
 		public bool heldWithoutMoving;
@@ -80,8 +96,20 @@ namespace C7GameData.Save {
 			hitPointsRemaining = unit.hitPointsRemaining;
 			action = unit.isFortified ? "fortified"
 				: unit.isSentried ? (unit.sentryEnemyOnly ? "sentryEnemyOnly" : "sentry")
+				: unit.IsAutoBombarding() && Tile.IsTileValid(unit.autoBombardTarget) ? "auto" + unit.autoBombard
 				: "";
+			if (action.StartsWith("auto")) {
+				autoBombardTarget = new TileLocation(unit.autoBombardTarget);
+				autoBombardTurn = unit.autoBombardTurn;
+			}
 			isAutomated = unit.isAutomated;
+			if (unit.isAutomated && unit.workerAutomation != null) {
+				workerAutomation = unit.workerAutomation.kind.ToString();
+				if (unit.workerAutomation.target != null && unit.workerAutomation.target != Tile.NONE) {
+					workerAutomationTarget = new TileLocation(unit.workerAutomation.target);
+				}
+			}
+			automation = unit.AutomationKind();
 			heldWithoutMoving = unit.heldWithoutMoving;
 			hasAttackedThisTurn = unit.hasAttackedThisTurn;
 			hasPillagedThisTurn = unit.hasPillagedThisTurn;
@@ -195,9 +223,22 @@ namespace C7GameData.Save {
 			} else {
 				unit.location.unitsOnTile.Add(unit);
 			}
+			if (action != null && action.StartsWith("auto") && autoBombardTarget != null
+				&& System.Enum.TryParse(action[4..], out MapUnit.AutoBombardMode mode) && mode != MapUnit.AutoBombardMode.None) {
+				Tile target = map.tileAt(autoBombardTarget.Value.X, autoBombardTarget.Value.Y);
+				if (Tile.IsTileValid(target)) {
+					unit.autoBombard = mode;
+					unit.autoBombardTarget = target;
+					unit.autoBombardTurn = autoBombardTurn;
+				}
+			}
 			unit.path = ToTilePath(map);
+			unit.workerAutomation = ToWorkerAutomation(map);
 			unit.movementPoints.reset(movePointsRemaining);
 			unit.name = string.IsNullOrEmpty(name) ? unit.unitType.name : name;
+			if (isAutomated) {
+				unit.resumeAutomation = automation;
+			}
 
 			Player originalNationality = Lookups.Find(lookups.playersByCivilizationName, nationality);
 			if (originalNationality != null) {
@@ -207,6 +248,17 @@ namespace C7GameData.Save {
 			}
 
 			return unit;
+		}
+
+		// The unit's kind of worker automation, or null for none (or one
+		// this game doesn't know).
+		private WorkerAutomation ToWorkerAutomation(GameMap map) {
+			if (!isAutomated || string.IsNullOrEmpty(workerAutomation)
+					|| !System.Enum.TryParse(workerAutomation, out WorkerAutomation.Kind kind)) {
+				return null;
+			}
+			Tile target = workerAutomationTarget is TileLocation at ? map.tileAt(at.X, at.Y) : null;
+			return new WorkerAutomation(kind, target == Tile.NONE ? null : target);
 		}
 
 		// The path the unit was following, or null if it had none. A path

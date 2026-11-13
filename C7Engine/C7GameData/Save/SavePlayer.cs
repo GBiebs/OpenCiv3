@@ -23,6 +23,19 @@ namespace C7GameData.Save {
 		// The name of the person playing, for human players in a hotseat game.
 		public string name;
 
+		// Hotseat and play by email: the player's password, hashed, and
+		// whether they've chosen it (see Player.passwordHash).
+		public string passwordHash = "";
+		public bool passwordChosen = false;
+		// Play by email: the news kept for the player's turn, and the turn
+		// the computer players last had their say with them (see
+		// PlayByEmail).
+		public List<string> newsWhileAway = new();
+		public int heardFromAIsOnTurn = -1;
+		// The production queues the player saved (see SavedProductionQueue);
+		// none in older saves.
+		public List<SavedProductionQueue> savedProductionQueues = new();
+
 		public string civilization;
 
 		// The tiles this player knows about, in the order they learned of
@@ -125,6 +138,12 @@ namespace C7GameData.Save {
 		// Player.bonusFreeTechsRemaining); 0 in older saves.
 		public int bonusFreeTechsRemaining = 0;
 
+		// Future techs learned, once every advance was known; 0 in older saves.
+		public int futureTechs;
+
+		// The statistics screen's records (see PlayerStats); empty in older saves.
+		public PlayerStats stats;
+
 		// If the government is anarchy (or a govt with the transition bool set
 		// to true), the turn number at which switching governments is allowed.
 		public int inAnarchyUntilTurn = 0;
@@ -172,6 +191,12 @@ namespace C7GameData.Save {
 				hasPlayedThisTurn = hasPlayedCurrentTurn,
 				skipFirstTurn = skipFirstTurn,
 				name = name,
+				passwordHash = passwordHash ?? "",
+				passwordChosen = passwordChosen,
+				newsWhileAway = new(newsWhileAway ?? new()),
+				heardFromAIsOnTurn = heardFromAIsOnTurn,
+				// Copied, so that the game doesn't change the save.
+				savedProductionQueues = (savedProductionQueues ?? []).ConvertAll(q => q.Copy()),
 				defeated = defeated,
 				primaryColorIndex = primaryColorIndex,
 				secondaryColorIndex = secondaryColorIndex,
@@ -196,6 +221,8 @@ namespace C7GameData.Save {
 				cityStatesCaptured = cityStatesCaptured,
 				freeTechsRemaining = freeTechsRemaining,
 				bonusFreeTechsRemaining = bonusFreeTechsRemaining,
+				futureTechs = futureTechs,
+				stats = stats ?? new(),
 				neverHadCityOrSettler = neverHadCityOrSettler,
 				receivedStartUnits = receivedStartUnits ?? false,
 				kingsLost = kingsLost,
@@ -302,6 +329,11 @@ namespace C7GameData.Save {
 			hasPlayedCurrentTurn = player.hasPlayedThisTurn;
 			skipFirstTurn = player.skipFirstTurn;
 			name = player.name;
+			passwordHash = player.passwordHash;
+			passwordChosen = player.passwordChosen;
+			newsWhileAway = new(player.newsWhileAway);
+			heardFromAIsOnTurn = player.heardFromAIsOnTurn;
+			savedProductionQueues = player.savedProductionQueues.ConvertAll(q => q.Copy());
 			defeated = player.defeated;
 			civilization = player.civilization?.name;
 			// TODO: this should be computed by looking at cities defined in the save
@@ -338,6 +370,8 @@ namespace C7GameData.Save {
 			cityStatesCaptured = player.cityStatesCaptured;
 			freeTechsRemaining = player.freeTechsRemaining;
 			bonusFreeTechsRemaining = player.bonusFreeTechsRemaining;
+			futureTechs = player.futureTechs;
+			stats = player.stats.IsEmpty ? null : player.stats;
 			neverHadCityOrSettler = player.neverHadCityOrSettler;
 			receivedStartUnits = player.receivedStartUnits;
 			kingsLost = player.kingsLost;

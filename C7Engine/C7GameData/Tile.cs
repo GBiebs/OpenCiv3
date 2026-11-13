@@ -399,6 +399,17 @@ namespace C7GameData {
 			return baseTerrainType.IsWater;
 		}
 
+		// Whether the tile is water in a body of more than 20 tiles, where
+		// Harbour, Offshore Platform and Commercial Dock class buildings
+		// work: their +1 applies "only on bodies of water larger than 20
+		// tiles". Civ3 binary (doc/perez-findings/Civ3_Findings.md,
+		// Economy). Smaller bodies are the fresh water lakes (see
+		// GameMap.MaxFreshWaterLakeTiles), so this is salt water.
+		[LuaMethod]
+		public bool IsInLargeBodyOfWater() {
+			return baseTerrainType.IsWater && !isFreshWater;
+		}
+
 		public bool IsCoast() {
 			return baseTerrainType.IsCoast;
 		}
@@ -507,6 +518,14 @@ namespace C7GameData {
 			}
 
 			return false;
+		}
+
+		// The civ, at peace with the player, whose borders the tile is in, or
+		// null if none (no one's land, the player's own, or an enemy's).
+		// Founding a city there is an act of war on that civ, as in Civ3
+		// (compendium 6.10; see MapUnit.BuildCity).
+		public Player? PeacefulOwnerFor(Player player) {
+			return OwningPlayer() is Player owner && owner != player && !PlayerRelationship.AtWar(player, owner) ? owner : null;
 		}
 
 		public Player? OwningPlayer() {

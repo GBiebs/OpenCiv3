@@ -127,6 +127,44 @@ public static class VictoryScreenLayout {
 
 	public static string Background(int screen) => Backgrounds[screen];
 
+	// The keys a civ's faces may have in PediaIcons.txt after the mood's
+	// prefix, best first: its Civilopedia entry (like RACE_ROMANS), then,
+	// for a game saved before civs kept theirs, RACE_ and its noun, name or
+	// adjective, or the adjective made plural (RACE_BABYLON is Babylon's
+	// name, RACE_RUSSIAN Russia's adjective, RACE_MAYANS the Maya's).
+	public static List<string> RaceKeys(Civilization civ) {
+		List<string> keys = [];
+		if (civ == null) {
+			return keys;
+		}
+		if (!string.IsNullOrWhiteSpace(civ.civilopediaEntry)) {
+			keys.Add(civ.civilopediaEntry.Trim());
+		}
+		foreach (string name in new[] { civ.noun, civ.name, civ.adjective, civ.adjective == null ? null : civ.adjective + "s" }) {
+			if (!string.IsNullOrWhiteSpace(name)) {
+				string key = CivilopediaCatalog.KeyFromName("RACE_", name).ToUpperInvariant();
+				if (!keys.Contains(key)) {
+					keys.Add(key);
+				}
+			}
+		}
+		return keys;
+	}
+
+	// The style a head's frame is drawn in on our own (Modern graphics)
+	// screen, for its face's mood: our portraits have one face, so the
+	// frame shows the mood. Glory for the winners (happy and gloating),
+	// love for the kisses and hearts, anger for the sore losers, and hurt
+	// for the beaten.
+	public enum FrameStyle { Glory, Love, Angry, Hurt }
+
+	public static FrameStyle FrameFor(string mood) => mood switch {
+		LargeKiss or SmallKiss or InLove or Loved => FrameStyle.Love,
+		Angry => FrameStyle.Angry,
+		LargeHurt or Hurt => FrameStyle.Hurt,
+		_ => FrameStyle.Glory,
+	};
+
 	public static (int x, int y) Place(int screen, int slot) =>
 		IsDefeatLayout(screen) ? DefeatPlaces[slot] : VictoryPlaces[slot];
 

@@ -82,6 +82,31 @@ public class MultiplayerSlotsTest {
 		Assert.Equal("Player 3", plan.hotseatPlayers[1].name);
 	}
 
+	// Playing by email, as in hotseat, the host names the other players and
+	// chooses their civilizations; nobody joins over the network.
+	[Fact]
+	public void PlayingByEmailOpenSlotsAreOtherPlayersSetUpHere() {
+		List<PlayerSlot> slots = [
+			new(SlotKind.Open, Civ(1), "Bob"),
+			new(SlotKind.Computer),
+		];
+		MultiplayerPlan plan = MultiplayerSlots.Plan(MultiplayerGameType.PlayByEmail, Civ(0), slots, Civilizations(), new Random(1));
+
+		Assert.Null(plan.problem);
+		Assert.Equal(0, plan.guestSeats);
+		HotseatPlayer bob = Assert.Single(plan.hotseatPlayers);
+		Assert.Equal(Civ(1), bob.civilization.name);
+		Assert.Equal("Bob", bob.name);
+
+		NewGameChoices choices = new();
+		MultiplayerSlots.RememberSlots(choices, MultiplayerGameType.PlayByEmail, slots);
+		Assert.Equal(nameof(MultiplayerGameType.PlayByEmail), choices.MultiplayerGameType);
+		Assert.Equal(SlotKind.Open, MultiplayerSlots.SlotsAsLastTime(choices, MultiplayerGameType.PlayByEmail, 2)[0].kind);
+
+		List<PlayerSlot> computers = [new(SlotKind.Computer)];
+		Assert.NotNull(MultiplayerSlots.Plan(MultiplayerGameType.PlayByEmail, Civ(0), computers, Civilizations(), new Random(1)).problem);
+	}
+
 	[Fact]
 	public void ARandomHostCivilizationIsNoSlotsCivilization() {
 		List<string> playable = Civilizations().Where(c => !c.isBarbarian).Select(c => c.name).ToList();

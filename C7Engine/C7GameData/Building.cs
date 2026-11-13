@@ -561,20 +561,38 @@ namespace C7GameData {
 		}
 
 		// Whether the building's effects apply for the owner: every building
-		// but a great wonder obsolete for it (see City.EffectiveBuildings;
-		// owner's decision, 2026-10-21).
+		// but one obsolete for it (see City.EffectiveBuildings).
 		public bool TakesEffectFor(Player owner) {
-			return !isGreatWonderObsolete(owner);
+			return !IsObsoleteFor(owner);
 		}
 
+		// Whether the owner knows the tech that makes the building obsolete.
+		// An obsolete building can't be built, loses its effects and costs no
+		// upkeep, but keeps making culture.
+		//
+		// Civ3's editor offers "Rendered Obsolete By" for great wonders only
+		// (EDHELP, Rendered_Obsolete_By_Wonder_Properties: "This option is
+		// only available if the "wonder" category is selected"), so in
+		// Conquests' rules no other building goes obsolete. A rule file can
+		// still give one to any building, and the 1.22 code checks it for
+		// every building in places: the luxury, science and tax multipliers
+		// skip "a building ... if its owner already knows the building's
+		// obsoleting tech" (Perez's decompile, Civ3_Findings.md), and
+		// maintenance, when recomputed, "does skip obsolete buildings"
+		// (Flintlock, compendium c3x-thread-notes-2). So every obsolete
+		// building loses its effects, as an obsolete great wonder does.
+		// UNVERIFIED beyond those two: whether the stock code checks it for
+		// a regular improvement's other effects (defence, happiness,
+		// production) is not known (compendium 02, open questions); this
+		// takes the wonders' rule, effects stop and culture continues
+		// (MANUAL p.130), as the most plausible reading.
+		public bool IsObsoleteFor(Player owner) {
+			return renderedObsoleteBy != null && owner?.knownTechs != null && owner.knownTechs.Contains(renderedObsoleteBy.id);
+		}
+
+		// Whether this is a great wonder obsolete for the owner.
 		public bool isGreatWonderObsolete(Player owner) {
-			if (greatWonderProperties == null) {
-				return false;
-			}
-			if (renderedObsoleteBy == null) {
-				return false;
-			}
-			return owner.knownTechs.Contains(renderedObsoleteBy.id);
+			return greatWonderProperties != null && IsObsoleteFor(owner);
 		}
 
 		public SaveBuilding ToSaveBuilding() {

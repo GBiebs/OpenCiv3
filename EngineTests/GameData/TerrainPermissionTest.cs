@@ -123,19 +123,53 @@ public class TerrainPermissionTest : IClassFixture<SaveGameFixture>, IDisposable
 		Assert.Equal(before.commerce, tile.CommerceYield(us).yield);
 	}
 
-	// A harbor adds a food on every water tile, an ocean's none included,
-	// but not on a polluted one.
+	// Pollution, like craters, costs a tile one of each yield, never below 0,
+	// rather than all of them (Civ3 binary,
+	// doc/perez-findings/Civ3_Findings.md, Economy).
 	[Fact]
-	public void AHarborFeedsOceanTilesToo() {
+	public void PollutionCostsAFoodAShieldAndACommerce() {
+		Tile tile = LonelyLand("grassland");
+		tile.overlays.Add(Improvement(ROAD));
+		tile.overlays.Add(Improvement(MINE));
+		(int food, int shields, int commerce) before = (tile.FoodYield(us).yield, tile.ProductionYield(us).yield, tile.CommerceYield(us).yield);
+		Assert.True(before.food > 0 && before.shields > 0 && before.commerce > 0);
+
+		tile.overlays.Add(Improvement(POLLUTION));
+		Assert.Equal(before.food - 1, tile.FoodYield(us).yield);
+		Assert.Equal(before.shields - 1, tile.ProductionYield(us).yield);
+		Assert.Equal(before.commerce - 1, tile.CommerceYield(us).yield);
+	}
+
+	// A harbor adds a food on every water tile of a body of more than 20
+	// tiles, an ocean's none included (Civ3 binary,
+	// doc/perez-findings/Civ3_Findings.md, Economy), but not on a lake or a
+	// tile under fallout. The Offshore Platform and Commercial Dock are the
+	// same.
+	[Fact]
+	public void AHarborFeedsOceanTilesButNotLakes() {
 		Action<Tile.Yield> harbor = NativeBehaviors.Get<Action<Tile.Yield>>("buildings.tile_modifiers.increases_food_in_water");
-		Tile ocean = gameData.map.tiles.First(t => t.overlayTerrainType.IsOcean && !t.HasPollution());
+		Action<Tile.Yield> platform = NativeBehaviors.Get<Action<Tile.Yield>>("buildings.tile_modifiers.increases_shields_in_water");
+		Action<Tile.Yield> dock = NativeBehaviors.Get<Action<Tile.Yield>>("buildings.tile_modifiers.increases_trade_in_water");
+		Tile ocean = gameData.map.tiles.First(t => t.overlayTerrainType.IsOcean && !t.HasFallout() && !t.isFreshWater);
 		Tile.Yield yield = new(ocean, 0, Tile.YieldType.Food);
 		harbor(yield);
 		Assert.Equal(1, yield.yield);
 
-		ocean.overlays.Add(Improvement(POLLUTION));
-		Tile.Yield polluted = new(ocean, 0, Tile.YieldType.Food);
-		harbor(polluted);
-		Assert.Equal(0, polluted.yield);
+		ocean.isFreshWater = true;
+		Tile.Yield food = new(ocean, 0, Tile.YieldType.Food);
+		harbor(food);
+		Assert.Equal(0, food.yield);
+		Tile.Yield shields = new(ocean, 0, Tile.YieldType.Production);
+		platform(shields);
+		Assert.Equal(0, shields.yield);
+		Tile.Yield commerce = new(ocean, 2, Tile.YieldType.Commerce);
+		dock(commerce);
+		Assert.Equal(2, commerce.yield);
+		ocean.isFreshWater = false;
+
+		ocean.overlays.Add(Improvement(FALLOUT));
+		Tile.Yield fallout = new(ocean, 0, Tile.YieldType.Food);
+		harbor(fallout);
+		Assert.Equal(0, fallout.yield);
 	}
 }

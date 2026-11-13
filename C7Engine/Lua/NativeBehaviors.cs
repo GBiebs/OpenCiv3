@@ -75,21 +75,21 @@ internal static class NativeBehaviors {
 
 	// buildings.lua: tile_modifiers.increases_food_in_water
 	private static void IncreasesFoodInWater(Tile.Yield yield) {
-		if (yield.type == Tile.YieldType.Food && yield.tile.IsWater() && !yield.tile.HasPollution() && !yield.tile.HasFallout()) {
+		if (yield.type == Tile.YieldType.Food && yield.tile.IsInLargeBodyOfWater() && !yield.tile.HasFallout()) {
 			yield.bonus += 1;
 		}
 	}
 
 	// buildings.lua: tile_modifiers.increases_shields_in_water
 	private static void IncreasesShieldsInWater(Tile.Yield yield) {
-		if (yield.type == Tile.YieldType.Production && yield.tile.IsWater()) {
+		if (yield.type == Tile.YieldType.Production && yield.tile.IsInLargeBodyOfWater()) {
 			yield.bonus += 1;
 		}
 	}
 
 	// buildings.lua: tile_modifiers.increases_trade_in_water
 	private static void IncreasesTradeInWater(Tile.Yield yield) {
-		if (yield.type == Tile.YieldType.Commerce && yield.tile.IsWater() && yield.baseYield > 0) {
+		if (yield.type == Tile.YieldType.Commerce && yield.tile.IsInLargeBodyOfWater() && yield.baseYield > 0) {
 			yield.bonus += 1;
 		}
 	}

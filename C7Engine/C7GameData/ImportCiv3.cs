@@ -1149,6 +1149,7 @@ namespace C7GameData {
 				if (leader.Researching > -1) {
 					player.currentlyResearchedTech = save.Techs[leader.Researching].id;
 				}
+				player.futureTechs = leader.FutureTechsKnown;
 
 				// Record any techs that this player knows.
 				for (int k = 0; k < savData.KnownTechFlags.Length; ++k) {
@@ -2957,6 +2958,17 @@ namespace C7GameData {
 			save.Rules.StartingTreasury = rule.StartingTreasury;
 			if (games != null && games.Length > 0) {
 				save.Rules.VolcanoEruptionPeriod = games[0].EruptionPeriod;
+				QueryCiv3.Biq.GAME game = games[0];
+				save.Rules.PermitPlagues = game.PermitPlagues != 0;
+				if (!string.IsNullOrWhiteSpace(game.PlagueName)) {
+					save.Rules.PlagueName = game.PlagueName;
+				}
+				save.Rules.PlagueEarliestStart = game.PlagueEarliestStart;
+				save.Rules.PlagueVariance = game.PlagueVartiation;
+				save.Rules.PlagueDuration = game.PlagueDuration;
+				save.Rules.PlagueStrength = game.PlagueStrength;
+				save.Rules.PlagueGracePeriod = game.PlagueGracePeriod;
+				save.Rules.PlagueMaxOccurrences = game.PlagueMaxOccurance;
 			}
 			ERAS[] eras = biq.Eras ?? defaultBiq.Eras;
 			if (eras?.Length > 0) {

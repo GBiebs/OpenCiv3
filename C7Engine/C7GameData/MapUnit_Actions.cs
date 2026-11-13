@@ -13,6 +13,7 @@ public partial class MapUnit {
 		int maxMP = MaxMovementPoints();
 		bool restedLastTurn = movementPoints.remaining >= maxMP || heldWithoutMoving;
 		if (restedLastTurn && !skipTurn) {
+			bool wasHurt = IsHurt();
 			// The members of an army heal when the army rests, since they don't
 			// move by themselves.
 			if (IsArmy()) {
@@ -21,6 +22,14 @@ public partial class MapUnit {
 			}
 			if (!IsInArmy())
 				Heal();
+			// "A fully healed fortified unit of a human player wakes up"
+			// (Perez's decompile of Civ3 Conquests,
+			// doc/perez-findings/Civ3_Findings.md, Round 2b "Units";
+			// authoritative per the owner's 2026-11-12 ruling), so the
+			// player is asked for its orders again. The AI's stay put.
+			if (wasHurt && !IsHurt() && isFortified && owner?.isHuman == true) {
+				Wake();
+			}
 		}
 		heldWithoutMoving = false;
 
@@ -39,6 +48,15 @@ public partial class MapUnit {
 		if (isSentried && location.neighbors.Values.Any(t => t.unitsOnTile.Any(ShouldWakeSentryFor))) {
 			Wake();
 		}
+	}
+
+	// Whether the unit, or for an army any of its members, has lost hit
+	// points.
+	private bool IsHurt() {
+		if (IsArmy()) {
+			return Passengers().Any(m => m.hitPointsRemaining < m.maxHitPoints);
+		}
+		return hitPointsRemaining < maxHitPoints;
 	}
 
 	private void Heal() {
@@ -123,6 +141,7 @@ public partial class MapUnit {
 	}
 
 	public void Fortify() {
+		StopAutoBombard();
 		ResetFacingDirection();
 		isFortified = true;
 		animate(MapUnit.AnimatedAction.FORTIFY);
@@ -132,9 +151,11 @@ public partial class MapUnit {
 		isFortified = false;
 		isSentried = false;
 		sentryEnemyOnly = false;
+		StopAutoBombard();
 	}
 
 	public void Sentry(bool enemyOnly) {
+		StopAutoBombard();
 		ResetFacingDirection();
 		isSentried = true;
 		sentryEnemyOnly = enemyOnly;
@@ -158,6 +179,23 @@ public partial class MapUnit {
 		}
 	}
 
+	// Automates the worker in one of Civ3's kinds of automation, or plain
+	// automation if null. The kinds about a city take the nearest one;
+	// road and rail to need their destination.
+	public void Automate(WorkerAutomation how) {
+		if (how != null && how.NeedsCity && how.target == null) {
+			how.target = WorkerAutomation.NearestCity(this)?.location;
+		}
+		if (how != null && (how.NeedsCity || how.NeedsDestination) && (how.target == null || how.target == Tile.NONE)) {
+			log.Information("{Unit} has no city or destination for {Automation}", this, how);
+			return;
+		}
+		workerAutomation = how;
+		Automate();
+	}
+
+	// Automates the worker in its kind of automation (workerAutomation),
+	// if it has one.
 	public void Automate() {
 		Wake();
 		isAutomated = true;
@@ -173,6 +211,7 @@ public partial class MapUnit {
 
 	public void Explore() {
 		Wake();
+		workerAutomation = null;
 		isAutomated = true;
 		ExplorerAIData? maybeAiData = ExplorerAI.MaybeMakeAiData(this, owner);
 		if (maybeAiData == null) {
@@ -426,16 +465,41 @@ public partial class MapUnit {
 	}
 
 	public async Task SetUnitPath(TilePath path) {
+		StopAutoBombard();
 		this.path = path;
 		await MoveAlongPath();
+	}
+
+	// What an automated unit is doing, as saved: "work" or "explore" (null if
+	// not automated). Its plan isn't saved, so after a load it makes a new
+	// one of the same kind. Adapted from GBiebs/OpenCiv3.
+	public string AutomationKind() {
+		if (!isAutomated) {
+			return null;
+		}
+		return currentAI switch {
+			WorkerAI => "work",
+			ExplorerAI => "explore",
+			_ => resumeAutomation,
+		};
 	}
 
 	public async void PlayAutomatedTurn() {
 		try {
 			if (currentAI == null) {
-				// TODO: handle giving automated workers from loaded saves the
-				// proper unit ai.
-				isAutomated = false;
+				// Loaded from a save (play by email loads one every turn):
+				// carry on with the same kind of automation. A save that
+				// doesn't say which (an older one, or a Civ3 SAV) means work
+				// for a worker and exploring for anything else.
+				string resume = resumeAutomation ?? (unitType.isWorker ? "work" : "explore");
+				resumeAutomation = null;
+				if (resume == "work") {
+					Automate();
+				} else if (resume == "explore") {
+					Explore();
+				} else {
+					isAutomated = false;
+				}
 				return;
 			}
 			UnitAI.Result result = await currentAI.PlayTurn(owner, this);
@@ -469,6 +533,11 @@ public partial class MapUnit {
 
 	public async Task PerformBusyAction() {
 		if (isFortified) {
+			return;
+		}
+
+		if (IsAutoBombarding()) {
+			await PerformAutoBombard();
 			return;
 		}
 
@@ -887,6 +956,10 @@ public partial class MapUnit {
 		// The play log notes fights a human is in (see PlayLog.PlayRecorder).
 		C7Engine.PlayLog.PlayRecorder.FightEntry recordedFight = C7Engine.PlayLog.PlayRecorder.BeginFight(attacker, defender, attackerOdds);
 
+		// For the statistics: the battle's chance before any dice are rolled.
+		double startingAttackerOdds = attackerOdds, defensiveBombardHitChance = 0;
+		int attackerStartingHitPoints = attacker.CompositeHitPoints(), defenderStartingHitPoints = defender.CompositeHitPoints();
+
 		// When an army rotates in another member, the odds change with it.
 		void UpdateOdds() {
 			attackerStrength = (attackingMember.unitType.attack + attacker.ArmyStrengthBonus(CombatRole.Attack)) * attackMultiplier;
@@ -958,7 +1031,8 @@ public partial class MapUnit {
 
 			// dADB = defense Against Defensive Bombard
 			double dADB = attacker.StrengthVersus(defensiveBombarder, CombatRole.DefensiveBombardDefense, defensiveBombardDirection);
-			if (GameData.rng.NextDouble() < defensiveBombarderStrength / (defensiveBombarderStrength + dADB))
+			defensiveBombardHitChance = defensiveBombarderStrength / (defensiveBombarderStrength + dADB);
+			if (GameData.rng.NextDouble() < defensiveBombardHitChance)
 				bombardedUnit.hitPointsRemaining -= 1;
 
 			defensiveBombarder.defensiveBombardsRemaining -= 1;
@@ -1002,7 +1076,19 @@ public partial class MapUnit {
 		// fortified in a city" (#19), which an earlier version here followed;
 		// the code reading wins. The 1 HP rule is the 2-to-1 drop below.
 		bool defenderEligibleToRetreat = !defender.location.HasCity() && !defender.location.IsWater();
-		bool attackerEligibleToRetreat = attacker.movementPoints.remaining - 1 >= 1f / 3 - 0.0001f;
+		// Barbarians never retreat from an attack: "Retreat (only the
+		// attacker, never barbarians)" (Perez's decompile of Civ3 Conquests,
+		// doc/perez-findings/Civ3_Findings.md, 3.2 "Combat"; authoritative
+		// per the owner's 2026-11-12 ruling).
+		bool attackerEligibleToRetreat = attacker.movementPoints.remaining - 1 >= 1f / 3 - 0.0001f
+			&& attacker.owner?.isBarbarians != true;
+
+		bool defenderHasRetreat = defenderEligibleToRetreat && defender.location.neighbors.TryGetValue(attackerAttackDirection, out Tile behindDefender)
+			&& behindDefender != Tile.NONE && defender.CanEnterPeacefully(behindDefender);
+		double attackerWinChance = BattleOdds.AttackerWinChance(startingAttackerOdds, attackerStartingHitPoints, defenderStartingHitPoints,
+			defensiveBombardHitChance,
+			attackerEligibleToRetreat ? attacker.RetreatChance(defender, isAttacking: true) : 0,
+			defenderHasRetreat ? defender.RetreatChance(attacker, isAttacking: false) : 0);
 
 		// Do combat rounds
 		while (true) {
@@ -1049,6 +1135,8 @@ public partial class MapUnit {
 				}
 			}
 		}
+
+		RecordBattleStats(attacker, defender, result, attackerWinChance);
 
 		if ((result == CombatResult.AttackerKilled) || (result == CombatResult.DefenderKilled)) {
 			var (dead, alive) = (result == CombatResult.AttackerKilled) ? (attacker, defender) : (defender, attacker);
@@ -1126,10 +1214,21 @@ public partial class MapUnit {
 			return null;
 		}
 
+		// Inside the borders of a civ at peace with us, founding a city is
+		// an act of war: "If you build a city inside someone else's border,
+		// and you are at peace, the act of building a city is considered an
+		// act of war" (CommandoBob, CFC "Anybody seen this?", #3; compendium
+		// 6.10). A human was asked first, with the Foreign Advisor's
+		// DECLARE_WAR question. UNVERIFIED in the game (compendium 6, open
+		// question 13). Adapted from GBiebs/OpenCiv3 (9b0a25ae).
+		if (location.PeacefulOwnerFor(owner) is Player landOwner) {
+			log.Information("{Owner} founds a city in {LandOwner}'s land, which means war", owner, landOwner);
+			owner.DeclareWarOn(landOwner, EngineStorage.gameData.turn);
+			MsgWarDeclaration.Announce(owner, landOwner);
+		}
+
 		await animateAsync(MapUnit.AnimatedAction.BUILD);
 
-		// TODO: Need to check somewhere that this unit is allowed to build a city on its current tile. Either do that here or in every caller
-		// (probably best to just do it here).
 		City city = CityInteractions.BuildCity(location, owner, cityName);
 		this.RemoveFromPlay();
 

@@ -38,9 +38,8 @@ public static class WonderUnits {
 				if (string.IsNullOrEmpty(building?.unitProducedName) || building.unitFrequency <= 0) {
 					continue;
 				}
-				// Checked directly rather than with isGreatWonderObsolete, which
-				// only covers great wonders, as any building may produce units.
-				if (building.renderedObsoleteBy != null && player.knownTechs?.Contains(building.renderedObsoleteBy.id) == true) {
+				// Any building may produce units, and stops once obsolete.
+				if (building.IsObsoleteFor(player)) {
 					continue;
 				}
 

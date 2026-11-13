@@ -28,6 +28,12 @@ public partial class MilitaryAdvisor : Control {
 	private Button _viewByUnit;
 	private bool _viewingByCity = false;
 
+	// The civ picked in the Military Intelligence box, whose army is listed
+	// and which the advisor compares ours with, as in Civ3 (its military
+	// advisor keeps the civ picked, FUN_00581a80, which its speech,
+	// FUN_0042b3d0, compares with). Null for our own.
+	private ID _selectedCiv;
+
 	// The height of a list row, so rows sit on the background's ruled lines.
 	private const float RowHeight = 45;
 
@@ -100,19 +106,34 @@ public partial class MilitaryAdvisor : Control {
 			_allowedUnitsLabel.Text = $"Allowed Units\n{allowedUnits}";
 			_unitSupportCostLabel.Text = $"Army Support Cost\n{unitSupportCost} gold/turn";
 
-			_viewByCity.SetPressedNoSignal(_viewingByCity);
-			_viewByUnit.SetPressedNoSignal(!_viewingByCity);
-			_armyHeader.Text = $"The Army of the {AdvisorUtils.CivName(player)}";
+			// A civ picked that we no longer know (or that's gone) is let go.
+			Player rival = SelectedRival(gameData, player);
+			_selectedCiv = rival?.id;
 
-			FillIntelligence(gameData, player);
-			if (_viewingByCity) {
-				FillArmyByCity(player);
+			// A rival's army is listed by unit: we don't know where it is.
+			_viewByCity.Disabled = rival != null;
+			_viewByUnit.Disabled = rival != null;
+			_viewByCity.SetPressedNoSignal(_viewingByCity && rival == null);
+			_viewByUnit.SetPressedNoSignal(!_viewingByCity || rival != null);
+			Player shown = rival ?? player;
+			string intelligence = MilitaryReport.Intelligence(player, shown);
+			_armyHeader.Text = $"The Army of the {AdvisorUtils.CivName(shown)}" + (intelligence.Length > 0 ? $"\n{intelligence}" : "");
+
+			FillIntelligence(gameData, player, rival);
+			if (rival != null) {
+				FillArmyByUnit(gameData, rival, MilitaryReport.KnownUnits(player, rival), ours: false);
+				AdvisorUtils.ClearList(_productionList);
 			} else {
-				FillArmyByUnit(gameData, player);
+				if (_viewingByCity) {
+					FillArmyByCity(player);
+				} else {
+					FillArmyByUnit(gameData, player, player.units);
+				}
+				FillProduction(player);
 			}
-			FillProduction(player);
 
-			if (opening ? !AdvisorUtils.Speak(_dialogBoxLabel, _advisorHead, AdvisorHead.Advisor.Military, gameData, player)
+			if (opening ? !AdvisorUtils.Speak(_dialogBoxLabel, _advisorHead, AdvisorHead.Advisor.Military, gameData, player,
+						militaryRival: rival)
 					: !AdvisorUtils.HasScript()) {
 				_dialogBoxLabel.Text = Advice(gameData, player, totalUnits, allowedUnits, unitSupportCost);
 				_advisorHead.Texture =
@@ -121,21 +142,38 @@ public partial class MilitaryAdvisor : Control {
 		});
 	}
 
-	// The advisor's next words, in Civ3's script.txt. Civ3's advisor also
-	// compares our army with that of the civ picked on its screen, which
-	// this screen has no way to pick yet.
+	// The advisor's next words, in Civ3's script.txt, comparing our army
+	// with that of the civ picked, if any.
 	private void Speak() {
-		EngineStorage.ReadGameData((GameData gameData) =>
-			AdvisorUtils.Speak(_dialogBoxLabel, _advisorHead, AdvisorHead.Advisor.Military, gameData, gameData.GetUIControllerPlayer()));
+		EngineStorage.ReadGameData((GameData gameData) => {
+			Player player = gameData.GetUIControllerPlayer();
+			AdvisorUtils.Speak(_dialogBoxLabel, _advisorHead, AdvisorHead.Advisor.Military, gameData, player,
+				militaryRival: SelectedRival(gameData, player));
+		});
 	}
 
-	private void FillIntelligence(GameData gameData, Player player) {
+	private Player SelectedRival(GameData gameData, Player player) =>
+		_selectedCiv == null ? null : gameData.GetKnownRivals(player).FirstOrDefault(r => r.id == _selectedCiv && !r.defeated);
+
+	// Picks a civ to show the army of, or ours with null.
+	private void Pick(ID civ) {
+		_selectedCiv = civ;
+		ShowAdvisor();
+		// The advisor weighs the armies up as soon as a civ is picked.
+		Speak();
+	}
+
+	private void FillIntelligence(GameData gameData, Player player, Player selected) {
 		AdvisorUtils.ClearList(_intelligenceList);
 		List<Player> rivals = gameData.GetKnownRivals(player);
 		if (rivals.Count == 0) {
 			_intelligenceList.AddChild(AdvisorUtils.MakeLabel("We know of no other civilizations", 12));
 			return;
 		}
+		// Our own army first, to go back to it.
+		_intelligenceList.AddChild(AdvisorUtils.MakeRow(22,
+			AdvisorUtils.MakeSpacer(11),
+			MakeCivButton(AdvisorUtils.CivTitle(player), selected == null, () => Pick(null))));
 		foreach (Player rival in rivals) {
 			bool atWar = PlayerRelationship.AtWar(player, rival);
 			string strength = player.CompareMilitaryStrengthTo(rival) switch {
@@ -143,12 +181,38 @@ public partial class MilitaryAdvisor : Control {
 				Player.MilitaryStrength.StrongTo => "They are weaker",
 				_ => "We are even",
 			};
+			ID id = rival.id;
 			_intelligenceList.AddChild(AdvisorUtils.MakeRow(22,
 				AdvisorUtils.MakeIcon(StatusIcon(atWar), 11),
-				AdvisorUtils.MakeLabel(AdvisorUtils.CivTitle(rival), 12, 92),
+				MakeCivButton(AdvisorUtils.CivTitle(rival), rival == selected, () => Pick(id)),
 				AdvisorUtils.MakeLabel(atWar ? "At War" : "At Peace", 12, 60),
 				AdvisorUtils.MakeLabel(strength, 12)));
 		}
+	}
+
+	// A civ's name in the Military Intelligence box, which picks it; the
+	// one picked is in blue. UNVERIFIED: how Civ3 marks the civ picked.
+	private static Button MakeCivButton(string name, bool picked, System.Action pick) {
+		Button button = new() {
+			Text = name,
+			Flat = true,
+			Alignment = HorizontalAlignment.Left,
+			ClipText = true,
+			TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+			CustomMinimumSize = new Vector2(92, 0),
+			SizeFlagsVertical = Control.SizeFlags.ShrinkCenter,
+		};
+		Color color = picked ? new Color(0.1f, 0.15f, 0.6f) : Colors.Black;
+		button.AddThemeColorOverride("font_color", color);
+		button.AddThemeColorOverride("font_hover_color", new Color(0.45f, 0, 0.45f));
+		button.AddThemeColorOverride("font_pressed_color", color);
+		button.AddThemeColorOverride("font_focus_color", color);
+		button.AddThemeFontSizeOverride("font_size", 12);
+		foreach (string state in new[] { "normal", "hover", "pressed", "focus" }) {
+			button.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+		}
+		button.Pressed += pick;
+		return button;
 	}
 
 	// The icons drawn when the art of the war and peace icons is missing (as
@@ -188,9 +252,10 @@ public partial class MilitaryAdvisor : Control {
 		return ImageTexture.CreateFromImage(image);
 	}
 
-	private void FillArmyByUnit(GameData gameData, Player player) {
+	private void FillArmyByUnit(GameData gameData, Player player, IEnumerable<MapUnit> known, bool ours = true) {
 		AdvisorUtils.ClearList(_armyList);
-		foreach ((UnitPrototype type, bool slaves, List<MapUnit> units) in MilitaryReport.UnitsByType(gameData, player)) {
+		List<(UnitPrototype type, bool slaves, List<MapUnit> units)> groups = MilitaryReport.UnitsByType(gameData, known);
+		foreach ((UnitPrototype type, bool slaves, List<MapUnit> units) in groups) {
 			_armyList.AddChild(AdvisorUtils.MakeRow(RowHeight,
 				AdvisorUtils.MakeSpacer(4),
 				AdvisorUtils.MakeIcon(UnitIcon(type, player), 32),
@@ -198,7 +263,8 @@ public partial class MilitaryAdvisor : Control {
 				AdvisorUtils.MakeLabel($"{type.attack}.{type.defense}.{type.movement}", 13, 70, HorizontalAlignment.Center),
 				AdvisorUtils.MakeLabel($"{units.Count} {(units.Count == 1 ? "unit" : "units")}", 13, 90, HorizontalAlignment.Right)));
 		}
-		if (player.units.Count == 0) {
+		// For a rival, the header says what we know, if nothing.
+		if (groups.Count == 0 && ours) {
 			_armyList.AddChild(AdvisorUtils.MakeRow(RowHeight, AdvisorUtils.MakeSpacer(4), AdvisorUtils.MakeLabel("We have no units.")));
 		}
 	}

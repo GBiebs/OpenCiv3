@@ -67,7 +67,7 @@ public partial class MultiplayerSetupScreen {
 
 	// Starts hosting for a networked game, or stops for hotseat.
 	private void UpdateHosting() {
-		bool networked = GameType != MultiplayerGameType.Hotseat;
+		bool networked = !MultiplayerSlots.SeatsSetUpHere(GameType);
 		if (networked && !Hosting) {
 			StartHosting();
 		} else if (!networked && Hosting) {

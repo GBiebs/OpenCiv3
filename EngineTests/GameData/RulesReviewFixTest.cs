@@ -189,6 +189,51 @@ public class RulesReviewFixTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(tech.id, us.currentlyResearchedTech);
 	}
 
+	// "A tech is gained on the turn *after* progress >= cost" (Perez's
+	// decompile, Round 2b "Research"; owner's ruling 2026-11-12): the turn
+	// that pays for it doesn't learn it, the next one does, before its own
+	// beakers are added.
+	[Fact]
+	public void ATechIsLearnedTheTurnAfterItIsPaidFor() {
+		Tech tech = us.GetAvailableTechsToResearch(gameData.techs).First();
+		us.freeTechsRemaining = 0;
+		us.SetCurrentlyResearchedTech(tech.id);
+		us.turnsResearched = gameData.rules.MinimumResearchTime;
+		us.beakers = 0;
+		int cost = gameData.TechCostFor(tech, us);
+		Assert.True(gameData.rules.MaximumResearchTime > us.turnsResearched + 1);
+
+		us.beakers = cost - 1;
+		us.CompletePaidResearch(gameData);
+		Assert.DoesNotContain(tech.id, us.knownTechs);
+
+		// This turn's beakers pay for it: it isn't learned yet.
+		us.beakers = cost;
+		us.DoPerTurnScienceUpdates(gameData);
+		Assert.DoesNotContain(tech.id, us.knownTechs);
+		Assert.Equal(1, us.EstimateTurnsToResearch(gameData, tech));
+
+		// The next turn learns it.
+		us.CompletePaidResearch(gameData);
+		Assert.Contains(tech.id, us.knownTechs);
+		Assert.NotEqual(tech.id, us.currentlyResearchedTech);
+	}
+
+	// A human asked what to research next keeps the beakers of the turn
+	// that taught them the last tech.
+	[Fact]
+	public void BeakersGatheredWhileChoosingGoToTheTechChosen() {
+		Tech tech = us.GetAvailableTechsToResearch(gameData.techs).First();
+		us.freeTechsRemaining = 0;
+		us.SetCurrentlyResearchedTech(null);
+		us.beakers = 7;
+		us.turnsResearched = 1;
+
+		us.SetCurrentlyResearchedTech(tech.id);
+		Assert.Equal(7, us.beakers);
+		Assert.Equal(1, us.turnsResearched);
+	}
+
 	// ---- Specialists ----
 
 	// Turns the city's only citizen into the given specialist.
@@ -399,26 +444,67 @@ public class RulesReviewFixTest : IClassFixture<SaveGameFixture> {
 	}
 
 	// "Determines the percentage chance of rioting occurring in any city
-	// experiencing disorder" (C3C editor help, Chance of Rioting).
+	// experiencing disorder" (C3C editor help, Chance of Rioting). Wonders,
+	// small wonders, the palace and aqueduct/sewer-class buildings are
+	// never destroyed, and the capital never riots (Civ3 binary,
+	// doc/perez-findings/Civ3_Findings.md, Round 2b).
 	[Fact]
-	public void RiotsDestroyAnImprovementButNotWonders() {
+	public void RiotsDestroyAnImprovementButNotWondersOrGrowthBuildings() {
 		City city = BuildCity(us);
+		city.capital = false;
 		city.AddBuilding(BuildingNamed("Temple"));
 		city.AddBuilding(BuildingNamed("The Pyramids"));
+		city.AddBuilding(BuildingNamed("Aqueduct"));
 		int saved = gameData.rules.ChanceOfRioting;
 		try {
 			gameData.rules.ChanceOfRioting = 0;
 			city.MaybeRiot(gameData);
 			Assert.Contains(city.constructed_buildings, cb => cb.building.name == "Temple");
 			gameData.rules.ChanceOfRioting = 100;
+			city.capital = true;
+			for (int i = 0; i < 20; ++i) {
+				city.MaybeRiot(gameData);
+			}
+			Assert.Contains(city.constructed_buildings, cb => cb.building.name == "Temple");
+			city.capital = false;
 			for (int i = 0; i < 20; ++i) {
 				city.MaybeRiot(gameData);
 			}
 			Assert.DoesNotContain(city.constructed_buildings, cb => cb.building.name == "Temple");
 			Assert.Contains(city.constructed_buildings, cb => cb.building.name == "The Pyramids");
+			Assert.Contains(city.constructed_buildings, cb => cb.building.name == "Aqueduct");
 		} finally {
 			gameData.rules.ChanceOfRioting = saved;
 		}
+	}
+
+	// A town needs a second roll, at twice the chance, as well as the first.
+	[Fact]
+	public void ATownRiotsOnlyIfItPassesASecondRoll() {
+		City city = BuildCity(us);
+		city.capital = false;
+		city.AddBuilding(BuildingNamed("Temple"));
+		Assert.True(city.residents.Count <= gameData.rules.MaximumLevel1CitySize);
+		int saved = gameData.rules.ChanceOfRioting;
+		System.Random original = C7GameData.GameData.rng;
+		try {
+			gameData.rules.ChanceOfRioting = 20;
+			// 19 passes the first roll, 39 the second; 40 fails it.
+			C7GameData.GameData.rng = new SequenceRandom(19, 40);
+			city.MaybeRiot(gameData);
+			Assert.Contains(city.constructed_buildings, cb => cb.building.name == "Temple");
+			C7GameData.GameData.rng = new SequenceRandom(19, 39, 0);
+			city.MaybeRiot(gameData);
+			Assert.DoesNotContain(city.constructed_buildings, cb => cb.building.name == "Temple");
+		} finally {
+			C7GameData.GameData.rng = original;
+			gameData.rules.ChanceOfRioting = saved;
+		}
+	}
+
+	private class SequenceRandom(params int[] values) : System.Random {
+		private int next;
+		public override int Next(int maxValue) => System.Math.Min(values[next++ % values.Length], maxValue - 1);
 	}
 
 	// Fascism's Forced Resettlement: "each town in the nation loses 1

@@ -154,18 +154,22 @@ public class NuclearPlantTest : IClassFixture<SaveGameFixture>, System.IDisposab
 		Assert.Equal([$"The Nuclear Plant in {city.name} has malfunctioned! Thousands are dead, and pollution has crippled production!"], Popups());
 	}
 
+	// Rand(100) < 10 for each plant (Civ3 binary,
+	// doc/perez-findings/Civ3_Findings.md, Round 2b).
 	[Fact]
-	public void TheChanceIsOneInEight() {
+	public void TheChanceIsTenPercentPerPlant() {
 		City city = FoundCity(8);
 		city.AddBuilding(Building("Nuclear Plant"));
 
-		Assert.False(WithRandom(new FixedRandom(1), () => Meltdown.MaybeMeltDown(gameData, city)));
+		FixedRandom safe = new(10);
+		Assert.False(WithRandom(safe, () => Meltdown.MaybeMeltDown(gameData, city)));
+		Assert.Equal(1, safe.draws);
 		Assert.Equal(8, city.residents.Count);
 
-		FixedRandom random = new(0);
+		FixedRandom random = new(9);
 		Assert.True(WithRandom(random, () => Meltdown.MaybeMeltDown(gameData, city)));
 		Assert.Equal(4, city.residents.Count);
-		Assert.Equal(8, Meltdown.ChanceOneIn);
+		Assert.Equal(10, Meltdown.ChancePercent);
 	}
 
 	[Fact]

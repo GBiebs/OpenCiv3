@@ -81,9 +81,14 @@ public class DominationVictory : IVictory {
 		};
 	}
 
+	// Both shares must be strictly above the thresholds: "land % and
+	// population % both strictly above g_DominationLandPct /
+	// g_DominationPopPct" (Perez's decompile of Civ3 Conquests,
+	// doc/perez-findings/Civ3_Findings.md, Round 2 "Victory conditions";
+	// authoritative per the owner's 2026-11-12 ruling).
 	public bool HasVictory(VictoryStatus status) {
-		return status.TerritoryPercent >= territoryPercentNeeded
-			&& status.PopulationPercent >= populationPercentNeeded;
+		return status.TerritoryPercent > territoryPercentNeeded
+			&& status.PopulationPercent > populationPercentNeeded;
 	}
 
 	public IEnumerable<string[]> GenerateStatusRows(VictoryStatus status, List<VictoryStatus> rivalStatuses) {

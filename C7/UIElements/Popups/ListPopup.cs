@@ -6,7 +6,8 @@ using System.Collections.Generic;
 // popups marked "#listbox", with any of the popup's "#button"s under the
 // list. Picking an item, by double-clicking it or with the confirm button,
 // closes the popup and calls onPick with its index; a button closes it and
-// calls its own action.
+// calls its own action. With clickTwice, a click on an item that's already
+// selected also picks it, so one click selects and a second sends.
 public partial class ListPopup : Popup {
 	private const int Width = 440;
 	private const int Height = 420;
@@ -26,6 +27,11 @@ public partial class ListPopup : Popup {
 	private readonly int selected;
 	private readonly Action<int> onPick;
 	private readonly List<Button> buttons;
+
+	public bool clickTwice { get; init; }
+
+	// The frame of the last click on the list (see _Ready).
+	private ulong lastClickFrame = ulong.MaxValue;
 
 	public ListPopup(string caption, List<string> items, int selected, Action<int> onPick, List<Button> buttons = null) {
 		alignment = BoxContainer.AlignmentMode.Center;
@@ -58,8 +64,37 @@ public partial class ListPopup : Popup {
 			list.Select(selected);
 			list.EnsureCurrentIsVisible();
 		}
-		list.ItemActivated += index => Pick((int)index);
+		// Which item a click selected was the selected one before it; the
+		// list has already moved its selection by the time it says so.
+		int clickedSelected = -1;
+		if (clickTwice) {
+			list.GuiInput += e => {
+				if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } click) {
+					int index = list.GetItemAtPosition(click.Position, exact: true);
+					int[] before = list.GetSelectedItems();
+					clickedSelected = index >= 0 && before.Length > 0 && before[0] == index ? index : -1;
+				}
+			};
+			list.ItemClicked += (index, atPosition, button) => {
+				if (button != (long)MouseButton.Left) {
+					return;
+				}
+				lastClickFrame = Engine.GetProcessFrames();
+				if (clickedSelected == (int)index) {
+					Pick((int)index);
+				}
+			};
+		}
+		// A double click, or Enter. In clickTwice mode a double click's
+		// second click has already picked its item, and one whose clicks
+		// fall on two items mustn't pick the second, so only Enter does.
+		list.ItemActivated += index => {
+			if (!clickTwice || lastClickFrame != Engine.GetProcessFrames()) {
+				Pick((int)index);
+			}
+		};
 		AddChild(list);
+		list.CallDeferred(Control.MethodName.GrabFocus);
 
 		HBoxContainer row = new() { Position = new Vector2(30, listBottom + 8) };
 		row.AddThemeConstantOverride("separation", 12);
@@ -83,7 +118,13 @@ public partial class ListPopup : Popup {
 		AddCancelButton(new Vector2(Width - 106, Height - 66));
 	}
 
+	private bool picked;
+
 	private void Pick(int index) {
+		if (picked) {
+			return;
+		}
+		picked = true;
 		GetParent<PopupOverlay>().OnHidePopup();
 		onPick(index);
 	}

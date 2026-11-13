@@ -43,6 +43,27 @@ public class AirMissionButtonsTest {
 		}
 	}
 
+	// Automated bombarding's buttons are Civ3's (labels.txt's "Automate:
+	// Bombard", "Automate: Bombing" and "Automate: Precision Bombing",
+	// #UNIT_ACTIONS 43, 54 and 55) and, in standalone mode, those of the
+	// orders they automate.
+	[Fact]
+	public void AutomatedBombardingHasButtons() {
+		(string action, int x, int y, string standaloneAs)[] buttons = [
+			(C7Action.UnitAutoBombard, 3, 5, C7Action.UnitBombard),
+			(C7Action.UnitAutoBombing, 6, 6, C7Action.UnitBombing),
+			(C7Action.UnitAutoPrecisionBombing, 7, 6, C7Action.UnitPrecisionBombing),
+		];
+		foreach ((string action, int x, int y, string standaloneAs) in buttons) {
+			Assert.NotNull(C7Action.ToUnitAction(action));
+			Assert.NotNull(C7Action.ToTooltip(action));
+			Table crop = Button(civ3.Value, action).Get("normal").Table.Get("crop_region").Table;
+			Assert.Equal(x * 32, crop.Get(1).Number);
+			Assert.Equal(y * 32, crop.Get(2).Number);
+			Assert.Same(Button(standalone.Value, standaloneAs), Button(standalone.Value, action));
+		}
+	}
+
 	[Fact]
 	public void StandaloneAirMissionButtonsAreOurOwn() {
 		string sheet = PathUtils.getBasePath("../C7/ModernArt/Art/interface/AirMissionButtons.png");

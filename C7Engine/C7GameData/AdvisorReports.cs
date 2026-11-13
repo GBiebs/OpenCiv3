@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using C7Engine;
 using C7Engine.Pathing;
 
 namespace C7GameData {
@@ -184,9 +185,12 @@ namespace C7GameData {
 
 		// The player's units grouped by type, in the order of the game's unit
 		// types, with slave workers grouped apart from, and after, their type.
-		public static List<(UnitPrototype type, bool slaves, List<MapUnit> units)> UnitsByType(GameData gameData, Player player) {
+		public static List<(UnitPrototype type, bool slaves, List<MapUnit> units)> UnitsByType(GameData gameData, Player player) =>
+			UnitsByType(gameData, player.units);
+
+		public static List<(UnitPrototype type, bool slaves, List<MapUnit> units)> UnitsByType(GameData gameData, IEnumerable<MapUnit> units) {
 			Dictionary<(UnitPrototype, bool), List<MapUnit>> groups = new();
-			foreach (MapUnit unit in player.units) {
+			foreach (MapUnit unit in units) {
 				(UnitPrototype, bool) key = (unit.unitType, IsSlave(unit));
 				if (!groups.TryGetValue(key, out List<MapUnit> list)) {
 					list = new();
@@ -230,6 +234,46 @@ namespace C7GameData {
 				result.Add((null, inTheField));
 			}
 			return result;
+		}
+
+		// What the viewer knows of a civ's army, for the military advisor's
+		// list when that civ is picked in its Military Intelligence box:
+		// "The Military Advisor gets a complete list of their forces from an
+		// embassy" (Civ3 manual), and a planted spy gives "their locations
+		// as well". Without either, "We only know what our troops report"
+		// (labels.txt, #MILITARY_ADVISOR): the units on the tiles the viewer
+		// sees now that it can make out (not a submarine it can't detect).
+		// UNVERIFIED: that without an embassy or spy Civ3 lists the units
+		// our troops see; its listing (FUN_0057d2e0 and its neighbours)
+		// checks two of our ties to the civ that we take to be those two.
+		public static List<MapUnit> KnownUnits(Player viewer, Player civ) {
+			if (civ == viewer || HasCompleteList(viewer, civ)) {
+				return civ.units.ToList();
+			}
+			return civ.units.Where(u => viewer.tileKnowledge != null && viewer.tileKnowledge.isActiveTile(u.location)
+				&& u.IsSeenBy(viewer)).ToList();
+		}
+
+		// Whether the viewer has an embassy or a spy with the civ, and so
+		// knows all of its units.
+		public static bool HasCompleteList(Player viewer, Player civ) =>
+			civ == viewer || Espionage.HasEmbassy(viewer, civ) || Espionage.HasSpy(viewer, civ);
+
+		// What the military advisor says it has with the civ picked:
+		// labels.txt's "We have:", "An Embassy" and "A Spy", or "We only
+		// know what our troops report." with neither. Empty for ourselves.
+		public static string Intelligence(Player viewer, Player civ) {
+			if (civ == viewer) {
+				return "";
+			}
+			List<string> have = [];
+			if (Espionage.HasEmbassy(viewer, civ)) {
+				have.Add("An Embassy");
+			}
+			if (Espionage.HasSpy(viewer, civ)) {
+				have.Add("A Spy");
+			}
+			return have.Count == 0 ? "We only know what our troops report." : "We have: " + string.Join(", ", have);
 		}
 
 		// The cities building units, with the unit each is building.

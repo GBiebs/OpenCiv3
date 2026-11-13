@@ -573,7 +573,8 @@ namespace C7GameData {
 				target.owner.AddWarWeariness(owner, Player.WarWearinessForUnitBombardedToOneHitPoint);
 			}
 
-			TriggerPopUp(hitCount, tile, "Artillery bombardment successful! Enemy units injured.");
+			TriggerPopUp(hitCount, tile, "Artillery bombardment successful! Enemy units injured.",
+				"Bombing run successful! Enemy units injured.");
 		}
 
 		// Once a city has nothing left to hit in its way (see
@@ -726,7 +727,8 @@ namespace C7GameData {
 				break;
 			}
 
-			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {string.Join(", ", destroyed)}.");
+			TriggerPopUp(hitCount, tile, $"Artillery bombardment successful! Destroyed {string.Join(", ", destroyed)}.",
+				"Bombing run successful--improvements destroyed.");
 		}
 
 		// How many shots the unit fires in one bombardment. The BIQ's rate of
@@ -756,12 +758,19 @@ namespace C7GameData {
 			return false;
 		}
 
-		private void TriggerPopUp(int hitCount, Tile tile, string successMessage) {
+		// Tells the player how the bombardment went. An aircraft's bombing
+		// run has Civ3's own wording (script.txt): "Our bombing run failed."
+		// (BOMBFAILED), "Bombing run successful! Enemy units injured."
+		// (UNITBOMBSUCEEDED) and "Bombing run successful--improvements
+		// destroyed." (BOMBSUCCEEDED), given as airSuccessMessage; what a
+		// run does to a city is told as for any bombardment.
+		private void TriggerPopUp(int hitCount, Tile tile, string successMessage, string airSuccessMessage = null) {
 			if (owner.isHuman) {
+				bool air = IsAirUnit();
 				if (hitCount > 0)
-					new MsgShowTemporaryPopup(successMessage, tile).send();
+					new MsgShowTemporaryPopup(air ? airSuccessMessage ?? successMessage : successMessage, tile).send();
 				else
-					new MsgShowTemporaryPopup($"Artillery bombardment failed.", tile).send();
+					new MsgShowTemporaryPopup(air ? "Our bombing run failed." : "Artillery bombardment failed.", tile).send();
 			}
 		}
 

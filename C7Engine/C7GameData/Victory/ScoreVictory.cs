@@ -97,8 +97,7 @@ public class ScoreVictory : IVictory {
 		// civ a future tech with a save editor, which scored (1/21) * 6 = 0.3
 		// on Deity after 21 turns
 		// (https://forums.civfanatics.com/threads/scoring-of-future-tech.31261/).
-		// TODO: the game has no future techs yet, so there are none to count.
-		int futureTechs = 0;
+		int futureTechs = player.futureTechs;
 
 		// TODO: gameData.gameDifficulty.ScoreMultiplier
 		float difficultyFactor = GetDifficultyScoreFactor(gameData);

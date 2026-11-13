@@ -295,6 +295,20 @@ public class AdvisorSpeechTest {
 		Assert.Null(AdvisorSpeech.Joke(AdvisorKind.Domestic, facts, new FixedRandom()));
 	}
 
+	// Every script.txt key AdvisorSpeech can choose.
+	private static readonly string[] AllKeys = [
+		"DOMESTICADVICERANK", "DOMESTICADVICECITYSIZE", "DOMESTICADVICEHAPPINESS", "DOMESTICADVICEANARCHY",
+		"TRADEADVICEMORE", "TRADEADVICEROUTE", "TRADEADVICEEMBARGO", "TRADEADVICEWEHAVENOTHING", "TRADEADVICEACQUIREMORE",
+		"MILITARYADVICERANK_WEAK", "MILITARYADVICERANK_AVERAGE", "MILITARYADVICERANK_STRONG", "MILITARYADVICESUPPORT_TOO_COSTLY",
+		"MILITARYADVICESUPPORT_NOTENOUGHUNITS", "MILITARYADVICESUPPORT_NOTENOUGHUNITS_BESTUNIT", "MILITARYADVICEBARBARIANS",
+		"MILITARYADVICEMOLE", "FOREIGNADVICERANK", "FA_NO_KNOWLEDGE", "FA_BEST_UNIT", "FA_CULTURAL", "FA_NO_CAN_TRADE",
+		"FA_IMPORT_GOOD", "FA_NO_SURPLUS", "FA_WE_NO_SURPLUS", "FA_EXPORT_GOOD", "FA_HAPPINESS_1", "FA_HAPPINESS_2",
+		"CULTURALADVICEIMPROVEMENT", "CULTURALADVICEOPINION", "CULTURALADVICEWONDER", "CULTURALADVICEARTS",
+		"SCIENCEADVICERANK_WEAK", "SCIENCEADVICERANK_AVERAGE", "SCIENCEADVICERANK_STRONG", "SCIENCEADVICERANK_WEAK_FUNDING",
+		"SCIENCEADVICERANK_AVERAGE_FUNDING", "SCIENCEADVICERANK_STRONG_FUNDING", "SCIENCEADVICETECHRECOMMEND",
+		"ADVISORRANDDEF", "ADVISORANGRY", "CARROT", "DISORDERNEWS", "MILITARYNUKE", "GOODEVIL", "MYSTERIOUS", "TIMESLEEP",
+	];
+
 	// ---- Civ3's own script.txt ----
 
 	[SkippableFact]
@@ -302,19 +316,7 @@ public class AdvisorSpeechTest {
 		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), "No Civ3 install found.");
 		ScriptText script = ScriptText.Load(Path.Combine(Civ3Location.GetCiv3Path(), "Conquests", "Text", "script.txt"));
 
-		string[] keys = [
-			"DOMESTICADVICERANK", "DOMESTICADVICECITYSIZE", "DOMESTICADVICEHAPPINESS", "DOMESTICADVICEANARCHY",
-			"TRADEADVICEMORE", "TRADEADVICEROUTE", "TRADEADVICEEMBARGO", "TRADEADVICEWEHAVENOTHING", "TRADEADVICEACQUIREMORE",
-			"MILITARYADVICERANK_WEAK", "MILITARYADVICERANK_AVERAGE", "MILITARYADVICERANK_STRONG", "MILITARYADVICESUPPORT_TOO_COSTLY",
-			"MILITARYADVICESUPPORT_NOTENOUGHUNITS", "MILITARYADVICESUPPORT_NOTENOUGHUNITS_BESTUNIT", "MILITARYADVICEBARBARIANS",
-			"MILITARYADVICEMOLE", "FOREIGNADVICERANK", "FA_NO_KNOWLEDGE", "FA_BEST_UNIT", "FA_CULTURAL", "FA_NO_CAN_TRADE",
-			"FA_IMPORT_GOOD", "FA_NO_SURPLUS", "FA_WE_NO_SURPLUS", "FA_EXPORT_GOOD", "FA_HAPPINESS_1", "FA_HAPPINESS_2",
-			"CULTURALADVICEIMPROVEMENT", "CULTURALADVICEOPINION", "CULTURALADVICEWONDER", "CULTURALADVICEARTS",
-			"SCIENCEADVICERANK_WEAK", "SCIENCEADVICERANK_AVERAGE", "SCIENCEADVICERANK_STRONG", "SCIENCEADVICERANK_WEAK_FUNDING",
-			"SCIENCEADVICERANK_AVERAGE_FUNDING", "SCIENCEADVICERANK_STRONG_FUNDING", "SCIENCEADVICETECHRECOMMEND",
-			"ADVISORRANDDEF", "ADVISORANGRY", "CARROT", "DISORDERNEWS", "MILITARYNUKE", "GOODEVIL", "MYSTERIOUS", "TIMESLEEP",
-		];
-		List<string> missing = keys.Where(k => !script.Has(k) || script.Get(k).Text.Length == 0).ToList();
+		List<string> missing = AllKeys.Where(k => !script.Has(k) || script.Get(k).Text.Length == 0).ToList();
 		Assert.Empty(missing);
 
 		Assert.Equal(("Build more cities!", AdvisorMood.Happy), new AdvisorLine("DOMESTICADVICERANK").Say(script));
@@ -324,5 +326,32 @@ public class AdvisorSpeechTest {
 			new AdvisorLine("CULTURALADVICEWONDER").Text(0, "Pyramids").Say(script));
 		Assert.Equal(("Rome is growing slowly, Chief.", AdvisorMood.Sad),
 			AdvisorSpeech.Domestic(1, new AdvisorFacts { Cities = [City("Rome")], RulerTitles = ["Chief"] }, new FixedRandom()).Say(script));
+	}
+
+	// ---- Without Civ3's script.txt ----
+
+	[Fact]
+	public void TheFallbackScriptHasEveryAdvisorLine() {
+		ScriptText script = AdvisorFallbackScript.Text;
+		List<string> missing = AllKeys.Where(k => !script.Has(k) || script.Get(k).Text.Length == 0).ToList();
+		Assert.Empty(missing);
+
+		Assert.Equal(("Rome is growing slowly, Chief.", AdvisorMood.Sad),
+			AdvisorSpeech.Domestic(1, new AdvisorFacts { Cities = [City("Rome")], RulerTitles = ["Chief"] }, new FixedRandom())
+				.Say(script));
+		Assert.Equal(("Next to theirs, our military is weak!", AdvisorMood.Angry),
+			new AdvisorLine("MILITARYADVICERANK_WEAK").Say(script));
+		Assert.Equal(("The Greeks are furious with us.", AdvisorMood.Sad),
+			new AdvisorLine("FA_HAPPINESS_2").Text(0, "Greeks").Text(1, "furious").WithMood(AdvisorMood.Sad).Say(script));
+	}
+
+	// The fallback's words are ours, but its faces are Civ3's.
+	[SkippableFact]
+	public void TheFallbackScriptHasCiv3sFaces() {
+		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), "No Civ3 install found.");
+		ScriptText civ3 = ScriptText.Load(Path.Combine(Civ3Location.GetCiv3Path(), "Conquests", "Text", "script.txt"));
+		foreach (string key in AllKeys) {
+			Assert.True(civ3.Get(key)?.Mood == AdvisorFallbackScript.Text.Get(key)?.Mood, key);
+		}
 	}
 }

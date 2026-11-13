@@ -85,6 +85,47 @@ public partial class MapUnit {
 		return UpgradeTo(GetAvailableUpgrade());
 	}
 
+	// Civ3's Upgrade All (Shift-U): "To use the Upgrade All order (SHIFT-U)
+	// you must activate a unit. All units of this type will then be
+	// upgraded." (Civ3 README). The units of the type, of the owner's, that
+	// can upgrade where they are now, each with its upgrade and its cost.
+	public static List<(MapUnit unit, UnitPrototype upgrade, int cost)> UpgradeAllCandidates(Player owner, UnitPrototype type) {
+		List<(MapUnit, UnitPrototype, int)> result = new();
+		if (owner == null || type == null) {
+			return result;
+		}
+		foreach (MapUnit unit in owner.units) {
+			if (unit.unitType != type || unit.location == null) {
+				continue;
+			}
+			UnitPrototype upgrade = unit.GetAvailableUpgrade();
+			if (upgrade != null) {
+				result.Add((unit, upgrade, unit.UpgradeCost(upgrade)));
+			}
+		}
+		return result;
+	}
+
+	// Upgrades every unit UpgradeAllCandidates lists, or none: Civ3 refuses
+	// when the gold doesn't cover them all (script.txt
+	// NO_GOLD_TO_UPGRADE_ALL, "We would need $NUM0 gold in order to
+	// complete all the upgrades!"). Fortified units stay fortified ("Upgrade
+	// all now leaves fortified units fortified", Civ3 README 1.21f). Returns
+	// the units upgraded.
+	public static List<MapUnit> UpgradeAll(Player owner, UnitPrototype type) {
+		List<(MapUnit unit, UnitPrototype upgrade, int cost)> candidates = UpgradeAllCandidates(owner, type);
+		if (candidates.Count == 0 || owner.gold < candidates.Sum(c => c.cost)) {
+			return new();
+		}
+		List<MapUnit> upgraded = new();
+		foreach ((MapUnit unit, UnitPrototype upgrade, int _) in candidates) {
+			if (unit.UpgradeTo(upgrade)) {
+				upgraded.Add(unit);
+			}
+		}
+		return upgraded;
+	}
+
 	// Like Upgrade, for callers that already looked up GetAvailableUpgrade
 	// (or an equivalent) and pass its result.
 	// UpgradeTo itself refuses a unit in an army too, since some callers

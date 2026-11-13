@@ -1,78 +1,101 @@
 using System;
+using C7Engine;
+using C7GameData;
 using Godot;
 
 // A full-screen curtain shown between human players' turns in a hotseat
-// game. It hides the map so the next player doesn't see the previous
-// player's view, and waits for them to say they're at the screen.
-public partial class HotseatHandoff : ColorRect {
+// game, and at the start of a turn played by email. It hides the map so the
+// next player doesn't see the previous player's view, and waits for them to
+// say they're at the screen. A player with a password gives it first; at
+// the start of their first turn a player may choose one (Civ3's faction
+// password, in its words).
+public partial class HotseatHandoff : Curtain {
 	private readonly string title;
 	private readonly string message;
 	private readonly string buttonText;
 	private readonly Action onContinue;
+	// Whose password is asked for, if anyone's.
+	private readonly Player player;
+	private readonly bool mayChoosePassword;
+	private readonly Action onMainMenu;
 
-	public HotseatHandoff(string title, string message, string buttonText, Action onContinue) {
+	private LineEdit password;
+	private LineEdit verify;
+	private Label problem;
+	private Button button;
+
+	public HotseatHandoff(string title, string message, string buttonText, Action onContinue,
+		Player player = null, bool mayChoosePassword = false, Action onMainMenu = null) {
 		this.title = title;
 		this.message = message;
 		this.buttonText = buttonText;
 		this.onContinue = onContinue;
+		this.player = player;
+		this.mayChoosePassword = mayChoosePassword;
+		this.onMainMenu = onMainMenu;
 	}
 
-	public override void _Ready() {
-		Color = Colors.Black;
-		MouseFilter = MouseFilterEnum.Stop;
-		// SetAnchorsPreset alone would keep this control's initial 0x0 size;
-		// the offsets also need resetting for it to fill the screen.
-		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+	// Whether the player gives their password.
+	private bool AsksPassword => player != null && player.HasPassword();
 
-		CenterContainer center = new();
-		AddChild(center);
-		center.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+	// Whether the player may choose a password: only once, at the start of
+	// their turn.
+	private bool ChoosesPassword => player != null && mayChoosePassword && !player.HasPassword() && !player.passwordChosen;
 
-		VBoxContainer box = new();
-		box.AddThemeConstantOverride("separation", 24);
-		center.AddChild(box);
+	protected override void Build() {
+		AddLabel(title, 36);
+		AddLabel(message, 20);
 
-		Label titleLabel = new() {
-			Text = title,
-			HorizontalAlignment = HorizontalAlignment.Center,
-		};
-		titleLabel.AddThemeFontSizeOverride("font_size", 36);
-		box.AddChild(titleLabel);
+		if (AsksPassword) {
+			// Civ3's ENTERPASSWORDFACTION (script.txt).
+			AddLabel($"Please enter password for the {player.civilization.noun}", 16);
+			password = AddField(secret: true);
+			password.TextSubmitted += _ => Continue();
+		} else if (ChoosesPassword) {
+			// Civ3's ENTERPASSWORDNEW and VERIFYPASSWORD (script.txt).
+			AddLabel("Please Enter New Password (Leave blank for none). This will be your faction password for this new game.", 16);
+			password = AddField(secret: true);
+			AddLabel("Please Verify New Password", 16);
+			verify = AddField(secret: true);
+			password.TextSubmitted += _ => verify.GrabFocus();
+			verify.TextSubmitted += _ => Continue();
+		}
+		if (password != null) {
+			problem = AddLabel("", 16, WarningColor);
+		}
 
-		Label messageLabel = new() {
-			Text = message,
-			HorizontalAlignment = HorizontalAlignment.Center,
-		};
-		messageLabel.AddThemeFontSizeOverride("font_size", 20);
-		box.AddChild(messageLabel);
+		button = AddButton(buttonText, Continue);
+		if (onMainMenu != null) {
+			// Whoever opened the save may not be this player.
+			AddButton("Main Menu", onMainMenu);
+		}
 
-		Button button = new() {
-			Text = buttonText,
-			SizeFlagsHorizontal = SizeFlags.ShrinkCenter,
-			CustomMinimumSize = new Vector2(200, 48),
-		};
-		button.AddThemeFontSizeOverride("font_size", 20);
-		button.Pressed += () => Continue(button);
-		box.AddChild(button);
-
-		button.CallDeferred(Control.MethodName.GrabFocus);
+		Control focus = password != null ? password : button;
+		focus.CallDeferred(Control.MethodName.GrabFocus);
 	}
 
-	private async void Continue(Button button) {
-		button.Disabled = true;
-		button.ReleaseFocus();
-
-		// Wait for the next frame before continuing. Otherwise the key press
-		// that activated the button (e.g. Enter) would still read as "just
-		// pressed" by the game's input polling once the player's turn has
-		// started, and could immediately trigger an action such as ending the
-		// turn.
-		//
-		// This deliberately doesn't use Callable.From(onContinue).CallDeferred():
-		// a callable made from a lambda that isn't bound to a GodotObject has no
-		// target object, and Godot silently drops deferred calls without one.
-		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-		QueueFree();
-		onContinue();
+	private void Continue() {
+		if (button.Disabled) {
+			return;
+		}
+		if (AsksPassword && !player.CheckPassword(password.Text)) {
+			// Civ3's BADPASSWORD.
+			problem.Text = "That is not the correct password.";
+			password.Clear();
+			password.GrabFocus();
+			return;
+		}
+		if (ChoosesPassword) {
+			if (password.Text != verify.Text) {
+				// Civ3's DIFFERENTPASSWORDS.
+				problem.Text = "Password was not verified. Please try again.";
+				password.Clear();
+				verify.Clear();
+				password.GrabFocus();
+				return;
+			}
+			new MsgSetPassword(password.Text) { playerID = player.id }.send();
+		}
+		CloseAndThen(button, onContinue);
 	}
 }

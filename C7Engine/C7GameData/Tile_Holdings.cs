@@ -129,6 +129,42 @@ public partial class Tile {
 		return 2;
 	}
 
+	// How far a colony sees: the tiles next to it. UNVERIFIED: no Civ3 text
+	// says a colony sees at all; GBiebs/OpenCiv3 found that Civ3's saves
+	// mark the 3x3 around every colony as seen by structures, on any
+	// terrain, which this follows (see the compendium's open questions).
+	public const int ColonySightRange = 1;
+
+	// How far a radar tower sees: "The radar towers give visibility 2 tiles
+	// out (not including the center square)" (WarpStorm, Apolyton, "Answers
+	// on radar towers",
+	// https://apolyton.net/forum/miscellaneous/archives/civ3-play-the-world/86998-answers-on-radar-towers),
+	// the 5x5 square that GBiebs/OpenCiv3 also found Civ3's saves mark as
+	// seen by structures.
+	public const int RadarTowerSightRange = 2;
+
+	// How far the holding here shows its owner the map, whatever the terrain
+	// between: an outpost further from hills and mountains, a colony and a
+	// radar tower the same on any terrain. -1 if there is no holding that
+	// sees (an airfield doesn't).
+	public int HoldingSightRange() {
+		if (HasOutpost()) {
+			return OutpostSightRange();
+		}
+		if (HasRadarTower()) {
+			return RadarTowerSightRange;
+		}
+		if (HasColony()) {
+			return ColonySightRange;
+		}
+		return -1;
+	}
+
+	// Whether the player has a holding here that sees around it.
+	public bool HasSightedHoldingOf(Player player) {
+		return player != null && holdingOwner == player && HoldingSightRange() >= 0;
+	}
+
 	// The tile's outpost, colony, airfield or radar tower, or null.
 	public TerrainImprovement OwnedHolding() {
 		TerrainImprovement colony = overlays.ImprovementAtLayer(Layer.Colonies);
@@ -234,8 +270,9 @@ public partial class Tile {
 		return player.KnowsAboutResource(Resource);
 	}
 
-	// Puts the player's outpost or colony on the tile. An outpost shows its
-	// owner what it can see at once; a colony may give them a resource.
+	// Puts the player's holding on the tile. One that sees (an outpost,
+	// colony or radar tower) shows its owner what it can see at once; a
+	// colony may give them a resource.
 	internal void PlaceHolding(TerrainImprovement holding, Player owner) {
 		TryRemoveRuins(this);
 		overlays.Add(holding);
@@ -243,7 +280,8 @@ public partial class Tile {
 		TileChangeJournal.Record(this);
 		if (holding.key == COLONY) {
 			EngineStorage.gameData?.InvalidateCachedTradeNetwork();
-		} else if (holding.key == OUTPOST) {
+		}
+		if (HoldingSightRange() >= 0) {
 			owner?.tileKnowledge.AddTilesToKnown(this);
 		}
 	}

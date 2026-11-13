@@ -415,44 +415,35 @@ public class FixEconomyTests {
 
 	// Research queue
 
-	// GetResearchQueueFor as it was before it remembered which techs it had
-	// expanded, to check the result hasn't changed.
-	internal static List<Tech> OldResearchQueue(Player player, Tech tech) {
-		Queue<Tech> queue = new();
-		OldGetResearchQueueFor(player, tech, queue, new HashSet<Tech>());
-		return queue.Reverse().ToList();
+	// Each queued tech's prerequisites are known or earlier in the queue.
+	internal static void AssertPrerequisitesFirst(Player player) {
+		HashSet<ID> done = new(player.knownTechs);
+		foreach (Tech tech in player.ResearchQueue) {
+			foreach (Tech prereq in tech.Prerequisites) {
+				Assert.True(done.Contains(prereq.id), $"{tech.id} is queued before its prerequisite {prereq.id}");
+			}
+			done.Add(tech.id);
+		}
 	}
 
-	private static List<Tech> OldOrderTechs(List<Tech> techs) {
-		HashSet<Tech> seen = new();
-		List<Tech> result = new();
-		foreach (Tech t in techs.OrderBy(t => t.Cost)) {
-			if (seen.Add(t)) {
-				result.Add(t);
-			}
-		}
-		return result;
-	}
+	// A needs B and C, and C needs B: B, then C, then A (the queue used to
+	// come out C, B, A, putting C before its prerequisite).
+	[Fact]
+	public void ResearchQueuePutsPrerequisitesFirst() {
+		Player player = MakePlayer();
+		Tech b = new() { id = ID.FromString("tech-12"), Cost = 1 };
+		Tech c = new() { id = ID.FromString("tech-13"), Cost = 2, Prerequisites = { b } };
+		Tech a = new() { id = ID.FromString("tech-11"), Cost = 3, Prerequisites = { b, c } };
+		gameData.techs.AddRange([a, b, c]);
 
-	private static void OldGetResearchQueueFor(Player player, Tech tech, Queue<Tech> tempQueue, HashSet<Tech> inQueue) {
-		List<Tech> requiredTechs = OldOrderTechs(tech.Prerequisites);
-		if (inQueue.Add(tech)) {
-			tempQueue.Enqueue(tech);
-		}
-		foreach (Tech t in requiredTechs) {
-			if (!player.knownTechs.Contains(t.id) && inQueue.Add(t)) {
-				tempQueue.Enqueue(t);
-			}
-		}
-		foreach (Tech t in requiredTechs) {
-			if (!player.knownTechs.Contains(t.id) && t.Prerequisites.Count > 0) {
-				OldGetResearchQueueFor(player, t, tempQueue, inQueue);
-			}
-		}
+		player.CalculateFreshTechQueueAndAssignNewCurrent(a);
+
+		Assert.Equal([b, c, a], player.ResearchQueue.ToList());
+		Assert.Equal(b.id, player.currentlyResearchedTech);
 	}
 
 	[Fact]
-	public void ResearchQueueOfADiamondIsUnchanged() {
+	public void ResearchQueueOfADiamondPutsPrerequisitesFirst() {
 		Player player = MakePlayer();
 		Tech a = new() { id = ID.FromString("tech-1"), Cost = 1 };
 		Tech b = new() { id = ID.FromString("tech-2"), Cost = 3, Prerequisites = { a } };
@@ -463,8 +454,11 @@ public class FixEconomyTests {
 
 		foreach (Tech target in gameData.techs) {
 			player.CalculateFreshTechQueueAndAssignNewCurrent(target);
-			Assert.Equal(OldResearchQueue(player, target), player.ResearchQueue.ToList());
+			AssertPrerequisitesFirst(player);
+			Assert.Equal(target, player.ResearchQueue.Last());
 		}
+		player.CalculateFreshTechQueueAndAssignNewCurrent(e);
+		Assert.Equal([a, c, b, d, e], player.ResearchQueue.ToList());
 	}
 
 	[Fact]

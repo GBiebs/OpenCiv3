@@ -266,6 +266,31 @@ public class TerritoryDemandsTest : MapBase, IDisposable {
 		Assert.Empty(TerritoryDemands.FindTrespassers(us, gameData));
 	}
 
+	// On peace, each side's units in the other's land are moved out at
+	// once, workers too; hidden nationality units stay.
+	[Fact]
+	public void OnPeaceEachSidesUnitsLeaveTheOthersTerritory() {
+		row[5].owningCity = new City(Tile.NONE, them, "Their Capital", ID.None("city"));
+		MapUnit soldier = MakeUnit(them, row[1]);
+		MapUnit worker = MakeUnit(them, row[2]);
+		worker.unitType.attack = 0;
+		worker.unitType.defense = 0;
+		MapUnit privateer = MakeUnit(them, row[2]);
+		privateer.unitType.hasHiddenNationality = true;
+		MapUnit ours = MakeUnit(us, row[5]);
+		gameData.rules = new Rules() { DefaultDealDuration = 20 };
+		them.DeclareWarOn(us, gameData.turn);
+
+		SignPeaceAfterWar(us, them, gameData);
+
+		Assert.Same(row[3], soldier.location);
+		Assert.Same(row[3], worker.location);
+		Assert.Same(row[2], privateer.location);
+		Assert.Same(row[4], ours.location);
+		Assert.Contains(ours, row[4].unitsOnTile);
+		Assert.DoesNotContain(ours, row[5].unitsOnTile);
+	}
+
 	[Fact]
 	public async Task AnAiThatKeepsComingBackIsOnlyEverWarned() {
 		for (int i = 0; i < 3 * 2; ++i) {

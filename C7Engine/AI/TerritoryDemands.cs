@@ -277,6 +277,36 @@ namespace C7Engine.AI {
 			return relationship.multiTurnDeals.Exists(d => d.dealSubType == DealSubType.MilitaryAlliance);
 		}
 
+		// When two civs make peace, each one's units in the other's territory
+		// are moved out at once, as when told to leave (see Withdraw): to the
+		// nearest tile outside every other civ's borders they could stand on
+		// and get to, or failing that, for a land unit, its nearest city. A
+		// peace treaty means not to "even enter the other's territory with
+		// military units" (Civ3 manual, p.~158), and Civ3 moves units out
+		// rather than walking them: "Units removed from enemy territory for
+		// border violations are teleported to nearest non-offending spot"
+		// (CFC Civ3 Strategy Compilation; compendium 6.10, "Removed
+		// units are teleported out"). UNVERIFIED: no Civ3 source was found
+		// that says this happens on signing peace itself, rather than on the
+		// demand that follows; it is the project owner's ruling, as in
+		// GBiebs/OpenCiv3 9999221c (see the compendium's open questions).
+		// Hidden nationality units stay, as they aren't removed by
+		// diplomacy (PTW readme, 1.21f), and units aboard go with their
+		// transport. Returns how many units moved out.
+		public static int WithdrawAfterPeace(Player left, Player right) {
+			int withdrawn = 0;
+			foreach ((Player us, Player them) in new[] { (left, right), (right, left) }) {
+				List<MapUnit> units = them.units.FindAll(u => !u.IsLoaded() && u.location != null && u.location != Tile.NONE
+					&& u.location.OwningPlayer() == us && !u.unitType.hasHiddenNationality);
+				int moved = Withdraw(us, them, units);
+				if (moved > 0) {
+					log.Information("With peace signed, {Count} of {Them}'s units left {Us}'s territory", moved, them, us);
+				}
+				withdrawn += moved;
+			}
+			return withdrawn;
+		}
+
 		// Moves the units out, and with them the rest of their civ's land
 		// units in our territory. Only military units give cause for a
 		// demand, but once one is made the others go too: a lone explorer

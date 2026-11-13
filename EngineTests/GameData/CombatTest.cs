@@ -542,6 +542,26 @@ public class CombatTest : IClassFixture<SaveGameFixture> {
 		Assert.Contains(warrior.ListStrengthBonusesVersus(attacker, CombatRole.Defense, null), b => b.description == fortified);
 	}
 
+	// "the fortified bonus requires the unit to be fortified *and have
+	// movement points remaining*" (Perez's decompile, 3.2; owner's ruling
+	// 2026-11-12): a unit that fortified after spending its moves gets it
+	// only once its moves come back as the next turn begins.
+	[Fact]
+	public void TheFortificationBonusNeedsMovesLeft() {
+		(Tile land, _) = FindCoast();
+		MapUnit warrior = Spawn(us, "Warrior", land);
+		MapUnit attacker = Spawn(them, "Warrior", land);
+		warrior.movementPoints.skipTurn();
+		warrior.Fortify();
+
+		string fortified = gameData.fortificationBonus.description;
+		Assert.DoesNotContain(warrior.ListStrengthBonusesVersus(attacker, CombatRole.Defense, null), b => b.description == fortified);
+
+		warrior.OnBeginTurn();
+		Assert.True(warrior.isFortified);
+		Assert.Contains(warrior.ListStrengthBonusesVersus(attacker, CombatRole.Defense, null), b => b.description == fortified);
+	}
+
 	// Units like the Javelin Thrower have "a 33% chance" to make a unit
 	// (a Worker for it) of a foe they beat attacking
 	// (https://forums.civfanatics.com/threads/anyone-know-exactly-how-enslavement-works.107253/).
@@ -772,5 +792,36 @@ public class CombatTest : IClassFixture<SaveGameFixture> {
 		spearman.experienceLevel = gameData.experienceLevels[defenderLevel];
 
 		Assert.Equal(chance, horseman.RetreatChance(spearman, true), 6);
+	}
+
+	// Every round goes to the defender, and every retreat roll succeeds.
+	private class DefenderWinsAndRetreatsSucceed : System.Random {
+		public override double NextDouble() => 0.999;
+		public override int Next(int maxValue) => 0;
+	}
+
+	// "Retreat (only the attacker, never barbarians)" (Perez's decompile,
+	// 3.2; owner's ruling 2026-11-12): a barbarian horseman that loses fights
+	// to the death, where ours withdraws.
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task BarbariansNeverRetreatFromAnAttack(bool barbarian) {
+		Player barbarians = gameData.players.Single(p => p.isBarbarians);
+		Player attacker = barbarian ? barbarians : us;
+		GoToWar();
+		(Tile from, TileDirection dir, Tile to) = FindAdjacentLand();
+		MapUnit horseman = Spawn(attacker, "Horseman", from);
+		MapUnit warrior = Spawn(them, "Warrior", to);
+		Assert.Equal(barbarian ? 0.0 : 0.5, horseman.RetreatChance(warrior, true), 6);
+
+		System.Random original = C7GameData.GameData.rng;
+		C7GameData.GameData.rng = new DefenderWinsAndRetreatsSucceed();
+		try {
+			CombatResult result = await horseman.Fight(warrior);
+			Assert.Equal(barbarian ? CombatResult.AttackerKilled : CombatResult.AttackerRetreated, result);
+		} finally {
+			C7GameData.GameData.rng = original;
+		}
 	}
 }

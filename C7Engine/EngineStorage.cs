@@ -442,7 +442,12 @@ namespace C7Engine {
 			return (T)await tcs.Task;
 		}
 
+		// Whether the player can answer a question now. Playing by email, a
+		// human away from this computer can't (see PlayByEmail.CanAnswer).
 		public static bool IsPlayerReachable(ID player) {
+			if (PlayByEmail.IsOn(gameData) && !PlayByEmail.CanAnswer(gameData, player)) {
+				return false;
+			}
 			return playerReachable?.Invoke(player) ?? true;
 		}
 

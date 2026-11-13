@@ -157,6 +157,51 @@ public class OutpostAndColonyTest : IClassFixture<SaveGameFixture>, IDisposable 
 		Assert.False(us.tileKnowledge.isActiveTile(twoAway));
 	}
 
+	private TerrainImprovement Holding(string key) => gameData.terrainImprovements.Single(ti => ti.key == key);
+
+	// A colony sees the 3x3 around it and a radar tower the 5x5, as Civ3's
+	// saves mark them seen by structures (see Tile.HoldingSightRange); an
+	// airfield sees nothing.
+	[Theory]
+	[InlineData(Tile.TileOverlays.COLONY, 1)]
+	[InlineData(Tile.TileOverlays.RADAR_TOWER, 2)]
+	[InlineData(Tile.TileOverlays.AIRFIELD, -1)]
+	public void ColoniesAndRadarTowersSeeAroundThem(string key, int range) {
+		Tile site = LonelyFlatLand();
+		// On a hill too, unlike an outpost.
+		site.overlayTerrainType = gameData.terrainTypes.Single(tt => tt.Key == "hills");
+		us.tileKnowledge.RecomputeActiveTiles();
+		Assert.False(us.tileKnowledge.isActiveTile(site));
+
+		site.PlaceHolding(Holding(key), us);
+		us.tileKnowledge.RecomputeActiveTiles();
+
+		Assert.Equal(range, site.HoldingSightRange());
+		HashSet<Tile> seen = range < 0 ? [] : site.GetTilesWithinTileSquare(range).ToHashSet();
+		foreach (Tile t in site.GetTilesWithinTileSquare(3).Where(Tile.IsTileValid)) {
+			Assert.Equal(seen.Contains(t), us.tileKnowledge.isActiveTile(t));
+		}
+		Assert.Equal(us.tileKnowledge.ComputeActiveTilesFromScratch().OrderBy(t => t.Id.ToString()),
+			us.tileKnowledge.ActiveTiles().OrderBy(t => t.Id.ToString()));
+		// Only its owner sees from it.
+		them.tileKnowledge.RecomputeActiveTiles();
+		Assert.False(them.tileKnowledge.isActiveTile(site));
+	}
+
+	[Fact]
+	public void PillagingAColonyTakesAwayItsSight() {
+		Tile site = LonelyFlatLand();
+		site.PlaceHolding(Holding(Tile.TileOverlays.COLONY), us);
+		Tile next = site.neighbors.Values.First(Tile.IsTileValid);
+		us.tileKnowledge.RecomputeActiveTiles();
+		Assert.True(us.tileKnowledge.isActiveTile(next));
+
+		site.overlays.Remove(site.overlays.ImprovementAtLayer(TerrainImprovement.Layer.Colonies));
+		us.tileKnowledge.RecomputeActiveTiles();
+
+		Assert.False(us.tileKnowledge.isActiveTile(next));
+	}
+
 	// A city of ours, a line of three land tiles leading away from it, and
 	// iron on the last, outside the city's borders.
 	private (City city, List<Tile> line, Resource iron) CityWithIronThreeAway() {

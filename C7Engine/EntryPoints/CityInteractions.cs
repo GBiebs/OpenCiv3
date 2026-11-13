@@ -35,6 +35,9 @@ namespace C7Engine {
 			owner.citiesFounded++;
 			owner.neverHadCityOrSettler = false;
 			tileWithNewCity.cityAtTile = newCity;
+			// Civ3's City_Init: a new city can't flip for 10 turns, nor can
+			// other civs' cities near it.
+			CultureFlip.SetFlipCooldown(gameData, newCity, CultureFlip.Cooldown);
 			// Building the city may clear the terrain, which changes what units
 			// nearby can see.
 			TileChangeJournal.RecordTerrainChange(tileWithNewCity);
@@ -363,6 +366,9 @@ namespace C7Engine {
 			city.owner = captor;
 			city.perPlayerCulture.TryAdd(captor, 0);
 			gameData.OnCityOwnerChanged(city);
+			// Civ3's City_Transfer: a city taken by force may flip again
+			// after one turn.
+			CultureFlip.SetFlipCooldown(gameData, city, CultureFlip.ConquestCooldown);
 			city.isInCivilDisorder = false;
 			city.hurriedThisTurn = false;
 			city.SetStoredShields(0);
@@ -458,6 +464,9 @@ namespace C7Engine {
 			city.owner = newOwner;
 			city.perPlayerCulture.TryAdd(newOwner, 0);
 			gameData.OnCityOwnerChanged(city);
+			// Civ3's City_Transfer: a city that flipped, was traded or was
+			// given can't flip for 10 turns.
+			CultureFlip.SetFlipCooldown(gameData, city, CultureFlip.Cooldown);
 			city.isInCivilDisorder = false;
 			city.hurriedThisTurn = false;
 

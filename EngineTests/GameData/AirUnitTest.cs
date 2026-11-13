@@ -111,6 +111,27 @@ public class AirUnitTest : IClassFixture<SaveGameFixture>, System.IDisposable {
 		Assert.False(fighter.movementPoints.canMove);
 	}
 
+	// J with a plane selected re-bases the planes on its tile together:
+	// every one of ours that can reach the base goes, whatever its type; a
+	// plane out of moves, a land unit and someone else's plane stay.
+	[Fact]
+	public void AStackRebaseTakesEveryPlaneOfOursThatCanGo() {
+		City home = FoundCity(us);
+		City near = FoundCity(us, EmptyLandAt(home.location, 5));
+		MapUnit fighter = Spawn(us, "Fighter", home.location);
+		MapUnit bomber = Spawn(us, "Bomber", home.location);
+		MapUnit tired = Spawn(us, "Fighter", home.location);
+		tired.movementPoints.onConsumeAll();
+		Spawn(us, "Warrior", home.location);
+		Spawn(them, "Fighter", home.location);
+
+		Assert.Equal([fighter, bomber], UnitInteractions.StackRebasers(fighter, near.location));
+		// Nowhere to land: nothing goes.
+		Assert.Empty(UnitInteractions.StackRebasers(fighter, EmptyLandAt(home.location, 3)));
+		// A leader that can't go takes no one.
+		Assert.Empty(UnitInteractions.StackRebasers(tired, near.location));
+	}
+
 	[Fact]
 	public void AircraftRebaseOntoCarriersWithRoomAndFlyFromThem() {
 		City home = FoundCity(us, gameData.map.tiles.First(t => t.IsLand() && !t.HasCity() && t.unitsOnTile.Count == 0

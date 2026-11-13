@@ -14,6 +14,17 @@ public partial class HallOfFameScreen : Control {
 
 	public event Action Closed;
 
+	// Shown as the last page of the end of the game (see EndOfGame), rather
+	// than from the main menu: a click anywhere on it, Enter or Space goes
+	// on, as on the pages before it, and its button says Next.
+	public bool EndOfGame { get; init; }
+
+	// Clicks and keys this soon after the screen opens are the ones that
+	// opened it.
+	private const ulong InputGraceMsec = 300;
+	private ulong openedAt;
+	private bool closed;
+
 	private OptionButton _leaderChoice;
 	private VBoxContainer _rows;
 	private List<HallOfFameEntry> _entries = [];
@@ -51,14 +62,23 @@ public partial class HallOfFameScreen : Control {
 
 		Control screen = new() { CustomMinimumSize = new Vector2(1024, 768) };
 		center.AddChild(screen);
+		openedAt = Time.GetTicksMsec();
+		if (EndOfGame) {
+			screen.GuiInput += @event => {
+				if (@event is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } && TakesInput) {
+					screen.AcceptEvent();
+					Close();
+				}
+			};
+		}
 
 		ImageTexture art = TextureLoader.TryLoad("screens.hall_of_fame.background");
 		if (art != null) {
 			screen.AddChild(new TextureRect { Texture = art });
 		} else {
 			// Without Civ3's art, a parchment in a frame.
-			screen.AddChild(new ColorRect { Color = Color.Color8(196, 180, 140), Size = new Vector2(1024, 768) });
-			screen.AddChild(new ColorRect { Color = Color.Color8(240, 226, 190), Position = new Vector2(140, 60), Size = new Vector2(744, 630) });
+			screen.AddChild(new ColorRect { Color = Color.Color8(196, 180, 140), Size = new Vector2(1024, 768), MouseFilter = MouseFilterEnum.Pass });
+			screen.AddChild(new ColorRect { Color = Color.Color8(240, 226, 190), Position = new Vector2(140, 60), Size = new Vector2(744, 630), MouseFilter = MouseFilterEnum.Pass });
 		}
 
 		Label title = MakeLabel("HALL OF FAME", 28, 1024, HorizontalAlignment.Center);
@@ -82,13 +102,20 @@ public partial class HallOfFameScreen : Control {
 			Position = ListArea.Position,
 			Size = ListArea.Size,
 			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+			// A click on the list goes on too, at the end of the game.
+			MouseFilter = EndOfGame ? MouseFilterEnum.Pass : MouseFilterEnum.Stop,
 		};
 		_rows = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		_rows.AddThemeConstantOverride("separation", 4);
 		scroll.AddChild(_rows);
 		screen.AddChild(scroll);
 
-		Button exit = new() { Text = "Exit", Position = new Vector2(472, 700), CustomMinimumSize = new Vector2(80, 30) };
+		Button exit = new() {
+			Text = EndOfGame ? "Next  ▸" : "Exit",
+			Position = new Vector2(472, 700),
+			CustomMinimumSize = new Vector2(80, 30),
+			FocusMode = EndOfGame ? FocusModeEnum.None : FocusModeEnum.All,
+		};
 		exit.Pressed += Close;
 		screen.AddChild(exit);
 
@@ -101,14 +128,31 @@ public partial class HallOfFameScreen : Control {
 	}
 
 	public override void _UnhandledInput(InputEvent @event) {
-		if (@event is InputEventKey { Pressed: true, Keycode: Key.Escape }) {
+		if (@event is InputEventKey { Pressed: true } key
+				&& (key.Keycode == Key.Escape || (EndOfGame && key.Keycode is Key.Enter or Key.KpEnter or Key.Space))) {
 			GetViewport().SetInputAsHandled();
-			Close();
+			if (key.Keycode == Key.Escape || TakesInput) {
+				Close();
+			}
 		}
 	}
 
+	private bool TakesInput => !closed && Time.GetTicksMsec() - openedAt >= InputGraceMsec;
+
 	private void Close() {
-		Closed?.Invoke();
+		if (closed) {
+			return;
+		}
+		closed = true;
+		if (EndOfGame) {
+			// What comes next (the game over question, or the main menu)
+			// comes once this frame is done with, so the key that closed
+			// this doesn't also answer it.
+			Action whenClosed = Closed;
+			Callable.From(() => whenClosed?.Invoke()).CallDeferred();
+		} else {
+			Closed?.Invoke();
+		}
 		QueueFree();
 	}
 

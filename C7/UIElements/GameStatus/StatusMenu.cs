@@ -9,6 +9,11 @@ public partial class StatusMenu : Control {
 	[Export] ConsoleButton openDiplomacy;
 	[Export] ConsoleButton openEspionage;
 	[Export] ConsoleButton openPalaceScreen;
+	// Civ3's V and S buttons, and a G button for the statistics screen,
+	// which isn't Civ3's.
+	[Export] ConsoleButton openVictoryStatus;
+	[Export] ConsoleButton openSpaceship;
+	[Export] ConsoleButton openStatistics;
 
 	[Export] PopupOverlay popupOverlay;
 
@@ -18,6 +23,9 @@ public partial class StatusMenu : Control {
 		openPalaceScreen.Pressed += () => {
 			EmitSignal(SignalName.ShowGameView, C7Action.ShowPalaceView);
 		};
+		openVictoryStatus.Pressed += () => EmitSignal(SignalName.ShowGameView, C7Action.ShowVictoryStatusView);
+		openSpaceship.Pressed += () => EmitSignal(SignalName.ShowGameView, C7Action.ShowSpaceRaceView);
+		openStatistics.Pressed += () => EmitSignal(SignalName.ShowGameView, GameViews.ShowStatisticsView);
 	}
 
 	// What the buttons were last set to, so they are only changed when that
@@ -57,6 +65,11 @@ public partial class StatusMenu : Control {
 		buttonsSet = true;
 		diplomacyShown = showDiplomacy;
 		palaceShown = showPalace;
+
+		// The victory, spaceship and statistics screens are always there.
+		openVictoryStatus.ShowButton();
+		openSpaceship.ShowButton();
+		openStatistics.ShowButton();
 
 		// The embassies are only for civs we've met, too.
 		if (showDiplomacy) {

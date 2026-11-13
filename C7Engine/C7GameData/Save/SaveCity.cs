@@ -88,6 +88,10 @@ namespace C7GameData.Save {
 		// The turn the city last changed hands; absent if it never has, or
 		// in saves made before this was saved.
 		public int? ownerChangedTurn;
+
+		// The city's culture-flip cooldown (City.flipCooldown); absent if 0
+		// and in older saves.
+		public int? flipCooldown;
 		// See City.wasCityState.
 		public bool wasCityState;
 		// The civilization the city was taken from by force (City.capturedFrom),
@@ -107,8 +111,11 @@ namespace C7GameData.Save {
 		// The turn disease last struck the city (City.lastDiseaseTurn);
 		// missing in older saves.
 		public int? lastDiseaseTurn;
-		// Disease struck the city and takes another citizen next turn
-		// (City.diseaseStrikesNextTurn); false in older saves.
+		// The city is ill and loses a citizen every turn until it recovers
+		// (City.ill); false in older saves.
+		public bool ill;
+		// Older saves only: disease struck the city and was to take a second
+		// citizen the next turn. Such a city loads as ill. Not written.
 		public bool diseaseStrikesNextTurn;
 		// The city's governor (see CityGovernor); all off in older saves.
 		public bool governorManagesMoods;
@@ -158,6 +165,7 @@ namespace C7GameData.Save {
 			resisters = city.resisters;
 			resistanceFrom = city.resistanceFrom?.id;
 			ownerChangedTurn = city.ownerChangedTurn >= 0 ? city.ownerChangedTurn : null;
+			flipCooldown = city.flipCooldown > 0 ? city.flipCooldown : null;
 			wasCityState = city.wasCityState;
 			capturedFrom = city.capturedFrom?.name;
 			if (city.cultureFlipOfferedTo != null && city.cultureFlipOfferTurn >= 0) {
@@ -167,7 +175,7 @@ namespace C7GameData.Save {
 			hurriedThisTurn = city.hurriedThisTurn;
 			receivedForestShields = city.receivedForestShields;
 			lastDiseaseTurn = city.lastDiseaseTurn;
-			diseaseStrikesNextTurn = city.diseaseStrikesNextTurn;
+			ill = city.ill;
 			rallyPoint = city.rallyPoint == null ? null : new TileLocation(city.rallyPoint);
 			governorManagesMoods = city.governor.manageMoods;
 			governorEmphasizesFood = city.governor.emphasizeFood;
@@ -247,7 +255,7 @@ namespace C7GameData.Save {
 			}
 		}
 
-		private static ProducibleType TypeOf(IProducible producible) {
+		internal static ProducibleType TypeOf(IProducible producible) {
 			return producible switch {
 				Inflow => ProducibleType.INFLOW,
 				UnitPrototype => ProducibleType.UNIT,
@@ -301,6 +309,7 @@ namespace C7GameData.Save {
 				resisters = resisters,
 				resistanceFrom = Lookups.Find(lookups.playersById, resistanceFrom),
 				ownerChangedTurn = ownerChangedTurn ?? -1,
+				flipCooldown = flipCooldown ?? 0,
 				wasCityState = wasCityState,
 				// Saves made before this was saved still know a city-state a
 				// civ took: it was taken from the city-states.
@@ -311,7 +320,7 @@ namespace C7GameData.Save {
 				hurriedThisTurn = hurriedThisTurn,
 				receivedForestShields = receivedForestShields,
 				lastDiseaseTurn = lastDiseaseTurn ?? -1,
-				diseaseStrikesNextTurn = diseaseStrikesNextTurn,
+				ill = ill || diseaseStrikesNextTurn,
 				governor = new CityGovernor {
 					manageMoods = governorManagesMoods,
 					emphasizeFood = governorEmphasizesFood,

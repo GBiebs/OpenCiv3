@@ -9,6 +9,13 @@ namespace C7.Map {
 		ImageTexture shieldTexture = TextureLoader.Load("icons.map_shield");
 		ImageTexture wastedShieldTexture = TextureLoader.Load("icons.wasted_shield");
 		ImageTexture goldTexture = TextureLoader.Load("icons.map_commerce");
+		// What a government's tile penalty (despotism's) takes, in red as
+		// Civ3 draws it: its red shield and coins, and, as its art has no
+		// red food, a red copy of the food.
+		ImageTexture lostShieldTexture = TextureLoader.Load("icons.penalty_shield");
+		ImageTexture lostGoldTexture = TextureLoader.Load("icons.penalty_commerce");
+		private ImageTexture lostFoodTexture;
+		private ImageTexture LostFoodTexture => lostFoodTexture ??= Reddened(foodTexture);
 
 		private const int tileWidth = 128;
 		private const int tileHeight = 64;
@@ -35,8 +42,7 @@ namespace C7.Map {
 		public override bool IsBlank => shownCity == null;
 
 		// Reused for every tile, rather than made anew for each.
-		private readonly List<ImageTexture> keptIcons = new();
-		private readonly List<ImageTexture> lostIcons = new();
+		private readonly List<ImageTexture> rowIcons = new();
 		private readonly Vector2[] dimPolygon = new Vector2[4];
 
 		// What we know about the shown city's tiles, worked out again when the city or the map changes.
@@ -134,31 +140,41 @@ namespace C7.Map {
 				return;
 			}
 
-			// The yield in one row: food, then shields, then commerce. Yield lost
-			// to a penalty (e.g. despotism) is struck through in a
-			// second row beneath it.
-			// Like Civ3, a long row squeezes its icons together to stay within the tile.
-			List<ImageTexture> kept = keptIcons;
-			kept.Clear();
-			AddIcons(kept, foodTexture, tileYields.food);
-			AddIcons(kept, shieldTexture, tileYields.shields);
-			AddIcons(kept, goldTexture, tileYields.gold);
-			List<ImageTexture> lost = lostIcons;
-			lost.Clear();
-			AddIcons(lost, foodTexture, tileYields.foodPenalty);
-			AddIcons(lost, shieldTexture, tileYields.shieldPenalty);
-			AddIcons(lost, goldTexture, tileYields.goldPenalty);
+			// The yield in one row: food, then shields, then commerce, each
+			// followed by what a penalty (e.g. despotism's) takes of it, in
+			// red. Like Civ3, a long row squeezes its icons together to stay
+			// within the tile.
+			List<ImageTexture> icons = rowIcons;
+			icons.Clear();
+			AddIcons(icons, foodTexture, tileYields.food);
+			AddIcons(icons, LostFoodTexture, tileYields.foodPenalty);
+			AddIcons(icons, shieldTexture, tileYields.shields);
+			AddIcons(icons, lostShieldTexture, tileYields.shieldPenalty);
+			AddIcons(icons, goldTexture, tileYields.gold);
+			AddIcons(icons, lostGoldTexture, tileYields.goldPenalty);
+			DrawYieldRow(looseView, icons, tileCenter, Colors.White);
+		}
 
-			if (lost.Count == 0) {
-				DrawYieldRow(looseView, kept, tileCenter, Colors.White);
-			} else {
-				float rowHeight = foodTexture.GetHeight() + YieldIconGap;
-				DrawYieldRow(looseView, kept, tileCenter - new Vector2(0, rowHeight / 2), Colors.White);
-				Vector2 lostCenter = tileCenter + new Vector2(0, rowHeight / 2);
-				float lostWidth = DrawYieldRow(looseView, lost, lostCenter, Colors.White);
-				looseView.DrawLine(lostCenter - new Vector2(lostWidth / 2, 0), lostCenter + new Vector2(lostWidth / 2, 0),
-					Colors.Red, width: 2);
+		// A red copy of an icon, as Civ3's red shield and coins are of its
+		// shield and coins.
+		private static ImageTexture Reddened(ImageTexture texture) {
+			Image image = texture.GetImage();
+			image.Convert(Image.Format.Rgba8);
+			for (int y = 0; y < image.GetHeight(); ++y) {
+				for (int x = 0; x < image.GetWidth(); ++x) {
+					Color color = image.GetPixel(x, y);
+					if (color.A == 0) {
+						continue;
+					}
+					float light = color.Luminance;
+					float highlight = 0.1f + 0.6f * Math.Max(0, light - 0.55f);
+					image.SetPixel(x, y, new Color(Math.Min(1, 0.27f + 0.9f * light), highlight, highlight, color.A));
+				}
 			}
+			ImageTexture red = ImageTexture.CreateFromImage(image);
+			// (A remade icon has more pixels than it's drawn with.)
+			red.SetSizeOverride((Vector2I)texture.GetSize());
+			return red;
 		}
 
 		private static void AddIcons(List<ImageTexture> icons, ImageTexture texture, int count) {

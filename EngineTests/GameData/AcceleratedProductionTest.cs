@@ -46,6 +46,24 @@ public class AcceleratedProductionTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(cost / 2, city.owner.ShieldCost(warrior));
 	}
 
+	// Accelerated Production halves tech costs too: flag 0x200 "halves the
+	// food box, unit cost, improvement cost and tech cost base" (Perez's
+	// decompile, Round 2b "Costs"; owner's ruling 2026-11-12).
+	[Fact]
+	public void TechCostsAreHalved() {
+		Player owner = city.owner;
+		Tech tech = owner.GetAvailableTechsToResearch(gameData.techs).First(t => t.id != owner.currentlyResearchedTech);
+		gameData.rules.AcceleratedProduction = false;
+		int full = gameData.TechCostFor(tech, owner);
+
+		gameData.rules.AcceleratedProduction = true;
+		int halved = gameData.TechCostFor(tech, owner);
+		gameData.rules.AcceleratedProduction = false;
+
+		Assert.True(full > 1);
+		Assert.InRange(halved, full / 2 - 1, full / 2 + 1);
+	}
+
 	private static int Shields(City c) {
 		CorruptableValue shields = c.CurrentProductionYield();
 		return shields.useful + shields.corrupt;

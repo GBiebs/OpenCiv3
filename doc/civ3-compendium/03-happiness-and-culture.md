@@ -247,7 +247,8 @@ Where sources are cited:
   - Manual: "When order is restored, the city returns to normal operation the next turn." / "The risk of meltdown always exists when a city that has a Nuclear Plant goes into civil disorder."
   - C3C BIQ: `RULE.ChanceOfRioting` = 20.
 - **Upkeep is still paid during disorder** (play report). Kokuryutei (C3X-THREAD post-16941923, page-180 #3583): "During riots, you don't receive any products or income from them, and the cost of maintenance doesn't go anywhere." Consistent with [PEDIA]'s list, which names no upkeep relief.
-- **A riot destroys one improvement.** The game's only riot message names a single improvement per event. The engine follows the owner's ruling: one random non-wonder improvement. No source was found on how the improvement is picked, or whether wonders are exempt.
+- **A riot destroys one improvement.** The game's only riot message names a single improvement per event. The engine follows the owner's ruling: one random non-wonder improvement. *Superseded in part:* the binary settles the exemptions (below); how the improvement is picked is still open.
+  - **The binary** ([BINARY] Perez's decompile of the C3C executable, `doc/perez-findings/Civ3_Findings.md`, authoritative by the owner's ruling of 2026-11-12, "Happiness, disorder, celebration" and Round 2b): never in the capital; `Rand(100) < g_RuleRiotIntensifyChance` (a percent), then for a town (size ≤ MaxTown) a second `Rand(100) < 2×` that chance; then up to size + 20 tries of `Rand(bldgCount)`. Wonders, small wonders, flag-0x1 (palace-class) and aqueduct/sewer-class buildings are never destroyed. The engine reads the town roll as a second gate both must pass, and picks among the city's destroyable buildings rather than modelling the tries.
   - script.txt `#CIVIL_DISORDER_INTENSIFIES`: "Civil Disorder intensifies in $CITYNAME0! The mob has destroyed $IMPROVEMENT1!"
   - Civilopedia (C3C), `#GCON_Disorder`: "Destruction of existing city improvements or even sabotage to ongoing projects by angry mobs." No source describes the "sabotage to ongoing projects" part (UNVERIFIED).
 - **Government overthrow.** How long "prolonged" disorder must last before the government falls is still UNVERIFIED. The collapses players report are Democracy falling to war weariness, with or without disorder:
@@ -338,6 +339,7 @@ Where sources are cited:
   - Tested by The Mad Monk, https://codehappy.net/apolyton/threads/76110-1.htm #13 (Feb 2003). He compared the same building in two cities, one just under and one just over 1000 years old: "It's definately 1,000 years." / "you will find that the one improment is now producing twice the culture of the newer one."
   - The 1000 is counted in years. The C3X config (https://github.com/maxpetul/C3X/blob/master/default.c3x_config.ini): "Buildings double their culture production this many years after they were built. For standard game rules, set to 1000."
   - Corollary: with a 2050 AD end, anything built after 1050 AD never doubles.
+  - **Code (2026-11-12):** Civ3 binary (Perez's decompile, `doc/perez-findings/Civ3_Findings.md`), "Culture and flipping": per-building culture is `BLDG.culture`, "doubled when the building is 1000+ years old", so the doubling starts at exactly 1000 years (inclusive, as the tourism bands do). The owner ruled on 2026-11-12 that the decompile is authoritative; the engine uses `>= 1000`. (An earlier save reading, a library from 620 AD still making 3 in 1620 AD, pointed to "more than 1000"; it is superseded.)
 - **Mobilization halves culture.** Culture from improvements is halved while the civ is on a war footing.
   - Manual: "During wartime footing, cultural improvements produce half the number normally produced per turn."
   - CFC FAQ: "All culture per turn from your city is halved as well".
@@ -360,6 +362,7 @@ Where sources are cited:
   - Renata, https://forums.civfanatics.com/threads/culture-expansion.52924: "a city's original nine tiles".
   - The C3C Civilopedia instead lists 20,000 as the fifth threshold (see Disputed).
   - 1.29f readme, Changes v1.16f: "Editor: On General Settings, added Border Factor which controls border expansion."
+  - **Code (2026-11-12):** Civ3 binary (Perez's decompile, `doc/perez-findings/Civ3_Findings.md`), "Culture and flipping": "Culture level = 1 + number of times `g_RuleCultureBase` fits into the owner's city culture, max 6; it drives borders." The level is capped at 6, whatever the culture. The engine reads "fits" as successive powers of `RULE.BorderFactor`, as the editor help describes, and caps the level at 6 (`City.GetBorderExpansionLevel`). That `g_RuleCultureBase` is the Border Factor is our reading; the decompile does not name the BIQ field.
 - **Civ-wide culture levels** are a separate scale (`RULE` "Lvl. Multiplier", default 1000). They are used for the cultural level labels, not borders.
   - C3C editor help, "Level Multiplier": "Under the default level multiplier of 1000, the values for these cultural levels are 1000, 2000, 4000, 8000, 16000, and 32000."
   - What these levels do in play beyond labels is UNVERIFIED. script.txt uses them only as adjectives (`$CULTURAL_LEVEL`, e.g. "We have destroyed the $CULTURAL_LEVEL3 $CIVNOUN0").
@@ -501,11 +504,22 @@ Where sources are cited:
 - **Firaxis' qualitative list** (Civilopedia (C3C), `#GCON_Conversion`):
   - Defections are made more likely by: "The presence of foreign nationals of the other civilization in the city", "The application of propaganda by the other civilization", "Civil disorder in the city", "The proximity of foreign territory", "The proximity of a foreign capital".
   - They are made less likely by: "The presence of ground combat units in the city", "We Love The ____ Day", "The proximity of your capital".
-- **Formula.** Per interturn, for each rival civ:
+- **Formula from the binary (authoritative since 2026-11-12, used by the engine).** Civ3 binary (Perez's decompile, `doc/perez-findings/Civ3_Findings.md`), "Appendix: culture flipping, exact math" (`City_CheckCultureFlip`) and "Round 2c: Culture flip: the setters". The owner ruled on 2026-11-12 that this decompile is authoritative; it supersedes the owner's 2026-10-20 ruling below. For each candidate civ X, in slot order (1..31, the owner skipped), with integer arithmetic:
+  1. `S = max(T - 2, 0) + resisters + nationals`, where T is the city's radius tiles (positions 1..20, centre excluded) inside X's borders, nationals are the citizens of X's nationality and resisters those of them who resist (so resisters count twice). Skip X if `S <= 0`; cap S at 10.
+  2. `S *= 2` in civil disorder; `S *= 2` if X has more culture in this city than the owner; with A the owner's total culture and B X's: if `(A+1)*4 < B+1` then `S <<= 2` (a fixed x4), else `S = (B+1)*S/(A+1)` (which can shrink S a lot); `S /= 2` while celebrating.
+  3. `G` = military land units of **any owner** on the city tile x the difficulty's `DIFF+0x78` (the BIQ's "citizens quelled by military", `Difficulty.MilitaryLaw`; 0x78 = 0x44 + 13x4 in our `DIFF` layout). Skip X if `S - G <= 0`, else `S -= G`.
+  4. `R = clamp(2000 * d(city, X's capital) / d(city, owner's capital), 500, 8000)`, and **R = 2000 if either capital is missing**. `d = max(dx,dy) - (((dx+dy)/2 - min(dx,dy)) + 1)/2` with absolute, wrap-aware dx and dy.
+  5. The city flips to X if `Rand(R) < S`. Each civ rolls in slot order and the **first success wins**.
+  - **Capitals never flip.** A city whose flip cooldown is >= 1 is skipped and the cooldown goes down by 1. `City_SetFlipCooldown(city, n)` sets it to n and raises every other owner's city within the first 76 city-radius offsets (about radius 5) to at least n. Founding sets 10; a flip or a peaceful transfer (trade, gift) sets 10; a plain military conquest sets 1, which is why "a newly-captured town will _never_ flip on the first interturn".
+  - **Open:** when the owner lost its capital last turn (`Player+0x15c8`, `capitalLostTimer`, set to 1 by `City_Transfer` when a capital changes hands) S is replaced by a floating-point result whose formula Perez did not recover. Not implemented.
+  - The default per-unit quell value is not in the decompile; it is the BIQ's, 1 at every level in the standard rules.
+  - Example (Perez): 3 nationals, 5 foreign tiles: 3 + 3 = 6; more local culture: 12; equal totals: 12; 2 units x 2 quell: 8; R = 2000: 0.4% a turn. The largest chain gives S = 160: 8% a turn at R = 2000, 32% at R = 500.
+
+- **Community formulas (superseded by the binary for the engine).** Per interturn, for each rival civ:
 
   `P = [(F + T) * Cc * H * (Cte / Cty) - G] / D` (the community calculators' form)
 
-  `P = [(F + T) * Cc * H - G * (Cty / Cte)] / D` (the owner's ruling, used by the engine). Here the ratio scales the garrison, as in Soren's worked example "16 - (4 X 2) = 8". Both forms give zero chance at the same garrison.
+  `P = [(F + T) * Cc * H - G * (Cty / Cte)] / D` (the owner's ruling of 2026-10-20, **superseded on 2026-11-12** by the binary above). Here the ratio scales the garrison, as in Soren's worked example "16 - (4 X 2) = 8". Both forms give zero chance at the same garrison. The binary confirms the calculators' shape (the ratio multiplies the influence, not the garrison) and adds the "first two tiles" rule, the cap of 10, the x4 cap on the ratio, integer math and the strict > 0 test.
 
   Sources:
   - Dan Magaha (Firaxis), https://forums.civfanatics.com/threads/culture-flipping-exposed.14337/. He describes the terms but not the arithmetic.
@@ -555,21 +569,28 @@ Where sources are cited:
 
 ### Where our implementation (`C7Engine/C7GameData/CultureFlip.cs`) stands against the sources
 
+Since 2026-11-12 the engine follows the binary's formula above. Earlier rows that described the community model are superseded.
+
 | Point | Sources | CultureFlip.cs | Note |
 |---|---|---|---|
-| Formula shape and terms | as above | Same formula; F counts only that civ's nationals, resisters twice; T counts tiles within `MaxRankOfWorkableTiles` (21 by default, excluding the city tile) | Matches. |
-| Where Cte/Cty applies | Flip Calc and the Babylon II calculator (Chieftess, https://forums.civfanatics.com/threads/babylon-ii-civ3-culture-flip-calc.53181/ #1, "P=[(F+T)*Cc*H*(Cte/Cty) - G]/D") multiply influence. Soren's example "16 - (4 X 2) = 8" instead scales the garrison. | Scales the garrison by Cty/Cte (owner's ruling) | Same zero point, but different slope when the ratio is far from 1. Flagged in code. |
-| Integer truncation of Cte/Cty | Fitz speculated truncation (51715-3 #78); unconfirmed. DaveMcW's HTML Flip Calc 1.0 (https://forums.civfanatics.com/attachments/flipcalc1-0-html.34465/, from thread 53228) keeps it real-valued: `var P = ( (F + T) * Cc * H * CR - G ) / D`, with `CR` the enemy's culture over yours and no `Math.floor`. Its distance factor is a radio choice of 4, 2, 1, .5 or .25 (`D = 2000 * GetRadio(...)`), and it compounds over turns with `1 - Math.pow(1-P, turns)`. | Real-valued | UNVERIFIED (both calculators are community models). |
-| Distance metric | Magaha: "I would assume … pathfinding". Calculators use max+½min straight-line distance. | Straight-line max+½min | Disputed; flagged in code. |
-| Propaganda as a flip factor | The Civilopedia lists "The application of propaganda by the other civilization" as making defection more likely | Not modelled (propaganda handled as its own mission) | Possibly only the propaganda mission itself, not a modifier. UNVERIFIED. |
-| Capitals | No source exempts them; d is capped at 4. DeepO (62844 #16) had "never heared of a capital flipping". | Allowed, D = 8000 | UNVERIFIED either way. |
-| Refusal | script.txt: the receiver may "Rebuff the rebels"; the AI may refuse too | Not checked in this pass | See "The receiving civ can refuse a flip". |
-| Dead civs | Players never saw a flip to a destroyed civ (39825-2 #35, 39825-5 #130) | Not checked in this pass | Dead civs should be skipped. |
-| Courthouse | Civilopedia: courthouse resists *propaganda* only | No effect on flips | Consistent with sources. |
-| Order of rolls among several rivals | No source | Likeliest first | UNVERIFIED. |
-| Free defender type | "The 'capturing' civ gets one free defender in the city" (Halcyon, https://forums.civfanatics.com/threads/cultural-conversion-question.87425/ #2, re-fetched). A city cut off from the AI capital gets "only … a Rifleman at best" (anarres, 61562 #6). | Best-defence buildable land unit | Consistent if "buildable" means buildable in that city with its own resource connections. Exact type UNVERIFIED. |
-| WLTKD and disorder | ×0.5 and ×2 | Same | Matches. Civilopedia adds that "prolonged" disorder leads to defection; no extra factor is known. |
+| Formula shape and terms | Binary (above) | Binary: `max(T-2,0)` + nationals + resisters, cap 10, then the multipliers in the binary's order in integer math | Matches the binary. T counts tiles within `MaxRankOfWorkableTiles` (21 by default, excluding the city tile). |
+| Where Cte/Cty applies | Binary: on the influence, x4 at most, `(B+1)*S/(A+1)` otherwise | Same | *Superseded:* the 2026-10-20 ruling that the ratio scales the garrison. |
+| Integer truncation | Binary: integer arithmetic throughout | Integer | Resolved. |
+| Garrison | Binary: military land units of any owner x `DIFF+0x78` | Units with attack >= 1 and defence >= 1 (and armies holding one), any owner, x `Difficulty.MilitaryLaw` | Which units count as "military" (count mode 4) is our reading of Magaha. |
+| Distance metric | Binary: `max - ((sum/2 - min) + 1)/2` | Same, integer | *Superseded:* real-valued max+½min. Pathfinding (Magaha's hedge) is ruled out. |
+| Missing capital | Binary: R = 2000 if either capital is missing | Same | *Superseded:* d capped at 4 (R = 8000) for a civ without a capital. |
+| Propaganda as a flip factor | The Civilopedia lists "The application of propaganda by the other civilization" as making defection more likely | Not modelled (propaganda handled as its own mission) | Not in the binary's flip routine. |
+| Capitals | Binary: the owner's capital is skipped | Never flip | Resolved. |
+| Cooldown | Binary: `City_SetFlipCooldown`; 10 on founding, flip or peaceful transfer, 1 on conquest, raised for other owners' cities within 76 offsets | `City.flipCooldown` (saved), counted down by each round's check | The 76 offsets: rank <= 4 plus the first 15 of rank 5 in our spiral order (Civ3's order within the ring is unknown). |
+| capitalLostTimer | Binary: a float replacement for S, formula not recovered | Not implemented | Open. |
+| Refusal | script.txt: the receiver may "Rebuff the rebels"; the AI may refuse too | Human asked; AI refuses an ally's city (heuristic) | See "The receiving civ can refuse a flip". |
+| Dead civs | Binary: only active civs are candidates | Defeated civs and barbarians skipped | Matches. |
+| Courthouse | Civilopedia: courthouse resists *propaganda* only | No effect on flips | Consistent with the binary. |
+| Order of rolls among several rivals | Binary: slot order, first success wins | Player order, first success wins | *Superseded:* likeliest first. |
+| Free defender type | "The 'capturing' civ gets one free defender in the city" (Halcyon, https://forums.civfanatics.com/threads/cultural-conversion-question.87425/ #2, re-fetched). A city cut off from the AI capital gets "only … a Rifleman at best" (anarres, 61562 #6). | Best-defence buildable land unit | Exact type UNVERIFIED. |
+| WLTKD and disorder | Binary: x2, then /2 after the culture scaling | Same | Matches. |
 | Fascism, Retain Culture, assimilation | Change F and the culture totals over time | Inputs only | Make sure F, the city memory and Cte/Cty follow assimilation, Fascist xenophobia and capture rules (§3.10, §3.14). |
+| Timing | Binary: at the start of each city's processing, in its owner's turn | Once per round, after every player has played | Kept from before. |
 
 ## Disputed
 
@@ -593,8 +614,8 @@ Where sources are cited:
   - The Complete manual chart: 5, 4, 5, 5, 5, plus JS Bach 5 and Hoover 3.
 
   It is not a difference between the final patches. BIQ-V (1.29f) and BIQ-PTW (1.27f) have the same culture values as C3C for every wonder (Great Library 6, Sistine 6, Shakespeare 8, Newton 6, Cure for Cancer 3, JS Bach 6, Hoover 2; the shared buildings match too). The CFC page and the manual chart must reflect an earlier patch or an error. The BIQ values are the defaults in all three final versions.
-- **Distance for flips.** Pathfinding distance (Magaha, hedged: "I would assume this is measured in tiles") vs straight-line max+½min distance (the calculators, and the border metric in §3.10).
-- **Where Cte/Cty applies in the flip formula** (see the table above). The engine follows the owner's ruling.
+- ~~**Distance for flips.**~~ *Resolved 2026-11-12 by the binary:* a straight-line tile distance, `max - ((sum/2 - min) + 1)/2` (§3.15).
+- ~~**Where Cte/Cty applies in the flip formula.**~~ *Resolved 2026-11-12 by the binary:* on the influence, capped at x4 (§3.15). The owner's 2026-10-20 ruling (on the garrison) is superseded.
 - **Assimilation.** The BIQ ships 1–4% chances (§3.14), and the Civilopedia describes assimilation. Two editor tests saw none, and the engine follows the owner's ruling that it never happens.
 
 ### Resolved in the 2026-10-20 deep pass (kept for the record)
@@ -617,8 +638,8 @@ Where sources are cited:
 - What the civ-wide culture levels (Lvl. Multiplier: 1000, 2000 … 32000) do besides the labels.
 - How much AI attitude depends on cultural opinion.
 - The "less than half the leader's culture" condition for culture victory.
-- Flip items: the order of rival rolls, whether capitals can flip, the free defender's exact type, propaganda as a flip modifier, integer truncation of the culture ratio, and how the AI decides to refuse a flip.
+- Flip items: the free defender's exact type, how the AI decides to refuse a flip, and the floating-point flip formula used while `capitalLostTimer` is set (the turn after a civ loses its capital; not recovered from the binary, not implemented). The order of rolls, capitals, integer math and the cooldown are resolved by the binary (§3.15).
 - Which nationality a drafted unit or citizen has, and whether foreign nationals are drafted or sacrificed first. Toasty (base game) says only your own nationals can be drafted; this is unconfirmed.
 - Whether specialists count as content for the WLTKD "happy vs content" test.
 - Whether WW points from different enemies are summed before the level is applied (*C3X-THREAD:* the anarchy test divides total WW by the number of contacts, §3.5; the per-city unhappiness rule is still not shown), or applied per enemy and then summed. The article and Larkin (for war happiness) say per enemy, rounded down, then added. MadScot (61628 #2, Aug 2003) said instead that "the total active WWP for all civs is compared to the threshold values". Third round, code: the 1.22 player record stores war weariness per opponent, `int war_weariness[32];` in `struct Leader` (C3X's header for the exe, https://github.com/maxpetul/C3X/blob/master/Civ3Conquests.h). So the points are kept per enemy. That fits the per-enemy model but does not prove how the level is applied, since the code that reads the array is not published.
-- Code-level field names that bear on this section (third round, same header, names given by C3X's reverse engineering, no logic): each city has `turns_of_flip_immunity`, so the stock game keeps a per-city timer during which the city can't flip (this fits "a newly-captured town will _never_ flip on the first interturn"; the length is unknown). Each city has `Total_Cultures[32]`, a per-civ culture total, which is the city's memory of every civ's culture behind the flip formula's Cc term (C3X's culture code adds to `Total_Cultures[civ_id]` of the owner). The city's unhappiness breakdown has separate percentages for no reason, crowding, war weariness, "Agresssion" (the mother-country aggression term), propaganda, draft, oppression (pop rush) and this-city and other-city improvements, plus `UnhappyFacesDueToPropaganda`, `UnhappinessTurnsFromPopRushing`, `DraftCount` and `UnhappyTurnsDueToDrafting`. So mother-country aggression and enemy propaganda are separate unhappiness causes in the engine.
+- Code-level field names that bear on this section (third round, same header, names given by C3X's reverse engineering, no logic): each city has `turns_of_flip_immunity`, so the stock game keeps a per-city timer during which the city can't flip (this fits "a newly-captured town will _never_ flip on the first interturn"; the binary gives the lengths, 10 and 1, §3.15). Each city has `Total_Cultures[32]`, a per-civ culture total, which is the city's memory of every civ's culture behind the flip formula's Cc term (C3X's culture code adds to `Total_Cultures[civ_id]` of the owner). The city's unhappiness breakdown has separate percentages for no reason, crowding, war weariness, "Agresssion" (the mother-country aggression term), propaganda, draft, oppression (pop rush) and this-city and other-city improvements, plus `UnhappyFacesDueToPropaganda`, `UnhappinessTurnsFromPopRushing`, `DraftCount` and `UnhappyTurnsDueToDrafting`. So mother-country aggression and enemy propaganda are separate unhappiness causes in the engine.

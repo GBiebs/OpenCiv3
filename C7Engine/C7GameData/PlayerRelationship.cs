@@ -530,6 +530,9 @@ public class PlayerRelationship {
 		ResetWarRecord(left.playerRelationships[right.id]);
 		ResetWarRecord(right.playerRelationships[left.id]);
 
+		// Each side's units in the other's land go home.
+		C7Engine.AI.TerritoryDemands.WithdrawAfterPeace(left, right);
+
 		log.Information("{Left} signed a peace treaty with {Right}", left, right);
 	}
 

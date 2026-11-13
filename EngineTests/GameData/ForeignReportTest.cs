@@ -182,4 +182,24 @@ public class ForeignReportTest {
 		them.units.Add(new MapUnit(ID.FromString("unit-3")) { unitType = new UnitPrototype { name = "Settler", shieldCost = 30 } });
 		Assert.Null(ForeignReport.BestKnownUnit(us, them));
 	}
+
+	// Civ3 draws our leader pleased and the others by their attitude toward
+	// us (FUN_00538830), whether or not we're at war.
+	[Theory]
+	[InlineData(AttitudeLevel.Gracious, LeaderFace.Pleased)]
+	[InlineData(AttitudeLevel.Polite, LeaderFace.Pleased)]
+	[InlineData(AttitudeLevel.Cautious, LeaderFace.Neutral)]
+	[InlineData(AttitudeLevel.Annoyed, LeaderFace.Angry)]
+	[InlineData(AttitudeLevel.Furious, LeaderFace.Angry)]
+	public void ALeaderLooksAsItFeelsTowardUs(AttitudeLevel attitude, LeaderFace face) {
+		Assert.Equal(face, ForeignReport.FaceToward(attitude, isViewer: false));
+	}
+
+	[Fact]
+	public void OurLeaderLooksPleasedAndAHumanRivalNeutral() {
+		Assert.Equal(LeaderFace.Pleased, ForeignReport.FaceToward(gameData, us, us));
+		them.isHuman = true;
+		Assert.Equal(LeaderFace.Neutral, ForeignReport.FaceToward(gameData, us, them));
+		Assert.Equal(1, new LeaderPortrait(them, LeaderFace.Neutral).row);
+	}
 }

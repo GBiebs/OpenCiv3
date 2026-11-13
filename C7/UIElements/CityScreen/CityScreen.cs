@@ -33,7 +33,7 @@ public partial class CityScreen : Control {
 	// reused and hidden when not needed.
 	private readonly List<(VBoxContainer box, TextureRect rect, Label label)> strategicResourceRows = new();
 	private readonly List<(HBoxContainer box, Label label, TextureRect rect)> luxuryRows = new();
-	private readonly List<Label> buildingLabels = new();
+	private readonly List<BuildingRow> buildingRows = new();
 	private bool listsCleared = false;
 
 	private const int POP_HEAD_OFFSET_Y = 433;
@@ -53,7 +53,10 @@ public partial class CityScreen : Control {
 	[Export] private TextureButton close;
 	[Export] private TextureButton previousCity;
 	[Export] private TextureButton nextCity;
-	private Button governorButton;
+	// Play the World's governor button and Civ3's draft button, at the end
+	// of the production bar.
+	private TextureButton governorButton;
+	private TextureButton draftButton;
 	// Civ3's City View and its button, when there's Civ3 art for it.
 	private CityViewScreen cityView;
 	private TextureButton cityViewButton;
@@ -113,6 +116,11 @@ public partial class CityScreen : Control {
 	private ImageTexture wastedGoldTexture;
 
 	private Dictionary<string, ImageTexture> effectIcons = new();
+
+	// The improvements list's upkeep coin, culture note and content face.
+	private ImageTexture upkeepTexture;
+	private ImageTexture cultureTexture;
+	private ImageTexture contentFaceTexture;
 
 	// The shield and food boxes and rows are drawn by one node each, rather
 	// than one TextureRect per icon.
@@ -194,17 +202,30 @@ public partial class CityScreen : Control {
 		TextureLoader.SetButtonTextures(productionButton, "city_screen.buttons.production");
 		productionButton.Pressed += () => { this.productionMenu.Visible = !this.productionMenu.Visible; };
 
-		// Civ3's governor (G on its city window). A plain button for now,
-		// on the empty parchment left of the close button.
-		governorButton = new Button() {
-			Text = "Governor",
-			TooltipText = "Contact Governor (G)",
-			Position = new Vector2(842, 58),
-			Size = new Vector2(100, 26),
+		// The governor (G on Civ3's city window) and the draft, with
+		// labels.txt's words, where Play the World puts the governor's
+		// button (835, 520) and the draft's beside it, in the production
+		// bar's last section.
+		governorButton = new TextureButton() {
+			Position = new Vector2(835, 520),
+			TooltipText = "Contact Governor",
 			FocusMode = FocusModeEnum.None,
 		};
+		TextureLoader.SetButtonTextures(governorButton, "city_screen.buttons.governor");
 		governorButton.Pressed += ShowGovernor;
 		background.AddChild(governorButton);
+		draftButton = new TextureButton() {
+			Position = new Vector2(864, 524),
+			TooltipText = "Draft Citizen",
+			FocusMode = FocusModeEnum.None,
+		};
+		TextureLoader.SetButtonTextures(draftButton, "city_screen.buttons.draft");
+		draftButton.Pressed += Draft;
+		background.AddChild(draftButton);
+
+		upkeepTexture = TextureLoader.Load("icons.roster_upkeep");
+		cultureTexture = AsInk(TextureLoader.Load("icons.roster_culture"));
+		contentFaceTexture = TextureLoader.Load("icons.roster_content_face");
 
 		shieldTexture = TextureLoader.Load("icons.good_shield");
 		emptyShieldTexture = TextureLoader.Load("icons.empty_shield");
@@ -328,6 +349,19 @@ public partial class CityScreen : Control {
 			return;
 		}
 
+		// Q loads a saved production queue into the city, Shift-Q saves the
+		// city's queue under a name (see SavedProductionQueue).
+		if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.Q } queueKey
+				&& !queueKey.CtrlPressed && !queueKey.AltPressed && !foreignView) {
+			GetViewport().SetInputAsHandled();
+			if (queueKey.ShiftPressed) {
+				SaveProductionQueue();
+			} else {
+				LoadProductionQueue();
+			}
+			return;
+		}
+
 		if (@event is InputEventKey { Pressed: true, Echo: false } debugKey && HandleDebugKey(debugKey)) {
 			GetViewport().SetInputAsHandled();
 			return;
@@ -408,6 +442,58 @@ public partial class CityScreen : Control {
 		EngineStorage.ReadGameData((GameData gameData) => overlay.ShowPopup(new GovernorPopup(city), PopupOverlay.PopupCategory.Info));
 	}
 
+	// Shift-Q: asks for a name to save the city's production queue under,
+	// suggesting the city's. An empty queue has nothing to save.
+	private void SaveProductionQueue() {
+		City city = tileAssignmentLayer.city;
+		PopupOverlay overlay = Overlay;
+		if (city == null || overlay == null || overlay.ShowingPopup || city.productionQueue.Count == 0) {
+			return;
+		}
+		productionMenu.Hide();
+		overlay.ShowPopup(new TextDialog("Save Production Queue", "Name: ", city.name, BoxContainer.AlignmentMode.Begin,
+			name => new MsgSaveProductionQueue(city.id, name).send()), PopupOverlay.PopupCategory.Info);
+	}
+
+	// Q: lists the player's saved production queues; the one picked becomes
+	// the city's queue.
+	private void LoadProductionQueue() {
+		City city = tileAssignmentLayer.city;
+		PopupOverlay overlay = Overlay;
+		if (city == null || overlay == null || overlay.ShowingPopup) {
+			return;
+		}
+		productionMenu.Hide();
+		List<SavedProductionQueue> saved = new(city.owner.savedProductionQueues);
+		if (saved.Count == 0) {
+			overlay.ShowPopup(new InformationalPopup("No production queue has been saved. Shift-Q saves a city's queue.",
+				AdvisorHead.Advisor.Domestic, AdvisorHead.Mood.Happy), PopupOverlay.PopupCategory.Info);
+			return;
+		}
+		List<string> names = saved.ConvertAll(q => $"{q.name}: {string.Join(", ", q.items.ConvertAll(i => i.name))}");
+		overlay.ShowPopup(new ListPopup($"Load a production queue into {city.name}", names, 0,
+			index => new MsgLoadProductionQueue(city.id, saved[index].name).send()), PopupOverlay.PopupCategory.Info);
+	}
+
+	// Drafts a citizen, as the city's right-click menu does: Civ3's
+	// confirmation, or why the city can't.
+	private void Draft() {
+		City city = tileAssignmentLayer.city;
+		PopupOverlay overlay = Overlay;
+		if (city == null || foreignView || overlay == null || overlay.ShowingPopup) {
+			return;
+		}
+		productionMenu.Hide();
+		EngineStorage.ReadGameData((GameData gameData) =>
+			new MsgDisplayDraftPopup(city, city.WhyCannotDraft(gameData), city.DraftableUnit(gameData)?.name).send());
+	}
+
+	// The draft button is there once the advance that allows the draft is
+	// known, as the right-click menu's Draft Citizen is.
+	private void RenderDraftButton(City city) {
+		draftButton.Visible = !foreignView && city.owner.HasTechEnabling(C7GameData.Save.SaveTech.Flag.EnablesConscription);
+	}
+
 	// As in Civ3, moving the citizens of a city whose governor manages them
 	// first asks whether the governor should stop (Script.txt,
 	// #CANCELGOVCITIZENS); if so it stops managing moods, and the move
@@ -471,6 +557,7 @@ public partial class CityScreen : Control {
 		previousCity.Visible = visible;
 		nextCity.Visible = visible;
 		governorButton.Visible = visible;
+		draftButton.Visible = visible;
 	}
 
 	private void OnShowCityScreenLocked(GameData gameData, ParameterWrapper<City> city) {
@@ -490,7 +577,8 @@ public partial class CityScreen : Control {
 		RenderFoodDetails(city.Value);
 		RenderCommerceDetails(city.Value);
 		RenderProductionDetails(gameData, city.Value);
-		RenderExistingBuildings(city.Value.GetBuildings());
+		RenderExistingBuildings(city.Value);
+		RenderDraftButton(city.Value);
 		RenderStrategicResources(gameData, city.Value);
 		RenderLuxuries(gameData, city.Value);
 		RenderGarrison(city.Value);
@@ -532,7 +620,8 @@ public partial class CityScreen : Control {
 		RenderFoodDetails(city);
 		RenderCommerceDetails(city);
 		RenderProductionDetails(gameData, city);
-		RenderExistingBuildings(city.GetBuildings());
+		RenderExistingBuildings(city);
+		RenderDraftButton(city);
 		RenderStrategicResources(gameData, city);
 		RenderLuxuries(gameData, city);
 		RenderGarrison(city);
@@ -685,49 +774,102 @@ public partial class CityScreen : Control {
 			: "";
 	}
 
-	// The buildings the labels of the city's buildings are for, in order.
+	// The buildings the rows of the improvements list are for, in order.
 	private readonly List<Building> shownBuildings = new();
 
-	private void RenderExistingBuildings(List<CityBuilding> buildings) {
+	// Civ3's Improvements Roster: each building's small picture and name,
+	// and under the name its upkeep (a red coin a gold), its culture (a
+	// note a point) and the unhappy citizens it makes content here (a face
+	// each, red for one that makes them unhappy). Clicking one of ours
+	// offers to sell it; right-clicking shows it in the Civilopedia.
+	private void RenderExistingBuildings(City city) {
 		ClearListPlaceholders();
+		existingBuildings.AddThemeConstantOverride("separation", 1);
 
 		int index = 0;
 		shownBuildings.Clear();
-		foreach (CityBuilding building in buildings) {
-			if (index == buildingLabels.Count) {
-				Label newLabel = new() { MouseFilter = MouseFilterEnum.Pass };
-				// Right-clicking a building shows it in the Civilopedia.
-				int labelIndex = index;
-				newLabel.GuiInput += (InputEvent e) => {
-					if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }
-						&& labelIndex < shownBuildings.Count && Civilopedia.OpenFor(shownBuildings[labelIndex])) {
-						newLabel.AcceptEvent();
-					} else if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
-						&& labelIndex < shownBuildings.Count && !foreignView) {
-						// Clicking one of our buildings offers to sell it.
-						newLabel.AcceptEvent();
-						Building toSell = shownBuildings[labelIndex];
-						EngineStorage.ReadGameData((GameData gameData) => {
-							City shown = tileAssignmentLayer.city;
-							if (shown == null) {
-								return;
-							}
-							string why = shown.WhyCannotSell(toSell);
-							new MsgDisplaySellBuildingPopup(shown, toSell, why, why == null ? shown.SalePrice(toSell) : 0).send();
-						});
-					}
-				};
-				existingBuildings.AddChild(newLabel);
-				buildingLabels.Add(newLabel);
+		foreach (CityBuilding cityBuilding in city.GetBuildings()) {
+			if (index == buildingRows.Count) {
+				BuildingRow newRow = new();
+				int rowIndex = index;
+				newRow.GuiInput += (InputEvent e) => OnBuildingRowInput(newRow, rowIndex, e);
+				existingBuildings.AddChild(newRow);
+				buildingRows.Add(newRow);
 			}
-			Label label = buildingLabels[index++];
-			label.Text = building.building.name;
-			label.Show();
-			shownBuildings.Add(building.building);
+			Building building = cityBuilding.building;
+			int upkeep = city.MaintenanceCostOf(cityBuilding);
+			int culture = city.CulturePerTurnOf(cityBuilding);
+			bool works = !building.isGreatWonderObsolete(city.owner);
+			int faces = works ? building.contentFacesInCity - building.unhappyFacesInCity : 0;
+			BuildingRow row = buildingRows[index++];
+			row.Show(building, TextureLoader.Load("building_icons.small", building, useCache: true), works);
+			row.AddIcons(upkeepTexture, upkeep, BuildingRow.UpkeepColumn, Colors.White);
+			row.AddIcons(cultureTexture, culture, BuildingRow.CultureColumn, Colors.White);
+			row.AddIcons(contentFaceTexture, Math.Abs(faces), BuildingRow.FacesColumn, faces < 0 ? new Color(1, 0.35f, 0.35f) : Colors.White);
+			row.TooltipText = BuildingTooltip(building, upkeep, culture, faces, works);
+			shownBuildings.Add(building);
 		}
-		for (int i = index; i < buildingLabels.Count; ++i) {
-			buildingLabels[i].Hide();
+		for (int i = index; i < buildingRows.Count; ++i) {
+			buildingRows[i].Hide();
 		}
+	}
+
+	private void OnBuildingRowInput(BuildingRow row, int rowIndex, InputEvent e) {
+		if (e is InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: true }
+			&& rowIndex < shownBuildings.Count && Civilopedia.OpenFor(shownBuildings[rowIndex])) {
+			row.AcceptEvent();
+		} else if (e is InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true }
+			&& rowIndex < shownBuildings.Count && !foreignView) {
+			// Clicking one of our buildings offers to sell it.
+			row.AcceptEvent();
+			Building toSell = shownBuildings[rowIndex];
+			EngineStorage.ReadGameData((GameData gameData) => {
+				City shown = tileAssignmentLayer.city;
+				if (shown == null) {
+					return;
+				}
+				string why = shown.WhyCannotSell(toSell);
+				new MsgDisplaySellBuildingPopup(shown, toSell, why, why == null ? shown.SalePrice(toSell) : 0).send();
+			});
+		}
+	}
+
+	private static string BuildingTooltip(Building building, int upkeep, int culture, int faces, bool works) {
+		List<string> lines = [building.name];
+		if (upkeep > 0) {
+			lines.Add($"Upkeep: {upkeep} gold a turn");
+		}
+		if (culture > 0) {
+			lines.Add($"Culture: {culture} a turn");
+		}
+		if (faces > 0) {
+			lines.Add(faces == 1 ? "Makes 1 unhappy citizen content" : $"Makes {faces} unhappy citizens content");
+		} else if (faces < 0) {
+			lines.Add(faces == -1 ? "Makes 1 citizen unhappy" : $"Makes {-faces} citizens unhappy");
+		}
+		if (!works) {
+			lines.Add("Obsolete: its effects have stopped");
+		}
+		return string.Join("\n", lines);
+	}
+
+	// Civ3's note is drawn for its own parchment, its edges blended with
+	// it: as black ink, each pixel as opaque as it is dark, it's clean on
+	// ours. (The remade note is ink already, and stays as it is.)
+	private static ImageTexture AsInk(ImageTexture texture) {
+		Image image = texture.GetImage();
+		image.Convert(Image.Format.Rgba8);
+		const float paper = 0.84f, ink = 0.08f;
+		for (int y = 0; y < image.GetHeight(); ++y) {
+			for (int x = 0; x < image.GetWidth(); ++x) {
+				Color c = image.GetPixel(x, y);
+				float darkness = Math.Clamp((paper - c.Luminance) / (paper - ink), 0, 1);
+				image.SetPixel(x, y, new Color(0, 0, 0, c.A * darkness));
+			}
+		}
+		ImageTexture result = ImageTexture.CreateFromImage(image);
+		result.SetSizeOverride((Vector2I)texture.GetSize());
+		return result;
 	}
 
 	private void RenderFoodDetails(City city) {
@@ -1293,10 +1435,104 @@ public partial class CityScreen : Control {
 	}
 }
 
+// A row of the city screen's improvements list, as Civ3's: the building's
+// small picture, its name, and under the name three columns of icons
+// (upkeep, culture, faces), each column's icons moving closer together,
+// overlapping, when there are too many to fit.
+public partial class BuildingRow : Control {
+	// (Narrower than the list, to leave room for its scroll bar.)
+	public static readonly Vector2 RowSize = new(128, 32);
+	// The columns under the name: left edge and width.
+	public static readonly (float x, float width) UpkeepColumn = (35, 26), CultureColumn = (63, 31), FacesColumn = (96, 31);
+	// Closer than this, icons can't be told apart: one is drawn, with the
+	// count beside it.
+	private const float MinIconStep = 7f;
+	private const float IconsTop = 17;
+	private const float IconHeight = 14;
+	private static readonly Color Ink = new(0.13f, 0.1f, 0.055f);
+
+	private readonly TextureRect picture;
+	private readonly Label name;
+	private readonly IconCanvas icons;
+	private readonly List<Label> counts = new();
+	private int countsUsed;
+
+	public BuildingRow() {
+		CustomMinimumSize = RowSize;
+		MouseFilter = MouseFilterEnum.Stop;
+		picture = new TextureRect {
+			Position = Vector2.Zero,
+			Size = new Vector2(32, 32),
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		AddChild(picture);
+		name = new Label {
+			Position = new Vector2(35, -2),
+			Size = new Vector2(RowSize.X - 35, 18),
+			ClipText = true,
+			TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis,
+			MouseFilter = MouseFilterEnum.Ignore,
+		};
+		name.AddThemeFontSizeOverride("font_size", 12);
+		AddChild(name);
+		icons = new IconCanvas { Position = Vector2.Zero, Size = RowSize, MouseFilter = MouseFilterEnum.Ignore };
+		AddChild(icons);
+	}
+
+	public void Show(Building building, Texture2D texture, bool works) {
+		picture.Texture = texture;
+		name.Text = building.name;
+		name.AddThemeColorOverride("font_color", works ? Ink : Ink with { A = 0.5f });
+		icons.Clear();
+		foreach (Label count in counts) {
+			count.Hide();
+		}
+		countsUsed = 0;
+		Show();
+	}
+
+	// `count` icons from the column's left edge, a pixel apart, or closer
+	// (overlapping) so the last one still ends inside it. Each is drawn
+	// IconHeight high, keeping its shape.
+	public void AddIcons(Texture2D texture, int count, (float x, float width) column, Color tint) {
+		if (texture == null || count <= 0) {
+			return;
+		}
+		Vector2 size = texture.GetSize();
+		size *= IconHeight / size.Y;
+		float step = count > 1 ? Math.Min(size.X + 1, (column.width - size.X) / (count - 1)) : 0;
+		if (step < MinIconStep && count > 1) {
+			icons.AddIcon(texture, new Rect2(new Vector2(column.x, IconsTop), size), tint);
+			CountLabel($"{count}", new Vector2(column.x + size.X + 1, IconsTop - 3), column.width - size.X - 1);
+			return;
+		}
+		for (int i = 0; i < count; ++i) {
+			icons.AddIcon(texture, new Rect2(new Vector2(column.x + i * step, IconsTop), size), tint);
+		}
+	}
+
+	private void CountLabel(string text, Vector2 position, float width) {
+		if (countsUsed == counts.Count) {
+			Label created = new() { MouseFilter = MouseFilterEnum.Ignore, ClipText = true };
+			created.AddThemeFontSizeOverride("font_size", 11);
+			created.AddThemeColorOverride("font_color", Ink);
+			AddChild(created);
+			counts.Add(created);
+		}
+		Label label = counts[countsUsed++];
+		label.Text = text;
+		label.Position = position;
+		label.Size = new Vector2(width, 16);
+		label.Show();
+	}
+}
+
 // Draws a set of icons with a single node, in place of one TextureRect per
 // icon.
 public partial class IconCanvas : Control {
-	private readonly List<(Texture2D texture, Rect2 rect)> icons = new();
+	private readonly List<(Texture2D texture, Rect2 rect, Color tint)> icons = new();
 
 	public IconCanvas() {
 		// Like the TextureRects it replaces.
@@ -1314,13 +1550,17 @@ public partial class IconCanvas : Control {
 	}
 
 	public void AddIcon(Texture2D texture, Rect2 rect) {
-		icons.Add((texture, rect));
+		AddIcon(texture, rect, Colors.White);
+	}
+
+	public void AddIcon(Texture2D texture, Rect2 rect, Color tint) {
+		icons.Add((texture, rect, tint));
 		QueueRedraw();
 	}
 
 	public override void _Draw() {
-		foreach (var (texture, rect) in icons) {
-			DrawTextureRect(texture, rect, false);
+		foreach (var (texture, rect, tint) in icons) {
+			DrawTextureRect(texture, rect, false, tint);
 		}
 	}
 }

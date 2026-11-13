@@ -181,8 +181,11 @@ for row, advisor in ipairs({ "domestic", "trade", "military", "foreign", "cultur
 end
 
 textures.screens = {
+  -- Civ3's Wonders of the World (F7): the screen, and the box each wonder
+  -- is shown in (370x200; see WondersView).
   wonders = {
     background = ADVISORS .. "wonders_background.pcx",
+    box = ADVISORS .. "wondersBOX.pcx",
   },
   hall_of_fame = {
     background = ADVISORS .. "hall_o_fame_background.pcx",
@@ -442,6 +445,34 @@ textures.icons = {
 	  path = CITY_SCREEN_ICONS,
 	  crop_region = { 591, 2, 29, 29 },
   },
+  -- The city screen's improvements list, as Civ3's: under each building's
+  -- name its upkeep (a red coin a gold), its culture (a note a point) and
+  -- the citizens it makes content (a face each).
+  roster_upkeep = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 536, 10, 15, 15 },
+  },
+  roster_culture = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 567, 8, 14, 16 },
+    -- (Its black is a shadow shade in Civ3's palette: kept solid.)
+    shadows = false,
+  },
+  roster_content_face = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 599, 9, 13, 15 },
+  },
+  -- What the government's tile penalty (despotism's) takes from a tile,
+  -- drawn on the city screen's map in red as Civ3 draws lost shields and
+  -- commerce. (Civ3 has no red food; the map makes one.)
+  penalty_shield = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 164, 10, 14, 16 },
+  },
+  penalty_commerce = {
+    path = CITY_SCREEN_ICONS,
+    crop_region = { 536, 10, 15, 15 },
+  },
   treasury = {
 	  path = CITY_SCREEN_ICONS,
 	  crop_region = { 746, 2, 29, 29 },
@@ -523,6 +554,36 @@ textures.city_screen = {
       pressed = {
         path = CITY_PRODUCTION,
         crop_region = { 231, 0, 115, 95 },
+      },
+    },
+    -- Civ3's draft button and Play the World's governor button, at the end
+    -- of the production bar: normal, pressed and hovered side by side.
+    draft = {
+      normal = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 1, 1, 19, 20 },
+      },
+      hover = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 41, 1, 19, 20 },
+      },
+      pressed = {
+        path = CITY_SCREEN .. "draftButton.pcx",
+        crop_region = { 21, 1, 19, 20 },
+      },
+    },
+    governor = {
+      normal = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 1, 0, 28, 28 },
+      },
+      hover = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 59, 0, 28, 28 },
+      },
+      pressed = {
+        path = CITY_SCREEN .. "govern.pcx",
+        crop_region = { 30, 0, 28, 28 },
       },
     },
     -- The City View button, cut as Civ3 FUN_00418160 cuts it.

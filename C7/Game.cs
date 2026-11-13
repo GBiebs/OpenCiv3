@@ -23,6 +23,9 @@ public class GotoInfo {
 	// Whether every unit on the selected unit's tile goes, not just the
 	// selected one (the J key).
 	public bool wholeStack = false;
+	// Road or rail to (Ctrl-R, Ctrl-Shift-R): the tile picked is the
+	// worker's destination, rather than where it goes now.
+	public WorkerAutomation.Kind? workerAutomation = null;
 	// The unit that moves, once a war declaration has to be confirmed first,
 	// so the move doesn't go to whichever unit is selected by then.
 	public ID unitID = null;
@@ -64,10 +67,16 @@ public class BombardInfo {
 	// The air mission (or airdrop) whose target is being picked, or null for
 	// a bombardment.
 	public UnitAction? airMission;
+	// For automated bombarding, its kind: the target picked is bombarded
+	// every turn (see MapUnit_AutoBombard.cs).
+	public MapUnit.AutoBombardMode autoMode;
+	// For a re-base, whether the other planes on the tile go too (J).
+	public bool wholeStack;
 
-	public BombardInfo(MapUnit bombardingUnit, UnitAction? airMission = null) {
+	public BombardInfo(MapUnit bombardingUnit, UnitAction? airMission = null, MapUnit.AutoBombardMode autoMode = MapUnit.AutoBombardMode.None) {
 		this.bombardingUnit = bombardingUnit;
 		this.airMission = airMission;
+		this.autoMode = autoMode;
 	}
 
 	// Whether the unit can bombard, or fly its mission at, the tile.
@@ -75,6 +84,13 @@ public class BombardInfo {
 		target = MapUnit.BombardTarget.None;
 		if (!Tile.IsTileValid(tile)) {
 			return false;
+		}
+		if (autoMode != MapUnit.AutoBombardMode.None) {
+			// Only civs we're at war with are bombarded automatically.
+			bool can = autoMode == MapUnit.AutoBombardMode.Bombard
+				? bombardingUnit.CanBombardTile(tile, out target)
+				: bombardingUnit.CanFlyMissionAt(autoMode == MapUnit.AutoBombardMode.Bombing ? UnitAction.Bombing : UnitAction.PrecisionBombing, tile, out target);
+			return can && bombardingUnit.CanAutoBombardTile(autoMode, tile);
 		}
 		return airMission is UnitAction mission
 			? bombardingUnit.CanFlyMissionAt(mission, tile, out target)
@@ -490,6 +506,10 @@ public partial class Game : Node {
 			} else {
 				MaybeAutoplayLanTurn();
 			}
+		} else if (PlayByEmail.IsOn(EngineStorage.gameData)) {
+			// Whoever opened the save gives the password of the player whose
+			// turn it is before anything of theirs shows.
+			BeginTurnByEmail(controller);
 		} else if (TurnHandling.IsHotseat(EngineStorage.gameData)) {
 			// The first hotseat player also needs the others to look away.
 			ShowHotseatHandoff(controller, OnPlayerStartTurn);
@@ -835,7 +855,7 @@ public partial class Game : Node {
 		cityScreen.RefreshAfterGameReplaced();
 		if (bombardInfo != null) {
 			MapUnit bombarder = gameData.GetUnit(bombardInfo.bombardingUnit.id);
-			setBombard(bombarder, bombardInfo.airMission);
+			setBombard(bombarder, bombardInfo.airMission, bombardInfo.autoMode);
 		}
 
 		// The tile info box and the goto path refer to tiles, which are
@@ -1197,6 +1217,18 @@ public partial class Game : Node {
 			return;
 		}
 
+		if (PlayByEmail.IsOn(EngineStorage.gameData)) {
+			if (controller != null && next.id != controller.id) {
+				// The next human plays on their own computer.
+				SendTurnByEmail(next);
+			} else {
+				// The only human left plays on.
+				controller = next;
+				HearFromAIs();
+			}
+			return;
+		}
+
 		if (!TurnHandling.IsHotseat(EngineStorage.gameData)) {
 			controller = next;
 			OnPlayerStartTurn();
@@ -1204,6 +1236,80 @@ public partial class Game : Node {
 		}
 
 		ShowHotseatHandoff(next, OnPlayerStartTurn);
+	}
+
+	// ---- Play by email (see C7Engine.PlayByEmail) ----
+
+	// Whether the computer players are having their say with the human at
+	// the start of their turn, which begins once they've had it.
+	private bool hearingFromAIs = false;
+
+	// The end-of-turn curtain, while it's up.
+	private PlayByEmailSave playByEmailSave = null;
+
+	// Starts the turn of the human whose save this is: once they've given
+	// their password (or chosen one), the news from while they were away,
+	// then what the computer players have to say to them, then their turn.
+	private void BeginTurnByEmail(Player player) {
+		ShowHotseatHandoff(player, "It is now your turn.", "Begin Turn", () => {
+			foreach (MessageToUI news in PlayByEmail.TakeNews(EngineStorage.gameData, controller)) {
+				HoldMessage(controller.id, news);
+			}
+			HearFromAIs();
+		}, turnStart: true, offerMainMenu: true);
+	}
+
+	private void HearFromAIs() {
+		CurrentState = GameState.ComputerTurn;
+		hearingFromAIs = true;
+		new MsgHearFromAIs().send();
+	}
+
+	// The turn is over, and the next human's begins on their computer: the
+	// player saves the game for them, under the name they give it, and
+	// goes back to the main menu. What they'll be told when they open it
+	// (the news held for them, and for the others) goes with it.
+	private void SendTurnByEmail(Player next) {
+		CloseScreensForHandoff();
+		CurrentState = GameState.ComputerTurn;
+		GameData gameData = EngineStorage.gameData;
+		string folder = Civ3FileDialog.SavesDirectory;
+
+		string Save(string fileName) {
+			Dictionary<ID, int> kept = gameData.players.ToDictionary(p => p.id, p => p.newsWhileAway.Count);
+			try {
+				foreach (Player player in gameData.players.Where(p => p.isHuman)) {
+					List<MessageToUI> news = new();
+					if (pendingProductionPopups.TryGetValue(player.id, out LinkedList<MsgCityProductionCompleted> production)) {
+						news.AddRange(production);
+					}
+					if (heldMessages.TryGetValue(player.id, out Queue<MessageToUI> held)) {
+						news.AddRange(held);
+					}
+					PlayByEmail.KeepNews(gameData, player.id, news);
+				}
+				System.IO.Directory.CreateDirectory(folder);
+				SaveManager.Save(System.IO.Path.Combine(folder, fileName));
+				return null;
+			} catch (Exception e) {
+				log.Error(e, "Couldn't save the turn to send on");
+				return e.Message;
+			} finally {
+				// The news is in the save; here it's still held.
+				foreach (Player player in gameData.players) {
+					int count = kept.GetValueOrDefault(player.id);
+					if (player.newsWhileAway.Count > count) {
+						player.newsWhileAway.RemoveRange(count, player.newsWhileAway.Count - count);
+					}
+				}
+			}
+		}
+
+		playByEmailSave = new PlayByEmailSave(PlayByEmail.PlayerName(next), PlayByEmail.SaveFileName(gameData, next), folder, Save, OnRetire);
+		CanvasLayer curtainLayer = new() { Layer = 100 };
+		curtainLayer.AddChild(playByEmailSave);
+		playByEmailSave.TreeExited += curtainLayer.QueueFree;
+		AddChild(curtainLayer);
 	}
 
 	private void BeginLanTurn() {
@@ -1215,18 +1321,19 @@ public partial class Game : Node {
 		ShowHotseatHandoff(next,
 			"It is your turn. Make sure the other players aren't looking.",
 			"Begin Turn",
-			onBeginTurn);
+			onBeginTurn,
+			turnStart: true);
 	}
 
 	// Handoffs asked for while the curtain is already up, shown in turn once
 	// it's dismissed, so that what each of them goes on to do isn't lost.
-	private readonly Queue<(ID next, string message, string buttonText, Action onContinue)> queuedHandoffs = new();
+	private readonly Queue<(ID next, string message, string buttonText, Action onContinue, bool turnStart)> queuedHandoffs = new();
 	// Who the curtain is up for, and what it says.
 	private (ID, string) hotseatHandoffShown;
 
 	private void ShowNextQueuedHandoff() {
 		while (hotseatHandoff == null && queuedHandoffs.Count > 0) {
-			var (nextID, message, buttonText, onContinue) = queuedHandoffs.Dequeue();
+			var (nextID, message, buttonText, onContinue, turnStart) = queuedHandoffs.Dequeue();
 			// Found by id, as a LAN client's snapshots replace the players.
 			Player next = EngineStorage.gameData?.GetPlayer(nextID);
 			if (next == null) {
@@ -1237,18 +1344,22 @@ public partial class Game : Node {
 				onContinue();
 				continue;
 			}
-			ShowHotseatHandoff(next, message, buttonText, onContinue);
+			ShowHotseatHandoff(next, message, buttonText, onContinue, turnStart);
 		}
 	}
 
-	private void ShowHotseatHandoff(Player next, string message, string buttonText, Action onContinue) {
+	// A handoff at the start of the player's turn lets them choose a
+	// password, the first time; one opening a save played by email lets
+	// whoever opened it go back to the main menu.
+	private void ShowHotseatHandoff(Player next, string message, string buttonText, Action onContinue,
+		bool turnStart = false, bool offerMainMenu = false) {
 		if (hotseatHandoff != null) {
 			// The same news twice, like a turn starting again for whoever the
 			// curtain is already up for, is only shown once.
 			bool duplicate = hotseatHandoffShown == (next.id, message)
 				|| queuedHandoffs.Any(h => h.next == next.id && h.message == message);
 			if (!duplicate) {
-				queuedHandoffs.Enqueue((next.id, message, buttonText, onContinue));
+				queuedHandoffs.Enqueue((next.id, message, buttonText, onContinue, turnStart));
 			}
 			return;
 		}
@@ -1258,18 +1369,7 @@ public partial class Game : Node {
 
 		// Close anything the previous player left open, and remember where
 		// they were looking so we can restore it on their next turn.
-		if (tileInfo != null) {
-			HideTileInfo();
-		}
-		SetGotoMode(false);
-		setBombard(null);
-		cityScreen.Hide();
-		advisor.Hide();
-		gameViews.Hide();
-		diplomacy.Hide();
-		civilopedia.Hide();
-		// Production news waits for its owner's turn.
-		HoldShownProductionPopup();
+		CloseScreensForHandoff();
 		if (controller != null && controller != next) {
 			hotseatCameraLocations[controller.id] = mapView.cameraLocation;
 		}
@@ -1286,6 +1386,9 @@ public partial class Game : Node {
 
 		// Games without player names (e.g. older saves) fall back to the leader.
 		string playerName = controller.name ?? controller.civilization.leader;
+		// Passwords are for players sharing a computer or a save, not a
+		// LAN game's.
+		bool passwords = !LanSession.IsActive;
 		hotseatHandoff = new HotseatHandoff(
 			$"{playerName} - {controller.civilization.name}",
 			message,
@@ -1294,11 +1397,31 @@ public partial class Game : Node {
 				hotseatHandoff = null;
 				onContinue();
 				ShowNextQueuedHandoff();
-			});
+			},
+			player: passwords ? controller : null,
+			mayChoosePassword: passwords && turnStart,
+			onMainMenu: offerMainMenu ? OnRetire : null);
 		CanvasLayer curtainLayer = new() { Layer = 100 };
 		curtainLayer.AddChild(hotseatHandoff);
 		hotseatHandoff.TreeExited += curtainLayer.QueueFree;
 		AddChild(curtainLayer);
+	}
+
+	// Closes anything the player at the screen left open, as the screen
+	// changes hands.
+	private void CloseScreensForHandoff() {
+		if (tileInfo != null) {
+			HideTileInfo();
+		}
+		SetGotoMode(false);
+		setBombard(null);
+		cityScreen.Hide();
+		advisor.Hide();
+		gameViews.Hide();
+		diplomacy.Hide();
+		civilopedia.Hide();
+		// Production news waits for its owner's turn.
+		HoldShownProductionPopup();
 	}
 
 	public void HandleEngineMessage(MessageToUI msg) {
@@ -1436,6 +1559,13 @@ public partial class Game : Node {
 				// Hotseat follows the UI controller, which the engine moved to
 				// the player whose turn it is; a LAN game is told who they are.
 				OnControllerTurnStart(LanSession.IsActive ? mST.player : EngineStorage.gameData.GetUIControllerPlayer());
+				break;
+			case MsgTurnReady mTR:
+				// Playing by email, the computer players have had their say.
+				if (hearingFromAIs && mTR.recipient?.id == controller?.id) {
+					hearingFromAIs = false;
+					OnPlayerStartTurn();
+				}
 				break;
 			case MsgShowCityScreen mSCS:
 				ShowCityScreenForCity(gameData, mSCS.city);
@@ -1689,6 +1819,9 @@ public partial class Game : Node {
 			case MsgNoHumansRemain:
 				RecordInHallOfFame(HallOfFame.ForDefeat);
 				InterestingEvent();
+				// After the end of the game's pages, this is their last
+				// question, and looking around lets the game go on (see
+				// EndOfGame.Claim).
 				void ShowNoHumansRemain(bool withReplay) {
 					popupOverlay.ShowPopup(
 						new ConfirmationPopup(
@@ -1703,8 +1836,9 @@ public partial class Game : Node {
 								} else {
 									OnRetire();
 								}
-							}),
-						PopupOverlay.PopupCategory.Advisor);
+							},
+							EndOfGame.PlayOn),
+						PopupOverlay.PopupCategory.Advisor, withReplay ? null : EndOfGame.Claim);
 				}
 				// Civ3's announcement of the loss and its defeat screen
 				// first, when the Civ3 install has them (see EndOfGame).
@@ -1807,7 +1941,11 @@ public partial class Game : Node {
 					}
 					popupOverlay.ShowPopup(
 						new ChoicePopup(upgrade.Caption ?? "", string.Join("\n", upgrade.Lines),
-							[new ChoicePopup.Choice("OK", () => EmitSignal(SignalName.ShowGameView, C7Action.ShowPalaceView))],
+							[new ChoicePopup.Choice("OK", () => {
+								// The palace has the screen until it's built on.
+								ClaimWhileOpen("palace", () => gameViews.Visible, admitsNewPopups: true);
+								EmitSignal(SignalName.ShowGameView, C7Action.ShowPalaceView);
+							})],
 							cancellable: false),
 						PopupOverlay.PopupCategory.Advisor);
 					InterestingEvent();
@@ -1865,8 +2003,10 @@ public partial class Game : Node {
 				}
 			case MsgEspionageResult mER: {
 					// A new embassy shows us their capital once, then the land
-					// around it stays on the map as it was.
-					bool showCapital = mER.success && mER.mission == EspionageMission.EstablishEmbassy && mER.city != null;
+					// around it stays on the map as it was. An investigated
+					// city is shown on the city screen too, as in Civ3.
+					bool showCapital = mER.success && mER.mission is EspionageMission.EstablishEmbassy or EspionageMission.InvestigateCity
+						&& mER.city != null;
 					// A stolen map, stolen plans or a city won by propaganda change
 					// what the map shows.
 					bool mapChanged = mER.success && mER.mission is EspionageMission.StealWorldMap or EspionageMission.StealPlans
@@ -1881,10 +2021,11 @@ public partial class Game : Node {
 						new ChoicePopup(Espionage.Describe(mER.mission), Embassies.Wrap(mER.message ?? ""),
 							[new ChoicePopup.Choice("Very well.", () => {
 							if (showCapital) {
-								// The capital is shown on the map, under the
+								// The city is shown on the map, under the
 								// Espionage screen.
 								advisor.Hide();
-								ShowEmbassyCapital(capital);
+								ClaimWhileOpen("foreign city", () => cityScreen.Visible, admitsNewPopups: true);
+								ShowForeignCityScreen(capital);
 							}
 						})], cancellable: false),
 						PopupOverlay.PopupCategory.Advisor);
@@ -2038,7 +2179,10 @@ public partial class Game : Node {
 			}
 			CityProductionPopup popup = new(city, msg.completed,
 				// The next popup waits for the city screen to close.
-				onZoom: () => ShowCityScreenForCity(EngineStorage.gameData, city),
+				onZoom: () => {
+					ClaimWhileOpen("city screen", () => cityScreen.Visible, admitsNewPopups: true);
+					ShowCityScreenForCity(EngineStorage.gameData, city);
+				},
 				onDone: ShowNextProductionPopup);
 			shownProductionPopup = popup;
 			shownProductionMessage = msg;
@@ -2065,6 +2209,7 @@ public partial class Game : Node {
 	// News held for the player (see ReplayHeldMessage) is shown first.
 	private bool MayShowTurnStartPopup() {
 		return !popupOverlay.Visible
+			&& !popupOverlay.Claims.Any
 			&& !cityScreen.Visible
 			&& !EngineStorage.HasPendingMessagesToEngine()
 			&& researchQuestionDueSeconds <= 0
@@ -2093,27 +2238,20 @@ public partial class Game : Node {
 		popupOverlay.ShowPopup(selection, PopupOverlay.PopupCategory.Info);
 	}
 
-	// "What's the big picture?": opens the Science Advisor, and holds back
-	// the popups waiting until the player has closed it, so nothing comes up
-	// over it while they choose what to research (owner's request,
-	// 2026-11-08). If they close it without choosing, they're asked again.
-	// The advisor may open a moment later (when the engine answers a
-	// choice of research), so the hold lasts until it has been seen open
-	// and closed, or a few seconds pass without it opening.
+	// "What's the big picture?": opens the Science Advisor, which has the
+	// screen until the player has closed it (see ClaimWhileOpen), so nothing
+	// comes up over it, and no city asks what to build, while they choose
+	// what to research (owner's requests, 2026-11-08 and 2026-11-12). If they
+	// close it without choosing, they're asked again before anything else.
+	// The advisor may open a moment later (when the engine answers a choice
+	// of research).
 	private void ViewTheBigPicture(bool chooseAfterwards) {
-		bool seen = false;
-		ulong since = Time.GetTicksMsec();
 		Player player = controller;
-		popupOverlay.HoldWhile(() => {
-			if (advisor.Visible) {
-				seen = true;
-				return true;
-			}
-			return !seen && Time.GetTicksMsec() - since < 3000;
-		}, () => {
+		ClaimWhileOpen("big picture", () => advisor.Visible, afterwards: () => {
 			GameData gameData = EngineStorage.gameData;
 			Player us = gameData?.GetPlayer(player.id);
-			if (!chooseAfterwards || us == null || us != controller) {
+			// The engine may have asked already (after a free tech).
+			if (!chooseAfterwards || us == null || us != controller || popupOverlay.HasPopup<ScienceSelection>()) {
 				return;
 			}
 			bool undecided = us.freeTechsRemaining > 0 || us.currentlyResearchedTech == null;
@@ -2125,6 +2263,18 @@ public partial class Game : Node {
 		if (chooseAfterwards) {
 			EmitSignal(SignalName.ShowSpecificAdvisor, C7Action.ShowScienceAdvisor);
 		}
+	}
+
+	// Gives the screen to one the player is sent to from a popup (the Science
+	// Advisor, a city screen, the palace) until they close it: the popups
+	// waiting stay back rather than come up over it, and the cities' and the
+	// held news's prompts wait (see ScreenClaim). With admitsNewPopups, what
+	// comes up while it's open (such as the city screen's own questions)
+	// still does. It's given up if the screen hasn't opened within a few
+	// seconds. Call it before opening the screen.
+	private ScreenClaim ClaimWhileOpen(string name, Func<bool> isOpen, bool admitsNewPopups = false, Action afterwards = null) {
+		return popupOverlay.Claims.ClaimWhileOpen(name, isOpen, () => Time.GetTicksMsec() / 1000.0,
+			admitsNewPopups: admitsNewPopups, afterwards: afterwards);
 	}
 
 	// Takes down the production popup on screen (or waiting behind another
@@ -2173,18 +2323,22 @@ public partial class Game : Node {
 		}
 		PollLanSession();
 		ProcessActions();
+		EdgeScroll(delta);
 		UpdateGotoPath();
 
-		// The engine waits for animations to finish before going on.
-		if (!EngineStorage.HasPendingAnimations())
+		// The engine waits for animations to finish before going on, and for
+		// a flow that holds the game, like the end of the game, to end (see
+		// ScreenClaim). On a LAN the other machines' players play on.
+		if (!EngineStorage.HasPendingAnimations() && (!GameHeld || LanSession.IsActive))
 			EngineStorage.ProcessMessagesToEngine(engineMessageBudget);
 
 		// Handle the waiting messages to the UI, as many as fit in the frame's
 		// budget. None of them start animations (those have their own queue),
-		// so there's no need to pace them.
+		// so there's no need to pace them. While a flow holds the game, they
+		// stay in the queue, in order, until it ends.
 		long start = Stopwatch.GetTimestamp();
 		bool handledMessage = false;
-		while (EngineStorage.TryDequeueNextMessageToUI(out MessageToUI msg)) {
+		while (!GameHeld && EngineStorage.TryDequeueNextMessageToUI(out MessageToUI msg)) {
 			HandleEngineMessage(msg);
 			handledMessage = true;
 			if (Stopwatch.GetTimestamp() - start >= uiMessageBudgetTicks) {
@@ -2202,6 +2356,39 @@ public partial class Game : Node {
 
 		EndTurnIfNothingToDo(delta);
 		UpdateMusic();
+	}
+
+	// With Edge scrolling on in the settings, pans the map while the mouse
+	// rests at an edge of the window: only while the game's window has focus
+	// and the mouse is in it, the map is in front with nothing over it, and
+	// the map or a unit isn't being dragged. The mouse position, margin and
+	// camera are all in the UI's logical pixels, so the margin and speed grow
+	// with the interface scale; the speed is per second, whatever the frame
+	// rate. Edge scrolling adapted from GBiebs/OpenCiv3.
+	private void EdgeScroll(double delta) {
+		if (!EdgeScrolling.Enabled || IsMovingCamera || draggingUnit || HasVisibleModal() || hotseatHandoff != null
+			|| (FileDialog?.Visible ?? false) || (CurrentState == GameState.ComputerTurn && !LanSession.IsSpectator)) {
+			return;
+		}
+		Window window = GetWindow();
+		if (!window.HasFocus()) {
+			return;
+		}
+		// The viewport keeps the last position the mouse had in the window
+		// after it leaves, so ask where it really is.
+		Rect2I windowRect = new(DisplayServer.WindowGetPosition(), DisplayServer.WindowGetSize());
+		if (!windowRect.HasPoint(DisplayServer.MouseGetPosition())) {
+			return;
+		}
+		Vector2 mouse = GetViewport().GetMousePosition();
+		Vector2 size = GetViewport().GetVisibleRect().Size;
+		float margin = EdgeScrolling.Margin;
+		Vector2 direction = new(
+			mouse.X < margin ? -1 : mouse.X >= size.X - margin ? 1 : 0,
+			mouse.Y < margin ? -1 : mouse.Y >= size.Y - margin ? 1 : 0);
+		if (direction != Vector2.Zero) {
+			mapView.moveCamera(direction * EdgeScrolling.Speed * (float)delta);
+		}
 	}
 
 	// Set once no unit needs orders this turn, until one does again.
@@ -2242,7 +2429,11 @@ public partial class Game : Node {
 	}
 
 	// Whether the hotseat curtain hides the whole map.
-	public bool IsMapHidden => hotseatHandoff != null;
+	public bool IsMapHidden => CurtainIsUp;
+
+	// Whether a curtain hides the map: the hotseat handoff, or the end of a
+	// turn played by email.
+	private bool CurtainIsUp => hotseatHandoff != null || playByEmailSave != null;
 
 	// Whether the game may change without the UI being told, i.e. while the
 	// AI plays, animations run, or the engine has messages to process. The
@@ -2259,10 +2450,14 @@ public partial class Game : Node {
 	// while the banner saying so is shown.
 	public bool IsWaitingForRemotePlayer => lanWaitingBanner != null;
 
+	// Whether a flow on screen holds the game (see ScreenClaim), as the end
+	// of the game does until the player chooses to play on.
+	private bool GameHeld => popupOverlay.Claims.HoldsGame;
+
 	// Shows messages that were held for the UI controller while another
 	// player had the screen, one popup at a time, once their turn is underway.
 	private void ReplayHeldMessage() {
-		if (CurrentState != GameState.PlayerTurn || hotseatHandoff != null || popupOverlay.Visible) {
+		if (CurrentState != GameState.PlayerTurn || hotseatHandoff != null || popupOverlay.Visible || popupOverlay.Claims.Any) {
 			return;
 		}
 		if (heldMessages.TryGetValue(controller.id, out Queue<MessageToUI> held) && held.TryDequeue(out MessageToUI msg)) {
@@ -2500,8 +2695,9 @@ public partial class Game : Node {
 		if (!over) {
 			RecordInHallOfFame(HallOfFame.ForRetirement);
 			// Civ3 sees a retiring player off with its loss announcement and
-			// defeat screen (Civ3 FUN_004f9fb0's ending 6), then the Hall of
-			// Fame, before the main menu.
+			// defeat screen (Civ3 FUN_004f9fb0's ending 6), then the replay
+			// and the Hall of Fame, before the main menu. Without Civ3
+			// (standalone mode) it's the same, in our own words and art.
 			popupOverlay.OnHidePopup();
 			EndOfGame.ShowReplay = (host, done) => gameViews.ShowReplay(done);
 			if (EndOfGame.Show(this, popupOverlay, GameEndReason.Retirement, null, recordedInHallOfFame, OnRetire)) {
@@ -2672,7 +2868,7 @@ public partial class Game : Node {
 			return;
 		}
 		bool waiting = CurrentState == GameState.ComputerTurn && !LanSession.IsSpectator;
-		if ((HasVisibleModal() && !IsModalSwitchEvent(@event)) || waiting || hotseatHandoff != null) {
+		if ((HasVisibleModal() && !IsModalSwitchEvent(@event)) || waiting || CurtainIsUp) {
 			IsMovingCamera = false;
 			return;
 		}
@@ -2693,7 +2889,7 @@ public partial class Game : Node {
 	// drags and zooms the map, and does nothing else. Returns whether it
 	// took the event.
 	private bool MovesMapUnderPopup(InputEvent @event) {
-		if (!popupOverlay.LetsMapMove || hotseatHandoff != null
+		if (!popupOverlay.LetsMapMove || CurtainIsUp
 			|| cityScreen.Visible || diplomacy.Visible || advisor.Visible || gameViews.Visible || civilopedia.Visible) {
 			return false;
 		}
@@ -3056,7 +3252,7 @@ public partial class Game : Node {
 	}
 
 	private void HandleKeyboardInput(InputEventKey eventKeyDown) {
-		if (HandleDebugKey(eventKeyDown)) {
+		if (HandleDebugKey(eventKeyDown) || HandleCiv3Key(eventKeyDown)) {
 			return;
 		}
 
@@ -3133,6 +3329,13 @@ public partial class Game : Node {
 				&& eventKeyDown.ShiftPressed
 				&& eventKeyDown.AltPressed) {
 				ProcessAction(C7Action.ToggleCoordinates);
+			}
+			// Go to City (Civ3's Ctrl-Shift-G)
+			else if (eventKeyDown.IsCommandOrControlPressed()
+					   && eventKeyDown.ShiftPressed) {
+				if (!eventKeyDown.Echo) {
+					ProcessAction(C7Action.UnitGotoCity);
+				}
 			}
 			// Toggle Grid
 			else if (eventKeyDown.IsCommandOrControlPressed()) {
@@ -3408,6 +3611,11 @@ public partial class Game : Node {
 		if (advisor.Visible || gameViews.Visible || civilopedia.Visible)
 			return true;
 
+		// A flow that has the screen, like the end of the game's pages (see
+		// EndOfGame), between its popups and screens.
+		if (EndOfGame.InProgress || popupOverlay.Claims.Any)
+			return true;
+
 		return false;
 	}
 
@@ -3435,7 +3643,7 @@ public partial class Game : Node {
 
 	private void ProcessAction(string currentAction) {
 		// Nothing happens behind the hotseat curtain.
-		if (hotseatHandoff != null) {
+		if (CurtainIsUp) {
 			return;
 		}
 
@@ -3494,8 +3702,9 @@ public partial class Game : Node {
 			return;
 		}
 
-		// never poll for actions if UI elements are visible
-		if (HasVisibleModal()) {
+		// never poll for actions if UI elements are visible, or in the frame
+		// a popup closed (see PopupOverlay.HidThisFrame)
+		if (HasVisibleModal() || popupOverlay.HidThisFrame) {
 			return;
 		}
 
@@ -3605,12 +3814,27 @@ public partial class Game : Node {
 			this.SetGotoMode(true);
 		}
 
+		if (currentAction == C7Action.UnitGotoCity) {
+			this.ShowGotoCityPopup(CurrentlySelectedUnit);
+		}
+
 		if (currentAction == C7Action.UnitExplore) {
 			new MsgUnitCommand(CurrentlySelectedUnit.id, MsgUnitCommand.Command.Explore).send();
 		}
 
 		if (currentAction == C7Action.UnitAutomate) {
 			new MsgUnitCommand(CurrentlySelectedUnit.id, MsgUnitCommand.Command.Automate).send();
+		}
+
+		// Civ3's other kinds of worker automation; road and rail to pick
+		// their destination as a go-to does.
+		if (C7Action.ToWorkerAutomation(currentAction) is WorkerAutomation.Kind automation
+			&& C7Action.CanAutomate(CurrentlySelectedUnit, automation)) {
+			if (automation is WorkerAutomation.Kind.RoadTo or WorkerAutomation.Kind.RailTo) {
+				SetGotoMode(true, workerAutomation: automation);
+			} else {
+				new MsgAutomateWorker(CurrentlySelectedUnit.id, automation).send();
+			}
 		}
 
 		if (currentAction == C7Action.UnitSentry) {
@@ -3626,8 +3850,18 @@ public partial class Game : Node {
 				MapUnit currentUnit = gameData.GetUnit(CurrentlySelectedUnit.id);
 				log.Debug(currentUnit.Describe());
 				if (currentUnit.canBuildCity()) {
-					popupOverlay.ShowPopup(new BuildCityDialog(controller.GetNextCityName()),
+					Action nameCity = () => popupOverlay.ShowPopup(new BuildCityDialog(controller.GetNextCityName()),
 						PopupOverlay.PopupCategory.Advisor);
+					// In the land of a civ at peace with us, founding a city
+					// means war, so the Foreign Advisor asks first ("this
+					// will cause war with the $CIVADJ0 people", script.txt
+					// DECLARE_WAR; compendium 6.10). The engine declares the
+					// war when the city is founded.
+					if (currentUnit.location.PeacefulOwnerFor(controller) is Player landOwner) {
+						popupOverlay.ShowPopup(new WarConfirmation(landOwner, nameCity), PopupOverlay.PopupCategory.Advisor);
+					} else {
+						nameCity();
+					}
 				}
 			});
 		}
@@ -3660,6 +3894,24 @@ public partial class Game : Node {
 			}
 		}
 
+
+		// Automated bombarding: Shift-B (an aircraft's bombing), or its
+		// buttons, then the target; Shift-P, the pillage key, for an
+		// aircraft's precision bombing.
+		MapUnit.AutoBombardMode? autoMode = currentAction switch {
+			C7Action.UnitAutoBombard => CurrentlySelectedUnit.CanAutomateBombard(MapUnit.AutoBombardMode.Bombard)
+				? MapUnit.AutoBombardMode.Bombard : MapUnit.AutoBombardMode.Bombing,
+			C7Action.UnitAutoBombing => MapUnit.AutoBombardMode.Bombing,
+			C7Action.UnitAutoPrecisionBombing or C7Action.UnitPillage => MapUnit.AutoBombardMode.PrecisionBombing,
+			_ => null,
+		};
+		if (autoMode is MapUnit.AutoBombardMode mode
+			&& CurrentlySelectedUnit.GetAvailableActions().Contains(MapUnit.ActionFor(mode))) {
+			EngineStorage.ReadGameData((GameData gameData) => {
+				MapUnit currentUnit = gameData.GetUnit(CurrentlySelectedUnit.id);
+				setBombard(currentUnit, null, mode);
+			});
+		}
 
 		if (currentAction == C7Action.UnitPillage && CurrentlySelectedUnit.CanPillage()) {
 			new MsgPillage(CurrentlySelectedUnit.id).send();
@@ -3713,15 +3965,14 @@ public partial class Game : Node {
 		}
 
 		if (currentAction == C7Action.UnitLoad) {
-			// TODO: Which transport?
-			new MsgLoadToTransport(CurrentlySelectedUnit.id).send();
+			ChooseTransportToBoard(CurrentlySelectedUnit);
 		}
 		// Upgrading and unloading share a key; upgrading wins when possible.
 		if (currentAction == C7Action.UnitUpgrade) {
 			ConfirmUpgrade(CurrentlySelectedUnit);
 		}
 		if (currentAction == C7Action.UnitUnload && CurrentlySelectedUnit.GetAvailableUpgrade() == null) {
-			new MsgUnloadTransport(CurrentlySelectedUnit.id).send();
+			ChooseUnitsToUnload(CurrentlySelectedUnit);
 		}
 
 		Terraform terraform = C7Action.ToTerraform(currentAction);
@@ -3789,21 +4040,97 @@ public partial class Game : Node {
 			PopupOverlay.PopupCategory.Advisor);
 	}
 
+	// Civ3's Go to City (Ctrl-Shift-G; script.txt's GOTO_CITY, "Goto
+	// City"): a list of our cities the unit can reach, with the turns to
+	// each as the go-to cursor shows them. A click selects a city, and a
+	// second click on it (or Enter, or the confirm button) sends the unit
+	// there the way a go-to would.
+	private void ShowGotoCityPopup(MapUnit selected) {
+		List<City> cities = [];
+		List<string> items = [];
+		EngineStorage.ReadGameData((GameData gameData) => {
+			MapUnit unit = gameData.GetUnit(selected.id);
+			if (unit == null || unit.owner != controller) {
+				return;
+			}
+			foreach ((City city, TilePath _, int turns) in UnitInteractions.GotoCityChoices(unit)) {
+				cities.Add(city);
+				items.Add($"{city.name} ({turns} {(turns == 1 ? "turn" : "turns")})");
+			}
+		});
+		if (cities.Count == 0) {
+			return;
+		}
+		popupOverlay.ShowPopup(new ListPopup("Goto City", items, -1, index => {
+			SetGotoMode(false);
+			gotoInfo = GetGotoInfo(cities[index].location);
+			ResolveMovement(gotoInfo);
+			SetGotoMode(false);
+		}) { clickTwice = true }, PopupOverlay.PopupCategory.Info);
+	}
+
 	// Whether the player is dragging the selected unit to pick its destination.
 	private bool draggingUnit = false;
 
-	private void SetGotoMode(bool isOn, bool wholeStack = false) {
+	private void SetGotoMode(bool isOn, bool wholeStack = false, WorkerAutomation.Kind? workerAutomation = null) {
 		this.lastTile = null;
 		if (isOn) {
-			this.gotoInfo = new() { wholeStack = wholeStack };
+			this.gotoInfo = new() { wholeStack = wholeStack, workerAutomation = workerAutomation };
 		} else {
 			this.gotoInfo = null;
 			this.draggingUnit = false;
 		}
 	}
 
-	private void setBombard(MapUnit bombardingUnit, UnitAction? airMission = null) {
-		bombardInfo = bombardingUnit == null ? null : new BombardInfo(bombardingUnit, airMission);
+	// Loads the unit, asking which transport when more than one on its tile
+	// could take it, as Civ3 does (script.txt's SELECT_TRANSPORT: "What
+	// Transport?", "Select a transport to board:"), with how full each is.
+	private void ChooseTransportToBoard(MapUnit unit) {
+		List<MapUnit> transports = null;
+		EngineStorage.ReadGameData((GameData gameData) => {
+			transports = unit.TransportsToBoard(unit.location, explicitLoad: true);
+		});
+		if (transports == null || transports.Count <= 1) {
+			new MsgLoadToTransport(unit.id).send();
+			return;
+		}
+		ID unitID = unit.id;
+		List<ChoicePopup.Choice> choices = transports.ConvertAll(t => {
+			ID transportID = t.id;
+			return new ChoicePopup.Choice($"{t.name} ({t.PassengerCount()}/{t.Capacity()})",
+				() => new MsgLoadToTransport(unitID, transportID).send());
+		});
+		popupOverlay.ShowPopup(new ChoicePopup("What Transport?", "Select a transport to board:", choices),
+			PopupOverlay.PopupCategory.Advisor);
+	}
+
+	// Unloads the transport, asking which of several units aboard, as Civ3
+	// does (script.txt's DISEMBARK: "Disembark?", with "Never mind.",
+	// "Unload all." and then the units).
+	private void ChooseUnitsToUnload(MapUnit transport) {
+		List<MapUnit> passengers = null;
+		EngineStorage.ReadGameData((GameData gameData) => {
+			passengers = transport.Passengers();
+		});
+		ID transportID = transport.id;
+		if (passengers == null || passengers.Count <= 1) {
+			new MsgUnloadTransport(transportID).send();
+			return;
+		}
+		List<ChoicePopup.Choice> choices = [
+			new("Never mind.", () => { }),
+			new("Unload all.", () => new MsgUnloadTransport(transportID).send()),
+		];
+		foreach (MapUnit passenger in passengers) {
+			ID passengerID = passenger.id;
+			choices.Add(new(passenger.Describe(), () => new MsgUnloadTransport(transportID, passengerID).send()));
+		}
+		popupOverlay.ShowPopup(new ChoicePopup("Disembark?", null, choices), PopupOverlay.PopupCategory.Advisor);
+	}
+
+	private void setBombard(MapUnit bombardingUnit, UnitAction? airMission = null,
+			MapUnit.AutoBombardMode autoMode = MapUnit.AutoBombardMode.None) {
+		bombardInfo = bombardingUnit == null ? null : new BombardInfo(bombardingUnit, airMission, autoMode);
 		if (bombardingUnit == null)
 			Input.SetCustomMouseCursor(null);
 	}
@@ -3829,6 +4156,11 @@ public partial class Game : Node {
 		}
 
 		if (info.moveCost == -1) {
+			return;
+		}
+
+		if (info.workerAutomation is WorkerAutomation.Kind automation) {
+			new MsgAutomateWorker(info.unitID ?? CurrentlySelectedUnit.id, automation, info.destinationTile).send();
 			return;
 		}
 
@@ -3943,7 +4275,7 @@ public partial class Game : Node {
 	}
 
 	private GotoInfo GetGotoInfo(Tile tile) {
-		GotoInfo result = new() { wholeStack = this.gotoInfo?.wholeStack ?? false };
+		GotoInfo result = new() { wholeStack = this.gotoInfo?.wholeStack ?? false, workerAutomation = this.gotoInfo?.workerAutomation };
 
 		EngineStorage.ReadGameData((GameData gameData) => {
 			if (tile == this.lastTile && this.gotoInfo != null) {
@@ -4011,6 +4343,12 @@ public partial class Game : Node {
 		// The unit bombarding, not whichever is selected once war is declared.
 		ID bombarderID = info.bombardingUnit.id;
 
+		// Automated bombarding never needs a war declared (see CanTarget).
+		if (info.autoMode != MapUnit.AutoBombardMode.None) {
+			new MsgAutoBombard(bombarderID, info.autoMode, tile).send();
+			return;
+		}
+
 		if (info.airMission is UnitAction mission) {
 			EngineStorage.ReadGameData((GameData gameData) => {
 				// Only bombing runs attack; the other missions are peaceful.
@@ -4019,6 +4357,10 @@ public partial class Game : Node {
 					MaybeDeclareWar(victim, gameData.turn, () => {
 						new MsgAirMission(bombarderID, mission, tile).send();
 					});
+				} else if (mission == UnitAction.Rebase && info.wholeStack) {
+					foreach (MapUnit plane in UnitInteractions.StackRebasers(gameData.GetUnit(bombarderID), tile)) {
+						new MsgAirMission(plane.id, mission, tile).send();
+					}
 				} else {
 					new MsgAirMission(bombarderID, mission, tile).send();
 				}
@@ -4064,9 +4406,10 @@ public partial class Game : Node {
 			}.send();
 	}
 
-	// Shows the capital a new embassy reports on, with the tiles around it as
-	// they are now, until the city screen is closed.
-	private void ShowEmbassyCapital(City capital) {
+	// Shows another civ's city on the city screen (the capital a new embassy
+	// reports on, or an investigated city), with the tiles around it as they
+	// are now, until the screen is closed.
+	private void ShowForeignCityScreen(City capital) {
 		Player viewer = controller;
 		viewer.tileKnowledge.Peek(Espionage.CityRadius(capital));
 		mapView.InvalidateMap();

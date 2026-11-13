@@ -1,3 +1,4 @@
+using System.Linq;
 using C7GameData;
 using C7GameData.Save;
 using Xunit;
@@ -182,5 +183,72 @@ public class UnitUpgradeTest {
 		Assert.False(unit.Upgrade());
 		Assert.Equal(spearman, unit.unitType);
 		Assert.Equal(100, player.gold);
+	}
+
+	private MapUnit OwnedSpearman(Tile location) {
+		MapUnit unit = MakeSpearman();
+		unit.location = location;
+		player.units.Add(unit);
+		return unit;
+	}
+
+	// Upgrade All (Shift-U): "All units of this type will then be upgraded"
+	// (Civ3 README), those in a city with barracks; others, and units of
+	// other types, are left alone. Fortified units stay fortified (README
+	// 1.21f).
+	[Fact]
+	public void UpgradeAllUpgradesEveryUnitOfTheTypeThatCan() {
+		AddBarracks();
+		MapUnit first = OwnedSpearman(city.location);
+		MapUnit second = OwnedSpearman(city.location);
+		second.isFortified = true;
+		MapUnit afield = OwnedSpearman(new Tile(ID.None("tile")));
+		MapUnit pike = pikeman.GetInstance(ID.None("unit"), pikeman, player, location: city.location);
+		player.units.Add(pike);
+
+		Assert.Equal([first, second], MapUnit.UpgradeAllCandidates(player, spearman).Select(c => c.unit));
+		Assert.Equal([first, second], MapUnit.UpgradeAll(player, spearman));
+
+		Assert.Equal(pikeman, first.unitType);
+		Assert.Equal(pikeman, second.unitType);
+		Assert.True(second.isFortified);
+		Assert.Equal(spearman, afield.unitType);
+		Assert.Equal(40, player.gold);
+	}
+
+	// "We would need $NUM0 gold in order to complete all the upgrades!"
+	// (script.txt NO_GOLD_TO_UPGRADE_ALL): not enough for all, none goes.
+	[Fact]
+	public void UpgradeAllUpgradesNoneWithoutGoldForAll() {
+		AddBarracks();
+		player.gold = 50;
+		MapUnit first = OwnedSpearman(city.location);
+		MapUnit second = OwnedSpearman(city.location);
+
+		Assert.Empty(MapUnit.UpgradeAll(player, spearman));
+		Assert.Equal(spearman, first.unitType);
+		Assert.Equal(spearman, second.unitType);
+		Assert.Equal(50, player.gold);
+	}
+
+	// Shift-N: a unit's own name, kept through an upgrade; a blank name
+	// gives back the type's.
+	[Fact]
+	public void ARenamedUnitKeepsItsNameThroughAnUpgrade() {
+		AddBarracks();
+		MapUnit unit = OwnedSpearman(city.location);
+
+		Assert.True(unit.Rename("  The\tImmortals  "));
+		Assert.Equal("TheImmortals", unit.name);
+		Assert.True(unit.Rename(new string('x', 40)));
+		Assert.Equal(MapUnit.MaxNameLength, unit.name.Length);
+		Assert.True(unit.Rename("Old Guard"));
+
+		Assert.True(unit.Upgrade());
+		Assert.Equal("Old Guard", unit.name);
+
+		Assert.True(unit.Rename("   "));
+		Assert.Equal("Pikeman", unit.name);
+		Assert.False(unit.Rename("Pikeman"));
 	}
 }

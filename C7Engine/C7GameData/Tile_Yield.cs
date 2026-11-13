@@ -99,7 +99,7 @@ public partial class Tile {
 
 	// Food yield
 	private int BaseFoodYield(Player player) {
-		if (this.HasPollution() || this.HasFallout()) return 0;
+		if (this.HasFallout()) return 0;
 		int yield = overlayTerrainType.baseFoodProduction;
 		if (this.Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
 			yield += this.Resource.FoodBonus;
@@ -147,6 +147,7 @@ public partial class Tile {
 		// Civilopedia, GCON_Craters). The same for shields and commerce below.
 		if (this.HasCraters())
 			yield = Math.Max(0, yield - 1);
+		yield = PollutionPenalty(yield);
 
 		return yield;
 	}
@@ -191,7 +192,7 @@ public partial class Tile {
 
 	// Production yield
 	private int BaseProductionYield(Player player) {
-		if (this.HasPollution() || this.HasFallout()) return 0;
+		if (this.HasFallout()) return 0;
 		int yield = overlayTerrainType.baseShieldProduction;
 		if (this.isBonusShield && overlayTerrainType.IsGrassland) {
 			yield++;
@@ -247,6 +248,7 @@ public partial class Tile {
 
 		if (this.HasCraters())
 			yield = Math.Max(0, yield - 1);
+		yield = PollutionPenalty(yield);
 
 		return yield;
 	}
@@ -264,7 +266,7 @@ public partial class Tile {
 
 	// Commerce yield
 	private int BaseCommerceYield(Player player) {
-		if (this.HasPollution() || this.HasFallout()) return 0;
+		if (this.HasFallout()) return 0;
 		int yield = overlayTerrainType.baseCommerceProduction;
 		if (this.Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
 			yield += this.Resource.CommerceBonus;
@@ -322,8 +324,19 @@ public partial class Tile {
 
 		if (this.HasCraters())
 			yield = Math.Max(0, yield - 1);
+		yield = PollutionPenalty(yield);
 
 		return yield + ScenarioCommerceBonus();
+	}
+
+	// Pollution takes one from each of a tile's yields, never below 0,
+	// rather than all of them: "-1 for pollution" in Map_GetTileFood,
+	// Map_GetTileShields and Map_GetTileTrade, Civ3 binary
+	// (doc/perez-findings/Civ3_Findings.md, Economy; the Conquests
+	// Civilopedia's GCON_Craters agrees: "Like pollution, ... reduces a
+	// square's production, commerce, and food output by one").
+	private int PollutionPenalty(int yield) {
+		return HasPollution() ? Math.Max(0, yield - 1) : yield;
 	}
 
 	// A scenario's extra commerce on every tile (Rules.TileCommerceBonus).

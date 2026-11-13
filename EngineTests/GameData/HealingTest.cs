@@ -138,4 +138,38 @@ public class HealingTest {
 		unit.OnBeginTurn();
 		Assert.Equal(unit.maxHitPoints, unit.hitPointsRemaining);
 	}
+
+	// "A fully healed fortified unit of a human player wakes up" (Perez's
+	// decompile, Round 2b "Units"; owner's ruling 2026-11-12). An AI's stays
+	// fortified, and so does one that was never hurt.
+	[Fact]
+	public void AHumansFortifiedUnitWakesWhenFullyHealed() {
+		(Tile tile, _) = MakeCity();
+		us.isHuman = true;
+		MapUnit unit = WoundedUnitAt(tile);
+		unit.Fortify();
+
+		unit.OnBeginTurn();
+		Assert.True(unit.isFortified);
+		unit.OnBeginTurn();
+		Assert.Equal(unit.maxHitPoints, unit.hitPointsRemaining);
+		Assert.False(unit.isFortified);
+
+		unit.Fortify();
+		unit.OnBeginTurn();
+		Assert.True(unit.isFortified);
+	}
+
+	[Fact]
+	public void AnAIsFortifiedUnitStaysFortifiedWhenHealed() {
+		(Tile tile, _) = MakeCity();
+		us.isHuman = false;
+		MapUnit unit = WoundedUnitAt(tile);
+		unit.Fortify();
+
+		unit.OnBeginTurn();
+		unit.OnBeginTurn();
+		Assert.Equal(unit.maxHitPoints, unit.hitPointsRemaining);
+		Assert.True(unit.isFortified);
+	}
 }

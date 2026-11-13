@@ -42,6 +42,8 @@ public class CreateGame {
 		AI.Advanced.AdvancedTuning.StartGame(gameData, behaviors?.advancedProfiles);
 		EngineStorage.gameData.onGameCreation();
 		Staging.FinishOnLoad(gameData);
+		// The statistics rate the start positions of a game just beginning.
+		StartPositionRating.RateNewGame(gameData);
 		// With the setting on, the game's play log (see PlayLog.PlayRecorder).
 		PlayLog.PlayRecorder.OnGameCreated(gameData);
 

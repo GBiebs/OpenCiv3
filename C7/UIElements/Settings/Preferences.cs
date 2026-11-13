@@ -13,6 +13,7 @@ public static class Preferences {
 		CapitalGovernorIsDefaultForNewCities,
 		AlwaysWaitAtEndOfTurn,
 		AskForBuildOrdersAfterUnitConstruction,
+		ShowAdvancedUnitActionButtons,
 		ShowOurManualMoves,
 		ShowOurAutomaticMoves,
 		ShowFriendMoves,
@@ -36,6 +37,9 @@ public static class Preferences {
 		[Option.CapitalGovernorIsDefaultForNewCities] = false,
 		[Option.AlwaysWaitAtEndOfTurn] = true,
 		[Option.AskForBuildOrdersAfterUnitConstruction] = true,
+		// Civ3's worker automation buttons (Road to and the rest) take a
+		// row of their own, so they're off until asked for.
+		[Option.ShowAdvancedUnitActionButtons] = false,
 		[Option.ShowOurManualMoves] = false,
 		[Option.ShowOurAutomaticMoves] = false,
 		[Option.ShowFriendMoves] = false,

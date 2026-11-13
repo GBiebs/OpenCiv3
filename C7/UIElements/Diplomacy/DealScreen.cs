@@ -457,8 +457,9 @@ public partial class DealScreen : TextureRect {
 			}
 
 			// Another human player (in a hotseat game) decides for themselves
-			// rather than having the AI decide for them.
-			if (opponentPlayer.isHuman) {
+			// rather than having the AI decide for them. Playing by email
+			// they aren't here to, and the engine turns the deal down.
+			if (opponentPlayer.isHuman && !PlayByEmail.IsOn(EngineStorage.gameData)) {
 				AskHumanOpponentToAccept(humanPlayer, opponentPlayer);
 				return;
 			}

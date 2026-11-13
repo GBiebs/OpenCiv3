@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using C7GameData;
 using Serilog;
 
@@ -28,10 +29,14 @@ namespace C7Engine {
 	//   Domestic advisor): "The Nuclear Plant in $CITY0 has malfunctioned!
 	//   Thousands are dead, and pollution has crippled production!"
 	//
+	// - The chance: Rand(100) < 10 for each building that can melt down,
+	//   only while the city is in disorder (Civ3 binary,
+	//   doc/perez-findings/Civ3_Findings.md, Round 2b; owner's ruling,
+	//   2026-11-12). We roll at the turn's disorder check when the city was
+	//   in disorder at the previous check and still is, which keeps the
+	//   "never on the turn that the host city enters into disorder" above.
+	//
 	// UNVERIFIED (simplest consistent behaviour):
-	// - The exact chance: one in eight (12.5%), inside the measured 10-15%,
-	//   rolled at the turn's disorder check when the city was in disorder
-	//   at the previous check and still is.
 	// - "Cut in half" rounds in the city's favour: a city of 7 keeps 4. A
 	//   size 1 city keeps its citizen.
 	// - Only the land tiles of the eight around the city are polluted, as
@@ -41,25 +46,33 @@ namespace C7Engine {
 	public static class Meltdown {
 		private static readonly ILogger log = Log.ForContext(typeof(Meltdown));
 
-		// The chance of a meltdown is one in this many.
-		public const int ChanceOneIn = 8;
+		// The percent chance of a meltdown, for each building that can.
+		public const int ChancePercent = 10;
 
 		// Whether the city has a building that can melt down.
 		public static bool CanMeltDown(City city) {
-			return city.EffectiveBuildings().Exists(cb => cb.building.canMeltdown);
+			return PlantCount(city) > 0;
+		}
+
+		// The number of the city's buildings that can melt down.
+		public static int PlantCount(City city) {
+			return city.EffectiveBuildings().Count(cb => cb.building.canMeltdown);
 		}
 
 		// Called at the turn's disorder check for a city that was in
 		// disorder at the previous check and still is. Returns whether its
 		// plant melted down.
 		public static bool MaybeMeltDown(GameData gameData, City city) {
-			// No draw without a plant, so other cities leave the random
-			// numbers alone.
-			if (!CanMeltDown(city) || GameData.rng.Next(ChanceOneIn) != 0) {
-				return false;
+			// One roll for each plant; no draw without one, so other cities
+			// leave the random numbers alone.
+			int plants = PlantCount(city);
+			for (int i = 0; i < plants; ++i) {
+				if (GameData.rng.Next(100) < ChancePercent) {
+					MeltDown(gameData, city);
+					return true;
+				}
 			}
-			MeltDown(gameData, city);
-			return true;
+			return false;
 		}
 
 		// The city's plant melts down: the land around the city is

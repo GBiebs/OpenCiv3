@@ -51,6 +51,11 @@ namespace C7GameData {
 		// A captive is sacrificed in one of its owner's cities for culture
 		// (see MapUnit_Sacrifice.cs).
 		Sacrifice,
+		// Civ3's automated bombarding (see MapUnit_AutoBombard.cs): not BIQ
+		// abilities, but orders for units that bombard or fly bombing runs.
+		AutoBombard,
+		AutoBombing,
+		AutoPrecisionBombing,
 	}
 
 	public struct ItemContext(UnitPrototype proto, Player player) {
@@ -551,8 +556,11 @@ namespace C7GameData {
 			terraformActions = proto.terraformActions.Select(id => terraforms.First(t => t.Id == id)).ToHashSet();
 		}
 
+		// "Unit cost = base * PRTO.cost / 10, minimum 1": never less than a
+		// shield, whatever the factors. Civ3 binary
+		// (doc/perez-findings/Civ3_Findings.md, Round 2b, Costs).
 		public int ShieldCost(HashSet<Civilization.Trait> civTraits, float costFactor) {
-			return (int)(shieldCost * costFactor);
+			return Math.Max(1, (int)(shieldCost * costFactor));
 		}
 
 		public bool IsLandUnit() {

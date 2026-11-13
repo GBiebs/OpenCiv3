@@ -166,10 +166,12 @@ public sealed class PreyWarTest : IClassFixture<SaveGameFixture>, IDisposable {
 		Assert.False(AtWar());
 	}
 
-	// Their city grown with their own people: by Civ3's flip formula, that
-	// many nationals in a city that is their capital make it likely to
-	// flip back to them.
+	// Their city grown with their own people, and with culture they made
+	// in it: by Civ3's flip formula, that many nationals in a city that is
+	// their capital, and remembers more of their culture than ours, make it
+	// likely to flip back to them.
 	private void FillTheirCity(int people) {
+		theirs.perPlayerCulture[them] = 1000;
 		CityResident template = theirs.residents[0];
 		for (int i = 0; i < people; ++i) {
 			theirs.AddCitizen(new CityResident { city = theirs, nationality = them.civilization, citizenType = template.citizenType });

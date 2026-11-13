@@ -121,8 +121,8 @@ namespace C7GameData {
 		// "source": a known tile with one of our units on top (contributing
 		// what the unit can see), or a known tile within our borders with no
 		// units on it (contributing itself and its neighbors), or a known tile
-		// with our outpost (contributing what the outpost can see, and what
-		// our unit there can see if one is on top).
+		// with our outpost, colony or radar tower (contributing what it can
+		// see, and what our unit there can see if one is on top).
 		//
 		// We keep the contribution of each source and a count, per tile, of the
 		// sources contributing it, so that RecomputeActiveTiles only has to
@@ -305,19 +305,20 @@ namespace C7GameData {
 			return result;
 		}
 
-		// Whether the tile has this player's outpost.
+		// Whether the tile has this player's outpost, colony or radar tower,
+		// which see around them.
 		private bool HasOwnOutpost(Tile tile) {
-			return tile.holdingOwner == _player && tile.HasOutpost();
+			return tile.HasSightedHoldingOf(_player);
 		}
 
-		// The tiles an outpost sees: all those within its sight range
-		// (Tile.OutpostSightRange), whatever the terrain between, as a radar
-		// unit sees.
-		// UNVERIFIED: the Civilopedia gives only the range; whether hills and
-		// mountains in between block an outpost's view isn't stated, so they
-		// don't.
+		// The tiles an outpost, colony or radar tower sees: all those within
+		// its sight range (Tile.HoldingSightRange), whatever the terrain
+		// between, as a radar unit sees.
+		// UNVERIFIED: the Civilopedia gives only the outpost's range; whether
+		// hills and mountains in between block its view isn't stated, so
+		// they don't.
 		private static void CollectTilesSeenFromOutpost(Tile outpost, List<Tile> result) {
-			foreach (Tile t in outpost.GetTilesWithinTileSquare(outpost.OutpostSightRange())) {
+			foreach (Tile t in outpost.GetTilesWithinTileSquare(outpost.HoldingSightRange())) {
 				if (Tile.IsTileValid(t)) {
 					result.Add(t);
 				}
@@ -638,7 +639,7 @@ namespace C7GameData {
 					}
 				}
 
-				// An outpost of ours sees around it.
+				// An outpost, colony or radar tower of ours sees around it.
 				if (HasOwnOutpost(t)) {
 					List<Tile> seen = new();
 					CollectTilesSeenFromOutpost(t, seen);
@@ -671,7 +672,7 @@ namespace C7GameData {
 			if (t == null || !knownTiles.Contains(t)) {
 				return SourceKind.None;
 			}
-			if (t.holdingOwner == _player && t.HasOutpost()) {
+			if (HasOwnOutpost(t)) {
 				return SourceKind.Outpost;
 			}
 			List<MapUnit> units = t.unitsOnTile;

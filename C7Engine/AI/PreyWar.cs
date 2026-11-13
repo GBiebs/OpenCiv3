@@ -90,16 +90,17 @@ namespace C7Engine.AI {
 		// The chance each turn that the prey's city, once ours and held by
 		// this many land combat units, flips back to them, by Civ3's flip
 		// formula (see CultureFlip):
-		//   P = [(F + T) * Cc * H - G * (Cty / Cte)] / (2000 * d)
+		//   S = min(max(T - 2, 0) + F, 10), times 2 if they have made more
+		//   culture in it than we have, times the total-culture factor,
+		//   less G; the chance is S / R
 		// worked out for the city as it would be just after we take it:
 		// F, the prey's nationals living in it; T, the tiles of its radius
 		// that their other cities' borders hold (the borders of the city
-		// itself become ours); Cc 2 if they have made more culture in it
-		// than we have; the city's culture moving from their total to ours;
-		// d by the distances to the two capitals (to their capital itself,
-		// d is the least, as their palace will be rebuilt near). Resisters,
-		// who count twice, and disorder are left out (UNVERIFIED: our
-		// estimate, not Civ3 code).
+		// itself become ours); the city's culture moving from their total to
+		// ours; G the units times the difficulty's citizens quelled per
+		// unit; R by the distances to the two capitals. Resisters, who count
+		// twice, disorder and the flip cooldown after a conquest are left
+		// out (UNVERIFIED: our estimate, not Civ3 code).
 		// A city already ours (just taken) is taken as it is.
 		public static double FlipChanceIfTaken(GameData gameData, Player player, Player enemy, City city, int garrison) {
 			if (enemy == null || enemy == player || gameData.rules?.AllowCultureFlips == false) {
@@ -113,14 +114,20 @@ namespace C7Engine.AI {
 					++tiles;
 				}
 			}
-			int memory = city.GetCultureFor(enemy) > city.GetCultureFor(player) ? 2 : 1;
-			int theirCulture = Math.Max(1, CultureReport.TotalCulture(enemy) - (ours ? 0 : city.GetCultureFor(enemy)));
-			int ourCulture = Math.Max(1, CultureReport.TotalCulture(player) + (ours ? 0 : city.GetCultureFor(player)));
-			double cultureRatio = (double)theirCulture / ourCulture;
-			double d = CultureFlip.DistanceRatio(city, player, enemy);
-			double influence = (foreigners + tiles) * memory;
-			double resistance = garrison / cultureRatio;
-			return Math.Clamp((influence - resistance) / (CultureFlip.DistanceFactor * d), 0, 1);
+			int s = CultureFlip.BaseScore(foreigners, tiles);
+			if (s <= 0) {
+				return 0;
+			}
+			bool memory = city.GetCultureFor(enemy) > city.GetCultureFor(player);
+			int theirCulture = Math.Max(0, CultureReport.TotalCulture(enemy) - (ours ? 0 : city.GetCultureFor(enemy)));
+			int ourCulture = Math.Max(0, CultureReport.TotalCulture(player) + (ours ? 0 : city.GetCultureFor(player)));
+			s = CultureFlip.ApplyMultipliers(s, false, memory, ourCulture, theirCulture, false);
+			s -= garrison * CultureFlip.QuellPerUnit(gameData, player);
+			if (s <= 0) {
+				return 0;
+			}
+			int r = CultureFlip.Range(city, player, enemy);
+			return Math.Clamp((double)s / r, 0, 1);
 		}
 
 		// The land combat units that would hold the city to a flip chance of

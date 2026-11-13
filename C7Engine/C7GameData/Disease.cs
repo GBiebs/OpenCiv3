@@ -36,60 +36,71 @@ namespace C7Engine {
 	//   "just the presence of disease causing terrain within the city radius
 	//   will put that city/town at risk" (HellboundHeathcliff,
 	//   https://forums.civfanatics.com/threads/cause-of-plague.120157).
-	// - NOT CIV3 (owner's ruling, 2026-10-23, as disease struck far too
-	//   often): a strike costs one citizen, and half the time
-	//   (SecondStrikePercent) a second the next turn; the city is then
-	//   spared for ImmuneTurns turns. In Civ3 a strike costs two citizens over two
-	//   turns: a city with at least two citizens "tötet diese stets zwei
-	//   Bevölkerungspunkte, soweit möglich" ("always loses two population
-	//   points, if possible"), one in each of two consecutive turns (CivWiki,
-	//   Krankheit (Civ3), https://www.civ-wiki.de/), and "you always get
-	//   exactly two turns of disease in your city, losing 2 citizens"
-	//   (morchuflex, above).
-	// - Only fortified units die of it: 50 warriors fortified in jungle lost
-	//   20 over 510 turns, and "I also ran the test with unfortified (but not
-	//   moving) units and none of the 50 warriors had died after 200 turns."
-	//   (Brain, https://forums.civfanatics.com/threads/death-by-jungle-fever.113653/,
+	// - The city's illness is the Civ3 binary's City_ProcessIllness (Civ3
+	//   binary, doc/perez-findings/Civ3_Findings.md, "Pollution and
+	//   illness" and Round 2b), authoritative by the owner's ruling of
+	//   2026-11-12, which supersedes the owner's 2026-10-23 ruling (one
+	//   citizen, half the time a second, then 20 turns' immunity, at 0.5% a
+	//   turn): a healthy city falls ill when
+	//   Rand(0x300 - terrainDisease * 512 / 100) < size, and an ill city
+	//   loses a citizen every turn and recovers when Rand(128) > size.
+	//   Our reading (the decompile gives the rolls, not every detail):
+	//   - terrainDisease is the strongest disease strength among the
+	//     unhealthy tiles of the city's radius (50 for every disease
+	//     terrain in conquests.biq, so the roll is Rand(512)); with none the
+	//     city doesn't roll. A size 8 city falls ill 8/512 = 1.6% of its
+	//     turns, near CivWiki's "auf ca. 1% geschätzt" (below).
+	//   - "vs size" means it falls ill when the roll is below its size, so
+	//     big cities fall ill more often, just as they recover less often.
+	//   - The turn it falls ill counts as an ill turn and costs a citizen;
+	//     each later ill turn costs one and then rolls for recovery against
+	//     the new size. So an outbreak almost always costs two citizens on
+	//     two turns running, as players observed: a city with at least two
+	//     citizens "tötet diese stets zwei Bevölkerungspunkte, soweit
+	//     möglich" ("always loses two population points, if possible";
+	//     CivWiki, Krankheit (Civ3), https://www.civ-wiki.de/), "you always
+	//     get exactly two turns of disease in your city, losing 2 citizens"
+	//     (morchuflex, above), and "If you get hit by disease once. You will
+	//     get it again the next turn 100% unless you are already at size 1"
+	//     (Qitai, https://forums.civfanatics.com/threads/maya-flood-plain-start.74466/).
+	//   - A size 1 city doesn't shrink (Qitai; CivWiki's "soweit möglich").
+	//   - No building protects a city: neither the decompile nor the
+	//     compendium names one.
+	// - Units: "fortified land units with a zero PRTO field in jungle
+	//   (terrain 8) are lost to disease with chance 1/1000" (Civ3 binary,
+	//   Unit_StartOfTurn, Round 2b): only jungle, not flood plains or marsh,
+	//   whatever the terrain's disease strength. That matches Brain's test:
+	//   50 warriors fortified in jungle lost 20 over 510 turns, and "I also
+	//   ran the test with unfortified (but not moving) units and none of the
+	//   50 warriors had died after 200 turns."
+	//   (https://forums.civfanatics.com/threads/death-by-jungle-fever.113653/,
 	//   Conquests). Workers are immune: "Corrected Disease Civilopedia
-	//   chapter to reflect workers are immune to disease." (README.txt).
-	// - Plague is off in the standard rules (conquests.biq PermitPlagues=0)
-	//   and isn't modelled.
+	//   chapter to reflect workers are immune to disease." (README.txt;
+	//   perhaps that PRTO field). We keep the cure: a jungle a tech cures
+	//   (none in the standard rules) spares the units of civs that know it.
+	// - Plague is off in the standard rules (conquests.biq PermitPlagues=0);
+	//   scenarios that permit it get it from Plague.
 	// - The messages are Civ3's (Conquests/Text/Script.txt):
 	//   SUMMARY_DISEASE, "Disease strikes $CITY0.", and UNITJUNGLEDISEASE,
-	//   "Our $UNIT0 has died of disease from the jungle!" (used for every
-	//   unhealthy terrain, as Script.txt has no other).
+	//   "Our $UNIT0 has died of disease from the jungle!".
 	//
-	// UNVERIFIED (the formulas aren't known):
-	// - The city's chance: the strongest disease strength in its radius
-	//   (50 for every terrain in conquests.biq) in ten-thousandths a turn,
-	//   so 0.5% a turn, half CivWiki's estimate ("auf ca. 1% geschätzt"),
-	//   by the owner's ruling above.
-	// - A unit's chance: the strength in fifty-thousandths a turn, 1 in 1000
-	//   at strength 50, which is Brain's rate (20 deaths in roughly 20,000
-	//   unit-turns).
+	// UNVERIFIED:
 	// - Units fortified in a city aren't struck.
 	// - Which citizen dies: the last one working an unhealthy tile, or the
-	//   last one if none does. A size 1 city doesn't shrink.
+	//   last one if none does.
 	public static class Disease {
 		private static readonly ILogger log = Log.ForContext(typeof(Disease));
 
-		// The most a city's chance can be, in thousandths.
-		private const int Certain = 1000;
+		// The range of the roll for falling ill is IllnessBase less the
+		// disease strength times IllnessStrengthScale / 100.
+		public const int IllnessBase = 0x300;
+		public const int IllnessStrengthScale = 512;
 
-		// A city's chance a turn is the disease strength divided by this, in
-		// thousandths.
-		private const int CityStrengthDivisor = 10;
+		// An ill city recovers when Rand(RecoveryRange) > size.
+		public const int RecoveryRange = 128;
 
-		// How many turns after a strike the city is spared.
-		public const int ImmuneTurns = 20;
-
-		// The chance, in percent, that a strike takes a second citizen the
-		// next turn.
-		public const int SecondStrikePercent = 50;
-
-		// A fortified unit's chance a turn is the disease strength in this
-		// many.
-		private const int UnitChanceScale = 50000;
+		// A fortified unit in jungle dies with the chance 1 in this a turn.
+		public const int UnitDeathRange = 1000;
 
 		// The tech that cures flood plains: the first with the "Disables
 		// Diseases From Flood Plains" flag (see above), or null if the rules
@@ -113,8 +124,9 @@ namespace C7Engine {
 			return tile != null && tile != Tile.NONE && IsUnhealthy(tile.overlayTerrainType, owner);
 		}
 
-		// The city's chance of disease this turn, in thousandths.
-		public static int Chance(City city) {
+		// The strongest disease strength among the unhealthy tiles of the
+		// city's radius, 0 if none.
+		public static int Strength(City city) {
 			int strongest = 0;
 			int radius = city.owner?.rules?.MaxRankOfWorkableTiles ?? 2;
 			foreach (Tile t in city.location.GetTilesWithinRankDistance(radius)) {
@@ -122,35 +134,47 @@ namespace C7Engine {
 					strongest = System.Math.Max(strongest, t.overlayTerrainType.diseaseStrength);
 				}
 			}
-			return System.Math.Min(strongest / CityStrengthDivisor, Certain);
+			return strongest;
 		}
 
-		// Called once a turn for each city: disease may strike it, costing
-		// it a citizen, and perhaps another the next turn. Returns whether it
-		// cost a citizen this turn.
+		// The range of the city's roll for falling ill,
+		// 0x300 - strength * 512 / 100 (at least 1), or 0 if it has no
+		// unhealthy terrain and doesn't roll.
+		public static int IllnessRange(City city) {
+			int strength = Strength(city);
+			if (strength <= 0) {
+				return 0;
+			}
+			return System.Math.Max(1, IllnessBase - strength * IllnessStrengthScale / 100);
+		}
+
+		// Called once a turn for each city: a healthy city may fall ill; an
+		// ill one loses a citizen and may recover (see above). Returns
+		// whether it cost a citizen this turn.
 		public static bool MaybeStrike(City city, int turn) {
-			if (city.diseaseStrikesNextTurn) {
-				city.diseaseStrikesNextTurn = false;
-				if (city.residents.Count <= 1) {
+			if (!city.ill) {
+				int range = IllnessRange(city);
+				// No draw without unhealthy terrain, so healthy cities leave
+				// the random numbers alone.
+				if (range <= 0 || GameData.rng.Next(range) >= city.residents.Count) {
 					return false;
 				}
-				Strike(city);
-				city.lastDiseaseTurn = turn;
-				return true;
+				city.ill = true;
+				return StrikeIfBigEnough(city, turn);
 			}
-			if (city.residents.Count <= 1
-				|| (city.lastDiseaseTurn >= 0 && turn - city.lastDiseaseTurn <= ImmuneTurns)) {
-				return false;
+			bool struck = StrikeIfBigEnough(city, turn);
+			if (GameData.rng.Next(RecoveryRange) > city.residents.Count) {
+				city.ill = false;
 			}
-			int chance = Chance(city);
-			// No draw without a chance, so healthy cities leave the random
-			// numbers alone.
-			if (chance <= 0 || GameData.rng.Next(Certain) >= chance) {
+			return struck;
+		}
+
+		private static bool StrikeIfBigEnough(City city, int turn) {
+			if (city.residents.Count <= 1) {
 				return false;
 			}
 			Strike(city);
 			city.lastDiseaseTurn = turn;
-			city.diseaseStrikesNextTurn = GameData.rng.Next(100) < SecondStrikePercent;
 			return true;
 		}
 
@@ -175,22 +199,26 @@ namespace C7Engine {
 			}
 		}
 
-		// Whether disease can strike the unit where it stands.
+		// Whether disease can strike the unit where it stands: fortified in
+		// jungle, outside a city, and not a worker.
 		public static bool CanStrikeUnit(MapUnit unit) {
-			return unit.isFortified
-				&& unit.IsLandUnit()
-				&& !unit.unitType.isWorker
-				&& unit.location != null && unit.location != Tile.NONE
-				&& !unit.location.HasCity()
-				&& IsUnhealthy(unit.location, unit.owner);
+			if (!unit.isFortified || !unit.IsLandUnit() || unit.unitType.isWorker
+					|| unit.location == null || unit.location == Tile.NONE || unit.location.HasCity()) {
+				return false;
+			}
+			TerrainType terrain = unit.location.overlayTerrainType;
+			if (terrain == null || !terrain.IsJungle) {
+				return false;
+			}
+			return !terrain.diseaseCanBeCured || !unit.owner.HasTechEnabling(SaveTech.Flag.DisablesDiseases);
 		}
 
-		// Called once a turn for each player: each of its units fortified on
-		// unhealthy terrain may die of disease. Returns the units that died.
+		// Called once a turn for each player: each of its units fortified in
+		// jungle may die of disease. Returns the units that died.
 		public static List<MapUnit> StrikeFortifiedUnits(Player player) {
 			List<MapUnit> dead = new();
 			foreach (MapUnit unit in player.units.Where(CanStrikeUnit).ToList()) {
-				if (GameData.rng.Next(UnitChanceScale) >= unit.location.overlayTerrainType.diseaseStrength) {
+				if (GameData.rng.Next(UnitDeathRange) != 0) {
 					continue;
 				}
 				log.Information("{Unit} of {Player} died of disease at {Tile}", unit, player, unit.location);

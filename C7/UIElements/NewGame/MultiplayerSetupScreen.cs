@@ -50,7 +50,8 @@ public partial class MultiplayerSetupScreen : Control {
 		("LAN", MultiplayerGameType.Lan, "Players on your local network join from \"Join LAN Game\"."),
 		("Internet", MultiplayerGameType.Internet,
 			"Players on your network, and anywhere else with the join code the lobby shows, through the online relay."),
-		("Play By Email", null, "Not in OpenCiv3 yet."),
+		("Play By Email", MultiplayerGameType.PlayByEmail,
+			"Each player plays their turn on their own computer, then saves the game and emails it to the next player."),
 	];
 
 	private static readonly (string text, MultiplayerGameMode mode)[] GameModes = [
@@ -547,7 +548,8 @@ public partial class MultiplayerSetupScreen : Control {
 		if (rows.Count == 0 || gameType == null) {
 			return;
 		}
-		bool hotseat = GameType == MultiplayerGameType.Hotseat;
+		bool hotseat = MultiplayerSlots.SeatsSetUpHere(GameType);
+		bool byEmail = GameType == MultiplayerGameType.PlayByEmail;
 		int playerNumber = 1;
 		for (int i = 0; i < rows.Count; ++i) {
 			(OptionButton kind, OptionButton civ) = rows[i];
@@ -557,7 +559,9 @@ public partial class MultiplayerSetupScreen : Control {
 				++playerNumber;
 			}
 			kind.SetItemText(0, open && hotseat ? NewGameChoices.HotseatName(slot.name, playerNumber) : "Open");
-			kind.TooltipText = hotseat
+			kind.TooltipText = byEmail
+				? "Open: another player, who plays their turns from the saves emailed to them. Closed: no civilization. Computer: a civilization the computer plays."
+				: hotseat
 				? "Open: another player at this computer. Closed: no civilization. Computer: a civilization the computer plays."
 				: "Open: a seat for a player joining over the network. Closed: no civilization. Computer: a civilization the computer plays.";
 			bool networkSeat = open && !hotseat;
@@ -616,7 +620,7 @@ public partial class MultiplayerSetupScreen : Control {
 	// The host can always be renamed, and in hotseat the other players at
 	// this computer; people joining bring their own names.
 	private bool CanRename(int row) {
-		return row == -1 || (row < slots.Count && slots[row].kind == SlotKind.Open && GameType == MultiplayerGameType.Hotseat);
+		return row == -1 || (row < slots.Count && slots[row].kind == SlotKind.Open && MultiplayerSlots.SeatsSetUpHere(GameType));
 	}
 
 	private void Rename() {
@@ -800,7 +804,8 @@ public partial class MultiplayerSetupScreen : Control {
 
 	private void ShowGameType() {
 		MultiplayerGameType type = GameType;
-		bool hotseat = type == MultiplayerGameType.Hotseat;
+		// Hotseat and play by email aren't played over the network.
+		bool hotseat = MultiplayerSlots.SeatsSetUpHere(type);
 		// Only a networked game has a turn clock and simultaneous turns (see
 		// LanHost), and a name to list it under.
 		turnTimer.Disabled = hotseat;
@@ -813,9 +818,16 @@ public partial class MultiplayerSetupScreen : Control {
 		UpdateHosting();
 		ShowSlots();
 		messages.Clear();
-		AddMessage($"Setting up {(hotseat ? "a hotseat game" : gameNameEdit.Text)}, hosted by {HostName}.");
+		string what = type switch {
+			MultiplayerGameType.Hotseat => "a hotseat game",
+			MultiplayerGameType.PlayByEmail => "a play by email game",
+			_ => gameNameEdit.Text,
+		};
+		AddMessage($"Setting up {what}, hosted by {HostName}.");
 		AddMessage(type switch {
 			MultiplayerGameType.Hotseat => "Each Open slot is another player at this computer, taking turns with you. Rename gives them their names.",
+			MultiplayerGameType.PlayByEmail => "Each Open slot is another player. Each plays their turn on their own computer, then saves "
+				+ "the game and emails the save to the next player. Rename gives them their names.",
 			MultiplayerGameType.Internet => "The game is hosted online too: players anywhere join the Open slots with the join code under Game "
 				+ "Settings, and players on your network from \"Join LAN Game\". They choose their civilizations here. Launch starts the game "
 				+ "once every Open slot is taken.",
@@ -898,13 +910,15 @@ public partial class MultiplayerSetupScreen : Control {
 		global.NewGameChoices = choices;
 		SetLaunching(true);
 
-		if (type == MultiplayerGameType.Hotseat) {
+		if (MultiplayerSlots.SeatsSetUpHere(type)) {
 			LanSession.HostNextGame = false;
 			AddMessage("Creating the world...");
 			// World generation can take a while, so not on the UI thread.
 			Task.Run(() => {
 				try {
 					setup.Populate(save);
+					// Each plays on their own computer (see PlayByEmail).
+					save.PlayByEmail = type == MultiplayerGameType.PlayByEmail;
 				} catch (Exception e) {
 					Callable.From(() => LaunchFailed(e)).CallDeferred();
 					return;

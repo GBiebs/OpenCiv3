@@ -7,8 +7,8 @@ namespace C7Engine;
 
 // The end of game's words, read from the Civ3 install as Civ3 reads them:
 // labels.txt's #LABELS list, by line number, and script.txt's popups, by
-// key. Without the install (standalone mode), there are none, and the end
-// of game falls back to OpenCiv3's own popups.
+// key. Without the install (standalone mode), OwnWording stands in for
+// them with OpenCiv3's own words (see OwnEndGameWording).
 public sealed class Civ3EndGameText {
 	private static readonly ILogger log = Log.ForContext<Civ3EndGameText>();
 
@@ -42,6 +42,23 @@ public sealed class Civ3EndGameText {
 	public static Civ3EndGameText FromLines(string[] labelsLines, string[] scriptLines) {
 		List<string> labels = ReadLabels(labelsLines);
 		return labels.Count > 0 ? new Civ3EndGameText(labels, ReadPopups(scriptLines)) : null;
+	}
+
+	// OpenCiv3's own words for the end of the game, by the same indexes and
+	// keys as Civ3's, for when the Civ3 text isn't there.
+	public static Civ3EndGameText OwnWording() {
+		List<string> labels = [];
+		foreach ((int index, string label) in OwnEndGameWording.Labels) {
+			while (labels.Count <= index) {
+				labels.Add(null);
+			}
+			labels[index] = label;
+		}
+		Dictionary<string, ScriptPopup> popups = new(StringComparer.Ordinal);
+		foreach ((string key, (string caption, string text)) in OwnEndGameWording.Popups) {
+			popups[key] = new ScriptPopup(caption, text, []);
+		}
+		return new Civ3EndGameText(labels, popups);
 	}
 
 	// The line of #LABELS with that index, or null.

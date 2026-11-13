@@ -61,12 +61,17 @@ namespace C7Engine {
 	// is eligible, then the second candidate is the civilization with the
 	// largest population."
 	//
-	// Every ElectionInterval (11) turns the founder (the UN's current owner)
-	// chooses whether to hold an election. "it's 11 turns whether the vote is
-	// inconclusive or the option declined" (MadScot,
+	// Every ElectionInterval (10) turns the founder (the UN's current owner)
+	// chooses whether to hold an election: the vote comes "every 10 turns"
+	// (Perez's decompile of Civ3 Conquests,
+	// doc/perez-findings/Civ3_Findings.md, Round 2 "Victory conditions";
+	// authoritative per the owner's 2026-11-12 ruling, superseding the FAQ's
+	// 11 turns and MadScot's "it's 11 turns whether the vote is inconclusive
+	// or the option declined",
 	// https://forums.civfanatics.com/threads/diplomatic-victory.53460/; in the
 	// same thread Darkness thought a declined vote was offered again the next
-	// turn, but the project owner chose 11 turns). UNVERIFIED (when the
+	// turn). The interval holds whether the vote was inconclusive or
+	// declined. UNVERIFIED (when the
 	// choice is made): a human is asked as their turn starts and the vote is
 	// held during the next turn; one who doesn't answer by the end of the
 	// turn declines. An AI decides as the turn starts (AIHoldsElection), and
@@ -76,8 +81,11 @@ namespace C7Engine {
 	// - The first election is offered on the turn after the UN is completed.
 	// - "Land" is the share of the world's land tiles counted for domination
 	//   inside a civ's borders, and "population" its share of the world's
-	//   citizens. Should more than two other civs reach 25%, the two with the
-	//   largest share (of land or population, whichever is larger) stand.
+	//   citizens. A civ needs more than 25% of either: "more than 25% of land
+	//   or population" (Perez's decompile, Round 2 "Victory conditions";
+	//   owner's ruling 2026-11-12). Should more than two other civs pass it,
+	//   the two with the largest share (of land or population, whichever is
+	//   larger) stand.
 	// - Population is the civ's citizens; ties go to the higher score (the
 	//   civ's accumulated score, the FAQ's measure), then to the civ listed
 	//   first. The UN owner never counts as the most populous civ, as it is
@@ -89,7 +97,7 @@ namespace C7Engine {
 	public static class UnitedNations {
 		private static readonly ILogger log = Log.ForContext(typeof(UnitedNations));
 
-		public const int ElectionInterval = 11;
+		public const int ElectionInterval = 10;
 
 		// The most candidates in an election, and the share of the world's
 		// land or population that makes a civ one.
@@ -164,9 +172,9 @@ namespace C7Engine {
 			return gameData.players.Where(p => !p.IsIndependent && !p.defeated && p.isIncludedInGame);
 		}
 
-		// The candidates: the UN owner first, then up to two civs with 25% of
-		// the world's land or population, or if there are none, the
-		// most populous other civ. Null if there is no UN or no rival.
+		// The candidates: the UN owner first, then up to two civs with more
+		// than 25% of the world's land or population, or if there are none,
+		// the most populous other civ. Null if there is no UN or no rival.
 		public static List<Player> Candidates(GameData gameData) {
 			Player owner = Owner(gameData);
 			if (owner == null) {
@@ -190,7 +198,7 @@ namespace C7Engine {
 			// OrderBy is stable, so ties go to the civ listed first.
 			result.AddRange(rivals
 				.Select(p => (player: p, share: System.Math.Max(Share(Land(p), worldLand), Share(Population(p), worldPopulation))))
-				.Where(ps => ps.share >= CandidateShare)
+				.Where(ps => ps.share > CandidateShare)
 				.OrderByDescending(ps => ps.share)
 				.Take(MaxCandidates - 1)
 				.Select(ps => ps.player));

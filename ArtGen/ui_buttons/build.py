@@ -12,7 +12,8 @@ buttons at them.
 It also draws the air missions' and the airdrop's buttons (see
 air_missions.py), which are blank in the asset pack too, and the icons by a
 city for its barracks, airport and harbor (see city_icons.py), and the
-science advisor's tech boxes the pack has no art for (see tech_boxes.py).
+science advisor's tech boxes the pack has no art for (see tech_boxes.py),
+and the worker automation commands' buttons (see worker_automation.py).
 
 The buttons copy the asset pack's look: a golden ball with the order drawn on
 it in dark brown.
@@ -308,3 +309,5 @@ if __name__ == '__main__':
     air_missions.main()
     city_icons.main()
     tech_boxes.main()
+    import worker_automation  # noqa: E402  (it uses this module's build)
+    worker_automation.main()

@@ -174,6 +174,51 @@ public partial class RightClickMenu : VBoxContainer {
 		}
 	}
 
+	// The items for one of the player's own cities, the same whether or not
+	// units stand in it.
+	protected void AddOwnCityItems(City city) {
+		AddItem($"Zoom to {city.name}", () => {
+			this.CloseAndDelete();
+			EngineStorage.ReadGameData((GameData gameData) => {
+				game.ShowCityScreenForCity(gameData, city);
+			});
+		});
+		AddItem("Rename", () => {
+			this.CloseAndDelete();
+			ShowRenameDialog(city);
+		});
+		AddTreeSeparator();
+		AddItem("Change Production", () => {
+			// Close the first menu before opening the second menu.
+			this.CloseAndDelete();
+			new RightClickChooseProductionMenu(game, city).Open(this.position);
+		});
+		AddItem("Hurry Production", () => {
+			this.CloseAndDelete();
+			EngineStorage.ReadGameData((GameData gameData) => {
+				City.HurryProductionDetails details = city.GetHurryProductionDetails();
+				new MsgDisplayHurryProductionPopup(city, details).send();
+			});
+		});
+		// Only once the advance that allows the draft is known.
+		if (city.owner.HasTechEnabling(C7GameData.Save.SaveTech.Flag.EnablesConscription)) {
+			AddItem("Draft Citizen", () => {
+				this.CloseAndDelete();
+				EngineStorage.ReadGameData((GameData gameData) => {
+					new MsgDisplayDraftPopup(city, city.WhyCannotDraft(gameData), city.DraftableUnit(gameData)?.name).send();
+				});
+			});
+		}
+		AddItem("Contact Governor", () => {
+			this.CloseAndDelete();
+			EngineStorage.ReadGameData((GameData gameData) => game.ShowGovernor(city));
+		});
+		AddRallyPointItems(city);
+
+		AddAbandonCityItem(city);
+		AddCivilopediaItem(city);
+	}
+
 	protected void AddTreeSeparator() {
 		var background = new ColorRect();
 		background.Color = Color.Color8(255, 247, 222, 255);
@@ -315,53 +360,19 @@ public partial class RightClickTileMenu : RightClickMenu {
 		if (fortifiedCount > 1) {
 			AddItem($"Wake All ({fortifiedCount} units)", () => ForAll(tile.XCoordinate, tile.YCoordinate, false));
 		}
+		// labels.txt's "Wake Transported": wakes the units asleep aboard our
+		// transports here, to be moved one by one.
+		List<MapUnit> asleepAboard = playerUnits.FindAll(u => u.IsLoaded() && !u.IsLockedInArmy()
+			&& (isUnitFortified(u, uiUpdatedUnitStates) || (u.isSentried && uiUpdatedUnitStates?.ContainsKey(u.id) != true)));
+		if (asleepAboard.Count > 0 && !observerMode) {
+			AddItem($"Wake Transported ({asleepAboard.Count} {(asleepAboard.Count == 1 ? "unit" : "units")})", () => WakeTransported(tile, asleepAboard));
+		}
 		if (unfortifiedCount > 1) {
 			AddItem($"Fortify All ({unfortifiedCount} units)", () => ForAll(tile.XCoordinate, tile.YCoordinate, true));
 		}
 		if (tile.cityAtTile?.owner == game.controller) {
 			AddTreeSeparator();
-			AddItem($"Zoom to {tile.cityAtTile.name}", () => {
-				this.CloseAndDelete();
-				EngineStorage.ReadGameData((GameData gameData) => {
-					game.ShowCityScreenForCity(gameData, tile.cityAtTile);
-				});
-			});
-			AddItem("Rename", () => {
-				this.CloseAndDelete();
-				ShowRenameDialog(tile.cityAtTile);
-			});
-			AddTreeSeparator();
-			AddItem("Change Production", () => {
-				// Close the first menu before opening the second menu.
-				this.CloseAndDelete();
-				new RightClickChooseProductionMenu(game, tile.cityAtTile).Open(this.position);
-			});
-			AddItem("Hurry Production", () => {
-				this.CloseAndDelete();
-				EngineStorage.ReadGameData((GameData gameData) => {
-					City.HurryProductionDetails details = tile.cityAtTile.GetHurryProductionDetails();
-					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
-				});
-			});
-			// Only once the advance that allows the draft is known.
-			if (tile.cityAtTile.owner.HasTechEnabling(C7GameData.Save.SaveTech.Flag.EnablesConscription)) {
-				AddItem("Draft Citizen", () => {
-					this.CloseAndDelete();
-					EngineStorage.ReadGameData((GameData gameData) => {
-						City city = tile.cityAtTile;
-						new MsgDisplayDraftPopup(city, city.WhyCannotDraft(gameData), city.DraftableUnit(gameData)?.name).send();
-					});
-				});
-			}
-			AddItem("Contact Governor", () => {
-				this.CloseAndDelete();
-				EngineStorage.ReadGameData((GameData gameData) => game.ShowGovernor(tile.cityAtTile));
-			});
-			AddRallyPointItems(tile.cityAtTile);
-
-			AddAbandonCityItem(tile.cityAtTile);
-			AddCivilopediaItem(tile.cityAtTile);
-
+			AddOwnCityItems(tile.cityAtTile);
 		}
 
 		// If we're looking at an enemy tile, then the behavior depends on whether the units
@@ -457,6 +468,15 @@ public partial class RightClickTileMenu : RightClickMenu {
 		}
 	}
 
+	private void WakeTransported(Tile tile, List<MapUnit> units) {
+		Dictionary<ID, bool> modified = new();
+		foreach (MapUnit unit in units) {
+			new MsgSetFortification(unit.id, false).send();
+			modified[unit.id] = false;
+		}
+		ResetItems(tile, modified);
+	}
+
 	public void ForAll(int tileX, int tileY, bool isFortify) {
 		EngineStorage.ReadGameData((GameData gameData) => {
 			bool hasSelectedUnit = false;
@@ -494,8 +514,6 @@ public partial class RightClickCityMenu : RightClickMenu {
 	public void ResetItems(Tile tile) {
 		RemoveAll();
 
-		// TODO: maybe look into unifying this with the other right click menu (when there are units present)
-		// I don't like this much duplication
 		AddItem($"Terrain Info", () => {
 			game.ShowTileInfo(tile);
 			CloseAndDelete();
@@ -504,37 +522,7 @@ public partial class RightClickCityMenu : RightClickMenu {
 		AddTreeSeparator();
 
 		if (tile.cityAtTile?.owner == game.controller) {
-			AddItem($"Zoom to {tile.cityAtTile.name}", () => {
-				this.CloseAndDelete();
-				EngineStorage.ReadGameData((GameData gameData) => {
-					game.ShowCityScreenForCity(gameData, tile.cityAtTile);
-				});
-			});
-			AddTreeSeparator();
-			AddItem("Change Production", () => {
-				// Close the first menu before opening the second menu.
-				this.CloseAndDelete();
-				new RightClickChooseProductionMenu(game, tile.cityAtTile).Open(this.position);
-			});
-			AddItem("Hurry Production", () => {
-				this.CloseAndDelete();
-				EngineStorage.ReadGameData((GameData gameData) => {
-					City.HurryProductionDetails details = tile.cityAtTile.GetHurryProductionDetails();
-					new MsgDisplayHurryProductionPopup(tile.cityAtTile, details).send();
-				});
-			});
-			// Only once the advance that allows the draft is known.
-			if (tile.cityAtTile.owner.HasTechEnabling(C7GameData.Save.SaveTech.Flag.EnablesConscription)) {
-				AddItem("Draft Citizen", () => {
-					this.CloseAndDelete();
-					EngineStorage.ReadGameData((GameData gameData) => {
-						City city = tile.cityAtTile;
-						new MsgDisplayDraftPopup(city, city.WhyCannotDraft(gameData), city.DraftableUnit(gameData)?.name).send();
-					});
-				});
-			}
-			AddAbandonCityItem(tile.cityAtTile);
-			AddCivilopediaItem(tile.cityAtTile);
+			AddOwnCityItems(tile.cityAtTile);
 		}
 	}
 }

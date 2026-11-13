@@ -113,4 +113,38 @@ public class AdvisorReportsTest {
 		Assert.Equal(new ResourceDeal(iron, them, 15), Assert.Single(exports));
 		Assert.Equal(TradeStatus.TradingWith, TradeReport.StatusWith(us, them));
 	}
+
+	// The military advisor lists a rival's army in full with an embassy or a
+	// spy ("The Military Advisor gets a complete list of their forces from
+	// an embassy", Civ3 manual), and otherwise only what our troops see.
+	[Fact]
+	public void KnownUnits_AreAllWithAnEmbassyOrSpyAndOtherwiseThoseInSight() {
+		(Player us, Player them) = TwoPlayersAtPeace();
+		UnitPrototype warrior = new() { name = "Warrior", attack = 1, defense = 1 };
+		Tile seen = new(ID.None("seen"));
+		Tile unseen = new(ID.None("unseen"));
+		MapUnit inSight = new(ID.FromString("unit-1")) { unitType = warrior, owner = them, location = seen };
+		MapUnit outOfSight = new(ID.FromString("unit-2")) { unitType = warrior, owner = them, location = unseen };
+		them.units.Add(inSight);
+		them.units.Add(outOfSight);
+		us.tileKnowledge.knownTiles.Add(seen);
+		us.tileKnowledge.knownTiles.Add(unseen);
+		us.tileKnowledge.Peek([seen]);
+
+		Assert.Equal([inSight], MilitaryReport.KnownUnits(us, them));
+		Assert.Equal("We only know what our troops report.", MilitaryReport.Intelligence(us, them));
+
+		us.playerRelationships[them.id].hasEmbassy = true;
+		Assert.Equal([inSight, outOfSight], MilitaryReport.KnownUnits(us, them));
+		Assert.Equal("We have: An Embassy", MilitaryReport.Intelligence(us, them));
+
+		us.playerRelationships[them.id].hasEmbassy = false;
+		us.playerRelationships[them.id].hasSpy = true;
+		Assert.Equal([inSight, outOfSight], MilitaryReport.KnownUnits(us, them));
+		Assert.Equal("We have: A Spy", MilitaryReport.Intelligence(us, them));
+
+		us.playerRelationships[them.id].hasEmbassy = true;
+		Assert.Equal("We have: An Embassy, A Spy", MilitaryReport.Intelligence(us, them));
+		Assert.Equal("", MilitaryReport.Intelligence(us, us));
+	}
 }

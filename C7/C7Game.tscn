@@ -151,18 +151,21 @@ metadata/_edit_use_anchors_ = true
 layout_mode = 2
 script = ExtResource("6_24l34")
 
-[node name="StatusMenu" type="VBoxContainer" parent="CanvasLayer/Control/GameStatus" node_paths=PackedStringArray("openDiplomacy", "openEspionage", "openPalaceScreen", "popupOverlay")]
+[node name="StatusMenu" type="VBoxContainer" parent="CanvasLayer/Control/GameStatus" node_paths=PackedStringArray("openDiplomacy", "openEspionage", "openPalaceScreen", "openVictoryStatus", "openSpaceship", "openStatistics", "popupOverlay")]
 layout_mode = 2
 offset_left = 272.0
-offset_top = 31.0
+offset_top = 25.0
 offset_right = 288.0
-offset_bottom = 115.0
+offset_bottom = 126.0
 size_flags_horizontal = 8
 theme_override_constants/separation = 1
 script = ExtResource("7_yn4xe")
 openDiplomacy = NodePath("Diplomacy")
 openEspionage = NodePath("Espionage")
 openPalaceScreen = NodePath("Palace")
+openVictoryStatus = NodePath("Victory")
+openSpaceship = NodePath("Spaceship")
+openStatistics = NodePath("Statistics")
 popupOverlay = NodePath("../../../PopupOverlay")
 
 [node name="Diplomacy" type="Control" parent="CanvasLayer/Control/GameStatus/StatusMenu"]
@@ -198,7 +201,14 @@ custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
 script = ExtResource("8_7a2mf")
 text = "S"
-tooltipText = "Spaceship"
+tooltipText = "View Spaceship Progress"
+
+[node name="Statistics" type="Control" parent="CanvasLayer/Control/GameStatus/StatusMenu"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+script = ExtResource("8_7a2mf")
+text = "G"
+tooltipText = "Statistics"
 
 [node name="Advisor" type="CenterContainer" parent="CanvasLayer" node_paths=PackedStringArray("domesticAdvisor", "tradeAdvisor", "militaryAdvisor", "foreignAdvisor", "culturalAdvisor", "scienceAdvisor")]
 anchors_preset = 15

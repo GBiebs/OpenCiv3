@@ -160,6 +160,9 @@ namespace C7GameData {
 		// The United Nations elections (see C7Engine.UnitedNations).
 		public UnitedNationsState unitedNations = new();
 
+		// A scenario's plague (see C7Engine.Plague).
+		public PlagueState plague = new();
+
 		// The turn's Staging, in a scenario that has it (see C7Engine.Staging).
 		public StagingState staging = new();
 
@@ -205,6 +208,10 @@ namespace C7GameData {
 		// Whether the humans play their turns at the same time, rather than
 		// one after another. Only LAN games do.
 		public bool simultaneousTurns = false;
+		// Play by email (Civ3's "Play By Email" game type): each human plays
+		// their turn on their own computer, from the save the human before
+		// them sent on (see PlayByEmail).
+		public bool playByEmail = false;
 		public bool showGridCoordinates = false;
 
 		public string scenarioSearchPath;   //legacy from Civ3, we'll probably have a more modern format someday but this keeps legacy compatibility
@@ -975,6 +982,26 @@ namespace C7GameData {
 			return newUnit;
 		}
 
+		// The beakers a future tech takes: the research cost formula (see
+		// TechCostFor) with the rules' future tech cost, "the cost of each
+		// future technology" (Civ3 editor help, default 400), in place of an
+		// advance's, and no other civ knowing it. UNVERIFIED: how Civ3 puts
+		// the 400 in the formula, and whether later future techs cost more
+		// (see doc/civ3-compendium/04-science-and-wonders.md).
+		public int FutureTechCostFor(Player player) {
+			// The difficulty factor as in TechCostFor.
+			int difficultyFactor = player.isHuman ? Math.Min(gameDifficulty.AiCostFactor, 10) : gameDifficulty.HumanCostFactor;
+			float researchCost = map.techRate * 10 * rules.FutureTechCost / (float)(difficultyFactor * 10);
+			researchCost *= AiHouseRules.CostFactor(player);
+			// Accelerated Production halves future techs as it does other
+			// techs: their cost is `g_RuleFutureTechCost * base`, and the
+			// option halves the base (see TechCostFor).
+			if (City.AcceleratedProduction(player)) {
+				researchCost *= 0.5f;
+			}
+			return Math.Max((int)Math.Floor(researchCost), 1);
+		}
+
 		public int TechCostFor(Tech tech, Player player) {
 			// Cost formula from https://forums.civfanatics.com/threads/research-cost-formula-v1-29f.29485/.
 			// Research Cost = [MM * [10*COST * (1 - N/[CL*1.75])]/(CF * 10)] - progress
@@ -1011,6 +1038,18 @@ namespace C7GameData {
 			float researchCost = map.techRate * 10 * tech.Cost  * knowledgeFactor/ (difficultyFactor * 10);
 			// A house rule may make the AI's research cheaper (see AiHouseRules).
 			researchCost *= AiHouseRules.CostFactor(player);
+			// Accelerated Production halves research too: game-rule flag
+			// 0x200 "halves the food box, unit cost, improvement cost and tech
+			// cost base" (Perez's decompile of Civ3 Conquests,
+			// doc/perez-findings/Civ3_Findings.md, Round 2b "Costs";
+			// authoritative per the owner's 2026-11-12 ruling). Future techs
+			// cost `g_RuleFutureTechCost * base` with the same halved base; the
+			// game has none yet, so when they come (Rules.FutureTechCost) they
+			// must be halved here as well. The min/max research times still
+			// apply afterwards (Player.BeakerTurnsLeft).
+			if (City.AcceleratedProduction(player)) {
+				researchCost /= 2;
+			}
 
 			// Only include the progress factor if this is the tech actively
 			// being researched.
