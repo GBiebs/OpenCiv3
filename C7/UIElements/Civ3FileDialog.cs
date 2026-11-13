@@ -20,9 +20,14 @@ public partial class Civ3FileDialog : FileDialog {
 
 	private const string ShowSavesAction = "show_saves";
 	private const string ShowCiv3SavesAction = "show_civ3_saves";
+	private const string ShowScenariosAction = "show_scenarios";
+	private const string ShowCiv3ScenariosAction = "show_civ3_scenarios";
+	private string Civ3ScenariosDirectory => Util.Civ3Root + "/Conquests/Scenarios";
 
 	// The buttons that switch between our saves and Civ 3's, when loading.
 	private Button savesButton, civ3SavesButton;
+	// And between the scenarios made in the scenario editor and Civ 3's.
+	private Button scenariosButton, civ3ScenariosButton;
 
 	public override void _Ready() {
 		base._Ready();
@@ -37,6 +42,9 @@ public partial class Civ3FileDialog : FileDialog {
 		savesButton = AddButton("Our Saves", false, ShowSavesAction);
 		civ3SavesButton = AddButton("Civ3 Saves", false, ShowCiv3SavesAction);
 		savesButton.Visible = civ3SavesButton.Visible = false;
+		scenariosButton = AddButton("Our Scenarios", false, ShowScenariosAction);
+		civ3ScenariosButton = AddButton("Civ3 Scenarios", false, ShowCiv3ScenariosAction);
+		scenariosButton.Visible = civ3ScenariosButton.Visible = false;
 		CustomAction += OnCustomAction;
 	}
 
@@ -45,6 +53,10 @@ public partial class Civ3FileDialog : FileDialog {
 			CurrentDir = SavesDirectory;
 		} else if (action == ShowCiv3SavesAction) {
 			CurrentDir = Civ3SavesDirectory;
+		} else if (action == ShowScenariosAction) {
+			CurrentDir = ScenarioEditorSession.ScenariosDirectory;
+		} else if (action == ShowCiv3ScenariosAction) {
+			CurrentDir = Civ3ScenariosDirectory;
 		}
 	}
 
@@ -64,6 +76,24 @@ public partial class Civ3FileDialog : FileDialog {
 		// Only saves, so a recorded game's play log (.jsonl) beside them isn't offered.
 		Filters = new[] { "*.json, *.sav, *.SAV ; Saved Games" };
 		ShowSavesButtons(true);
+	}
+
+	// Opens on the scenarios made in the scenario editor, with a button to
+	// browse Civ 3's (which aren't there without Civ 3).
+	public void SetDirectoryForLoadingScenarios() {
+		try {
+			System.IO.Directory.CreateDirectory(ScenarioEditorSession.ScenariosDirectory);
+		} catch (System.Exception e) {
+			LogManager.ForContext<Civ3FileDialog>().Warning(e, "Couldn't create the scenarios directory {Directory}", ScenarioEditorSession.ScenariosDirectory);
+		}
+		CurrentDir = ScenarioEditorSession.ScenariosDirectory;
+		FileMode = FileDialog.FileModeEnum.OpenFile;
+		Filters = new[] { "*.json, *.biq, *.BIQ ; Scenarios" };
+		ShowSavesButtons(false);
+		if (scenariosButton != null) {
+			scenariosButton.Visible = true;
+			civ3ScenariosButton.Visible = System.IO.Directory.Exists(Civ3ScenariosDirectory);
+		}
 	}
 
 	public void SetDirectoryForLoading(string RelPath) {
@@ -100,6 +130,7 @@ public partial class Civ3FileDialog : FileDialog {
 		}
 		savesButton.Visible = show;
 		civ3SavesButton.Visible = show && System.IO.Directory.Exists(Civ3SavesDirectory);
+		scenariosButton.Visible = civ3ScenariosButton.Visible = false;
 	}
 
 	private void OnFileSelected(string path) {

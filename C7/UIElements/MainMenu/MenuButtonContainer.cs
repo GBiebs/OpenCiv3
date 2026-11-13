@@ -9,6 +9,7 @@ public partial class MenuButtonContainer : VBoxContainer {
 	public Civ3MenuButton Tutorial { get; private set; }
 	public Civ3MenuButton LoadGame { get; private set; }
 	public Civ3MenuButton LoadScenario { get; private set; }
+	public Civ3MenuButton ScenarioEditor { get; private set; }
 	public Civ3MenuButton HostLan { get; private set; }
 	public Civ3MenuButton JoinLan { get; private set; }
 	public Civ3MenuButton BrowseOnline { get; private set; }
@@ -31,6 +32,7 @@ public partial class MenuButtonContainer : VBoxContainer {
 		Tutorial = null;
 		LoadGame = null;
 		LoadScenario = null;
+		ScenarioEditor = null;
 		HostLan = null;
 		JoinLan = null;
 		BrowseOnline = null;
@@ -58,6 +60,9 @@ public partial class MenuButtonContainer : VBoxContainer {
 
 		LoadScenario = new Civ3MenuButton() { Text = "Load Scenario" };
 		AddChild(LoadScenario);
+
+		ScenarioEditor = new Civ3MenuButton() { Text = "Scenario Editor" };
+		AddChild(ScenarioEditor);
 
 		HostLan = new Civ3MenuButton() { Text = "Host LAN Game" };
 		AddChild(HostLan);

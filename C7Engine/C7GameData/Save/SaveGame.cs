@@ -810,6 +810,10 @@ namespace C7GameData.Save {
 
 		public GameMode.Config GameModeConfig = new("civ3");
 
+		// What a scenario made in the scenario editor says about itself
+		// (see C7Engine.Editor.ScenarioFiles); null in other saves.
+		public C7Engine.Editor.ScenarioInfo Scenario;
+
 		public void Save(string path) {
 			FormatVersion ??= CurrentFormatVersion;
 			byte[] json = JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);

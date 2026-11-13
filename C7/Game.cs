@@ -275,6 +275,11 @@ public partial class Game : Node {
 	}
 
 	private async Task InitializeGame() {
+		// The scenario editor opens in the game scene (see Game_Editor.cs).
+		if (ScenarioEditorSession.Opening) {
+			InitializeEditor();
+			return;
+		}
 		// The mod path is left over from whatever was set up last. A game
 		// made from a save object (a new game, or a scenario) takes the
 		// save's; a saved game being loaded sets its own while it loads,
@@ -420,6 +425,10 @@ public partial class Game : Node {
 	}
 
 	private async Task StartGame() {
+		if (editing) {
+			StartEditor();
+			return;
+		}
 		log.Information("Now in game!");
 
 		// Show the moves and battles the player's preferences ask for.
@@ -593,6 +602,10 @@ public partial class Game : Node {
 	// If the UI controller has any cities, focus on their capital. Otherwise,
 	// focus on their starting settler.
 	private void CenterCameraOnController() {
+		// Nobody plays in the scenario editor.
+		if (controller == null) {
+			return;
+		}
 		if (controller.cities.Count > 0) {
 			City capital = controller.cities.Find(c => c.IsCapital());
 			if (capital != null)
@@ -2155,7 +2168,7 @@ public partial class Game : Node {
 	private static readonly TimeSpan engineWorkBudget = TimeSpan.FromMilliseconds(8);
 
 	public override void _Process(double delta) {
-		if (errorOnLoad) {
+		if (errorOnLoad || editing) {
 			return;
 		}
 		PollLanSession();
@@ -2630,6 +2643,9 @@ public partial class Game : Node {
 	}
 
 	public override void _Input(InputEvent @event) {
+		if (editing) {
+			return;
+		}
 		if (@event is InputEventKey e && e.Pressed && !e.IsAction(C7Action.UnitGoto)) {
 			this.SetGotoMode(false);
 		}
@@ -2643,6 +2659,10 @@ public partial class Game : Node {
 
 	public override void _UnhandledInput(InputEvent @event) {
 		if (errorOnLoad) {
+			return;
+		}
+		if (editing) {
+			EditorUnhandledInput(@event);
 			return;
 		}
 		// Don't handle if there's an open modal, if it's the AI's turn, or if

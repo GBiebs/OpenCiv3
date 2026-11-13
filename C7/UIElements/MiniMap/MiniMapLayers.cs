@@ -145,7 +145,8 @@ public class FogOfWarMiniLayer : MiniMapLayer {
 
 	public override void Configure(GameData gD) {
 		_observerMode = gD.observerMode;
-		_tileKnowledge = gD.GetUIControllerPlayer().tileKnowledge;
+		// The scenario editor has no player at all, and sees the whole map.
+		_tileKnowledge = gD.GetUIControllerPlayer()?.tileKnowledge;
 	}
 
 	public override void DrawTile(byte[] pixels, int offset, Tile tile) {
