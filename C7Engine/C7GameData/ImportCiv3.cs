@@ -1836,7 +1836,7 @@ namespace C7GameData {
 
 				if (building.BuiltByPlayer != -1 && city.Bitm.IsBuildingUsable(buildingIndex)) {
 					BLDG bldg = theBiq.Bldg[buildingIndex];
-					string buildingName = bldg.Name;
+					string buildingName = BuildingName(theBiq.Bldg, buildingIndex);
 					res.Add(new SaveCityBuilding {
 						building = buildingName,
 						// Buildings the save doesn't say who built are
@@ -1862,7 +1862,7 @@ namespace C7GameData {
 
 			for (int buildingIndex = 0; buildingIndex < cityBuildings.Length; ++buildingIndex) {
 				BLDG building = bldgs[cityBuildings[buildingIndex]];
-				string buildingName = building.Name;
+				string buildingName = BuildingName(bldgs, cityBuildings[buildingIndex]);
 
 				res.Add(new SaveCityBuilding {
 					building = buildingName,
@@ -1892,7 +1892,7 @@ namespace C7GameData {
 
 			return city.ConstructingType switch {
 				0 => (theBiq.Bldg[city.Constructing].Name, ProducibleType.INFLOW),
-				1 => (theBiq.Bldg[city.Constructing].Name, ProducibleType.BUILDING),
+				1 => (BuildingName(theBiq.Bldg, city.Constructing), ProducibleType.BUILDING),
 				2 => (unitPrototypes[city.Constructing].Name, ProducibleType.UNIT),
 				_ => throw new NotImplementedException()
 			};
@@ -2296,10 +2296,43 @@ namespace C7GameData {
 			return upgradePairs;
 		}
 
+		// Civ3 tells buildings apart by their place in its list, so a mod may
+		// give several the same name (Modern has three Barracks and three
+		// Airports); C7 tells them apart by name. So the first with a name
+		// keeps it, and the others get " (2)", " (3)" and so on, in the
+		// list's order, everywhere a building is named.
+		private readonly Dictionary<BLDG[], string[]> buildingNames = new(ReferenceEqualityComparer.Instance);
+
+		private string BuildingName(BLDG[] buildings, int index) {
+			if (!buildingNames.TryGetValue(buildings, out string[] names)) {
+				names = UniqueNames(buildings.Select(b => b.Name).ToArray());
+				buildingNames[buildings] = names;
+			}
+			return names[index];
+		}
+
+		// The names, with each name that came before given a number.
+		internal static string[] UniqueNames(string[] names) {
+			// A numbered name never takes one another building has as its own.
+			HashSet<string> own = new(names);
+			HashSet<string> used = new();
+			string[] unique = new string[names.Length];
+			for (int i = 0; i < names.Length; ++i) {
+				string name = names[i];
+				for (int n = 2; used.Contains(name) || (n > 2 && own.Contains(name)); ++n) {
+					name = $"{names[i]} ({n})";
+				}
+				used.Add(name);
+				unique[i] = name;
+			}
+			return unique;
+		}
+
 		private void ImportBuildings() {
 			BLDG[] Bldg = biq.Bldg ?? defaultBiq.Bldg;
 
-			foreach (BLDG bldg in Bldg) {
+			for (int index = 0; index < Bldg.Length; ++index) {
+				BLDG bldg = Bldg[index];
 				// Civ3's Wealth is a building with the capitalization flag,
 				// but in C7 it is an inflow.
 				if (bldg.Capitalization) {
@@ -2315,7 +2348,7 @@ namespace C7GameData {
 				}
 
 				SaveBuilding building = new() {
-					name=bldg.Name,
+					name=BuildingName(Bldg, index),
 					civilopediaEntry=bldg.CivilopediaEntry?.Trim(),
 					shieldCost=bldg.Cost * 10, // In Civ3 files, building costs are stored at 1/10th of their actual value
 					populationCost=0, // In Civ3, a building cannot have a population cost
@@ -2337,7 +2370,7 @@ namespace C7GameData {
 				}
 
 				if (bldg.RequiredBuilding != -1) {
-					building.requiredBuilding = Bldg[bldg.RequiredBuilding].Name;
+					building.requiredBuilding = BuildingName(Bldg, bldg.RequiredBuilding);
 					building.requiredBuildingCount = bldg.NumberOfRequiredBuildings;
 				}
 
@@ -2354,7 +2387,7 @@ namespace C7GameData {
 					building.spaceshipPart = bldg.SpaceshipPart;
 				}
 				if (bldg.DoublesHappiness >= 0) {
-					building.doublesHappinessOf = Bldg[bldg.DoublesHappiness].Name;
+					building.doublesHappinessOf = BuildingName(Bldg, bldg.DoublesHappiness);
 				}
 				if (bldg.CanBuildUnits && bldg.UnitProduced >= 0) {
 					PRTO[] prto = biq.Prto ?? defaultBiq.Prto;
@@ -2375,10 +2408,10 @@ namespace C7GameData {
 				}
 
 				if (bldg.GainInEveryCity >= 0) {
-					building.greatWonderProperties.buildingGainedInEveryCity = Bldg[bldg.GainInEveryCity].Name;
+					building.greatWonderProperties.buildingGainedInEveryCity = BuildingName(Bldg, bldg.GainInEveryCity);
 				}
 				if (bldg.GainInEveryCityOnContinent >= 0) {
-					building.greatWonderProperties.buildingGainedInEveryCityOnContinent = Bldg[bldg.GainInEveryCityOnContinent].Name;
+					building.greatWonderProperties.buildingGainedInEveryCityOnContinent = BuildingName(Bldg, bldg.GainInEveryCityOnContinent);
 				}
 
 				building.flags = LoadBuildingFlags(bldg).ToHashSet();

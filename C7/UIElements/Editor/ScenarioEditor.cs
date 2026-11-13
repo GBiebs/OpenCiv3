@@ -93,6 +93,13 @@ public partial class ScenarioEditor : Control {
 			UseNativeDialog = false,
 		};
 		fileDialog.FileSelected += OnFileChosen;
+		// As Load Scenario's: the editor's scenarios, and Civ3's, which are
+		// starting points for new ones.
+		ourScenariosButton = fileDialog.AddButton("Our Scenarios", false, ShowOurScenarios);
+		civ3ScenariosButton = fileDialog.AddButton("Civ3 Scenarios", false, ShowCiv3Scenarios);
+		fileDialog.CustomAction += action => {
+			fileDialog.CurrentDir = action == ShowCiv3Scenarios ? Civ3ScenariosDirectory : ScenarioEditorSession.ScenariosDirectory;
+		};
 		AddChild(fileDialog);
 
 		UpdateTitle();
@@ -105,6 +112,11 @@ public partial class ScenarioEditor : Control {
 
 	private string shotPath;
 	private int framesShown;
+
+	private const string ShowOurScenarios = "show_our_scenarios";
+	private const string ShowCiv3Scenarios = "show_civ3_scenarios";
+	private Button ourScenariosButton, civ3ScenariosButton;
+	private static string Civ3ScenariosDirectory => Path.Combine(Util.Civ3Root ?? "", "Conquests", "Scenarios");
 
 	public override void _Process(double delta) {
 		if (shotPath != null && ++framesShown == 90) {
@@ -185,6 +197,8 @@ public partial class ScenarioEditor : Control {
 			];
 			fileDialog.CurrentDir = folder;
 		}
+		ourScenariosButton.Visible = !save;
+		civ3ScenariosButton.Visible = !save && !string.IsNullOrEmpty(Util.Civ3Root) && Directory.Exists(Civ3ScenariosDirectory);
 		fileDialog.PopupCentered(new Vector2I(900, 600));
 	}
 

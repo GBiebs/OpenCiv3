@@ -1,4 +1,5 @@
 using System.IO;
+using Godot;
 using C7Engine;
 using C7GameData.Save;
 
@@ -27,10 +28,25 @@ public static class ScenarioEditorSession {
 	// Civ3 scenario's own PediaIcons file in its art folders as a game does
 	// (see Game.CreateGameParams).
 	public static SaveGame OpenFile(string path, out bool isScenario) {
-		return C7Engine.Editor.ScenarioFiles.Open(path, GamePaths.DefaultBicPath, searchPath => {
-			Util.setModPath(searchPath);
+		return C7Engine.Editor.ScenarioFiles.Open(path, GamePaths.DefaultBicPath, PediaIconsPath, out isScenario);
+	}
+
+	// The scenario's own PediaIcons file if its art folders have one, else
+	// Civ3's, else the game's own (standalone mode's Civilopedia). Playing
+	// without Civ3, the game looks only in the scenario's folders and its own
+	// art, which has no PediaIcons file: the game itself gets round that by
+	// switching to Civ3's mode to load a Civ3 scenario, which the editor
+	// doesn't do (see Game_Editor.InitializeEditor).
+	private static string PediaIconsPath(string searchPath) {
+		Util.setModPath(searchPath);
+		if (Util.HasCiv3Media("Text/PediaIcons.txt")) {
 			return Util.Civ3MediaPath("Text/PediaIcons.txt");
-		}, out isScenario);
+		}
+		string civ3s = Path.Combine(Util.Civ3Root ?? "", "Conquests", "Text", "PediaIcons.txt");
+		if (!string.IsNullOrEmpty(Util.Civ3Root) && File.Exists(civ3s)) {
+			return civ3s;
+		}
+		return ProjectSettings.GlobalizePath("res://Civilopedia/Text/PediaIcons.txt");
 	}
 
 	public static (SaveGame scenario, string path) Take() {
