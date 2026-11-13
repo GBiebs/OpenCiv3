@@ -5,19 +5,19 @@ using C7Engine;
 using C7GameData;
 using Godot;
 
-// The scenario editor's own controls over the map: a menu bar across the top
-// (as Civ3's editor's), and a status bar along the bottom that says what's on
-// the tile under the mouse. The map itself is the game scene's map view (see
-// Game_Editor.cs); this moves its camera and, from Phase 1, paints on it.
+// The scenario editor over the map: its menus (as Civ3's editor's), its
+// tools, a status line that says what's on the tile under the mouse, and its
+// dialogs. The map itself is the game scene's map view (see Game_Editor.cs);
+// this moves its camera and, from Phase 1, paints on it. How the controls
+// look is the chrome's (EditorChrome), one per EditorLook; this keeps what
+// they show and does what they ask.
 public partial class ScenarioEditor : Control {
 	private readonly Game game;
 
-	private Label titleLabel;
-	private Label statusLabel;
-	private Label messageLabel;
-	private PopupMenu fileMenu;
-	private PopupMenu viewMenu;
+	private EditorChrome chrome;
 	private FileDialog fileDialog;
+	private PopupMenu contextMenu;
+	private Control dialog;
 
 	// Whether the file dialog is choosing a file to open or to save as.
 	private bool choosingFileToSave;
@@ -26,12 +26,25 @@ public partial class ScenarioEditor : Control {
 	private bool panning;
 	private Vector2 panFrom;
 
-	private enum FileItem { New, Open, Save, SaveAs, Exit }
-	private enum ViewItem { Grid }
+	// What the controls show.
+	public EditorLook Look { get; private set; } = EditorLook.Civ3Editor;
+	public EditorTool Tool { get; private set; } = EditorTool.Terrain;
+	public int BrushSize { get; private set; } = 1;
+	public bool GridShown => game.EditorMapView.gridLayer.visible;
+	public string TitleText { get; private set; } = "";
+	public string MessageText { get; private set; } = "";
 
-	// The bars' text, light on their dark panels (the game's theme makes
-	// labels dark, for parchment).
-	private static readonly Color BarText = new(0.92f, 0.92f, 0.88f);
+	// Every menu item, in Civ3's editor's menus.
+	public enum MenuItem {
+		New, Open, Save, SaveAs, Exit,
+		Undo, Redo,
+		Grid, ZoomIn, ZoomOut, LookGame, LookCiv3Editor, LookPlain,
+		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
+		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
+		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
+		EditRules,
+		TileProperties, CenterHere,
+	}
 
 	// Arrow keys move the view by this many pixels.
 	private const float KeyPanPixels = 128;
@@ -45,48 +58,8 @@ public partial class ScenarioEditor : Control {
 
 	public override void _Ready() {
 		SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		// The map under the editor gets the clicks the bars don't take.
+		// The map under the editor gets the clicks the controls don't take.
 		MouseFilter = MouseFilterEnum.Ignore;
-
-		PanelContainer top = new() { MouseFilter = MouseFilterEnum.Stop };
-		top.SetAnchorsAndOffsetsPreset(LayoutPreset.TopWide);
-		HBoxContainer topRow = new();
-		MenuBar menuBar = new();
-		fileMenu = new PopupMenu { Name = "File" };
-		fileMenu.AddItem("New", (int)FileItem.New, (Key)KeyModifierMask.MaskCtrl | Key.N);
-		fileMenu.AddItem("Open...", (int)FileItem.Open, (Key)KeyModifierMask.MaskCtrl | Key.O);
-		fileMenu.AddItem("Save", (int)FileItem.Save, (Key)KeyModifierMask.MaskCtrl | Key.S);
-		fileMenu.AddItem("Save As...", (int)FileItem.SaveAs);
-		fileMenu.AddSeparator();
-		fileMenu.AddItem("Exit to Main Menu", (int)FileItem.Exit);
-		fileMenu.IdPressed += id => OnFileMenu((FileItem)(int)id);
-		menuBar.AddChild(fileMenu);
-		viewMenu = new PopupMenu { Name = "View" };
-		viewMenu.AddCheckItem("Grid", (int)ViewItem.Grid);
-		viewMenu.IdPressed += id => OnViewMenu((ViewItem)(int)id);
-		menuBar.AddChild(viewMenu);
-		topRow.AddChild(menuBar);
-		titleLabel = new Label {
-			SizeFlagsHorizontal = SizeFlags.ExpandFill,
-			HorizontalAlignment = HorizontalAlignment.Center,
-		};
-		titleLabel.AddThemeColorOverride("font_color", BarText);
-		topRow.AddChild(titleLabel);
-		top.AddChild(topRow);
-		AddChild(top);
-
-		PanelContainer bottom = new() { MouseFilter = MouseFilterEnum.Stop };
-		bottom.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
-		bottom.GrowVertical = GrowDirection.Begin;
-		HBoxContainer bottomRow = new();
-		statusLabel = new Label { SizeFlagsHorizontal = SizeFlags.ExpandFill, Text = " " };
-		statusLabel.AddThemeColorOverride("font_color", BarText);
-		bottomRow.AddChild(statusLabel);
-		messageLabel = new Label();
-		messageLabel.AddThemeColorOverride("font_color", BarText);
-		bottomRow.AddChild(messageLabel);
-		bottom.AddChild(bottomRow);
-		AddChild(bottom);
 
 		fileDialog = new FileDialog {
 			Access = FileDialog.AccessEnum.Filesystem,
@@ -102,13 +75,23 @@ public partial class ScenarioEditor : Control {
 		};
 		AddChild(fileDialog);
 
-		UpdateTitle();
+		// The --editor-look=game|civ3|plain developer option; the look last
+		// chosen in this run otherwise.
+		string lookArg = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--editor-look="))?["--editor-look=".Length..];
+		SetLook(lookArg switch {
+			"game" => EditorLook.Game,
+			"plain" => EditorLook.Plain,
+			"civ3" => EditorLook.Civ3Editor,
+			_ => lastLook,
+		});
 
 		// The --editor-shot=<png> developer option: a screenshot of the editor
 		// once the map has been drawn, then quit, to check the editor without
 		// clicking through it.
 		shotPath = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--editor-shot="))?["--editor-shot=".Length..];
 	}
+
+	private static EditorLook lastLook = EditorLook.Civ3Editor;
 
 	private string shotPath;
 	private int framesShown;
@@ -125,51 +108,204 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
-	private void UpdateTitle() {
-		string title = string.IsNullOrEmpty(game.EditorInfo.title) ? "Untitled" : game.EditorInfo.title;
-		string file = game.EditorPath == null ? "not saved yet" : Path.GetFileName(game.EditorPath);
-		string rulesOnly = game.EditorInfo.customMap ? "" : "   (rules only: the map isn't saved)";
-		titleLabel.Text = $"Scenario Editor: {title} ({file}){rulesOnly}";
+	// Builds the controls in a look, keeping what they show.
+	public void SetLook(EditorLook look) {
+		CloseDialog();
+		contextMenu?.QueueFree();
+		contextMenu = null;
+		if (chrome != null) {
+			RemoveChild(chrome);
+			chrome.QueueFree();
+		}
+		Look = lastLook = look;
+		chrome = look switch {
+			EditorLook.Game => new GameChrome(this),
+			EditorLook.Plain => new PlainChrome(this),
+			_ => new Civ3EditorChrome(this),
+		};
+		AddChild(chrome);
+		MoveChild(chrome, 0);
+		chrome.Build(BuildMenus());
+		UpdateTitle();
+		chrome.ShowTool(Tool, BrushSize, GridShown);
+		chrome.ShowMessage(MessageText, false);
 	}
 
-	// Says something in the status bar, as Saved or why something failed.
-	private void Say(string message, bool problem = false) {
-		messageLabel.Text = message;
-		messageLabel.AddThemeColorOverride("font_color", problem ? new Color(1, 0.45f, 0.45f) : BarText);
+	// Civ3's editor's menus. What isn't done yet is there, greyed.
+	private List<PopupMenu> BuildMenus() {
+		PopupMenu file = Menu("File");
+		Add(file, "New", MenuItem.New, (Key)KeyModifierMask.MaskCtrl | Key.N);
+		Add(file, "Open...", MenuItem.Open, (Key)KeyModifierMask.MaskCtrl | Key.O);
+		Add(file, "Save", MenuItem.Save, (Key)KeyModifierMask.MaskCtrl | Key.S);
+		Add(file, "Save As...", MenuItem.SaveAs);
+		file.AddSeparator();
+		Add(file, "Exit to Main Menu", MenuItem.Exit);
+
+		PopupMenu edit = Menu("Edit");
+		Add(edit, "Undo", MenuItem.Undo, (Key)KeyModifierMask.MaskCtrl | Key.Z, enabled: false);
+		Add(edit, "Redo", MenuItem.Redo, (Key)KeyModifierMask.MaskCtrl | Key.Y, enabled: false);
+
+		PopupMenu view = Menu("View");
+		view.AddCheckItem("Grid", (int)MenuItem.Grid);
+		view.SetItemChecked(view.GetItemIndex((int)MenuItem.Grid), GridShown);
+		Add(view, "Zoom In", MenuItem.ZoomIn);
+		Add(view, "Zoom Out", MenuItem.ZoomOut);
+		view.AddSeparator("Look (to choose one)");
+		foreach ((MenuItem item, EditorLook look, string name) in Looks) {
+			view.AddRadioCheckItem(name, (int)item);
+			view.SetItemChecked(view.GetItemIndex((int)item), look == Look);
+		}
+
+		PopupMenu map = Menu("Map");
+		foreach (EditorTools.Info tool in EditorTools.All) {
+			map.AddRadioCheckItem(tool.Name + (tool.Tool == EditorTool.FogOfWar ? "" : " Brush"), (int)ToolItem(tool.Tool));
+			if (tool.Hotkey != Key.None) {
+				map.SetItemAccelerator(map.GetItemIndex((int)ToolItem(tool.Tool)), tool.Hotkey);
+			}
+			map.SetItemChecked(map.GetItemIndex((int)ToolItem(tool.Tool)), tool.Tool == Tool);
+		}
+		map.AddSeparator("Brush Size");
+		foreach (int size in EditorTools.Sizes) {
+			map.AddRadioCheckItem($"{size} x {size}", (int)SizeItem(size));
+			map.SetItemChecked(map.GetItemIndex((int)SizeItem(size)), size == BrushSize);
+		}
+		map.AddSeparator();
+		Add(map, "Generate Map...", MenuItem.GenerateMap, enabled: false);
+		Add(map, "Clear Map...", MenuItem.ClearMap, enabled: false);
+
+		PopupMenu scenario = Menu("Scenario");
+		Add(scenario, "Properties...", MenuItem.ScenarioProperties, enabled: false);
+		Add(scenario, "Player Properties...", MenuItem.PlayerProperties, enabled: false);
+		scenario.AddSeparator();
+		foreach ((MenuItem item, string name, bool on) in new[] {
+			(MenuItem.CustomRules, "Custom Rules", game.EditorInfo.customRules),
+			(MenuItem.CustomMap, "Custom Map", game.EditorInfo.customMap),
+			(MenuItem.CustomPlayerData, "Custom Player Data", game.EditorInfo.customPlayerData),
+		}) {
+			scenario.AddCheckItem(name, (int)item);
+			scenario.SetItemChecked(scenario.GetItemIndex((int)item), on);
+			scenario.SetItemDisabled(scenario.GetItemIndex((int)item), true);
+		}
+
+		PopupMenu rules = Menu("Rules");
+		Add(rules, "Edit Rules...", MenuItem.EditRules, enabled: false);
+
+		return [file, edit, view, map, scenario, rules];
 	}
 
-	private void OnFileMenu(FileItem item) {
+	internal static readonly (MenuItem item, EditorLook look, string name)[] Looks = [
+		(MenuItem.LookGame, EditorLook.Game, "The Game's"),
+		(MenuItem.LookCiv3Editor, EditorLook.Civ3Editor, "Civ3's Editor, in Parchment"),
+		(MenuItem.LookPlain, EditorLook.Plain, "Plain"),
+	];
+
+	private PopupMenu Menu(string name) {
+		PopupMenu menu = new() { Name = name };
+		menu.IdPressed += id => RunMenuItem((MenuItem)(int)id);
+		return menu;
+	}
+
+	private static void Add(PopupMenu menu, string label, MenuItem item, Key accelerator = Key.None, bool enabled = true) {
+		menu.AddItem(label, (int)item, accelerator);
+		menu.SetItemDisabled(menu.GetItemIndex((int)item), !enabled);
+	}
+
+	internal static MenuItem ToolItem(EditorTool tool) => MenuItem.BrushTerrain + (int)tool;
+	internal static MenuItem SizeItem(int size) => MenuItem.Size1 + System.Array.IndexOf(EditorTools.Sizes, size);
+
+	// A context menu in this look's style (see EditorChrome.StyleMenu).
+	internal PopupMenu StyledMenu(string name) {
+		PopupMenu menu = Menu(name);
+		chrome.StyleMenu(menu);
+		return menu;
+	}
+
+	public void RunMenuItem(MenuItem item) {
 		switch (item) {
-			case FileItem.New:
+			case MenuItem.New:
 				game.NewScenario();
 				break;
-			case FileItem.Open:
+			case MenuItem.Open:
 				ShowFileDialog(save: false);
 				break;
-			case FileItem.Save:
+			case MenuItem.Save:
 				if (game.EditorPath == null) {
 					ShowFileDialog(save: true);
 				} else {
 					SaveTo(game.EditorPath);
 				}
 				break;
-			case FileItem.SaveAs:
+			case MenuItem.SaveAs:
 				ShowFileDialog(save: true);
 				break;
-			case FileItem.Exit:
+			case MenuItem.Exit:
 				game.ExitEditor();
+				break;
+			case MenuItem.Grid:
+				game.EditorMapView.gridLayer.visible = !GridShown;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.ZoomIn:
+			case MenuItem.ZoomOut:
+				MapView mapView = game.EditorMapView;
+				mapView.setCameraZoom(mapView.cameraZoom + (item == MenuItem.ZoomIn ? 0.25f : -0.25f), GetViewportRect().Size / 2);
+				break;
+			case >= MenuItem.LookGame and <= MenuItem.LookPlain:
+				SetLook(Looks.First(l => l.item == item).look);
+				break;
+			case >= MenuItem.BrushTerrain and <= MenuItem.FogOfWar:
+				Tool = EditorTool.Terrain + (item - MenuItem.BrushTerrain);
+				Refresh();
+				break;
+			case >= MenuItem.Size1 and <= MenuItem.Size7:
+				BrushSize = EditorTools.Sizes[item - MenuItem.Size1];
+				Refresh();
+				break;
+			case MenuItem.TileProperties:
+				OpenTileProperties(contextTile);
+				break;
+			case MenuItem.CenterHere:
+				if (contextTile != null) {
+					game.EditorMapView.centerCameraOnTile(contextTile);
+				}
 				break;
 		}
 	}
 
-	private void OnViewMenu(ViewItem item) {
-		if (item == ViewItem.Grid) {
-			int index = viewMenu.GetItemIndex((int)ViewItem.Grid);
-			bool on = !viewMenu.IsItemChecked(index);
-			viewMenu.SetItemChecked(index, on);
-			game.EditorMapView.gridLayer.visible = on;
-			game.EditorMapView.InvalidateMap();
+	// Shows the tool, brush size and grid in the menus and the chrome.
+	private void Refresh() {
+		foreach (PopupMenu menu in FindChildren("*", nameof(PopupMenu), true, false).OfType<PopupMenu>()) {
+			foreach (EditorTools.Info tool in EditorTools.All) {
+				SetChecked(menu, ToolItem(tool.Tool), tool.Tool == Tool);
+			}
+			foreach (int size in EditorTools.Sizes) {
+				SetChecked(menu, SizeItem(size), size == BrushSize);
+			}
+			SetChecked(menu, MenuItem.Grid, GridShown);
 		}
+		chrome.ShowTool(Tool, BrushSize, GridShown);
+	}
+
+	private static void SetChecked(PopupMenu menu, MenuItem item, bool on) {
+		int index = menu.GetItemIndex((int)item);
+		if (index >= 0) {
+			menu.SetItemChecked(index, on);
+		}
+	}
+
+	private void UpdateTitle() {
+		string title = string.IsNullOrEmpty(game.EditorInfo.title) ? "Untitled" : game.EditorInfo.title;
+		string file = game.EditorPath == null ? "not saved yet" : Path.GetFileName(game.EditorPath);
+		string rulesOnly = game.EditorInfo.customMap ? "" : "   (rules only: the map isn't saved)";
+		TitleText = $"Scenario Editor: {title} ({file}){rulesOnly}";
+		chrome.ShowTitle(TitleText);
+	}
+
+	// Says something in the status line, as Saved or why something failed.
+	private void Say(string message, bool problem = false) {
+		MessageText = message;
+		chrome.ShowMessage(message, problem);
 	}
 
 	private void ShowFileDialog(bool save) {
@@ -235,10 +371,54 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
+	// The tile a context menu was opened on.
+	private Tile contextTile;
+
+	// Civ3's right-click menu on the map: the tile's properties, and
+	// centering the view there.
+	private void ShowContextMenu(Vector2 position) {
+		contextTile = game.EditorTileAt(position);
+		if (contextTile == null) {
+			return;
+		}
+		contextMenu?.QueueFree();
+		contextMenu = StyledMenu("TileMenu");
+		Add(contextMenu, "Tile Properties...", MenuItem.TileProperties);
+		Add(contextMenu, "Center Here", MenuItem.CenterHere);
+		AddChild(contextMenu);
+		contextMenu.Position = (Vector2I)position;
+		contextMenu.Popup();
+	}
+
+	public bool DialogOpen => dialog != null;
+
+	public void OpenTileProperties(Tile tile) {
+		if (tile == null) {
+			return;
+		}
+		CloseDialog();
+		dialog = chrome.TileProperties(tile, CloseDialog);
+		AddChild(dialog);
+	}
+
+	public void CloseDialog() {
+		if (dialog != null) {
+			dialog.QueueFree();
+			dialog = null;
+		}
+	}
+
 	// The map's input (see Game.EditorUnhandledInput): the wheel zooms,
-	// the middle button drags the view, the arrow keys move it, and the
-	// status bar follows the mouse.
+	// the middle button drags the view, the arrow keys move it, the right
+	// button opens the tile's menu, and the status line follows the mouse.
 	internal void HandleMapInput(InputEvent @event) {
+		if (DialogOpen) {
+			if (@event is InputEventKey { Pressed: true, Keycode: Key.Escape }) {
+				CloseDialog();
+				GetViewport().SetInputAsHandled();
+			}
+			return;
+		}
 		MapView mapView = game.EditorMapView;
 		switch (@event) {
 			case InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown, Pressed: true } wheel:
@@ -251,12 +431,27 @@ public partial class ScenarioEditor : Control {
 				panFrom = middle.Position;
 				GetViewport().SetInputAsHandled();
 				break;
+			case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } right:
+				ShowContextMenu(right.Position);
+				GetViewport().SetInputAsHandled();
+				break;
 			case InputEventMouseMotion motion:
 				if (panning) {
 					mapView.cameraLocation += panFrom - motion.Position;
 					panFrom = motion.Position;
 				}
 				ShowTileAt(motion.Position);
+				break;
+			case InputEventKey { Pressed: true, Echo: false } key when !key.CtrlPressed && !key.AltPressed
+				&& EditorTools.All.FirstOrDefault(t => t.Hotkey != Key.None && t.Hotkey == key.Keycode) is EditorTools.Info tool:
+				RunMenuItem(ToolItem(tool.Tool));
+				GetViewport().SetInputAsHandled();
+				break;
+			case InputEventKey { Pressed: true } key when key.CtrlPressed && Look == EditorLook.Game
+				&& key.Keycode is Key.N or Key.O or Key.S:
+				// The other looks' menu bars take these themselves.
+				RunMenuItem(key.Keycode switch { Key.N => MenuItem.New, Key.O => MenuItem.Open, _ => MenuItem.Save });
+				GetViewport().SetInputAsHandled();
 				break;
 			case InputEventKey { Pressed: true } key:
 				Vector2 direction = key.Keycode switch {
@@ -276,23 +471,18 @@ public partial class ScenarioEditor : Control {
 
 	private void ShowTileAt(Vector2 position) {
 		Tile tile = game.EditorTileAt(position);
-		statusLabel.Text = tile == null ? "" : Describe(tile);
+		chrome.ShowTile(tile == null ? "" : Describe(tile));
 	}
 
-	// What's on a tile, for the status bar: where it is, its terrain, its
+	// What's on a tile, for the status line: where it is, its terrain, its
 	// resource, a city and how many units.
 	internal static string Describe(Tile tile) {
-		List<string> parts = new();
-		string terrain = tile.overlayTerrainType?.DisplayName ?? "";
-		if (tile.baseTerrainType != null && tile.baseTerrainType != tile.overlayTerrainType) {
-			terrain += $" on {tile.baseTerrainType.DisplayName}";
-		}
-		parts.Add(terrain);
+		List<string> parts = [TileFacts.Terrain(tile)];
 		if (tile.Resource != null && tile.Resource != C7GameData.Resource.NONE && tile.Resource.Category != ResourceCategory.NONE) {
 			parts.Add(tile.Resource.Name);
 		}
-		if (tile.HasCity(out City city)) {
-			parts.Add($"{city.name} (size {city.residents.Count}, {city.owner?.civilization?.name ?? "nobody's"})");
+		if (TileFacts.City(tile) is string city) {
+			parts.Add(city);
 		}
 		if (tile.unitsOnTile.Count > 0) {
 			parts.Add(tile.unitsOnTile.Count == 1 ? $"1 unit ({tile.unitsOnTile[0].unitType.name})" : $"{tile.unitsOnTile.Count} units");
