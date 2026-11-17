@@ -644,4 +644,19 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal([tile], gameData.map.startingLocations);
 		Assert.Equal(3, painter.ErasablesOn(tile).Count);
 	}
+	// Only an action that turns land into water or back needs the
+	// continents counted again (a whole-map pass).
+	[Fact]
+	public void OnlyWaterChangesRecountTheContinents() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		painter.BeginStroke("Paint Grassland");
+		painter.PaintTerrain(tile, 3, Brush(painter, "Grassland"));
+		Assert.True(painter.EndStroke().ChangesWater);
+		painter.BeginStroke("Paint Hills");
+		painter.PaintTerrain(tile, 1, Brush(painter, "Hills"));
+		Assert.False(painter.EndStroke().ChangesWater);
+		Assert.False(Place(painter, ResourceNamed(painter, "Horses"), tile).ChangesWater);
+		Assert.Equal(2, gameData.map.continents.Count);
+	}
 }

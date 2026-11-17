@@ -19,6 +19,10 @@ public sealed class EditHistory {
 		// own states can't put back.
 		internal List<Tile> startsBefore, startsAfter;
 		public IReadOnlyCollection<Tile> Tiles => before.Keys;
+
+		// Whether the action turned land into water or water into land
+		// somewhere, which is all the continents and lakes depend on.
+		public bool ChangesWater => before.Any(b => after.TryGetValue(b.Key, out TileState a) && a.IsWater != b.Value.IsWater);
 	}
 
 	private readonly GameMap map;

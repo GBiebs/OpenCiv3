@@ -90,6 +90,8 @@ public sealed class TileState {
 		tile.ExtraInfo = art;
 	}
 
+	public bool IsWater => overlayTerrain != null && overlayTerrain.IsWater;
+
 	// Whether the two states are the same tile, as far as the editor goes.
 	public bool SameAs(TileState other) {
 		return baseTerrain == other.baseTerrain && overlayTerrain == other.overlayTerrain
