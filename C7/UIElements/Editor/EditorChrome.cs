@@ -15,7 +15,7 @@ public partial class EditorChrome : Control {
 	private Label titleLabel, tileLabel, toolLabel, messageLabel;
 	private readonly Dictionary<EditorTool, Button> toolButtons = [];
 	private readonly Dictionary<int, Button> sizeButtons = [];
-	private Button gridButton;
+	private Button gridButton, undoButton, redoButton;
 
 	private static readonly Color StripColor = new(0.96f, 0.92f, 0.79f);
 	private static readonly Color LightColor = new(0.99f, 0.96f, 0.88f);
@@ -69,8 +69,10 @@ public partial class EditorChrome : Control {
 		toolPanel.AddChild(tools);
 		top.AddChild(toolPanel);
 
-		tools.AddChild(TextButton("Undo", "Undo (Ctrl+Z)", null));
-		tools.AddChild(TextButton("Redo", "Redo (Ctrl+Y)", null));
+		undoButton = TextButton("Undo", "Undo (Ctrl+Z)", () => Run(ScenarioEditor.MenuItem.Undo));
+		redoButton = TextButton("Redo", "Redo (Ctrl+Y)", () => Run(ScenarioEditor.MenuItem.Redo));
+		tools.AddChild(undoButton);
+		tools.AddChild(redoButton);
 		tools.AddChild(Divider());
 		tools.AddChild(TextButton("Zoom +", "Zoom in", () => Run(ScenarioEditor.MenuItem.ZoomIn)));
 		tools.AddChild(TextButton("Zoom -", "Zoom out", () => Run(ScenarioEditor.MenuItem.ZoomOut)));
@@ -179,7 +181,15 @@ public partial class EditorChrome : Control {
 
 	public void ShowTile(string text) => tileLabel.Text = text;
 
-	public void ShowTool(EditorTool tool, int size, bool grid) {
+	// What Undo and Redo would take back or do again, null for nothing.
+	public void ShowUndo(string undo, string redo) {
+		undoButton.Disabled = undo == null;
+		undoButton.TooltipText = undo == null ? "Nothing to undo" : $"Undo {undo} (Ctrl+Z)";
+		redoButton.Disabled = redo == null;
+		redoButton.TooltipText = redo == null ? "Nothing to redo" : $"Redo {redo} (Ctrl+Y)";
+	}
+
+	public void ShowTool(EditorTool tool, int size, bool grid, string brush) {
 		foreach ((EditorTool t, Button button) in toolButtons) {
 			button.SetPressedNoSignal(t == tool);
 		}
@@ -187,7 +197,7 @@ public partial class EditorChrome : Control {
 			button.SetPressedNoSignal(s == size);
 		}
 		gridButton.SetPressedNoSignal(grid);
-		toolLabel.Text = ToolText(tool, size);
+		toolLabel.Text = ToolText(tool, size, brush);
 	}
 
 	public void ShowMessage(string text, bool problem) {
@@ -342,9 +352,12 @@ public partial class EditorChrome : Control {
 		return backdrop;
 	}
 
-	// The status line's text: the brush and its size.
-	private static string ToolText(EditorTool tool, int size) {
+	// The status line's text: the brush, what it paints and its size.
+	private static string ToolText(EditorTool tool, int size, string brush) {
 		string name = EditorTools.Of(tool).Name;
-		return tool == EditorTool.FogOfWar ? name : $"{name} brush, {size} x {size}";
+		if (tool == EditorTool.FogOfWar) {
+			return name;
+		}
+		return brush == null ? $"{name} brush, {size} x {size}" : $"{name} brush: {brush}, {size} x {size}";
 	}
 }

@@ -2,13 +2,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using C7Engine;
+using C7Engine.Editor;
 using C7GameData;
 using Godot;
 
 // The scenario editor over the map: its menus (as Civ3's editor's), its
 // tools, a status line that says what's on the tile under the mouse, and its
 // dialogs. The map itself is the game scene's map view (see Game_Editor.cs);
-// this moves its camera and, from Phase 1, paints on it. How the controls
+// this moves its camera and paints on it (MapPainter). How the controls
 // look is the chrome's (EditorChrome); this keeps what they show and does
 // what they ask.
 public partial class ScenarioEditor : Control {
@@ -25,6 +26,14 @@ public partial class ScenarioEditor : Control {
 	// Panning the map by dragging with the middle button.
 	private bool panning;
 	private Vector2 panFrom;
+
+	// Painting: the left button held down on the map is one stroke.
+	private MapPainter painter;
+	private TerrainBrush terrainBrush;
+	private bool painting;
+	private Vector2 paintFrom;
+	private Tile lastPainted;
+	private PopupMenu terrainPicker;
 
 	// What the controls show.
 	public EditorTool Tool { get; private set; } = EditorTool.Terrain;
@@ -74,12 +83,16 @@ public partial class ScenarioEditor : Control {
 		};
 		AddChild(fileDialog);
 
+		painter = new MapPainter(EngineStorage.gameData);
+		// As Civ3's editor starts: the first terrain (desert), 1 x 1.
+		terrainBrush = painter.TerrainBrushes().FirstOrDefault();
+
 		chrome = new EditorChrome(this);
 		AddChild(chrome);
 		MoveChild(chrome, 0);
 		chrome.Build(BuildMenus());
 		UpdateTitle();
-		chrome.ShowTool(Tool, BrushSize, GridShown);
+		Refresh();
 		chrome.ShowMessage(MessageText, false);
 
 		// The --editor-shot=<png> developer option: a screenshot of the editor
@@ -97,6 +110,10 @@ public partial class ScenarioEditor : Control {
 	private static string Civ3ScenariosDirectory => Path.Combine(Util.Civ3Root ?? "", "Conquests", "Scenarios");
 
 	public override void _Process(double delta) {
+		// The button may be let go over the controls, which take the event.
+		if (painting && !Input.IsMouseButtonPressed(MouseButton.Left)) {
+			EndStroke();
+		}
 		if (shotPath != null && ++framesShown == 90) {
 			GetViewport().GetTexture().GetImage().SavePng(shotPath);
 			GetTree().Quit();
@@ -114,8 +131,8 @@ public partial class ScenarioEditor : Control {
 		Add(file, "Exit to Main Menu", MenuItem.Exit);
 
 		PopupMenu edit = Menu("Edit");
-		Add(edit, "Undo", MenuItem.Undo, (Key)KeyModifierMask.MaskCtrl | Key.Z, enabled: false);
-		Add(edit, "Redo", MenuItem.Redo, (Key)KeyModifierMask.MaskCtrl | Key.Y, enabled: false);
+		Add(edit, "Undo", MenuItem.Undo, (Key)KeyModifierMask.MaskCtrl | Key.Z);
+		Add(edit, "Redo", MenuItem.Redo, (Key)KeyModifierMask.MaskCtrl | Key.Y);
 
 		PopupMenu view = Menu("View");
 		view.AddCheckItem("Grid", (int)MenuItem.Grid);
@@ -162,7 +179,13 @@ public partial class ScenarioEditor : Control {
 
 	private PopupMenu Menu(string name) {
 		PopupMenu menu = new() { Name = name };
-		menu.IdPressed += id => RunMenuItem((MenuItem)(int)id);
+		menu.IdPressed += id => {
+			if (id >= TerrainPickerIds) {
+				ChooseTerrain((int)id - TerrainPickerIds);
+			} else {
+				RunMenuItem((MenuItem)(int)id);
+			}
+		};
 		return menu;
 	}
 
@@ -202,6 +225,18 @@ public partial class ScenarioEditor : Control {
 			case MenuItem.Exit:
 				game.ExitEditor();
 				break;
+			case MenuItem.Undo:
+			case MenuItem.Redo:
+				if (!painting) {
+					EditHistory.Step step = item == MenuItem.Undo ? painter.Undo() : painter.Redo();
+					if (step != null) {
+						game.EditorMapView.InvalidateMap();
+						Say($"{(item == MenuItem.Undo ? "Undid" : "Redid")} {step.Name}");
+						UpdateTitle();
+						Refresh();
+					}
+				}
+				break;
 			case MenuItem.Grid:
 				game.EditorMapView.gridLayer.visible = !GridShown;
 				game.EditorMapView.InvalidateMap();
@@ -215,6 +250,10 @@ public partial class ScenarioEditor : Control {
 			case >= MenuItem.BrushTerrain and <= MenuItem.FogOfWar:
 				Tool = EditorTool.Terrain + (item - MenuItem.BrushTerrain);
 				Refresh();
+				// As Civ3's: choosing the terrain brush asks which terrain.
+				if (Tool == EditorTool.Terrain) {
+					ShowTerrainPicker();
+				}
 				break;
 			case >= MenuItem.Size1 and <= MenuItem.Size7:
 				BrushSize = EditorTools.Sizes[item - MenuItem.Size1];
@@ -231,6 +270,35 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
+	// What the current brush paints, for the status line.
+	private string BrushName => Tool == EditorTool.Terrain ? terrainBrush?.Name : null;
+
+	// The terrain picker's ids, past the menu items'.
+	private const int TerrainPickerIds = 1000;
+
+	// Civ3's pop-up of the terrain brush's terrains, at the mouse.
+	private void ShowTerrainPicker() {
+		terrainPicker?.QueueFree();
+		terrainPicker = StyledMenu("TerrainPicker");
+		List<TerrainBrush> brushes = painter.TerrainBrushes();
+		for (int i = 0; i < brushes.Count; ++i) {
+			terrainPicker.AddRadioCheckItem(brushes[i].Name, TerrainPickerIds + i);
+			terrainPicker.SetItemChecked(i, brushes[i] == terrainBrush);
+		}
+		AddChild(terrainPicker);
+		terrainPicker.Position = (Vector2I)GetViewport().GetMousePosition();
+		terrainPicker.Popup();
+	}
+
+	private void ChooseTerrain(int index) {
+		List<TerrainBrush> brushes = painter.TerrainBrushes();
+		if (index >= 0 && index < brushes.Count) {
+			terrainBrush = brushes[index];
+			Tool = EditorTool.Terrain;
+			Refresh();
+		}
+	}
+
 	// Shows the tool, brush size and grid in the menus and the chrome.
 	private void Refresh() {
 		foreach (PopupMenu menu in FindChildren("*", nameof(PopupMenu), true, false).OfType<PopupMenu>()) {
@@ -241,8 +309,18 @@ public partial class ScenarioEditor : Control {
 				SetChecked(menu, SizeItem(size), size == BrushSize);
 			}
 			SetChecked(menu, MenuItem.Grid, GridShown);
+			SetEnabled(menu, MenuItem.Undo, painter.History.CanUndo);
+			SetEnabled(menu, MenuItem.Redo, painter.History.CanRedo);
 		}
-		chrome.ShowTool(Tool, BrushSize, GridShown);
+		chrome.ShowTool(Tool, BrushSize, GridShown, BrushName);
+		chrome.ShowUndo(painter.History.CanUndo ? painter.History.UndoName : null, painter.History.CanRedo ? painter.History.RedoName : null);
+	}
+
+	private static void SetEnabled(PopupMenu menu, MenuItem item, bool on) {
+		int index = menu.GetItemIndex((int)item);
+		if (index >= 0) {
+			menu.SetItemDisabled(index, !on);
+		}
 	}
 
 	private static void SetChecked(PopupMenu menu, MenuItem item, bool on) {
@@ -256,7 +334,8 @@ public partial class ScenarioEditor : Control {
 		string title = string.IsNullOrEmpty(game.EditorInfo.title) ? "Untitled" : game.EditorInfo.title;
 		string file = game.EditorPath == null ? "not saved yet" : Path.GetFileName(game.EditorPath);
 		string rulesOnly = game.EditorInfo.customMap ? "" : "   (rules only: the map isn't saved)";
-		TitleText = $"Scenario Editor: {title} ({file}){rulesOnly}";
+		string modified = painter != null && painter.History.Modified ? " *" : "";
+		TitleText = $"Scenario Editor: {title} ({file}){modified}{rulesOnly}";
 		chrome.ShowTitle(TitleText);
 	}
 
@@ -322,6 +401,7 @@ public partial class ScenarioEditor : Control {
 	private void SaveTo(string path) {
 		string problem = game.SaveScenario(path);
 		if (problem == null) {
+			painter.History.MarkSaved();
 			Say($"Saved {Path.GetFileName(path)}");
 			UpdateTitle();
 		} else {
@@ -389,6 +469,14 @@ public partial class ScenarioEditor : Control {
 				panFrom = middle.Position;
 				GetViewport().SetInputAsHandled();
 				break;
+			case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } left when !panning:
+				BeginStroke(left.Position);
+				GetViewport().SetInputAsHandled();
+				break;
+			case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: false } when painting:
+				EndStroke();
+				GetViewport().SetInputAsHandled();
+				break;
 			case InputEventMouseButton { ButtonIndex: MouseButton.Right, Pressed: false } right:
 				ShowContextMenu(right.Position);
 				GetViewport().SetInputAsHandled();
@@ -397,6 +485,10 @@ public partial class ScenarioEditor : Control {
 				if (panning) {
 					mapView.cameraLocation += panFrom - motion.Position;
 					panFrom = motion.Position;
+				}
+				if (painting) {
+					PaintAlong(paintFrom, motion.Position);
+					paintFrom = motion.Position;
 				}
 				ShowTileAt(motion.Position);
 				break;
@@ -423,7 +515,62 @@ public partial class ScenarioEditor : Control {
 
 	private void ShowTileAt(Vector2 position) {
 		Tile tile = game.EditorTileAt(position);
-		chrome.ShowTile(tile == null ? "" : Describe(tile));
+		string cantPaint = tile == null ? null : CantPaint(tile);
+		// Civ3's "invalid mouse cursor" where the brush can't paint.
+		Input.SetDefaultCursorShape(cantPaint != null ? Input.CursorShape.Forbidden : Input.CursorShape.Arrow);
+		chrome.ShowTile(tile == null ? "" : Describe(tile) + (cantPaint != null ? $"   (can't paint: {cantPaint})" : ""));
+	}
+
+	public override void _ExitTree() {
+		Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
+	}
+
+	// Why the brush can't paint on the tile, or null.
+	private string CantPaint(Tile tile) {
+		return Tool == EditorTool.Terrain && terrainBrush != null ? MapPainter.CantPaint(tile, terrainBrush.Terrain) : null;
+	}
+
+	// Starts a stroke where the button went down, with the brush in hand
+	// (only the terrain brush paints so far).
+	private void BeginStroke(Vector2 position) {
+		if (Tool != EditorTool.Terrain || terrainBrush == null || game.EditorTileAt(position) == null) {
+			return;
+		}
+		painting = true;
+		paintFrom = position;
+		painter.BeginStroke($"Paint {terrainBrush.Name}");
+		PaintAt(position);
+	}
+
+	// Paints every tile the mouse passed over since the last event, so a
+	// fast drag leaves no gaps: points a quarter of a tile's height apart.
+	private void PaintAlong(Vector2 from, Vector2 to) {
+		float step = Mathf.Max(4, MapView.cellSize.Y * game.EditorMapView.cameraZoom / 4);
+		int steps = Mathf.Max(1, Mathf.CeilToInt(from.DistanceTo(to) / step));
+		for (int i = 1; i <= steps; ++i) {
+			PaintAt(from.Lerp(to, (float)i / steps));
+		}
+	}
+
+	private void PaintAt(Vector2 position) {
+		Tile tile = game.EditorTileAt(position);
+		if (tile == null || tile == lastPainted) {
+			return;
+		}
+		lastPainted = tile;
+		if (painter.PaintTerrain(tile, BrushSize, terrainBrush).Count > 0) {
+			game.EditorMapView.InvalidateMap();
+		}
+	}
+
+	private void EndStroke() {
+		painting = false;
+		lastPainted = null;
+		if (painter.EndStroke() != null) {
+			game.EditorMapView.InvalidateMap();
+			UpdateTitle();
+			Refresh();
+		}
 	}
 
 	// What's on a tile, for the status line: where it is, its terrain, its
