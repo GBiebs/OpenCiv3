@@ -9,8 +9,8 @@ using Godot;
 // tools, a status line that says what's on the tile under the mouse, and its
 // dialogs. The map itself is the game scene's map view (see Game_Editor.cs);
 // this moves its camera and, from Phase 1, paints on it. How the controls
-// look is the chrome's (EditorChrome), one per EditorLook; this keeps what
-// they show and does what they ask.
+// look is the chrome's (EditorChrome); this keeps what they show and does
+// what they ask.
 public partial class ScenarioEditor : Control {
 	private readonly Game game;
 
@@ -27,7 +27,6 @@ public partial class ScenarioEditor : Control {
 	private Vector2 panFrom;
 
 	// What the controls show.
-	public EditorLook Look { get; private set; } = EditorLook.Civ3Editor;
 	public EditorTool Tool { get; private set; } = EditorTool.Terrain;
 	public int BrushSize { get; private set; } = 1;
 	public bool GridShown => game.EditorMapView.gridLayer.visible;
@@ -38,7 +37,7 @@ public partial class ScenarioEditor : Control {
 	public enum MenuItem {
 		New, Open, Save, SaveAs, Exit,
 		Undo, Redo,
-		Grid, ZoomIn, ZoomOut, LookGame, LookCiv3Editor, LookPlain,
+		Grid, ZoomIn, ZoomOut,
 		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
@@ -75,23 +74,19 @@ public partial class ScenarioEditor : Control {
 		};
 		AddChild(fileDialog);
 
-		// The --editor-look=game|civ3|plain developer option; the look last
-		// chosen in this run otherwise.
-		string lookArg = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--editor-look="))?["--editor-look=".Length..];
-		SetLook(lookArg switch {
-			"game" => EditorLook.Game,
-			"plain" => EditorLook.Plain,
-			"civ3" => EditorLook.Civ3Editor,
-			_ => lastLook,
-		});
+		chrome = new EditorChrome(this);
+		AddChild(chrome);
+		MoveChild(chrome, 0);
+		chrome.Build(BuildMenus());
+		UpdateTitle();
+		chrome.ShowTool(Tool, BrushSize, GridShown);
+		chrome.ShowMessage(MessageText, false);
 
 		// The --editor-shot=<png> developer option: a screenshot of the editor
 		// once the map has been drawn, then quit, to check the editor without
 		// clicking through it.
 		shotPath = OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith("--editor-shot="))?["--editor-shot=".Length..];
 	}
-
-	private static EditorLook lastLook = EditorLook.Civ3Editor;
 
 	private string shotPath;
 	private int framesShown;
@@ -106,29 +101,6 @@ public partial class ScenarioEditor : Control {
 			GetViewport().GetTexture().GetImage().SavePng(shotPath);
 			GetTree().Quit();
 		}
-	}
-
-	// Builds the controls in a look, keeping what they show.
-	public void SetLook(EditorLook look) {
-		CloseDialog();
-		contextMenu?.QueueFree();
-		contextMenu = null;
-		if (chrome != null) {
-			RemoveChild(chrome);
-			chrome.QueueFree();
-		}
-		Look = lastLook = look;
-		chrome = look switch {
-			EditorLook.Game => new GameChrome(this),
-			EditorLook.Plain => new PlainChrome(this),
-			_ => new Civ3EditorChrome(this),
-		};
-		AddChild(chrome);
-		MoveChild(chrome, 0);
-		chrome.Build(BuildMenus());
-		UpdateTitle();
-		chrome.ShowTool(Tool, BrushSize, GridShown);
-		chrome.ShowMessage(MessageText, false);
 	}
 
 	// Civ3's editor's menus. What isn't done yet is there, greyed.
@@ -150,11 +122,6 @@ public partial class ScenarioEditor : Control {
 		view.SetItemChecked(view.GetItemIndex((int)MenuItem.Grid), GridShown);
 		Add(view, "Zoom In", MenuItem.ZoomIn);
 		Add(view, "Zoom Out", MenuItem.ZoomOut);
-		view.AddSeparator("Look (to choose one)");
-		foreach ((MenuItem item, EditorLook look, string name) in Looks) {
-			view.AddRadioCheckItem(name, (int)item);
-			view.SetItemChecked(view.GetItemIndex((int)item), look == Look);
-		}
 
 		PopupMenu map = Menu("Map");
 		foreach (EditorTools.Info tool in EditorTools.All) {
@@ -193,12 +160,6 @@ public partial class ScenarioEditor : Control {
 		return [file, edit, view, map, scenario, rules];
 	}
 
-	internal static readonly (MenuItem item, EditorLook look, string name)[] Looks = [
-		(MenuItem.LookGame, EditorLook.Game, "The Game's"),
-		(MenuItem.LookCiv3Editor, EditorLook.Civ3Editor, "Civ3's Editor, in Parchment"),
-		(MenuItem.LookPlain, EditorLook.Plain, "Plain"),
-	];
-
 	private PopupMenu Menu(string name) {
 		PopupMenu menu = new() { Name = name };
 		menu.IdPressed += id => RunMenuItem((MenuItem)(int)id);
@@ -213,7 +174,7 @@ public partial class ScenarioEditor : Control {
 	internal static MenuItem ToolItem(EditorTool tool) => MenuItem.BrushTerrain + (int)tool;
 	internal static MenuItem SizeItem(int size) => MenuItem.Size1 + System.Array.IndexOf(EditorTools.Sizes, size);
 
-	// A context menu in this look's style (see EditorChrome.StyleMenu).
+	// A context menu in the chrome's style (see EditorChrome.StyleMenu).
 	internal PopupMenu StyledMenu(string name) {
 		PopupMenu menu = Menu(name);
 		chrome.StyleMenu(menu);
@@ -250,9 +211,6 @@ public partial class ScenarioEditor : Control {
 			case MenuItem.ZoomOut:
 				MapView mapView = game.EditorMapView;
 				mapView.setCameraZoom(mapView.cameraZoom + (item == MenuItem.ZoomIn ? 0.25f : -0.25f), GetViewportRect().Size / 2);
-				break;
-			case >= MenuItem.LookGame and <= MenuItem.LookPlain:
-				SetLook(Looks.First(l => l.item == item).look);
 				break;
 			case >= MenuItem.BrushTerrain and <= MenuItem.FogOfWar:
 				Tool = EditorTool.Terrain + (item - MenuItem.BrushTerrain);
@@ -445,12 +403,6 @@ public partial class ScenarioEditor : Control {
 			case InputEventKey { Pressed: true, Echo: false } key when !key.CtrlPressed && !key.AltPressed
 				&& EditorTools.All.FirstOrDefault(t => t.Hotkey != Key.None && t.Hotkey == key.Keycode) is EditorTools.Info tool:
 				RunMenuItem(ToolItem(tool.Tool));
-				GetViewport().SetInputAsHandled();
-				break;
-			case InputEventKey { Pressed: true } key when key.CtrlPressed && Look == EditorLook.Game
-				&& key.Keycode is Key.N or Key.O or Key.S:
-				// The other looks' menu bars take these themselves.
-				RunMenuItem(key.Keycode switch { Key.N => MenuItem.New, Key.O => MenuItem.Open, _ => MenuItem.Save });
 				GetViewport().SetInputAsHandled();
 				break;
 			case InputEventKey { Pressed: true } key:

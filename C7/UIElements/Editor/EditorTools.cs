@@ -5,20 +5,6 @@ using C7Engine;
 using C7GameData;
 using Godot;
 
-// The scenario editor's look, while one is being chosen (the plan's decision
-// 4): three to compare in the program, switched from View > Look. Once one is
-// chosen, the others go.
-public enum EditorLook {
-	// The game's own: buttons over the map where the game has its own, and
-	// dialogs framed in stone and parchment like its setup screens.
-	Game,
-	// Civ3's editor's layout (a menu bar and a toolbar across the top,
-	// tabbed dialogs) drawn in the game's parchment.
-	Civ3Editor,
-	// A desktop tool's: Godot's own dark controls.
-	Plain,
-}
-
 // What the scenario editor paints with: Civ3's editor's brushes (its
 // toolbar and Map menu), their keys, and the game art each is shown with,
 // which is there with Civ3 and without.
