@@ -172,6 +172,10 @@ public partial class PlayerSetup : Control {
 		int numberOfCivs = global.Scenario == GameScenario.KingsAndNomads
 			? GameSetup.KingsAndNomadsCivs(global.WorldCharacteristics.worldSize.numberOfCivs)
 			: global.WorldCharacteristics.worldSize.numberOfCivs;
+		// A scenario's own map has room for as many civs as it has starts.
+		if (ScenarioPlay.StartsOnMap(save) is int starts) {
+			numberOfCivs = System.Math.Clamp(starts, 1, numberOfCivs);
+		}
 		teamCount = numberOfCivs;
 		defaultTeamCount = GameSetup.DefaultTeamCount(global.WorldCharacteristics.worldSize);
 		AddTeamChoices();

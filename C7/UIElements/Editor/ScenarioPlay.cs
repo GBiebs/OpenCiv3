@@ -32,6 +32,14 @@ public static class ScenarioPlay {
 		return true;
 	}
 
+	// For a scenario with its own map but no players (one painted in the
+	// editor), how many civs its starting locations have room for; null
+	// for any other game. Civ3 sets a custom map's number of players in
+	// Scenario Properties, which the editor hasn't got yet.
+	public static int? StartsOnMap(SaveGame save) {
+		return save?.Map?.tiles.Count > 0 && save.Players.Count == 0 ? save.Map.startingLocations.Count : null;
+	}
+
 	public static void Clear() {
 		RulesForNewGame = null;
 		Title = null;
