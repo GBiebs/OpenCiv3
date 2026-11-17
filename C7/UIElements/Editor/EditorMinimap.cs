@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using C7Engine;
 using C7.Textures;
 using C7GameData;
@@ -40,6 +41,9 @@ public partial class EditorMinimap : PanelContainer {
 	private bool dragging;
 
 	public bool Focused { get; private set; }
+
+	// The players' own starting locations, marked as the map's are.
+	public Func<IEnumerable<Tile>> playerStarts;
 
 	public EditorMinimap(MapView mapView, Action<PopupMenu> styleMenu) {
 		this.mapView = mapView;
@@ -174,7 +178,7 @@ public partial class EditorMinimap : PanelContainer {
 				Buffer.BlockCopy(tileColors, t * 4, pixels, p * 4, 4);
 			}
 		}
-		foreach (Tile start in map.startingLocations) {
+		foreach (Tile start in map.startingLocations.Concat(playerStarts?.Invoke() ?? [])) {
 			MarkX(start, map, width, height);
 		}
 		foreach (City city in gameData.cities) {

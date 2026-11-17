@@ -301,4 +301,70 @@ public class ScenarioPeopleTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal((rome, rome), (city.owner, unit.owner));
 		Assert.Equal(rome, tile.OwningPlayer());
 	}
+	// A player's own starting location: one each (placing another moves
+	// it), keeping huts off it, undone and deleted as the rest; at the start
+	// the player gets the rules' start units there.
+	[Fact]
+	public void PlayerStartsGiveStartUnits() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, Player greece) = TwoPlayers();
+		Tile a = gameData.map.tileAt(48, 50), b = gameData.map.tileAt(52, 50);
+		Assert.True(Act(painter, "Place Start", () => painter.PlacePlayerStart(a, rome)));
+		Assert.True(Act(painter, "Place Start", () => painter.PlacePlayerStart(b, rome)));
+		Assert.Null(painter.PlayerStartAt(a));
+		Assert.Equal(rome, painter.PlayerStartAt(b));
+		Assert.NotNull(painter.CantPlaceStart(b, greece));
+		Assert.NotNull(painter.CantPlaceOverlay(b, painter.OverlayBrushes().First(o => o.Name == "Goody Hut")));
+		painter.Undo();
+		Assert.Equal(rome, painter.PlayerStartAt(a));
+		painter.Redo();
+		Assert.True(Act(painter, "Place Start", () => painter.PlacePlayerStart(a, greece)));
+		Assert.Equal(2, painter.Info.playerStarts.Count);
+
+		using TempDirectory dir = new();
+		string path = dir.File("starts.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, painter.Info), path);
+		SaveGame scenario = SaveGame.Load(path, s => s);
+		Assert.Empty(scenario.Units);
+		ScenarioStart.Apply(scenario);
+		string romeId = rome.id.ToString();
+		Assert.Equal([gameData.rules.StartUnitType1, gameData.rules.StartUnitType2],
+			scenario.Units.Where(u => u.owner.ToString() == romeId).Select(u => u.prototype));
+		Assert.All(scenario.Units.Where(u => u.owner.ToString() == romeId), u => Assert.Equal((52, 50), (u.currentLocation.X, u.currentLocation.Y)));
+		Assert.Equal(4, scenario.Units.Count);
+
+		painter.Erase(b, painter.ErasablesOn(b).Where(e => e.StartOf != null).ToList());
+		Assert.Null(painter.PlayerStartAt(b));
+	}
+
+	// Civ3's Fog of War tool: tiles painted clear (any brush size), undone
+	// a stroke at a time; every player knows them when the game starts.
+	[Fact]
+	public void FogPaintedClearIsKnownAtTheStart() {
+		(C7GameData.GameData gameData, MapPainter painter, _, _) = TwoPlayers();
+		Tile tile = gameData.map.tileAt(50, 50);
+		painter.BeginStroke("Remove Fog");
+		painter.PaintFog(tile, 3, reveal: true);
+		painter.PaintFog(gameData.map.tileAt(56, 50), 1, reveal: true);
+		painter.EndStroke();
+		Assert.Equal(10, painter.Info.revealedTiles.Count);
+		Assert.True(painter.IsRevealed(tile));
+		painter.BeginStroke("Place Fog");
+		painter.PaintFog(tile, 1, reveal: false);
+		painter.EndStroke();
+		Assert.False(painter.IsRevealed(tile));
+		painter.Undo();
+		Assert.True(painter.IsRevealed(tile));
+		painter.Undo();
+		Assert.Empty(painter.Info.revealedTiles);
+		painter.Redo();
+		Assert.Equal(10, painter.Info.revealedTiles.Count);
+
+		using TempDirectory dir = new();
+		string path = dir.File("fog.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, painter.Info), path);
+		SaveGame scenario = SaveGame.Load(path, s => s);
+		ScenarioStart.Apply(scenario);
+		Assert.All(scenario.Players.Where(p => !p.isBarbarian), p => Assert.Contains(p.tileKnowledge, t => t.X == 56 && t.Y == 50));
+		Assert.All(scenario.Players.Where(p => !p.isBarbarian), p => Assert.Equal(10, p.tileKnowledge.Count));
+	}
 }

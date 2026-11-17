@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using C7GameData.Save;
 
 namespace C7Engine.Editor;
 
@@ -27,4 +28,19 @@ public class ScenarioInfo {
 	// The cities whose name is Civ3's "Auto": the game names them from their
 	// owner's list when the scenario starts (ScenarioStart). By city ID.
 	public List<string> autoNamedCities = [];
+
+	// Civ3's player starting locations: a player's own start, where it gets
+	// its start units when the scenario starts (ScenarioStart). The map's
+	// starting locations are Civ3's "Any" ones.
+	public List<PlayerStart> playerStarts = [];
+
+	// Civ3's Fog of War tool: the tiles every player knows when the game
+	// starts (besides what their cities and units see).
+	public List<TileLocation> revealedTiles = [];
+}
+
+public sealed class PlayerStart {
+	// The player's ID.
+	public string player;
+	public int x, y;
 }

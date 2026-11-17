@@ -23,7 +23,7 @@ public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainIm
 // off: the resource, an overlay (an improvement or a flag), or the river
 // along one edge.
 public sealed record Erasable(string Name, Resource Resource = null, OverlayBrush Overlay = null, TileDirection? RiverEdge = null,
-	City City = null, MapUnit Unit = null);
+	City City = null, MapUnit Unit = null, Player StartOf = null);
 
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
 // is one press of the mouse, however far it's dragged: BeginStroke, Paint
@@ -214,6 +214,19 @@ public sealed partial class MapPainter {
 		};
 	}
 
+	// CantPlace, and a player's own starting location keeps a hut, a camp or
+	// an Any start off its tile as the map's do.
+	public string CantPlaceOverlay(Tile tile, OverlayBrush brush) {
+		if (CantPlace(tile, brush) is string why) {
+			return why;
+		}
+		if (brush.What is OverlayBrush.Kind.GoodyHut or OverlayBrush.Kind.BarbarianCamp or OverlayBrush.Kind.StartingLocation
+			&& PlayerStartAt(tile) is Player player) {
+			return $"{ScenarioPlayers.NameOf(player)}'s starting location is here.";
+		}
+		return null;
+	}
+
 	// Whether the tile already has the overlay (a railroad is a road too).
 	private static bool Has(Tile tile, OverlayBrush brush) {
 		if (brush.Improvement?.key == Tile.TileOverlays.ROAD && tile.HasRoad()) {
@@ -235,7 +248,7 @@ public sealed partial class MapPainter {
 	// belongs to no one until the editor has players to give it to.
 	// Returns the tiles to redraw, or none.
 	public List<Tile> PlaceOverlay(Tile tile, OverlayBrush brush) {
-		if (tile == null || tile == Tile.NONE || CantPlace(tile, brush) != null || Has(tile, brush)) {
+		if (tile == null || tile == Tile.NONE || CantPlaceOverlay(tile, brush) != null || Has(tile, brush)) {
 			return [];
 		}
 		History.Touch(tile);
@@ -310,6 +323,9 @@ public sealed partial class MapPainter {
 		if (tile.Resource != null && tile.Resource != Resource.NONE && tile.Resource.Category != ResourceCategory.NONE) {
 			things.Add(new Erasable(tile.Resource.Name, Resource: tile.Resource));
 		}
+		if (PlayerStartAt(tile) is Player starter) {
+			things.Add(new Erasable($"Starting Location ({ScenarioPlayers.NameOf(starter)})", StartOf: starter));
+		}
 		foreach (TileDirection edge in Edges) {
 			if (Rivers.Has(tile, edge)) {
 				things.Add(new Erasable($"River ({EdgeName(edge)} edge)", RiverEdge: edge));
@@ -359,6 +375,8 @@ public sealed partial class MapPainter {
 			} else if (thing.Unit is MapUnit unit && tile.unitsOnTile.Contains(unit)) {
 				TakeUnit(unit);
 				History.Record(() => AddUnit(unit), () => TakeUnit(unit));
+			} else if (thing.StartOf != null) {
+				RemovePlayerStart(tile);
 			} else if (thing.Resource != null && tile.Resource == thing.Resource) {
 				tile.Resource = Resource.NONE;
 				tile.ResourceKey = Resource.NONE.Key;
@@ -490,6 +508,7 @@ public sealed partial class MapPainter {
 	// 362 x 362 map, measured 2026-11-17). Returns the action for the undo
 	// list, or null if nothing changed.
 	public EditHistory.Step EndStroke() {
+		EndFog();
 		EditHistory.Step step = History.End();
 		if (step != null && step.ChangesWater) {
 			Settle();

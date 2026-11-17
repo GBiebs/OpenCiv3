@@ -384,3 +384,132 @@ public sealed partial class MapPainter {
 		return History.End();
 	}
 }
+
+public sealed partial class MapPainter {
+	// The scenario's own facts the painter keeps up to date: player starts
+	// and the fog (the editor gives it its ScenarioInfo).
+	public ScenarioInfo Info { get; set; } = new();
+
+	// The player whose own starting location the tile is, or null.
+	public Player PlayerStartAt(Tile tile) {
+		PlayerStart start = Info.playerStarts.Find(s => s.x == tile.XCoordinate && s.y == tile.YCoordinate);
+		return start == null ? null : gameData.players.Find(p => p.id.ToString() == start.player);
+	}
+
+	// Each player's own starting location, for the map and minimap.
+	public IEnumerable<(Tile tile, Player player)> PlayerStarts() {
+		foreach (PlayerStart start in Info.playerStarts) {
+			Tile tile = Map.tileAt(start.x, start.y);
+			Player player = gameData.players.Find(p => p.id.ToString() == start.player);
+			if (tile != Tile.NONE && player != null) {
+				yield return (tile, player);
+			}
+		}
+	}
+
+	// Why the player's starting location can't be on the tile, or null: as
+	// an Any one (land, no hut or camp, no other start), and not the
+	// barbarians'.
+	public string CantPlaceStart(Tile tile, Player player) {
+		if (player != null && player.isBarbarians) {
+			return "The barbarians have no starting location.";
+		}
+		if (PlayerStartAt(tile) is Player other && other != player) {
+			return $"{ScenarioPlayers.NameOf(other)}'s starting location is here.";
+		}
+		OverlayBrush start = OverlayBrushes().First(b => b.What == OverlayBrush.Kind.StartingLocation);
+		return CantPlace(tile, start);
+	}
+
+	// Civ3's player starting location: the player's one start, moved here
+	// if it had one. Returns whether it changed.
+	public bool PlacePlayerStart(Tile tile, Player player) {
+		if (CantPlaceStart(tile, player) != null || PlayerStartAt(tile) == player) {
+			return false;
+		}
+		List<PlayerStart> before = Copy(Info.playerStarts);
+		Info.playerStarts.RemoveAll(s => s.player == player.id.ToString());
+		Info.playerStarts.Add(new PlayerStart { player = player.id.ToString(), x = tile.XCoordinate, y = tile.YCoordinate });
+		List<PlayerStart> after = Copy(Info.playerStarts);
+		History.Record(() => SetStarts(before), () => SetStarts(after));
+		Journal([tile]);
+		return true;
+	}
+
+	private void RemovePlayerStart(Tile tile) {
+		List<PlayerStart> before = Copy(Info.playerStarts);
+		Info.playerStarts.RemoveAll(s => s.x == tile.XCoordinate && s.y == tile.YCoordinate);
+		List<PlayerStart> after = Copy(Info.playerStarts);
+		History.Record(() => SetStarts(before), () => SetStarts(after));
+	}
+
+	private static List<PlayerStart> Copy(List<PlayerStart> starts) {
+		return starts.Select(s => new PlayerStart { player = s.player, x = s.x, y = s.y }).ToList();
+	}
+
+	private void SetStarts(List<PlayerStart> starts) {
+		Info.playerStarts.Clear();
+		Info.playerStarts.AddRange(Copy(starts));
+	}
+
+	// --- Civ3's Fog of War tool ---
+
+	private HashSet<(int, int)> revealed;
+	private List<TileLocation> fogBefore;
+
+	// Whether the tile is painted clear of fog (known to every player when
+	// the game starts).
+	public bool IsRevealed(Tile tile) {
+		revealed ??= Info.revealedTiles.Select(t => (t.X, t.Y)).ToHashSet();
+		return revealed.Contains((tile.XCoordinate, tile.YCoordinate));
+	}
+
+	// Paints fog on ("Place Fog") or off ("Remove Fog") the tiles a brush of
+	// this size covers. Returns the tiles that changed.
+	public List<Tile> PaintFog(Tile center, int size, bool reveal) {
+		List<Tile> changed = [];
+		foreach (Tile tile in TilesUnder(center, size)) {
+			if (IsRevealed(tile) != reveal) {
+				if (fogBefore == null) {
+					// The whole stroke is one record, made with its first tile.
+					fogBefore = [.. Info.revealedTiles];
+					List<TileLocation> before = fogBefore;
+					FogAfter after = new();
+					fogAfter = after;
+					History.Record(() => SetRevealed(before), () => SetRevealed(after.tiles));
+				}
+				if (reveal) {
+					revealed.Add((tile.XCoordinate, tile.YCoordinate));
+					Info.revealedTiles.Add(new TileLocation(tile));
+				} else {
+					revealed.Remove((tile.XCoordinate, tile.YCoordinate));
+					Info.revealedTiles.RemoveAll(t => t.X == tile.XCoordinate && t.Y == tile.YCoordinate);
+				}
+				changed.Add(tile);
+			}
+		}
+		Journal(changed);
+		return changed;
+	}
+
+	private sealed class FogAfter {
+		public List<TileLocation> tiles = [];
+	}
+
+	private FogAfter fogAfter;
+
+	// Called as a stroke ends: what the fog became, for the redo.
+	private void EndFog() {
+		if (fogAfter != null) {
+			fogAfter.tiles = [.. Info.revealedTiles];
+		}
+		fogBefore = null;
+		fogAfter = null;
+	}
+
+	private void SetRevealed(List<TileLocation> tiles) {
+		Info.revealedTiles.Clear();
+		Info.revealedTiles.AddRange(tiles);
+		revealed = null;
+	}
+}

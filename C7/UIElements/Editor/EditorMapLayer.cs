@@ -11,7 +11,14 @@ public class EditorMapLayer : LooseLayer {
 	public bool showYields { get => yields; set => Set(ref yields, value); }
 	public bool showOwners { get => owners; set => Set(ref owners, value); }
 	public bool showUnitCounts { get => unitCounts; set => Set(ref unitCounts, value); }
-	private bool yields, owners, unitCounts;
+	// The Fog of War tool's veil over the tiles still hidden at the start.
+	public bool showFog { get => fog; set => Set(ref fog, value); }
+	private bool yields, owners, unitCounts, fog;
+
+	// The players' own starting locations and the fog painting.
+	public C7Engine.Editor.MapPainter painter;
+	private readonly Dictionary<Tile, Player> playerStarts = [];
+	private static readonly Color Veil = new(0, 0, 0, 0.55f);
 
 	private void Set(ref bool field, bool value) {
 		if (field != value) {
@@ -37,6 +44,12 @@ public class EditorMapLayer : LooseLayer {
 		for (int i = 0; i < locations.Count; ++i) {
 			starts.TryAdd(locations[i], i);
 		}
+		playerStarts.Clear();
+		if (painter != null) {
+			foreach ((Tile tile, Player player) in painter.PlayerStarts()) {
+				playerStarts[tile] = player;
+			}
+		}
 	}
 
 	public override void drawObject(LooseView looseView, GameData gameData, Tile tile, Vector2 tileCenter) {
@@ -48,13 +61,25 @@ public class EditorMapLayer : LooseLayer {
 			Diamond[3] = tileCenter + new Vector2(-c.X, 0);
 			looseView.DrawColoredPolygon(Diamond, new Color(TextureLoader.LoadColor(owner.GetPlayerColor()), 0.45f));
 		}
+		if (fog && painter != null && !painter.IsRevealed(tile)) {
+			Vector2 c = MapView.cellSize;
+			Diamond[0] = tileCenter + new Vector2(0, -c.Y);
+			Diamond[1] = tileCenter + new Vector2(c.X, 0);
+			Diamond[2] = tileCenter + new Vector2(0, c.Y);
+			Diamond[3] = tileCenter + new Vector2(-c.X, 0);
+			looseView.DrawColoredPolygon(Diamond, Veil);
+		}
 		if (yields) {
 			DrawYields(looseView, tile, tileCenter);
+		}
+		if (playerStarts.TryGetValue(tile, out Player starter) && !looseView.mapView.bareMap) {
+			Color color = TextureLoader.LoadColor(starter.GetPlayerColor());
+			DrawStart(looseView, tileCenter, color, $"{C7Engine.Editor.ScenarioPlayers.NameOf(starter)} Start", color);
 		}
 		// Clean map hides starting locations with the other man-made things
 		// (Civ3's help for View > Clean Map).
 		if (starts.ContainsKey(tile) && !looseView.mapView.bareMap) {
-			DrawStart(looseView, tileCenter);
+			DrawStart(looseView, tileCenter, StartRing, "Any Start", StartLabel);
 		}
 		if (unitCounts && tile.unitsOnTile.Count > 0) {
 			Label(looseView, tileCenter + new Vector2(28, -14), tile.unitsOnTile.Count.ToString(), new Color(0, 0, 0, 0.7f), Colors.White);
@@ -91,16 +116,16 @@ public class EditorMapLayer : LooseLayer {
 
 	// Civ3's mark for a starting location no player was given: a blue ring
 	// with "Any Start" under it.
-	private static void DrawStart(LooseView looseView, Vector2 tileCenter) {
+	private static void DrawStart(LooseView looseView, Vector2 tileCenter, Color ringColor, string text, Color labelColor) {
 		Vector2[] ring = new Vector2[33];
 		for (int i = 0; i < ring.Length; ++i) {
 			float a = Mathf.Tau * i / (ring.Length - 1);
 			ring[i] = tileCenter + new Vector2(Mathf.Cos(a) * 42, Mathf.Sin(a) * 21);
 		}
-		looseView.DrawPolyline(ring, StartRing, 3, true);
-		looseView.DrawLine(tileCenter + new Vector2(0, -21), tileCenter + new Vector2(0, -13), StartRing, 2);
-		looseView.DrawLine(tileCenter + new Vector2(0, 13), tileCenter + new Vector2(0, 21), StartRing, 2);
-		Label(looseView, tileCenter + new Vector2(0, 32), "Any Start", StartLabel, Colors.Black);
+		looseView.DrawPolyline(ring, ringColor, 3, true);
+		looseView.DrawLine(tileCenter + new Vector2(0, -21), tileCenter + new Vector2(0, -13), ringColor, 2);
+		looseView.DrawLine(tileCenter + new Vector2(0, 13), tileCenter + new Vector2(0, 21), ringColor, 2);
+		Label(looseView, tileCenter + new Vector2(0, 32), text, labelColor, labelColor.Luminance > 0.5f ? Colors.Black : Colors.White);
 	}
 
 	private static void Label(LooseView looseView, Vector2 center, string text, Color back, Color ink) {

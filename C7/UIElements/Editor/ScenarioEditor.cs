@@ -34,6 +34,10 @@ public partial class ScenarioEditor : Control {
 	private C7GameData.Resource resourceBrush;
 	private OverlayBrush overlayBrush;
 	private UnitPrototype unitBrush;
+	// The Fog of War tool's choice: Civ3's "Remove Fog" (reveal) or "Place
+	// Fog".
+	private bool removeFog = true;
+	private static readonly string[] FogChoices = ["Remove Fog", "Place Fog"];
 	// Civ3's active player: whose cities, units and starting locations the
 	// brushes place.
 	public Player ActivePlayer { get; private set; }
@@ -100,7 +104,7 @@ public partial class ScenarioEditor : Control {
 		};
 		AddChild(fileDialog);
 
-		painter = new MapPainter(EngineStorage.gameData);
+		painter = new MapPainter(EngineStorage.gameData) { Info = game.EditorInfo };
 		if (game.EditorStartsModified) {
 			painter.History.MarkUnsaved();
 		}
@@ -122,9 +126,9 @@ public partial class ScenarioEditor : Control {
 		Refresh();
 		chrome.ShowMessage(MessageText, false);
 
-		mapLayer = new EditorMapLayer();
+		mapLayer = new EditorMapLayer { painter = painter };
 		game.EditorMapView.AddTerrainLayer(mapLayer);
-		minimap = new EditorMinimap(game.EditorMapView, chrome.StyleMenu);
+		minimap = new EditorMinimap(game.EditorMapView, chrome.StyleMenu) { playerStarts = () => painter.PlayerStarts().Select(s => s.tile) };
 		AddChild(minimap);
 		Refresh();
 
@@ -449,6 +453,7 @@ public partial class ScenarioEditor : Control {
 		EditorTool.Resources => resourceBrush?.Name,
 		EditorTool.Overlays => overlayBrush?.Name,
 		EditorTool.Units => unitBrush?.name,
+		EditorTool.FogOfWar => FogChoices[removeFog ? 0 : 1],
 		_ => null,
 	};
 
@@ -459,6 +464,7 @@ public partial class ScenarioEditor : Control {
 		EditorTool.Terrain => "TerrainPicker",
 		EditorTool.Resources => "ResourcePicker",
 		EditorTool.Units => "UnitPicker",
+		EditorTool.FogOfWar => "FogPicker",
 		_ => "OverlayPicker",
 	};
 
@@ -482,6 +488,8 @@ public partial class ScenarioEditor : Control {
 					List<UnitPrototype> types = EngineStorage.gameData.unitPrototypes;
 					return (types.Select(t => t.name).ToList(), null, types.IndexOf(unitBrush));
 				}
+			case EditorTool.FogOfWar:
+				return ([.. FogChoices], null, removeFog ? 0 : 1);
 			default:
 				return (null, null, -1);
 		}
@@ -496,7 +504,7 @@ public partial class ScenarioEditor : Control {
 	}
 
 	private PopupMenu playerPicker, civPicker;
-	private const int AddPlayerId = 999;
+	private const int AddPlayerId = 999, NobodyId = 998;
 
 	// Civ3's Set Active Player: the scenario's players, and Add Player for a
 	// civilization that hasn't one.
@@ -512,10 +520,16 @@ public partial class ScenarioEditor : Control {
 		if (players.Count > 0) {
 			playerPicker.AddSeparator();
 		}
+		playerPicker.AddRadioCheckItem("Nobody (Any)", NobodyId);
+		playerPicker.SetItemChecked(playerPicker.GetItemIndex(NobodyId), ActivePlayer == null);
 		playerPicker.AddItem("Add Player...", AddPlayerId);
 		playerPicker.IdPressed += id => {
 			if (id == AddPlayerId) {
 				ShowCivPicker();
+			} else if (id == NobodyId) {
+				ActivePlayer = null;
+				Say("Active player: nobody (starting locations are Any)");
+				Refresh();
 			} else if (id < players.Count) {
 				ActivePlayer = players[(int)id];
 				Say($"Active player: {ScenarioPlayers.NameOf(ActivePlayer)}");
@@ -599,6 +613,9 @@ public partial class ScenarioEditor : Control {
 			case EditorTool.Units when index < EngineStorage.gameData.unitPrototypes.Count:
 				unitBrush = EngineStorage.gameData.unitPrototypes[index];
 				break;
+			case EditorTool.FogOfWar when index < FogChoices.Length:
+				removeFog = index == 0;
+				break;
 			default:
 				return;
 		}
@@ -615,10 +632,11 @@ public partial class ScenarioEditor : Control {
 			foreach (int size in EditorTools.Sizes) {
 				SetChecked(menu, SizeItem(size), size == BrushSize);
 				// Civ3's brush sizes are the terrain brush's.
-				SetEnabled(menu, SizeItem(size), Tool == EditorTool.Terrain);
+				SetEnabled(menu, SizeItem(size), Tool is EditorTool.Terrain or EditorTool.FogOfWar);
 			}
 			SetChecked(menu, MenuItem.Grid, GridShown);
 			if (mapLayer != null) {
+				mapLayer.showFog = Tool == EditorTool.FogOfWar;
 				MapView mapView = game.EditorMapView;
 				SetChecked(menu, MenuItem.GridCoordinates, EngineStorage.gameData.showGridCoordinates);
 				SetChecked(menu, MenuItem.FoodShieldIcons, mapLayer.showYields);
@@ -964,7 +982,8 @@ public partial class ScenarioEditor : Control {
 			EditorTool.Overlays when PaintingRivers => MapPainter.CantPlaceRiver(tile, EdgeAt(tile, position)),
 			EditorTool.Terrain when terrainBrush != null => MapPainter.CantPaint(tile, terrainBrush.Terrain),
 			EditorTool.Resources when resourceBrush != null => MapPainter.CantPlace(tile, resourceBrush),
-			EditorTool.Overlays when overlayBrush != null => MapPainter.CantPlace(tile, overlayBrush),
+			EditorTool.Overlays when PlacingPlayerStart => painter.CantPlaceStart(tile, ActivePlayer),
+			EditorTool.Overlays when overlayBrush != null => painter.CantPlaceOverlay(tile, overlayBrush),
 			EditorTool.Cities => MapPainter.CantPlaceCity(tile, ActivePlayer),
 			EditorTool.Units when unitBrush != null => MapPainter.CantPlaceUnit(tile, unitBrush, ActivePlayer),
 			_ => null,
@@ -980,6 +999,7 @@ public partial class ScenarioEditor : Control {
 			EditorTool.Overlays when overlayBrush != null => $"Place {overlayBrush.Name}",
 			EditorTool.Cities => "Place City",
 			EditorTool.Units when unitBrush != null => $"Place {unitBrush.name}",
+			EditorTool.FogOfWar => FogChoices[removeFog ? 0 : 1],
 			_ => null,
 		};
 		if (name == null || game.EditorTileAt(position) == null) {
@@ -1002,6 +1022,10 @@ public partial class ScenarioEditor : Control {
 	}
 
 	private bool PaintingRivers => Tool == EditorTool.Overlays && overlayBrush?.What == OverlayBrush.Kind.River;
+
+	// With a player active, a starting location is the player's own (Civ3's
+	// player starting location); with nobody, Civ3's "Any" one.
+	private bool PlacingPlayerStart => Tool == EditorTool.Overlays && overlayBrush?.What == OverlayBrush.Kind.StartingLocation && ActivePlayer != null;
 
 	// The tile's edge nearest the point: the quarter of the diamond it's in.
 	private TileDirection EdgeAt(Tile tile, Vector2 position) {
@@ -1029,7 +1053,7 @@ public partial class ScenarioEditor : Control {
 		// A one-tile brush dragged straight from tile to tile crosses the
 		// corners where four tiles meet; it takes a tile only once the mouse
 		// is well inside it, or a road would come out as a ladder.
-		if (!pressed && Tool != EditorTool.Terrain && !WellInside(tile, position)) {
+		if (!pressed && Tool is not (EditorTool.Terrain or EditorTool.FogOfWar) && !WellInside(tile, position)) {
 			return;
 		}
 		// A city or a unit a click (Civ3's: "each click places one").
@@ -1039,7 +1063,9 @@ public partial class ScenarioEditor : Control {
 		lastPainted = tile;
 		List<Tile> changed = Tool switch {
 			EditorTool.Resources => painter.PlaceResource(tile, resourceBrush),
+			EditorTool.Overlays when PlacingPlayerStart => painter.PlacePlayerStart(tile, ActivePlayer) ? [tile] : [],
 			EditorTool.Overlays => painter.PlaceOverlay(tile, overlayBrush),
+			EditorTool.FogOfWar => painter.PaintFog(tile, BrushSize, removeFog),
 			EditorTool.Cities => painter.PlaceCity(tile, ActivePlayer) is null ? [] : [tile],
 			EditorTool.Units => painter.PlaceUnit(tile, unitBrush, ActivePlayer) is null ? [] : [tile],
 			_ => painter.PaintTerrain(tile, BrushSize, terrainBrush),
