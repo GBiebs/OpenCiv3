@@ -12,7 +12,7 @@ using Godot;
 // what they show and does what they ask.
 public partial class EditorChrome : Control {
 	private readonly ScenarioEditor editor;
-	private Label titleLabel, tileLabel, toolLabel, messageLabel;
+	private Label titleLabel, tileLabel, toolLabel, messageLabel, zoomLabel;
 	private readonly Dictionary<EditorTool, Button> toolButtons = [];
 	private readonly Dictionary<int, Button> sizeButtons = [];
 	private Button gridButton, undoButton, redoButton;
@@ -125,6 +125,8 @@ public partial class EditorChrome : Control {
 		bottomRow.AddChild(tileLabel);
 		bottomRow.AddChild(messageLabel);
 		bottomRow.AddChild(toolLabel);
+		zoomLabel = InkLabel();
+		bottomRow.AddChild(zoomLabel);
 		bottom.AddChild(bottomRow);
 		AddChild(bottom);
 	}
@@ -180,6 +182,9 @@ public partial class EditorChrome : Control {
 	public void ShowTitle(string title) => titleLabel.Text = title;
 
 	public void ShowTile(string text) => tileLabel.Text = text;
+
+	// Civ3's status bar shows the zoom level.
+	public void ShowZoom(float zoom) => zoomLabel.Text = $"Zoom {Mathf.RoundToInt(zoom * 100)}%";
 
 	// What Undo and Redo would take back or do again, null for nothing.
 	public void ShowUndo(string undo, string redo) {

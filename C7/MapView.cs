@@ -937,6 +937,17 @@ public partial class MapView : Node2D {
 	private UnitLayer unitLayer;
 	private LooseView unitLayerView;
 	public TileAssignmentLayer tileAssignmentLayer { get; private set; }
+	public BorderLayer borderLayer { get; private set; }
+	private LooseView terrainLooseView;
+
+	// Adds a layer drawn over the terrain view's (the scenario editor's).
+	public void AddTerrainLayer(LooseLayer layer) {
+		terrainLooseView.layers.Add(layer);
+		InvalidateMap();
+	}
+
+	// The game's minimap (the scenario editor shows its own instead).
+	public MiniMap GameMiniMap => miniMap;
 
 	// What bare map mode hides: whole views (cities and units are child nodes, so skipping their layers wouldn't hide them) and the layers
 	// of the terrain view drawn on top of the terrain and resources.
@@ -1080,8 +1091,9 @@ public partial class MapView : Node2D {
 		terrainView.layers.Add(this.gridLayer);
 		BuildingLayer buildingLayer = new();
 		terrainView.layers.Add(buildingLayer);
-		BorderLayer borderLayer = new();
+		borderLayer = new();
 		terrainView.layers.Add(borderLayer);
+		terrainLooseView = terrainView;
 		layersHiddenOnBareMap.AddRange([tileOverlayLayer, buildingLayer, borderLayer]);
 
 		LooseView cityView = new(this, LooseView.RedrawPolicy.WhenContentChanges);

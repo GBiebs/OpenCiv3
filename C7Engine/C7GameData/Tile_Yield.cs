@@ -56,6 +56,10 @@ public partial class Tile {
 			// tile penalty" (https://civfanatics.com/civ3/faq/). Mobilization
 			// adds the same shield in a city building a military unit, and
 			// the two don't add up (see Mobilization).
+			// No player (the scenario editor's view): the terrain's own yields.
+			if (player == null) {
+				return this;
+			}
 			if (player.InGoldenAge && type != YieldType.Food && baseYield > 0) {
 				bonus += 1;
 			} else if (mobilizationBonus && type == YieldType.Production && baseYield > 0) {
@@ -98,10 +102,16 @@ public partial class Tile {
 	}
 
 	// Food yield
+	// Whether the player gets the tile's resource; with no player (the
+	// scenario editor's view), every resource counts.
+	private bool KnowsResource(Player player) {
+		return player == null || player.KnowsAboutResource(Resource);
+	}
+
 	private int BaseFoodYield(Player player) {
 		if (this.HasFallout()) return 0;
 		int yield = overlayTerrainType.baseFoodProduction;
-		if (this.Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
+		if (this.Resource != Resource.NONE && KnowsResource(player)) {
 			yield += this.Resource.FoodBonus;
 		}
 
@@ -138,7 +148,7 @@ public partial class Tile {
 
 		// Agricultural civilizations get an extra food from irrigated desert.
 		if (!HasCity() && overlayTerrainType.IsDesert && HasIrrigation()
-			&& player.civilization?.traits.Contains(Civilization.Trait.Agricultural) == true) {
+			&& player?.civilization?.traits.Contains(Civilization.Trait.Agricultural) == true) {
 			yield += 1;
 		}
 
@@ -200,7 +210,7 @@ public partial class Tile {
 
 		// Bonus resources provide a boost in yield regardless of whether
 		// there is a city.
-		if (Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
+		if (Resource != Resource.NONE && KnowsResource(player)) {
 			yield += this.Resource.ShieldsBonus;
 		}
 
@@ -268,7 +278,7 @@ public partial class Tile {
 	private int BaseCommerceYield(Player player) {
 		if (this.HasFallout()) return 0;
 		int yield = overlayTerrainType.baseCommerceProduction;
-		if (this.Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
+		if (this.Resource != Resource.NONE && KnowsResource(player)) {
 			yield += this.Resource.CommerceBonus;
 		}
 
@@ -299,7 +309,7 @@ public partial class Tile {
 			if (borderRiver) {
 				regularCityYield += 1;
 			}
-			if (this.Resource != Resource.NONE && player.KnowsAboutResource(Resource)) {
+			if (this.Resource != Resource.NONE && KnowsResource(player)) {
 				regularCityYield += this.Resource.CommerceBonus;
 			}
 

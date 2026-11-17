@@ -50,6 +50,7 @@ public partial class ScenarioEditor : Control {
 		New, Open, Save, SaveAs, Exit,
 		Undo, Redo,
 		Grid, ZoomIn, ZoomOut,
+		GridCoordinates, FoodShieldIcons, CleanMap, Territory, CityNames, TileOwners, UnitCounts, Minimap,
 		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
@@ -57,8 +58,14 @@ public partial class ScenarioEditor : Control {
 		TileProperties, CenterHere,
 	}
 
-	// Arrow keys move the view by this many pixels.
+	// Arrow keys move the view by this many pixels (four times as far with
+	// the minimap focused).
 	private const float KeyPanPixels = 128;
+
+	// What the editor draws over the map, and its minimap.
+	private EditorMapLayer mapLayer;
+	private EditorMinimap minimap;
+	private float shownZoom = -1;
 
 	public ScenarioEditor() { }
 
@@ -100,6 +107,12 @@ public partial class ScenarioEditor : Control {
 		Refresh();
 		chrome.ShowMessage(MessageText, false);
 
+		mapLayer = new EditorMapLayer();
+		game.EditorMapView.AddTerrainLayer(mapLayer);
+		minimap = new EditorMinimap(game.EditorMapView, chrome.StyleMenu);
+		AddChild(minimap);
+		Refresh();
+
 		// The --editor-shot=<png> developer option: a screenshot of the editor
 		// once the map has been drawn, then quit, to check the editor without
 		// clicking through it.
@@ -118,6 +131,15 @@ public partial class ScenarioEditor : Control {
 		// The button may be let go over the controls, which take the event.
 		if (painting && !Input.IsMouseButtonPressed(MouseButton.Left)) {
 			EndStroke();
+		}
+		// The game's minimap, in its HUD frame, gives way to the editor's.
+		if (game.EditorMapView.GameMiniMap is MiniMap gameMiniMap && gameMiniMap.Visible) {
+			gameMiniMap.Hide();
+			gameMiniMap.ProcessMode = ProcessModeEnum.Disabled;
+		}
+		if (game.EditorMapView.cameraZoom != shownZoom) {
+			shownZoom = game.EditorMapView.cameraZoom;
+			chrome.ShowZoom(shownZoom);
 		}
 		if (shotPath != null && ++framesShown == 90) {
 			GetViewport().GetTexture().GetImage().SavePng(shotPath);
@@ -139,11 +161,23 @@ public partial class ScenarioEditor : Control {
 		Add(edit, "Undo", MenuItem.Undo, (Key)KeyModifierMask.MaskCtrl | Key.Z);
 		Add(edit, "Redo", MenuItem.Redo, (Key)KeyModifierMask.MaskCtrl | Key.Y);
 
+		// Civ3's View menu (its toolbar and status bar toggles aside).
 		PopupMenu view = Menu("View");
 		view.AddCheckItem("Grid", (int)MenuItem.Grid);
-		view.SetItemChecked(view.GetItemIndex((int)MenuItem.Grid), GridShown);
+		view.AddCheckItem("Grid Coordinates", (int)MenuItem.GridCoordinates);
 		Add(view, "Zoom In", MenuItem.ZoomIn);
 		Add(view, "Zoom Out", MenuItem.ZoomOut);
+		view.AddSeparator();
+		view.AddCheckItem("Food and Shield Icons", (int)MenuItem.FoodShieldIcons);
+		view.AddCheckItem("Clean Map", (int)MenuItem.CleanMap);
+		view.AddSeparator();
+		view.AddCheckItem("Territory", (int)MenuItem.Territory);
+		view.AddCheckItem("City Names", (int)MenuItem.CityNames);
+		view.AddCheckItem("Tile Owners", (int)MenuItem.TileOwners);
+		view.AddCheckItem("Number of Units", (int)MenuItem.UnitCounts);
+		view.AddSeparator();
+		view.AddCheckItem("Minimap", (int)MenuItem.Minimap);
+		view.SetItemAccelerator(view.GetItemIndex((int)MenuItem.Minimap), Key.M);
 
 		PopupMenu map = Menu("Map");
 		foreach (EditorTools.Info tool in EditorTools.All) {
@@ -244,7 +278,56 @@ public partial class ScenarioEditor : Control {
 				break;
 			case MenuItem.Grid:
 				game.EditorMapView.gridLayer.visible = !GridShown;
+				// Civ3: turning the coordinates on turns the grid on too, so
+				// the grid going off takes them with it.
+				if (!GridShown) {
+					EngineStorage.gameData.showGridCoordinates = false;
+				}
 				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.GridCoordinates:
+				EngineStorage.gameData.showGridCoordinates = !EngineStorage.gameData.showGridCoordinates;
+				if (EngineStorage.gameData.showGridCoordinates) {
+					game.EditorMapView.gridLayer.visible = true;
+				}
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.FoodShieldIcons:
+				mapLayer.showYields = !mapLayer.showYields;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.CleanMap:
+				game.EditorMapView.bareMap = !game.EditorMapView.bareMap;
+				Refresh();
+				break;
+			case MenuItem.Territory:
+				game.EditorMapView.borderLayer.visible = !game.EditorMapView.borderLayer.visible;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.CityNames:
+				game.EditorMapView.cityLayer.showLabels = !game.EditorMapView.cityLayer.showLabels;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.TileOwners:
+				mapLayer.showOwners = !mapLayer.showOwners;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.UnitCounts:
+				mapLayer.showUnitCounts = !mapLayer.showUnitCounts;
+				game.EditorMapView.InvalidateMap();
+				Refresh();
+				break;
+			case MenuItem.Minimap:
+				minimap.Visible = !minimap.Visible;
+				if (!minimap.Visible) {
+					minimap.SetFocused(false);
+				}
 				Refresh();
 				break;
 			case MenuItem.ZoomIn:
@@ -385,6 +468,17 @@ public partial class ScenarioEditor : Control {
 				SetEnabled(menu, SizeItem(size), Tool == EditorTool.Terrain);
 			}
 			SetChecked(menu, MenuItem.Grid, GridShown);
+			if (mapLayer != null) {
+				MapView mapView = game.EditorMapView;
+				SetChecked(menu, MenuItem.GridCoordinates, EngineStorage.gameData.showGridCoordinates);
+				SetChecked(menu, MenuItem.FoodShieldIcons, mapLayer.showYields);
+				SetChecked(menu, MenuItem.CleanMap, mapView.bareMap);
+				SetChecked(menu, MenuItem.Territory, mapView.borderLayer.visible);
+				SetChecked(menu, MenuItem.CityNames, mapView.cityLayer.showLabels);
+				SetChecked(menu, MenuItem.TileOwners, mapLayer.showOwners);
+				SetChecked(menu, MenuItem.UnitCounts, mapLayer.showUnitCounts);
+				SetChecked(menu, MenuItem.Minimap, minimap.Visible);
+			}
 			SetEnabled(menu, MenuItem.Undo, painter.History.CanUndo);
 			SetEnabled(menu, MenuItem.Redo, painter.History.CanRedo);
 		}
@@ -607,6 +701,16 @@ public partial class ScenarioEditor : Control {
 				mouseAt = motion.Position;
 				ShowTileAt(motion.Position);
 				break;
+			// M or Alt+M shows or hides the minimap, Tab moves the focus between
+			// it and the map (Civ3's keys).
+			case InputEventKey { Pressed: true, Echo: false, Keycode: Key.M } when !Input.IsKeyPressed(Key.Ctrl):
+				RunMenuItem(MenuItem.Minimap);
+				GetViewport().SetInputAsHandled();
+				break;
+			case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Tab }:
+				minimap.SetFocused(minimap.Visible && !minimap.Focused);
+				GetViewport().SetInputAsHandled();
+				break;
 			case InputEventKey { Pressed: true, Echo: false } key when !key.CtrlPressed && !key.AltPressed
 				&& EditorTools.All.FirstOrDefault(t => t.Hotkey != Key.None && t.Hotkey == key.Keycode) is EditorTools.Info tool:
 				RunMenuItem(ToolItem(tool.Tool));
@@ -621,7 +725,7 @@ public partial class ScenarioEditor : Control {
 					_ => Vector2.Zero,
 				};
 				if (direction != Vector2.Zero) {
-					mapView.cameraLocation += direction * KeyPanPixels;
+					mapView.cameraLocation += direction * KeyPanPixels * (minimap.Focused ? 4 : 1);
 					GetViewport().SetInputAsHandled();
 				}
 				break;

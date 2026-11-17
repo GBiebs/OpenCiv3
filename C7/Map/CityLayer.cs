@@ -7,6 +7,19 @@ namespace C7.Map {
 	public class CityLayer : LooseLayer {
 		private Dictionary<City, CityScene> citySceneLookup = new();
 
+		// Whether cities show their names (the scenario editor's View > City
+		// Names turns them off).
+		public bool showLabels {
+			get => labelsShown;
+			set {
+				if (labelsShown != value) {
+					labelsShown = value;
+					RequestRedraw();
+				}
+			}
+		}
+		private bool labelsShown = true;
+
 		// Counts the times the layer was drawn, so scenes for cities that weren't drawn can be hidden.
 		private int drawPass = 0;
 
@@ -86,7 +99,7 @@ namespace C7.Map {
 			bool showDetails = looseView.uiPlayer == null || city.owner == looseView.uiPlayer;
 			scene.Refresh(looseView.mapView.contentVersion, showDetails);
 
-			if (looseView.HasCityLabelToHideFromTileInfo(tile))
+			if (!showLabels || looseView.HasCityLabelToHideFromTileInfo(tile))
 				scene.HideLabel();
 			else
 				scene.ShowLabel();

@@ -659,4 +659,22 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Assert.False(Place(painter, ResourceNamed(painter, "Horses"), tile).ChangesWater);
 		Assert.Equal(2, gameData.map.continents.Count);
 	}
+	// The View menu's food and shield icons: a tile's yields with no player,
+	// every resource counted and no government's penalty.
+	[Fact]
+	public void YieldsWithNoPlayerCountTheTerrainResourceAndImprovements() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 3, tile);
+		TerrainType grassland = tile.overlayTerrainType;
+		Assert.Equal(grassland.baseFoodProduction, tile.FoodYield((Player)null).yield);
+		Assert.Equal(grassland.baseShieldProduction, tile.ProductionYield((Player)null).yield);
+
+		Resource cattle = ResourceNamed(painter, "Cattle");
+		Place(painter, cattle, tile);
+		Overlay(painter, "Irrigation", tile);
+		Assert.Equal(grassland.baseFoodProduction + cattle.FoodBonus + 1, tile.FoodYield((Player)null).yield);
+		Assert.Equal(grassland.baseShieldProduction + cattle.ShieldsBonus, tile.ProductionYield((Player)null).yield);
+		Assert.Equal(grassland.baseCommerceProduction + cattle.CommerceBonus, tile.CommerceYield((Player)null).yield);
+	}
 }
