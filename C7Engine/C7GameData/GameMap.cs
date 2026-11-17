@@ -14,6 +14,9 @@ namespace C7GameData {
 		public int numTilesWide { get; set; }
 		public int numTilesTall { get; set; }
 		public bool wrapHorizontally, wrapVertically;
+		// Civ3's polar ice caps: kept for the scenario editor, not used by
+		// the game yet (see SaveMap).
+		public bool polarIceCaps;
 		public int techRate;
 		public int optimalNumberOfCities;
 		// What the game generated the map as; null for a map it didn't

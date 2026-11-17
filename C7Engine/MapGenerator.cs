@@ -48,6 +48,11 @@ namespace C7Engine {
 
 		public int mapSeed = -1;
 		public WorldSize worldSize;
+
+		// Whether the map wraps east to west (Civ3's default) and north to
+		// south: the scenario editor's World Setup chooses; a new game keeps
+		// the defaults.
+		public bool wrapX = true, wrapY = false;
 		// How many of the starts must be next to the sea: one for each
 		// seafaring civ picked for the game (see GameSetup), which must start
 		// on the coast. Other civs may start anywhere.
@@ -179,6 +184,72 @@ namespace C7Engine {
 			return gameMap;
 		}
 
+		// What the scenario editor's Map > Redistribute places again.
+		public enum Redistribution { StartingLocations, Resources, GoodyHuts, BonusGrassland }
+
+		// The scenario editor's Map > Redistribute: one of the generator's
+		// placement steps run again, with the seed, on a map made elsewhere
+		// (painted, imported, generated before). The map is loaded into the
+		// generator as it is, the step's old placements taken off first, and
+		// what the step places is returned, leaving the map unchanged: each
+		// tile's resource (null for none), whether it has a hut, whether it's
+		// bonus grassland, and the starting locations.
+		public static (Resource[] resources, bool[] huts, bool[] bonusGrassland, List<Tile> starts) Redistribute(
+			GameMap map, WorldCharacteristics wc, Redistribution what, int seed) {
+			Civ3MapGenerator.Settings settings = SettingsOf(wc);
+			settings.width = map.numTilesWide;
+			settings.height = map.numTilesTall;
+			settings.wrapX = map.wrapHorizontally;
+			settings.wrapY = map.wrapVertically;
+			settings.seed = seed;
+			// Huts are wanted whatever the barbarians (Civ3 places none
+			// without them).
+			settings.barbarians = Math.Max(settings.barbarians, 1);
+			Civ3MapGenerator g = new(settings, RulesOf(wc));
+			int[] tileAt = new int[map.tiles.Count];
+			for (int i = 0; i < map.tiles.Count; ++i) {
+				Tile t = map.tiles[i];
+				int k = g.Index(t.XCoordinate, t.YCoordinate);
+				tileAt[i] = k;
+				int terrain = Array.IndexOf(Civ3TerrainKeys, t.overlayTerrainType?.Key);
+				int baseTerrain = Array.IndexOf(Civ3TerrainKeys, t.baseTerrainType?.Key);
+				g.terrain[k] = terrain < 0 ? Civ3MapGenerator.Grassland : terrain;
+				g.baseTerrain[k] = baseTerrain < 0 ? g.terrain[k] : baseTerrain;
+				g.river[k] = (byte)((t.riverNorth ? 0x01 : 0) | (t.riverNortheast ? 0x02 : 0) | (t.riverEast ? 0x04 : 0) | (t.riverSoutheast ? 0x08 : 0)
+					| (t.riverSouth ? 0x10 : 0) | (t.riverSouthwest ? 0x20 : 0) | (t.riverWest ? 0x40 : 0) | (t.riverNorthwest ? 0x80 : 0));
+				g.flags[k] = (t.isBonusShield ? Civ3MapGenerator.BonusGrasslandFlag : 0) | (t.isSnowCapped ? Civ3MapGenerator.SnowCappedFlag : 0)
+					| (t.isPineForest ? Civ3MapGenerator.ColdFlag : 0) | (map.startingLocations.Contains(t) ? Civ3MapGenerator.StartFlag : 0);
+				g.resource[k] = t.Resource == null || t.Resource == Resource.NONE ? -1 : wc.resources.FindIndex(r => r.Key == t.Resource.Key);
+				g.hut[k] = t.hasGoodyHut;
+			}
+			g.FindBodies();
+			switch (what) {
+				case Redistribution.StartingLocations: g.RedoStartingLocations(); break;
+				case Redistribution.Resources: g.RedoResources(); break;
+				case Redistribution.GoodyHuts: g.RedoGoodyHuts(); break;
+				case Redistribution.BonusGrassland: g.RedoBonusGrassland(); break;
+			}
+			Resource[] resources = new Resource[map.tiles.Count];
+			bool[] huts = new bool[map.tiles.Count], bonus = new bool[map.tiles.Count];
+			for (int i = 0; i < map.tiles.Count; ++i) {
+				int k = tileAt[i];
+				resources[i] = g.resource[k] >= 0 ? wc.resources[g.resource[k]] : null;
+				huts[i] = g.hut[k];
+				bonus[i] = (g.flags[k] & Civ3MapGenerator.BonusGrasslandFlag) != 0;
+			}
+			List<Tile> starts = [];
+			Dictionary<int, Tile> byIndex = [];
+			for (int i = 0; i < map.tiles.Count; ++i) {
+				byIndex[tileAt[i]] = map.tiles[i];
+			}
+			for (int s = 1; s <= g.startCount && s < g.startSlots.Length; ++s) {
+				if (g.startSlots[s] >= 0 && byIndex.TryGetValue(g.startSlots[s], out Tile start)) {
+					starts.Add(start);
+				}
+			}
+			return (resources, huts, bonus, starts);
+		}
+
 		// The keys of Civ3's terrain types, by Civ3's numbers (TERR's order).
 		public static readonly string[] Civ3TerrainKeys = {
 			"desert", "plains", "grassland", "tundra", "flood plain", "hills", "mountains",
@@ -189,8 +260,8 @@ namespace C7Engine {
 			return new Civ3MapGenerator.Settings {
 				width = wc.worldSize.width,
 				height = wc.worldSize.height,
-				wrapX = true,
-				wrapY = false,
+				wrapX = wc.wrapX,
+				wrapY = wc.wrapY,
 				seed = wc.mapSeed,
 				landform = (int)wc.landform,
 				oceanCoverage = wc.oceanCoverage switch {
@@ -264,8 +335,8 @@ namespace C7Engine {
 			GameMap m = new() {
 				numTilesTall = g.height,
 				numTilesWide = g.width,
-				wrapHorizontally = true,
-				wrapVertically = false,
+				wrapHorizontally = wc.wrapX,
+				wrapVertically = wc.wrapY,
 				optimalNumberOfCities = wc.worldSize.optimalNumberOfCities,
 				techRate = wc.worldSize.techRate,
 			};

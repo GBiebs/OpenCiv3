@@ -6,6 +6,9 @@ namespace C7GameData.Save {
 	public class SaveMap {
 		public int tilesWide, tilesTall;
 		public bool wrapHorizontally, wrapVertically;
+		// Civ3's polar ice caps (WMAP, WRLD), kept for the scenario editor;
+		// the game doesn't use them yet.
+		public bool polarIceCaps;
 		public int techRate;
 		public int optimalNumberOfCities;
 		// Null for a map the game didn't generate, and in saves from before
@@ -31,6 +34,7 @@ namespace C7GameData.Save {
 			tilesTall = map.numTilesTall;
 			wrapHorizontally = map.wrapHorizontally;
 			wrapVertically = map.wrapVertically;
+			polarIceCaps = map.polarIceCaps;
 			techRate = map.techRate;
 			optimalNumberOfCities = map.optimalNumberOfCities;
 			generation = map.generation;
@@ -49,6 +53,7 @@ namespace C7GameData.Save {
 				numTilesTall = tilesTall,
 				wrapHorizontally = wrapHorizontally,
 				wrapVertically = wrapVertically,
+				polarIceCaps = polarIceCaps,
 				techRate = techRate,
 				optimalNumberOfCities = optimalNumberOfCities,
 				generation = generation,

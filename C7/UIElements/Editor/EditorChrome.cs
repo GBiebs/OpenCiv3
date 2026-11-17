@@ -184,7 +184,7 @@ public partial class EditorChrome : Control {
 	public void ShowTile(string text) => tileLabel.Text = text;
 
 	// Civ3's status bar shows the zoom level.
-	public void ShowZoom(float zoom) => zoomLabel.Text = $"Zoom {Mathf.RoundToInt(zoom * 100)}%";
+	public void ShowZoom(float zoom, int? seed) => zoomLabel.Text = (seed is int s ? $"Seed {s}   " : "") + $"Zoom {Mathf.RoundToInt(zoom * 100)}%";
 
 	// What Undo and Redo would take back or do again, null for nothing.
 	public void ShowUndo(string undo, string redo) {

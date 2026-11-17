@@ -49,6 +49,12 @@ public sealed class EditHistory {
 		savedAt = undo.Count;
 	}
 
+	// Says the scenario has changes not yet saved, though there's nothing
+	// to undo (it was opened with a new map).
+	public void MarkUnsaved() {
+		savedAt = -1;
+	}
+
 	public void Begin(string name) {
 		if (open != null) {
 			throw new InvalidOperationException($"\"{open.Name}\" hasn't ended");

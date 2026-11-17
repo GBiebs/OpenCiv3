@@ -32,6 +32,11 @@ public sealed class MapPainter {
 	private readonly Random random;
 	public EditHistory History { get; }
 
+	// Civ3's View > Options "randomize bonus grassland": painted grassland
+	// is bonus grassland a third of the time (the map generator's share),
+	// rather than never.
+	public bool RandomizeBonusGrassland { get; set; }
+
 	// Brush sizes, as Civ3's editor's: 1x1, 3x3, 5x5 and 7x7.
 	public static readonly int[] Sizes = [1, 3, 5, 7];
 
@@ -380,6 +385,59 @@ public sealed class MapPainter {
 		return History.End() == null ? [] : [.. redraw];
 	}
 
+	// Civ3's Map > Redistribute: the starting locations, the resources,
+	// the goody huts or the bonus grassland placed afresh on the map as it
+	// is, by the map generator's own step (MapGenerator.Redistribute) with
+	// the seed. One undo step; only the tiles that change are recorded.
+	public EditHistory.Step Redistribute(MapGenerator.Redistribution what, int seed) {
+		GameMap map = Map;
+		WorldCharacteristics wc = WorldMaker.CharacteristicsOf(gameData);
+		(Resource[] resources, bool[] huts, bool[] bonus, List<Tile> starts) = MapGenerator.Redistribute(map, wc, what, seed);
+		History.Begin(what switch {
+			MapGenerator.Redistribution.StartingLocations => "Redistribute Starting Locations",
+			MapGenerator.Redistribution.Resources => "Redistribute Natural Resources",
+			MapGenerator.Redistribution.GoodyHuts => "Redistribute Goody Huts",
+			_ => "Redistribute Bonus Grassland",
+		});
+		List<Tile> changed = [];
+		for (int i = 0; i < map.tiles.Count; ++i) {
+			Tile tile = map.tiles[i];
+			switch (what) {
+				case MapGenerator.Redistribution.Resources: {
+						Resource now = resources[i] == null ? Resource.NONE
+						: gameData.Resources.Find(r => r.Key == resources[i].Key) ?? Resource.NONE;
+						if (tile.Resource != now) {
+							History.Touch(tile);
+							tile.Resource = now;
+							tile.ResourceKey = now.Key;
+							changed.Add(tile);
+						}
+						break;
+					}
+				case MapGenerator.Redistribution.GoodyHuts when tile.hasGoodyHut != huts[i]:
+					History.Touch(tile);
+					tile.hasGoodyHut = huts[i];
+					changed.Add(tile);
+					break;
+				case MapGenerator.Redistribution.BonusGrassland when tile.isBonusShield != bonus[i]:
+					History.Touch(tile);
+					tile.isBonusShield = bonus[i];
+					changed.Add(tile);
+					break;
+			}
+		}
+		if (what == MapGenerator.Redistribution.StartingLocations) {
+			foreach (Tile tile in map.startingLocations.Concat(starts).Distinct().ToList()) {
+				History.Touch(tile);
+				changed.Add(tile);
+			}
+			map.startingLocations.Clear();
+			map.startingLocations.AddRange(starts);
+		}
+		Journal(changed);
+		return History.End();
+	}
+
 	public void BeginStroke(string name) {
 		History.Begin(name);
 	}
@@ -460,9 +518,12 @@ public sealed class MapPainter {
 	}
 
 	// Whether the tile already is what the brush paints.
-	private static bool Shows(Tile tile, TerrainBrush brush) {
+	// (With bonus grassland randomized, grassland is grassland, bonus or
+	// not, so a drag over it doesn't roll again.)
+	private bool Shows(Tile tile, TerrainBrush brush) {
+		bool anyBonus = RandomizeBonusGrassland && brush.Variant == TerrainBrush.Kind.Plain && brush.Terrain.IsGrassland;
 		return tile.overlayTerrainType == brush.Terrain
-			&& tile.isBonusShield == (brush.Variant == TerrainBrush.Kind.BonusGrassland)
+			&& (anyBonus || tile.isBonusShield == (brush.Variant == TerrainBrush.Kind.BonusGrassland))
 			&& tile.isSnowCapped == (brush.Variant == TerrainBrush.Kind.SnowCapped)
 			&& tile.isPineForest == (brush.Variant == TerrainBrush.Kind.PineForest);
 	}
@@ -493,7 +554,8 @@ public sealed class MapPainter {
 		bool wasWater = tile.baseTerrainType.IsWater;
 		tile.baseTerrainType = BaseFor(tile, terrain);
 		tile.overlayTerrainType = terrain;
-		tile.isBonusShield = brush.Variant == TerrainBrush.Kind.BonusGrassland;
+		tile.isBonusShield = brush.Variant == TerrainBrush.Kind.BonusGrassland
+			|| (RandomizeBonusGrassland && brush.Variant == TerrainBrush.Kind.Plain && terrain.IsGrassland && random.Next(3) == 0);
 		tile.isSnowCapped = brush.Variant == TerrainBrush.Kind.SnowCapped;
 		tile.isPineForest = brush.Variant == TerrainBrush.Kind.PineForest;
 		if (terrain.IsWater && !wasWater) {

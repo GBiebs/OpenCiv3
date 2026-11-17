@@ -9,6 +9,7 @@ using C7GameData.Save;
 public static class ScenarioEditorSession {
 	private static SaveGame pending;
 	private static string pendingPath;
+	private static bool pendingModified;
 
 	// Whether the next game scene is the scenario editor.
 	public static bool Opening => pending != null;
@@ -19,9 +20,12 @@ public static class ScenarioEditorSession {
 	// The scenario for the next game scene to edit, and the file it came
 	// from (null for a new one, and for a Civ3 scenario, which is saved as
 	// a new file).
-	public static void Open(SaveGame scenario, string path) {
+	// modified: it has changes not yet saved to the file (a scenario
+	// reopened with a new map).
+	public static void Open(SaveGame scenario, string path, bool modified = false) {
 		pending = scenario;
 		pendingPath = path;
+		pendingModified = modified;
 	}
 
 	// Opens a scenario, a Civ3 scenario or a saved game to edit, finding a
@@ -54,5 +58,12 @@ public static class ScenarioEditorSession {
 		pending = null;
 		pendingPath = null;
 		return taken;
+	}
+
+	// Whether the scenario just taken has unsaved changes (read once).
+	public static bool TakeModified() {
+		bool modified = pendingModified;
+		pendingModified = false;
+		return modified;
 	}
 }

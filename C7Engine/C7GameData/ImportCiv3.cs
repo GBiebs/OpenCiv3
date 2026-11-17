@@ -3060,6 +3060,7 @@ namespace C7GameData {
 			if (civ3Save is not null && civ3Save.Wrld.Height > 0 && civ3Save.Wrld.Width > 0) {
 				save.Map.wrapHorizontally = civ3Save.Wrld.XWrapping;
 				save.Map.wrapVertically = civ3Save.Wrld.YWrapping;
+				save.Map.polarIceCaps = civ3Save.Wrld.PolarIceCaps;
 			}
 		}
 
@@ -3094,6 +3095,7 @@ namespace C7GameData {
 			if (biq is not null && biq.Wmap is not null && biq.Wmap.Length > 0) {
 				save.Map.wrapHorizontally = biq.Wmap[0].XWrapping;
 				save.Map.wrapVertically = biq.Wmap[0].YWrapping;
+				save.Map.polarIceCaps = biq.Wmap[0].PolarIceCaps;
 			}
 		}
 

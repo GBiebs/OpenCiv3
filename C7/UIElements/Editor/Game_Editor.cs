@@ -20,11 +20,15 @@ public partial class Game {
 	// until it's saved).
 	internal ScenarioInfo EditorInfo { get; private set; }
 	internal string EditorPath { get; private set; }
+	// Whether the scenario came with changes not saved yet (reopened with a
+	// new map).
+	internal bool EditorStartsModified { get; private set; }
 
 	internal MapView EditorMapView => mapView;
 
 	private void InitializeEditor() {
 		(SaveGame scenario, string path) = ScenarioEditorSession.Take();
+		EditorStartsModified = ScenarioEditorSession.TakeModified();
 		editing = true;
 		EditorInfo = scenario.Scenario ?? new ScenarioInfo();
 		EditorPath = path;
@@ -113,6 +117,21 @@ public partial class Game {
 	// A new scenario on the current rules, in a new editor.
 	internal void NewScenario() {
 		ScenarioEditorSession.Open(ScenarioFiles.NewScenario(Global.GameMode.GetSave()), null);
+		GetTree().ChangeSceneToFile("res://C7Game.tscn");
+	}
+
+	// The scenario as it is now, as it would be saved.
+	internal SaveGame CurrentScenario() {
+		SaveGame scenario = null;
+		EngineStorage.ReadGameData(gameData => scenario = ScenarioFiles.ToScenario(gameData, EditorInfo));
+		return scenario;
+	}
+
+	// Opens the scenario again in a new editor, with its changes not saved
+	// yet (after Generate Map, Clear Map or a change to the map's
+	// switches, which replace the map).
+	internal void ReopenScenario(SaveGame scenario) {
+		ScenarioEditorSession.Open(ScenarioFiles.ForEditing(scenario), EditorPath, modified: true);
 		GetTree().ChangeSceneToFile("res://C7Game.tscn");
 	}
 

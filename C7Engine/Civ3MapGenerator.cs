@@ -155,6 +155,33 @@ namespace C7Engine {
 			FindStartingLocations();
 		}
 
+		// The scenario editor's Map > Redistribute (MapGenerator.Redistribute):
+		// a placement step again on a map loaded into the arrays, its old
+		// placements taken off first.
+		public void RedoResources() {
+			Array.Fill(resource, -1);
+			AddResources();
+		}
+
+		public void RedoGoodyHuts() {
+			Array.Fill(hut, false);
+			AddGoodyHuts();
+		}
+
+		public void RedoBonusGrassland() {
+			for (int i = 0; i < tileCount; ++i) {
+				flags[i] &= ~BonusGrasslandFlag;
+			}
+			AddBonusGrassland();
+		}
+
+		public void RedoStartingLocations() {
+			for (int i = 0; i < tileCount; ++i) {
+				flags[i] &= ~StartFlag;
+			}
+			FindStartingLocations();
+		}
+
 		// --- Tiles and neighbors ---
 
 		public int X(int i) {

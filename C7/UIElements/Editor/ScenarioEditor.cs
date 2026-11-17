@@ -51,6 +51,8 @@ public partial class ScenarioEditor : Control {
 		Undo, Redo,
 		Grid, ZoomIn, ZoomOut,
 		GridCoordinates, FoodShieldIcons, CleanMap, Territory, CityNames, TileOwners, UnitCounts, Minimap,
+		RedistributeStarts, RedistributeResources, RedistributeHuts, RedistributeGrassland, WrapX, WrapY, PolarIceCaps,
+		RandomBonusGrassland,
 		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
@@ -94,6 +96,9 @@ public partial class ScenarioEditor : Control {
 		AddChild(fileDialog);
 
 		painter = new MapPainter(EngineStorage.gameData);
+		if (game.EditorStartsModified) {
+			painter.History.MarkUnsaved();
+		}
 		// As Civ3's editor starts: the first terrain (desert), 1 x 1.
 		terrainBrush = painter.TerrainBrushes().FirstOrDefault();
 		resourceBrush = painter.ResourceBrushes().FirstOrDefault();
@@ -139,7 +144,9 @@ public partial class ScenarioEditor : Control {
 		}
 		if (game.EditorMapView.cameraZoom != shownZoom) {
 			shownZoom = game.EditorMapView.cameraZoom;
-			chrome.ShowZoom(shownZoom);
+			// Civ3's status bar shows the seed of a generated map.
+			GameData data = EngineStorage.gameData;
+			chrome.ShowZoom(shownZoom, data.map.generation != null ? data.seed : null);
 		}
 		if (shotPath != null && ++framesShown == 90) {
 			GetViewport().GetTexture().GetImage().SavePng(shotPath);
@@ -178,6 +185,9 @@ public partial class ScenarioEditor : Control {
 		view.AddSeparator();
 		view.AddCheckItem("Minimap", (int)MenuItem.Minimap);
 		view.SetItemAccelerator(view.GetItemIndex((int)MenuItem.Minimap), Key.M);
+		// Civ3's View > Options.
+		view.AddSeparator("Options");
+		view.AddCheckItem("Randomize Bonus Grassland", (int)MenuItem.RandomBonusGrassland);
 
 		PopupMenu map = Menu("Map");
 		foreach (EditorTools.Info tool in EditorTools.All) {
@@ -193,8 +203,20 @@ public partial class ScenarioEditor : Control {
 			map.SetItemChecked(map.GetItemIndex((int)SizeItem(size)), size == BrushSize);
 		}
 		map.AddSeparator();
-		Add(map, "Generate Map...", MenuItem.GenerateMap, enabled: false);
-		Add(map, "Clear Map...", MenuItem.ClearMap, enabled: false);
+		Add(map, "Generate Map...", MenuItem.GenerateMap);
+		Add(map, "Clear Map...", MenuItem.ClearMap);
+		PopupMenu redistribute = Menu("Redistribute");
+		Add(redistribute, "Starting Locations", MenuItem.RedistributeStarts);
+		Add(redistribute, "Natural Resources", MenuItem.RedistributeResources);
+		Add(redistribute, "Goody Huts", MenuItem.RedistributeHuts);
+		Add(redistribute, "Bonus Grassland", MenuItem.RedistributeGrassland);
+		chrome.StyleMenu(redistribute);
+		map.AddChild(redistribute);
+		map.AddSubmenuNodeItem("Redistribute", redistribute);
+		map.AddSeparator();
+		map.AddCheckItem("Polar Ice Caps", (int)MenuItem.PolarIceCaps);
+		map.AddCheckItem("X Wrapping", (int)MenuItem.WrapX);
+		map.AddCheckItem("Y Wrapping", (int)MenuItem.WrapY);
 
 		PopupMenu scenario = Menu("Scenario");
 		Add(scenario, "Properties...", MenuItem.ScenarioProperties, enabled: false);
@@ -346,6 +368,47 @@ public partial class ScenarioEditor : Control {
 				BrushSize = EditorTools.Sizes[item - MenuItem.Size1];
 				Refresh();
 				break;
+			case MenuItem.GenerateMap:
+				CloseDialog();
+				dialog = chrome.WorldSetupDialog(EngineStorage.gameData.map, EngineStorage.gameData.worldSizes, setup => {
+					CloseDialog();
+					game.ReopenScenario(WorldMaker.Generate(game.CurrentScenario(), setup));
+				}, CloseDialog);
+				AddChild(dialog);
+				break;
+			case MenuItem.ClearMap:
+				CloseDialog();
+				dialog = chrome.ClearMapDialog(EngineStorage.gameData.terrainTypes, EngineStorage.gameData.worldSizes, (terrain, width, height) => {
+					CloseDialog();
+					GameMap old = EngineStorage.gameData.map;
+					game.ReopenScenario(WorldMaker.Clear(game.CurrentScenario(), width, height, terrain, old.wrapHorizontally, old.wrapVertically, old.polarIceCaps));
+				}, CloseDialog);
+				AddChild(dialog);
+				break;
+			case >= MenuItem.RedistributeStarts and <= MenuItem.RedistributeGrassland:
+				if (!painting) {
+					MapGenerator.Redistribution what = MapGenerator.Redistribution.StartingLocations + (item - MenuItem.RedistributeStarts);
+					EditHistory.Step step = painter.Redistribute(what, new System.Random().Next(int.MaxValue));
+					game.EditorMapView.InvalidateMap();
+					Say(step?.Name ?? "Nothing changed");
+					UpdateTitle();
+					Refresh();
+				}
+				break;
+			case MenuItem.RandomBonusGrassland:
+				painter.RandomizeBonusGrassland = !painter.RandomizeBonusGrassland;
+				Refresh();
+				break;
+			case MenuItem.WrapX:
+			case MenuItem.WrapY:
+			case MenuItem.PolarIceCaps: {
+					// The map view is made for the map's wrapping, so the editor
+					// opens again with it (as Civ3's editor redraws the map).
+					GameMap old = EngineStorage.gameData.map;
+					game.ReopenScenario(WorldMaker.SetMapFlags(game.CurrentScenario(),
+						old.wrapHorizontally ^ (item == MenuItem.WrapX), old.wrapVertically ^ (item == MenuItem.WrapY), old.polarIceCaps ^ (item == MenuItem.PolarIceCaps)));
+					break;
+				}
 			case MenuItem.TileProperties:
 				OpenTileProperties(contextTile);
 				break;
@@ -478,6 +541,11 @@ public partial class ScenarioEditor : Control {
 				SetChecked(menu, MenuItem.TileOwners, mapLayer.showOwners);
 				SetChecked(menu, MenuItem.UnitCounts, mapLayer.showUnitCounts);
 				SetChecked(menu, MenuItem.Minimap, minimap.Visible);
+				GameMap gameMap = EngineStorage.gameData.map;
+				SetChecked(menu, MenuItem.WrapX, gameMap.wrapHorizontally);
+				SetChecked(menu, MenuItem.WrapY, gameMap.wrapVertically);
+				SetChecked(menu, MenuItem.PolarIceCaps, gameMap.polarIceCaps);
+				SetChecked(menu, MenuItem.RandomBonusGrassland, painter.RandomizeBonusGrassland);
 			}
 			SetEnabled(menu, MenuItem.Undo, painter.History.CanUndo);
 			SetEnabled(menu, MenuItem.Redo, painter.History.CanRedo);
