@@ -320,6 +320,15 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
+	// Takes a menu out of the tree at once (so a new one can have its name)
+	// and frees it.
+	private static void Discard(Node menu) {
+		if (menu != null && IsInstanceValid(menu)) {
+			menu.GetParent()?.RemoveChild(menu);
+			menu.QueueFree();
+		}
+	}
+
 	// Civ3's pop-up of what the brush paints, at the mouse.
 	private void ShowPicker(EditorTool tool) {
 		(List<string> names, List<Texture2D> icons, int chosen) = PickerItems(tool);
@@ -327,7 +336,7 @@ public partial class ScenarioEditor : Control {
 			return;
 		}
 		if (pickers.TryGetValue(tool, out PopupMenu old)) {
-			old.QueueFree();
+			Discard(old);
 		}
 		PopupMenu picker = StyledMenu(PickerName(tool));
 		picker.AddThemeConstantOverride("icon_max_width", 20);
@@ -482,20 +491,55 @@ public partial class ScenarioEditor : Control {
 	// The tile a context menu was opened on.
 	private Tile contextTile;
 
-	// Civ3's right-click menu on the map: the tile's properties, and
-	// centering the view there.
+	// Civ3's right-click menu on the map: the tile's properties, Delete (a
+	// submenu of what's on the tile, Civ3 1.34's "cascading popup submenus
+	// for the many delete options"), and centering the view there.
 	private void ShowContextMenu(Vector2 position) {
 		contextTile = game.EditorTileAt(position);
 		if (contextTile == null) {
 			return;
 		}
-		contextMenu?.QueueFree();
+		Discard(contextMenu);
 		contextMenu = StyledMenu("TileMenu");
 		Add(contextMenu, "Tile Properties...", MenuItem.TileProperties);
+		AddDeleteMenu(contextMenu, contextTile);
 		Add(contextMenu, "Center Here", MenuItem.CenterHere);
 		AddChild(contextMenu);
 		contextMenu.Position = (Vector2I)position;
 		contextMenu.Popup();
+	}
+
+	// The Delete submenu: each thing on the tile, and All when there are
+	// several; greyed when there's nothing.
+	private void AddDeleteMenu(PopupMenu menu, Tile tile) {
+		List<Erasable> things = painter.ErasablesOn(tile);
+		if (things.Count == 0) {
+			menu.AddItem("Delete");
+			menu.SetItemDisabled(menu.ItemCount - 1, true);
+			return;
+		}
+		PopupMenu delete = new() { Name = "DeleteMenu" };
+		chrome.StyleMenu(delete);
+		for (int i = 0; i < things.Count; ++i) {
+			delete.AddItem(things[i].Name, i);
+		}
+		if (things.Count > 1) {
+			delete.AddSeparator();
+			delete.AddItem("All", things.Count);
+		}
+		delete.IdPressed += id => Erase(tile, id < things.Count ? [things[(int)id]] : things);
+		menu.AddChild(delete);
+		menu.AddSubmenuNodeItem("Delete", delete);
+	}
+
+	private void Erase(Tile tile, List<Erasable> things) {
+		if (painting || painter.Erase(tile, things).Count == 0) {
+			return;
+		}
+		game.EditorMapView.InvalidateMap();
+		Say(painter.History.UndoName);
+		UpdateTitle();
+		Refresh();
 	}
 
 	public bool DialogOpen => dialog != null;

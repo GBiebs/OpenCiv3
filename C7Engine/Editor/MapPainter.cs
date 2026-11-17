@@ -19,6 +19,11 @@ public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainIm
 	public enum Kind { River, GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation }
 }
 
+// Something on a tile that the right-click menu's Delete submenu can take
+// off: the resource, an overlay (an improvement or a flag), or the river
+// along one edge.
+public sealed record Erasable(string Name, Resource Resource = null, OverlayBrush Overlay = null, TileDirection? RiverEdge = null);
+
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
 // is one press of the mouse, however far it's dragged: BeginStroke, Paint
 // at each tile the brush passes over, EndStroke.
@@ -281,6 +286,98 @@ public sealed class MapPainter {
 		Rivers.SetCorners(around);
 		Journal(around);
 		return around;
+	}
+
+	// What the Delete submenu lists for the tile, in the overlay pop-up's
+	// order after the resource; rivers one entry per edge.
+	public List<Erasable> ErasablesOn(Tile tile) {
+		List<Erasable> things = [];
+		if (tile == null || tile == Tile.NONE) {
+			return things;
+		}
+		if (tile.Resource != null && tile.Resource != Resource.NONE && tile.Resource.Category != ResourceCategory.NONE) {
+			things.Add(new Erasable(tile.Resource.Name, Resource: tile.Resource));
+		}
+		foreach (TileDirection edge in Edges) {
+			if (Rivers.Has(tile, edge)) {
+				things.Add(new Erasable($"River ({EdgeName(edge)} edge)", RiverEdge: edge));
+			}
+		}
+		foreach (OverlayBrush brush in OverlayBrushes()) {
+			bool on = brush.What switch {
+				OverlayBrush.Kind.River => false,
+				OverlayBrush.Kind.Improvement => tile.overlays.HasImprovement(brush.Improvement),
+				_ => Has(tile, brush),
+			};
+			if (on) {
+				things.Add(new Erasable(brush.Name, Overlay: brush));
+			}
+		}
+		// Improvements the pop-up hasn't got (craters, fallout, a barricade).
+		foreach (TerrainImprovement improvement in tile.overlays.GetImprovements()) {
+			if (!things.Any(t => t.Overlay?.Improvement == improvement)) {
+				things.Add(new Erasable(Capitalized(improvement.key), Overlay: new OverlayBrush(OverlayBrush.Kind.Improvement, improvement.key, improvement)));
+			}
+		}
+		return things;
+	}
+
+	private static string EdgeName(TileDirection edge) => edge switch {
+		TileDirection.NORTHEAST => "northeast",
+		TileDirection.SOUTHEAST => "southeast",
+		TileDirection.SOUTHWEST => "southwest",
+		_ => "northwest",
+	};
+
+	private static string Capitalized(string key) => string.IsNullOrEmpty(key) ? key : char.ToUpperInvariant(key[0]) + key[1..];
+
+	// Takes the things off the tile, as one action ("Delete Mine", or
+	// "Delete All" for several). Returns the tiles to redraw, or none.
+	public List<Tile> Erase(Tile tile, IReadOnlyList<Erasable> things) {
+		if (tile == null || tile == Tile.NONE || things.Count == 0) {
+			return [];
+		}
+		History.Begin(things.Count == 1 ? $"Delete {things[0].Name}" : "Delete All");
+		HashSet<Tile> redraw = [tile];
+		History.Touch(tile);
+		foreach (Erasable thing in things) {
+			if (thing.Resource != null && tile.Resource == thing.Resource) {
+				tile.Resource = Resource.NONE;
+				tile.ResourceKey = Resource.NONE.Key;
+			} else if (thing.RiverEdge is TileDirection edge && Rivers.Has(tile, edge)) {
+				List<Tile> around = Rivers.CornersAround([tile, tile.neighbors[edge]]);
+				foreach (Tile t in around) {
+					History.Touch(t);
+				}
+				Rivers.Set(tile, edge, false);
+				if (tile.neighbors.TryGetValue(edge, out Tile other) && other != null && other != Tile.NONE) {
+					Rivers.Set(other, edge.Reversed(), false);
+				}
+				Rivers.SetCorners(around);
+				redraw.UnionWith(around);
+			} else if (thing.Overlay is OverlayBrush overlay) {
+				switch (overlay.What) {
+					case OverlayBrush.Kind.GoodyHut:
+						tile.hasGoodyHut = false;
+						break;
+					case OverlayBrush.Kind.BarbarianCamp:
+						tile.hasBarbarianCamp = false;
+						break;
+					case OverlayBrush.Kind.StartingLocation:
+						Map.startingLocations.Remove(tile);
+						break;
+					case OverlayBrush.Kind.VictoryLocation:
+						tile.isVictoryLocation = false;
+						break;
+					case OverlayBrush.Kind.Improvement when tile.overlays.HasImprovement(overlay.Improvement):
+						tile.overlays.Remove(overlay.Improvement);
+						break;
+				}
+			}
+		}
+		Journal(redraw);
+		// No terrain changes: the continents stay as they are.
+		return History.End() == null ? [] : [.. redraw];
 	}
 
 	public void BeginStroke(string name) {

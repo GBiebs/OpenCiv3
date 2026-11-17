@@ -593,4 +593,55 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Rivers.SetCorners(gameData.map.tiles);
 		Assert.All(gameData.map.tiles, t => Assert.Equal(civ3[t], (t.riverNorth, t.riverEast, t.riverSouth, t.riverWest)));
 	}
+	// The Delete submenu lists what's on the tile: the resource, the
+	// rivers by edge, then the overlays in the pop-up's order.
+	[Fact]
+	public void TheDeleteMenuListsWhatsOnTheTile() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 5, tile);
+		Assert.Empty(painter.ErasablesOn(tile));
+		Place(painter, ResourceNamed(painter, "Cattle"), tile);
+		River(painter, (tile, TileDirection.NORTHEAST), (tile, TileDirection.SOUTHWEST));
+		Overlay(painter, "Road", tile);
+		Overlay(painter, "Mine", tile);
+		Overlay(painter, "Goody Hut", tile);
+		Overlay(painter, "Victory Point Location", tile);
+
+		Assert.Equal(["Cattle", "River (northeast edge)", "River (southwest edge)", "Goody Hut", "Mine", "Road", "Victory Point Location"],
+			painter.ErasablesOn(tile).Select(e => e.Name).ToList());
+	}
+
+	// Deleting one thing is one undo step; deleting a river takes it off
+	// both tiles and works the corners out again.
+	[Fact]
+	public void DeletingIsUndone() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 7, tile);
+		Tile north = tile.neighbors[TileDirection.NORTH];
+		River(painter, (tile, TileDirection.NORTHEAST), (north, TileDirection.SOUTHWEST));
+		Overlay(painter, "Railroad", tile);
+		Overlay(painter, "Starting Location", tile);
+		Assert.True(tile.riverNorth);
+
+		List<Erasable> things = painter.ErasablesOn(tile);
+		painter.Erase(tile, [things.First(e => e.Name == "River (northeast edge)")]);
+		Assert.False(tile.riverNortheast);
+		Assert.False(tile.neighbors[TileDirection.NORTHEAST].riverSouthwest);
+		Assert.False(tile.riverNorth);
+		Assert.Equal("Delete River (northeast edge)", painter.History.UndoName);
+		painter.Undo();
+		Assert.True(tile.riverNortheast && tile.riverNorth);
+
+		painter.Erase(tile, painter.ErasablesOn(tile));
+		Assert.Empty(painter.ErasablesOn(tile));
+		Assert.Empty(gameData.map.startingLocations);
+		Assert.False(tile.HasRoad());
+		Assert.Equal("Delete All", painter.History.UndoName);
+		painter.Undo();
+		Assert.True(tile.HasRailroad());
+		Assert.Equal([tile], gameData.map.startingLocations);
+		Assert.Equal(3, painter.ErasablesOn(tile).Count);
+	}
 }
