@@ -37,6 +37,23 @@ public class ScenarioInfo {
 	// Civ3's Fog of War tool: the tiles every player knows when the game
 	// starts (besides what their cities and units see).
 	public List<TileLocation> revealedTiles = [];
+
+	// Civ3's Scenario Properties, Scenario tab, beyond what the game data
+	// keeps (victory conditions, rules, calendar, barbarians):
+	// the number of players the scenario is made for (0: not set), and the
+	// civilizations a player may pick (empty: all).
+	public int numberOfPlayers;
+	public List<string> playableCivs = [];
+	// The whole map known to every player when the game starts
+	// (ScenarioStart).
+	public bool revealMap;
+	// Kept for scenarios but not used by the game yet: Preserve Random
+	// Seed, Civ-Specific Abilities, Culturally-Linked Start, Respawn AI
+	// Players, Auto Place Capture Units, Retain Culture on Capture, the
+	// time limit in minutes, Conquests' campaign number.
+	public bool preserveRandomSeed, civSpecificAbilities = true, culturallyLinkedStart, respawnAiPlayers, autoPlaceCaptureUnits = true, retainCulture;
+	public int timeLimitMinutes;
+	public int campaign;
 }
 
 public sealed class PlayerStart {

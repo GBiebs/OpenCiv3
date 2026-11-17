@@ -168,7 +168,23 @@ public partial class EditorChrome {
 
 	private static SpinBox Spin(int value, int min = 10, int max = 362) {
 		SpinBox spin = new() { MinValue = min, MaxValue = max, Step = 1, Value = value, CustomMinimumSize = new Vector2(80, 0) };
+		StyleField(spin.GetLineEdit());
 		return spin;
+	}
+
+	// A text field the parchment shows: a light fill, a brown frame, ink.
+	internal static void StyleField(Control field) {
+		StyleBoxFlat normal = SetupStyle.Box(LightColor, new Color(SetupStyle.Brown, 0.8f), 1, 3);
+		normal.ContentMarginLeft = normal.ContentMarginRight = 5;
+		StyleBoxFlat focus = SetupStyle.Box(LightColor, SetupStyle.Ink, 1, 3);
+		focus.ContentMarginLeft = focus.ContentMarginRight = 5;
+		field.AddThemeStyleboxOverride("normal", normal);
+		field.AddThemeStyleboxOverride("focus", focus);
+		field.AddThemeStyleboxOverride("read_only", normal);
+		foreach (string color in new[] { "font_color", "font_readonly_color", "caret_color" }) {
+			field.AddThemeColorOverride(color, SetupStyle.Ink);
+		}
+		field.AddThemeColorOverride("font_placeholder_color", SetupStyle.Faded);
 	}
 
 	private static CheckBox Check(string text, bool on) {

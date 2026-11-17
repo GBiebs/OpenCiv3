@@ -30,6 +30,10 @@ public partial class ScenarioSetup : Control {
 
 	[Export] Label loadingLabel;
 
+	// A scenario made in the editor: the victory conditions and rules it
+	// allows, each a box the player may untick (ScenarioRules).
+	private readonly List<(C7Engine.Editor.ScenarioRules.Toggle toggle, Civ3Checkbox box)> ruleBoxes = [];
+
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready() {
 		SaveGame save = GetSave();
@@ -43,7 +47,9 @@ public partial class ScenarioSetup : Control {
 		civilizations = save.Civilizations;
 		playerListContainer.Columns = (int)Math.Ceiling(civilizations.Count / 12.0);
 
-		List<SavePlayer> pickablePlayers = save.Players.Where(p => p.canBePicked).ToList();
+		// Only the civilizations the scenario lets a player pick.
+		List<SavePlayer> pickablePlayers = save.Players
+			.Where(p => p.canBePicked && C7Engine.Editor.ScenarioRules.IsPlayable(save, p.civilization)).ToList();
 		string initiallySelectedCiv = pickablePlayers.First(p => p.canBePicked).civilization;
 
 		foreach (SavePlayer player in pickablePlayers) {
@@ -92,8 +98,55 @@ public partial class ScenarioSetup : Control {
 			container.CustomMinimumSize = new Vector2(843.0f / difficultyContainer.Columns, 0);
 		}
 
+		AddScenarioInfo(save);
+
 		confirm.Pressed += CreateGame;
 		cancel.Pressed += BackToMainMenu;
+	}
+
+	// A scenario made in the editor shows its title and description (Civ3's
+	// scenario intro), and what it allows as boxes to keep or untick.
+	private void AddScenarioInfo(SaveGame save) {
+		if (!C7Engine.Editor.ScenarioRules.IsEditorScenario(save)) {
+			return;
+		}
+		// In the panel under the civilizations, empty on this screen.
+		VBoxContainer box = new() { Name = "ScenarioInfo", Position = new Vector2(72, 506), Size = new Vector2(610, 0) };
+		box.AddThemeConstantOverride("separation", 2);
+		Label title = new() { Text = save.Scenario.title ?? "" };
+		title.AddThemeFontSizeOverride("font_size", 17);
+		box.AddChild(title);
+		if (!string.IsNullOrWhiteSpace(save.Scenario.description)) {
+			Label description = new() {
+				Text = save.Scenario.description,
+				AutowrapMode = TextServer.AutowrapMode.WordSmart,
+				CustomMinimumSize = new Vector2(610, 0),
+			};
+			description.AddThemeFontSizeOverride("font_size", 13);
+			box.AddChild(description);
+		}
+		background.AddChild(box);
+
+		List<C7Engine.Editor.ScenarioRules.Toggle> allowed = C7Engine.Editor.ScenarioRules.Allowed(save);
+		if (allowed.Count == 0) {
+			return;
+		}
+		VBoxContainer rules = new() { Name = "ScenarioRules", Position = new Vector2(740, 120), Size = new Vector2(220, 0) };
+		rules.AddThemeConstantOverride("separation", 0);
+		Label header = new() { Text = "GAME RULES" };
+		header.AddThemeFontSizeOverride("font_size", 15);
+		rules.AddChild(header);
+		foreach (C7Engine.Editor.ScenarioRules.Toggle toggle in allowed) {
+			Civ3Checkbox check = new() {
+				Text = toggle.Name,
+				FontSize = 13,
+				ButtonPressed = true,
+				TooltipText = "Allowed by the scenario; untick to play without it.",
+			};
+			rules.AddChild(check);
+			ruleBoxes.Add((toggle, check));
+		}
+		background.AddChild(rules);
 	}
 
 	private void BackToMainMenu() {
@@ -175,6 +228,8 @@ public partial class ScenarioSetup : Control {
 			sp.human = sp.civilization == this.civilization.name;
 		}
 		save.GameDifficulty = difficulty;
+		// What the player unticked of what the scenario allows.
+		C7Engine.Editor.ScenarioRules.TurnOff(save, ruleBoxes.Where(r => !r.box.ButtonPressed).Select(r => r.toggle));
 		// Under Regicide, civs the scenario gives no King get theirs.
 		GameSetup.PlaceScenarioKings(save);
 		// What a scenario made in the editor asks of the game as it starts.

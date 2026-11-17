@@ -102,7 +102,7 @@ public partial class EditorChrome : Control {
 			tools.AddChild(button);
 		}
 		tools.AddChild(Divider());
-		tools.AddChild(TextButton("Scenario...", "Scenario properties", null));
+		tools.AddChild(TextButton("Scenario...", "Scenario properties", () => Run(ScenarioEditor.MenuItem.ScenarioProperties)));
 		tools.AddChild(TextButton("Players...", "Player properties", null));
 		tools.AddChild(Divider());
 		OptionButton rulesPage = SetupStyle.MakeDropdown("The rules page to edit");

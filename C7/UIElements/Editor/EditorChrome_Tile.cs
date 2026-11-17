@@ -42,6 +42,7 @@ public partial class EditorChrome {
 		tab.AddChild(nameHead);
 		HBoxContainer nameRow = new();
 		LineEdit name = new() { Text = editing.city.Name, SizeFlagsHorizontal = SizeFlags.ExpandFill, Editable = !editing.city.AutoName };
+		StyleField(name);
 		nameRow.AddChild(name);
 		OptionButton select = SetupStyle.MakeDropdown("A name from the owner's list");
 		SetupStyle.AddItems(select, ["Select...", .. editing.cityNames], 0);
@@ -147,6 +148,7 @@ public partial class EditorChrome {
 			grid.AddChild(owner);
 			grid.AddChild(InkLabel("Name:"));
 			LineEdit name = new() { Text = facts.Name ?? "", CustomMinimumSize = new Vector2(220, 0) };
+			StyleField(name);
 			name.TextChanged += text => Set(editing.unitFacts[index] with { Name = string.IsNullOrWhiteSpace(text) ? null : text });
 			grid.AddChild(name);
 			grid.AddChild(InkLabel("Experience:"));

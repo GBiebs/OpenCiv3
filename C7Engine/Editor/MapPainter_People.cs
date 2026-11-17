@@ -513,3 +513,19 @@ public sealed partial class MapPainter {
 		revealed = null;
 	}
 }
+
+public sealed partial class MapPainter {
+	// Gives the scenario the Scenario tab's settings, as one undo step.
+	// Returns why it couldn't, or null.
+	public string EditScenario(ScenarioSettings settings) {
+		if (settings.Problem() is string why) {
+			return why;
+		}
+		ScenarioSettings before = ScenarioSettings.Of(gameData, Info);
+		History.Begin("Scenario Properties");
+		settings.ApplyTo(gameData, Info);
+		History.Record(() => before.ApplyTo(gameData, Info), () => settings.ApplyTo(gameData, Info));
+		History.End();
+		return null;
+	}
+}

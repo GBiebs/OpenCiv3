@@ -235,7 +235,7 @@ public partial class ScenarioEditor : Control {
 		Add(map, "Set Active Player...", MenuItem.SetActivePlayer);
 
 		PopupMenu scenario = Menu("Scenario");
-		Add(scenario, "Properties...", MenuItem.ScenarioProperties, enabled: false);
+		Add(scenario, "Properties...", MenuItem.ScenarioProperties);
 		Add(scenario, "Player Properties...", MenuItem.PlayerProperties, enabled: false);
 		scenario.AddSeparator();
 		foreach ((MenuItem item, string name, bool on) in new[] {
@@ -383,6 +383,9 @@ public partial class ScenarioEditor : Control {
 			case >= MenuItem.Size1 and <= MenuItem.Size7:
 				BrushSize = EditorTools.Sizes[item - MenuItem.Size1];
 				Refresh();
+				break;
+			case MenuItem.ScenarioProperties:
+				OpenScenarioProperties();
 				break;
 			case MenuItem.GenerateMap:
 				CloseDialog();
@@ -834,6 +837,26 @@ public partial class ScenarioEditor : Control {
 			apply = edits => ApplyTileEdits(tile, edits),
 		};
 		dialog = chrome.TileProperties(tile, editing, CloseDialog);
+		AddChild(dialog);
+	}
+
+	// Civ3's Scenario Properties.
+	public void OpenScenarioProperties() {
+		CloseDialog();
+		GameData data = EngineStorage.gameData;
+		dialog = chrome.ScenarioPropertiesDialog(ScenarioSettings.Of(data, painter.Info),
+			ScenarioSettings.CivilizationNames(data), settings => {
+				if (painting) {
+					return "Finish painting first.";
+				}
+				if (painter.EditScenario(settings) is string why) {
+					return why;
+				}
+				Say("Scenario properties changed");
+				UpdateTitle();
+				Refresh();
+				return null;
+			}, CloseDialog);
 		AddChild(dialog);
 	}
 

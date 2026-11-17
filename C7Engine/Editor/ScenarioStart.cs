@@ -13,6 +13,18 @@ public static class ScenarioStart {
 		NameAutoNamedCities(save);
 		GiveStartUnits(save);
 		RevealTiles(save);
+		RevealMap(save);
+	}
+
+	// Civ3's Reveal Entire Map: every player knows every tile.
+	private static void RevealMap(SaveGame save) {
+		if (save.Scenario?.revealMap != true) {
+			return;
+		}
+		List<TileLocation> all = save.Map.tiles.Select(t => new TileLocation(t.X, t.Y)).ToList();
+		foreach (SavePlayer player in save.Players.Where(p => !p.isBarbarian)) {
+			player.tileKnowledge = [.. all];
+		}
 	}
 
 	// A player's own starting location gets the rules' start units, as a

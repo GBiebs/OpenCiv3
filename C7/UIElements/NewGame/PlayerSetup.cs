@@ -109,8 +109,12 @@ public partial class PlayerSetup : Control {
 		// The civilizations and Random (the barbarians aren't listed).
 		playerListContainer.Columns = (int)Math.Ceiling(save.Civilizations.Count / 12.0);
 		string initiallySelectedCiv = choices.ChosenCivilization(save.Civilizations).name;
+		// A scenario's playable civilizations only (Civ3's Scenario tab).
+		if (!C7Engine.Editor.ScenarioRules.IsPlayable(save, initiallySelectedCiv)) {
+			initiallySelectedCiv = save.Civilizations.FirstOrDefault(c => !c.isBarbarian && C7Engine.Editor.ScenarioRules.IsPlayable(save, c.name))?.name;
+		}
 		foreach (Civilization civ in save.Civilizations) {
-			if (civ.isBarbarian) {
+			if (civ.isBarbarian || !C7Engine.Editor.ScenarioRules.IsPlayable(save, civ.name)) {
 				continue;
 			}
 
@@ -176,6 +180,10 @@ public partial class PlayerSetup : Control {
 		if (ScenarioPlay.StartsOnMap(save) is int starts) {
 			numberOfCivs = System.Math.Clamp(starts, 1, numberOfCivs);
 		}
+		// A scenario's number of players (Civ3's Scenario tab).
+		if (save.Scenario?.numberOfPlayers > 0) {
+			numberOfCivs = System.Math.Clamp(save.Scenario.numberOfPlayers, 1, numberOfCivs);
+		}
 		teamCount = numberOfCivs;
 		defaultTeamCount = GameSetup.DefaultTeamCount(global.WorldCharacteristics.worldSize);
 		AddTeamChoices();
@@ -186,6 +194,7 @@ public partial class PlayerSetup : Control {
 
 		// Set up game rules
 		AddRules();
+		LimitToScenario();
 
 		// Set up the difficulty buttons
 		difficultyContainer.Columns = save.Difficulties.Count;
@@ -210,6 +219,24 @@ public partial class PlayerSetup : Control {
 
 		confirm.Pressed += CreateGame;
 		cancel.Pressed += BackToMainMenu;
+	}
+
+	// A scenario made in the editor: what it doesn't allow can't be turned
+	// on (Civ3's help: players "cannot enable any conditions that have been
+	// disabled"), so its box is greyed out.
+	private void LimitToScenario() {
+		if (!C7Engine.Editor.ScenarioRules.IsEditorScenario(save)) {
+			return;
+		}
+		HashSet<string> allowed = C7Engine.Editor.ScenarioRules.Allowed(save).Select(t => t.Name).ToHashSet();
+		HashSet<string> limited = C7Engine.Editor.ScenarioRules.All.Select(t => t.Name).ToHashSet();
+		foreach (Civ3Checkbox box in background.FindChildren("*", nameof(Civ3Checkbox), true, false).OfType<Civ3Checkbox>()) {
+			if (limited.Contains(box.Text) && !allowed.Contains(box.Text)) {
+				box.ButtonPressed = false;
+				box.Disabled = true;
+				box.TooltipText = "This scenario doesn't allow it.";
+			}
+		}
 	}
 
 	private void AddRules() {
@@ -786,7 +813,8 @@ public partial class PlayerSetup : Control {
 	// The civilization chosen, or for Random one drawn now from those no
 	// rival slot has.
 	private Civilization PlayerCivilization() {
-		return selectedCivilization ?? NewGameChoices.RandomCivilization(save.Civilizations,
+		return selectedCivilization ?? NewGameChoices.RandomCivilization(
+			save.Civilizations.Where(c => C7Engine.Editor.ScenarioRules.IsPlayable(save, c.name)).ToList(),
 			opponentSelectors.Select(ob => ob.GetItemText(ob.Selected)).Where(n => n != NewGameChoices.Random), new Random());
 	}
 
@@ -900,6 +928,11 @@ public partial class PlayerSetup : Control {
 		Task.Run(() => {
 			try {
 				gameSetup.Populate(save);
+				// What a scenario made in the editor asks of the game as it
+				// starts (the revealed map, the fog painted clear).
+				if (C7Engine.Editor.ScenarioRules.IsEditorScenario(save)) {
+					C7Engine.Editor.ScenarioStart.Apply(save);
+				}
 			} catch (Exception e) {
 				Callable.From(() => OnCreateGameFailed(e)).CallDeferred();
 				return;
