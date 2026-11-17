@@ -109,7 +109,15 @@ public class ScenarioSettingsTest : IClassFixture<SaveGameFixture> {
 		SaveGame saved = SaveGame.Load(path, s => s);
 		C7GameData.GameData again = ScenarioEditing.Open(ScenarioFiles.ForEditing(saved), fixture.behaviors);
 		ScenarioSettings kept = ScenarioSettings.Of(again, saved.Scenario);
-		Assert.Equal(after with { PlayableCivs = kept.PlayableCivs, ScaleTurns = kept.ScaleTurns, ScaleUnits = kept.ScaleUnits }, kept);
+		Assert.Equal(after with {
+			PlayableCivs = kept.PlayableCivs,
+			ScaleTurns = kept.ScaleTurns,
+			ScaleUnits = kept.ScaleUnits,
+			AllianceNames = kept.AllianceNames,
+			AllianceOf = kept.AllianceOf,
+			AllianceWars = kept.AllianceWars,
+			Players = kept.Players,
+		}, kept);
 		Assert.Equal(after.PlayableCivs, kept.PlayableCivs);
 		Assert.Equal(after.ScaleTurns, kept.ScaleTurns);
 		Assert.Equal(after.ScaleUnits, kept.ScaleUnits);

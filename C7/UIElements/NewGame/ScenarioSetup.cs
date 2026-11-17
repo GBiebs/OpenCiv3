@@ -24,6 +24,13 @@ public partial class ScenarioSetup : Control {
 
 	Difficulty difficulty = null;
 	ButtonGroup difficultyButtonGroup = new();
+	// The difficulty buttons, by level's name.
+	private readonly Dictionary<string, Civ3MenuButton> difficultyButtons = [];
+
+	// The civilization picked and the player it makes the human (an
+	// editor scenario's "Any" and "Random" players, ScenarioStart).
+	private C7Engine.Editor.ScenarioStart.HumanChoice choice;
+	private SaveGame shownSave;
 
 	[Export] TextureButton confirm;
 	[Export] TextureButton cancel;
@@ -47,13 +54,18 @@ public partial class ScenarioSetup : Control {
 		civilizations = save.Civilizations;
 		playerListContainer.Columns = (int)Math.Ceiling(civilizations.Count / 12.0);
 
-		// Only the civilizations the scenario lets a player pick.
-		List<SavePlayer> pickablePlayers = save.Players
-			.Where(p => p.canBePicked && C7Engine.Editor.ScenarioRules.IsPlayable(save, p.civilization)).ToList();
-		string initiallySelectedCiv = pickablePlayers.First(p => p.canBePicked).civilization;
+		// Only the civilizations the scenario lets a player pick (its
+		// players a human may play; for an editor scenario's "Any" player,
+		// every civilization no other player has; for a "Random" one, one
+		// drawn now).
+		shownSave = save;
+		List<C7Engine.Editor.ScenarioStart.HumanChoice> choices = C7Engine.Editor.ScenarioRules.IsEditorScenario(save)
+			? C7Engine.Editor.ScenarioStart.HumanChoices(save, new Random())
+			: save.Players.Where(p => p.canBePicked).Select(p => new C7Engine.Editor.ScenarioStart.HumanChoice(p.civilization, p.id.ToString())).ToList();
+		string initiallySelectedCiv = choices.First().Civilization;
 
-		foreach (SavePlayer player in pickablePlayers) {
-			Civilization civ = civilizations.Find(c => c.name == player.civilization);
+		foreach (C7Engine.Editor.ScenarioStart.HumanChoice option in choices) {
+			Civilization civ = civilizations.Find(c => c.name == option.Civilization);
 
 			Civ3MenuButton button = new() {
 				Text = civ.name,
@@ -64,13 +76,16 @@ public partial class ScenarioSetup : Control {
 			};
 			button.Pressed += () => {
 				this.civilization = civ;
+				choice = option;
 				DisplaySelectedLeader();
+				LockDifficulty();
 			};
 			playerListContainer.AddChild(button);
 
-			if (civ.name == initiallySelectedCiv) {
+			if (civ.name == initiallySelectedCiv && choice == null) {
 				button.ButtonPressed = true;
 				this.civilization = civ;
+				choice = option;
 			}
 		}
 		background.AddChild(leaderHead);
@@ -91,6 +106,7 @@ public partial class ScenarioSetup : Control {
 			};
 			button.Pressed += () => { this.difficulty = difficulty; };
 			container.AddChild(button);
+			difficultyButtons[difficulty.Name] = button;
 			if (difficulty.Name == initiallySelectedDifficulty) {
 				button.ButtonPressed = true;
 				this.difficulty = difficulty;
@@ -99,6 +115,7 @@ public partial class ScenarioSetup : Control {
 		}
 
 		AddScenarioInfo(save);
+		LockDifficulty();
 
 		confirm.Pressed += CreateGame;
 		cancel.Pressed += BackToMainMenu;
@@ -159,7 +176,23 @@ public partial class ScenarioSetup : Control {
 		leaderHead.SetPosition(new Vector2(414, 46));
 
 		string traits = string.Join(", ", civilization.traits);
-		civLabel.Text = $"{civilization.leader} of the {civilization.noun}\n({traits})";
+		// An editor scenario's player may have a leader of its own.
+		string leader = shownSave?.Scenario?.players.Find(s => s.player == choice?.Player) is { civDefaults: false, leaderName: string own }
+			? own : civilization.leader;
+		civLabel.Text = $"{leader} of the {civilization.noun}\n({traits})";
+	}
+
+	// A difficulty the scenario sets for the chosen player is the only one
+	// (Civ3's Player Properties); otherwise any.
+	private void LockDifficulty() {
+		string fixedLevel = choice == null || shownSave == null ? null : C7Engine.Editor.ScenarioStart.DifficultyFor(shownSave, choice.Player);
+		foreach ((string name, Civ3MenuButton button) in difficultyButtons) {
+			button.Disabled = fixedLevel != null && name != fixedLevel;
+			if (name == fixedLevel) {
+				button.ButtonPressed = true;
+				difficulty = shownSave.Difficulties.Find(d => d.Name == name);
+			}
+		}
 	}
 
 	private SaveGame GetSave() {
@@ -224,8 +257,14 @@ public partial class ScenarioSetup : Control {
 	}
 
 	private void UpdateSaveAndStartGame(SaveGame save, GlobalSingleton global) {
-		foreach (SavePlayer sp in save.Players) {
-			sp.human = sp.civilization == this.civilization.name;
+		// The human's player and civilization, and the other "Any" and
+		// "Random" players' (ScenarioStart).
+		if (C7Engine.Editor.ScenarioRules.IsEditorScenario(save)) {
+			C7Engine.Editor.ScenarioStart.AssignCivilizations(save, choice, new Random());
+		} else {
+			foreach (SavePlayer sp in save.Players) {
+				sp.human = sp.civilization == this.civilization.name;
+			}
 		}
 		save.GameDifficulty = difficulty;
 		// What the player unticked of what the scenario allows.

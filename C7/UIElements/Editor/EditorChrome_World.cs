@@ -189,6 +189,7 @@ public partial class EditorChrome {
 
 	private static CheckBox Check(string text, bool on) {
 		CheckBox check = new() { Text = text, ButtonPressed = on };
+		check.AddThemeColorOverride("font_disabled_color", SetupStyle.Faded);
 		foreach (string color in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color" }) {
 			check.AddThemeColorOverride(color, SetupStyle.Ink);
 		}

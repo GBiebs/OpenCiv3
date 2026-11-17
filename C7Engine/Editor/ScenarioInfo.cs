@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using C7GameData;
 using C7GameData.Save;
 
 namespace C7Engine.Editor;
@@ -58,6 +60,54 @@ public class ScenarioInfo {
 	// the game yet: anyone may capture any flag; the flag unit comes back
 	// when captured.
 	public bool anyoneCapturesAnyFlag, respawnFlagUnits;
+
+	// Civ3's Player Properties beyond what the players keep themselves
+	// (government, era, treasury, advances, colour, Skip 1st Turn): one
+	// for each player that has any, by player ID. A player without one is
+	// its civilization, with the scenario's own data.
+	public List<PlayerSlot> players = [];
+}
+
+// What a player's civilization is: the one it has, or Civ3's "Any" (the
+// human picks one at setup, or a random one for a computer) or "Random"
+// (fixed at setup).
+public enum CivChoice { Fixed, Any, Random }
+
+public sealed class PlayerSlot {
+	public string player;
+	public CivChoice civ = CivChoice.Fixed;
+	// Civ3's "Civilization Defaults": the leader name, gender, team colour
+	// and free advances are the civilization's (set again at the start, as
+	// an Any or Random player's civilization is known only then).
+	public bool civDefaults;
+	// Overrides of the civilization's leader name and gender, or null.
+	public string leaderName;
+	public Gender? leaderGender;
+	// The difficulty the player plays (null: Civ3's "Any"). The human's
+	// is the only one the game honours: the game has one difficulty.
+	public string difficulty;
+	// Civ3's Starting Units, given at the player's own starting location
+	// instead of the rules' two (empty: the rules').
+	public List<StartUnit> startUnits = [];
+	// Civ3's Start with Embassies: an embassy with every other player that
+	// has it (so they've met).
+	public bool startWithEmbassies;
+
+	public PlayerSlot Copy() => new() {
+		player = player,
+		civ = civ,
+		civDefaults = civDefaults,
+		leaderName = leaderName,
+		leaderGender = leaderGender,
+		difficulty = difficulty,
+		startUnits = startUnits.Select(u => new StartUnit { type = u.type, count = u.count }).ToList(),
+		startWithEmbassies = startWithEmbassies,
+	};
+}
+
+public sealed class StartUnit {
+	public string type;
+	public int count = 1;
 }
 
 public sealed class PlayerStart {

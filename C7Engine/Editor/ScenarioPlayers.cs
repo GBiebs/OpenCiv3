@@ -33,7 +33,10 @@ public static class ScenarioPlayers {
 			used.Add($"Player-{next}");
 			return ID.FromString($"Player-{next}");
 		}
-		if (!scenario.Players.Any(p => p.isBarbarian) && scenario.Civilizations.Find(c => c.isBarbarian) is Civilization barbarians) {
+		// By civilization: a loaded save doesn't keep SavePlayer.isBarbarian.
+		HashSet<string> barbarianCivs = scenario.Civilizations.Where(c => c.isBarbarian).Select(c => c.name).ToHashSet();
+		if (!scenario.Players.Any(p => p.isBarbarian || barbarianCivs.Contains(p.civilization))
+				&& scenario.Civilizations.Find(c => c.isBarbarian) is Civilization barbarians) {
 			scenario.Players.Insert(0, NewPlayer(scenario, barbarians, NextId()));
 		}
 		SavePlayer player = NewPlayer(scenario, civ, NextId());
@@ -62,6 +65,24 @@ public static class ScenarioPlayers {
 			governmentId = government,
 			canBePicked = !civ.isBarbarian && !civ.IsIndependent,
 		};
+	}
+
+	// Player Properties' Civilization: the player becomes the civilization,
+	// its units and citizens of the old one too (and back, to undo).
+	internal static void ChangeCivilization(GameData gameData, Player player, Civilization civ) {
+		Civilization old = player.civilization;
+		if (old == civ) {
+			return;
+		}
+		player.civilization = civ;
+		foreach (MapUnit unit in gameData.mapUnits.Where(u => u.owner == player && u.nationality == old)) {
+			unit.nationality = civ;
+		}
+		foreach (City city in gameData.cities.Where(c => c.owner == player)) {
+			foreach (CityResident resident in city.residents.Where(r => r.nationality == old)) {
+				resident.nationality = civ;
+			}
+		}
 	}
 
 	// What the editor calls a player: its civilization's name.

@@ -91,7 +91,8 @@ namespace C7GameData {
 		public int CivilizationIndex(Civilization civ) => civ == null ? -1 : civilizations.IndexOf(civ);
 		internal HashSet<CultureGroup> cultureGroups = new HashSet<CultureGroup>();
 		internal HashSet<Alliance> alliances;
-		internal Dictionary<Alliance, Alliance> allianceWars = new Dictionary<Alliance, Alliance>();
+		// Each pair of alliances locked at war, once.
+		internal List<KeyValuePair<Alliance, Alliance>> allianceWars = new();
 
 		public List<ExperienceLevel> experienceLevels = new List<ExperienceLevel>();
 		public List<Tech> techs = new();

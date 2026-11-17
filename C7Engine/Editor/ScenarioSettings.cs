@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using C7GameData;
@@ -46,6 +47,37 @@ public sealed record ScenarioSettings {
 	public int WonderPoints, DefeatPoints, AdvancePoints, CityConquestPoints, LocationPoints;
 	public int VictoryPointLimit, CultureOneCity, CultureAllCities, DominationLand, DominationPopulation;
 	public bool AnyoneCapturesAnyFlag, RespawnFlagUnits;
+
+	// Civ3's Locked Alliances tab: four named alliances, the players in
+	// each (by player ID; a player in none is left out), which alliances
+	// start locked at war (pairs of 1 to 4, the smaller first), and the
+	// victory type (Coalition: allies win together).
+	public string[] AllianceNames = ["Alliance 1", "Alliance 2", "Alliance 3", "Alliance 4"];
+	public Dictionary<string, int> AllianceOf = [];
+	public List<(int, int)> AllianceWars = [];
+	public bool CoalitionVictory;
+
+	// Civ3's Disasters tab: the plague (the times in years, the variance
+	// a % of the grace period, the strength 0 to 100) and the volcano
+	// eruption period in years.
+	public bool PermitPlagues;
+	public string PlagueName = "Plague";
+	public int PlagueEarliestStart, PlagueVariance, PlagueDuration, PlagueStrength, PlagueGracePeriod, PlagueMaxOccurrences;
+	public int VolcanoEruptionPeriod;
+
+	// Civ3's Player Properties, a player each (barbarians aside).
+	public List<PlayerSettings> Players = [];
+
+	// A copy whose lists and arrays are its own, for a dialog to change.
+	public ScenarioSettings Copy() => this with {
+		PlayableCivs = [.. PlayableCivs],
+		ScaleTurns = [.. ScaleTurns],
+		ScaleUnits = [.. ScaleUnits],
+		AllianceNames = [.. AllianceNames],
+		AllianceOf = new(AllianceOf),
+		AllianceWars = [.. AllianceWars],
+		Players = Players.Select(p => p.Copy()).ToList(),
+	};
 
 	public static ScenarioSettings Of(GameData gameData, ScenarioInfo info) {
 		VictoryConditions vc = gameData.victoryConditions ?? new VictoryConditions();
@@ -106,7 +138,65 @@ public sealed record ScenarioSettings {
 			DominationPopulation = vc.DominationPopulationPercent,
 			AnyoneCapturesAnyFlag = info.anyoneCapturesAnyFlag,
 			RespawnFlagUnits = info.respawnFlagUnits,
+			AllianceNames = AllianceNamesOf(gameData),
+			AllianceOf = gameData.players.Where(p => p.alliance != null && !p.IsIndependent)
+				.ToDictionary(p => p.id.ToString(), p => p.alliance.index),
+			AllianceWars = gameData.allianceWars.Where(w => w.Key != null && w.Value != null)
+				.Select(w => (Math.Min(w.Key.index, w.Value.index), Math.Max(w.Key.index, w.Value.index)))
+				.Where(w => w.Item1 != w.Item2).Distinct().ToList(),
+			CoalitionVictory = rules.TeamVictory,
+			PermitPlagues = rules.PermitPlagues,
+			PlagueName = rules.PlagueName ?? "Plague",
+			PlagueEarliestStart = rules.PlagueEarliestStart,
+			PlagueVariance = rules.PlagueVariance,
+			PlagueDuration = rules.PlagueDuration,
+			PlagueStrength = rules.PlagueStrength,
+			PlagueGracePeriod = rules.PlagueGracePeriod,
+			PlagueMaxOccurrences = rules.PlagueMaxOccurrences,
+			VolcanoEruptionPeriod = rules.VolcanoEruptionPeriod,
+			Players = gameData.players.Where(p => !p.IsIndependent && p.civilization != null)
+				.Select(p => PlayerSettings.Of(gameData, p, info.players.Find(s => s.player == p.id.ToString()))).ToList(),
 		};
+	}
+
+	private static string[] AllianceNamesOf(GameData gameData) {
+		string[] names = ["Alliance 1", "Alliance 2", "Alliance 3", "Alliance 4"];
+		foreach (Alliance alliance in gameData.alliances ?? []) {
+			if (alliance.index is >= 1 and <= 4 && !string.IsNullOrWhiteSpace(alliance.name)) {
+				names[alliance.index - 1] = alliance.name;
+			}
+		}
+		return names;
+	}
+
+	// The game's difficulty levels, eras and governments, for the Players
+	// tab's lists.
+	public static List<string> DifficultyNames(GameData gameData) => gameData.difficulties.Select(d => d.Name).ToList();
+	public static List<string> GovernmentNames(GameData gameData) => gameData.governments.Select(g => g.name).ToList();
+	public static List<string> TechNames(GameData gameData) => gameData.techs.Select(t => t.Name).ToList();
+	public static List<string> UnitTypeNames(GameData gameData) => gameData.unitPrototypes.Select(u => u.name).ToList();
+	public static readonly string[] EraNames = ["Ancient Times", "Middle Ages", "Industrial Age", "Modern Era"];
+
+	// The civilization's own leader, gender, colour and free advances
+	// (Civilization Defaults).
+	public static (string leader, Gender gender, int color, List<string> techs) CivilizationDefaults(GameData gameData, string civilization) {
+		Civilization civ = gameData.civilizations.Find(c => c.name == civilization);
+		if (civ == null) {
+			return ("", Gender.Male, 0, []);
+		}
+		return (civ.leader ?? "", civ.leaderGender, civ.primaryColorIndex,
+			gameData.techs.Where(t => civ.startingTechs.Contains(t.id)).Select(t => t.Name).ToList());
+	}
+
+	// The alliances anew, each player in its own (or none), and the wars
+	// between them.
+	private void ApplyAlliances(GameData gameData) {
+		List<Alliance> alliances = Enumerable.Range(1, 4).Select(i => new Alliance(i, AllianceNames[i - 1].Trim())).ToList();
+		gameData.alliances = [.. alliances];
+		foreach (Player player in gameData.players.Where(p => !p.IsIndependent)) {
+			player.alliance = AllianceOf.TryGetValue(player.id.ToString(), out int index) ? alliances[index - 1] : null;
+		}
+		gameData.allianceWars = AllianceWars.Distinct().Select(w => new KeyValuePair<Alliance, Alliance>(alliances[w.Item1 - 1], alliances[w.Item2 - 1])).ToList();
 	}
 
 	// The civilizations a scenario's players may be, for Playable
@@ -131,6 +221,33 @@ public sealed record ScenarioSettings {
 		}
 		if (DominationLand is < 1 or > 100 || DominationPopulation is < 1 or > 100) {
 			return "Domination's shares are 1 to 100%.";
+		}
+		if (AllianceNames.Length != 4 || AllianceNames.Any(string.IsNullOrWhiteSpace)) {
+			return "Each alliance needs a name.";
+		}
+		if (AllianceNames.Select(n => n.Trim()).Distinct().Count() != 4) {
+			return "Two alliances can't have the same name.";
+		}
+		if (AllianceOf.Values.Any(a => a is < 1 or > 4) || AllianceWars.Any(w => w.Item1 is < 1 or > 4 || w.Item2 is < 1 or > 4 || w.Item1 == w.Item2)) {
+			return "There are four alliances, and one can't be at war with itself.";
+		}
+		if (PermitPlagues && string.IsNullOrWhiteSpace(PlagueName)) {
+			return "The plague needs a name.";
+		}
+		if (PlagueStrength is < 0 or > 100) {
+			return "The plague's strength is 0 to 100.";
+		}
+		if (new[] { PlagueVariance, PlagueDuration, PlagueGracePeriod, PlagueMaxOccurrences, VolcanoEruptionPeriod }.Any(n => n < 0)) {
+			return "The disasters' numbers can't be below 0.";
+		}
+		foreach (PlayerSettings player in Players) {
+			if (player.Problem() is string why) {
+				return why;
+			}
+		}
+		string twice = Players.Where(p => p.Choice == CivChoice.Fixed).GroupBy(p => p.Civilization).FirstOrDefault(g => g.Count() > 1)?.Key;
+		if (twice != null) {
+			return $"{twice} can be only one player's civilization.";
 		}
 		return null;
 	}
@@ -186,6 +303,22 @@ public sealed record ScenarioSettings {
 		info.anyoneCapturesAnyFlag = AnyoneCapturesAnyFlag;
 		info.respawnFlagUnits = RespawnFlagUnits;
 
+		ApplyAlliances(gameData);
+		Rules rules = gameData.rules;
+		rules.TeamVictory = CoalitionVictory;
+		rules.PermitPlagues = PermitPlagues;
+		rules.PlagueName = PlagueName;
+		rules.PlagueEarliestStart = PlagueEarliestStart;
+		rules.PlagueVariance = PlagueVariance;
+		rules.PlagueDuration = PlagueDuration;
+		rules.PlagueStrength = PlagueStrength;
+		rules.PlagueGracePeriod = PlagueGracePeriod;
+		rules.PlagueMaxOccurrences = PlagueMaxOccurrences;
+		rules.VolcanoEruptionPeriod = VolcanoEruptionPeriod;
+		foreach (PlayerSettings player in Players) {
+			player.ApplyTo(gameData, info);
+		}
+
 		TimeOptions old = gameData.timeOptions ?? new TimeOptions();
 		int[,] scale = new int[2, 8];
 		for (int i = 0; i < 7; ++i) {
@@ -207,5 +340,108 @@ public sealed record ScenarioSettings {
 			turnLimit = TurnLimit,
 			timeScale = scale,
 		};
+	}
+}
+
+// Civ3's Player Properties for one player: its civilization (or Any or
+// Random), whether a human may play it, Civilization Defaults (else its
+// own leader name, gender, team colour and free advances), difficulty
+// (null: Any), government, starting era (0 to 3), treasury, starting
+// units, Skip 1st Turn and Start with Embassies.
+public sealed record PlayerSettings {
+	public string Id = "";
+	public CivChoice Choice;
+	public string Civilization = "";
+	public bool Human;
+	public bool CivDefaults;
+	public string LeaderName = "";
+	public Gender LeaderGender;
+	public int Color;
+	public string Difficulty;
+	public string Government = "";
+	public int Era;
+	public int Treasury;
+	public List<StartUnit> StartUnits = [];
+	public List<string> FreeTechs = [];
+	public bool SkipFirstTurn, StartWithEmbassies;
+
+	public PlayerSettings Copy() => this with {
+		StartUnits = StartUnits.Select(u => new StartUnit { type = u.type, count = u.count }).ToList(),
+		FreeTechs = [.. FreeTechs],
+	};
+
+	public static PlayerSettings Of(GameData gameData, Player player, PlayerSlot slot) {
+		Civilization civ = player.civilization;
+		return new PlayerSettings {
+			Id = player.id.ToString(),
+			Choice = slot?.civ ?? CivChoice.Fixed,
+			Civilization = civ.name,
+			Human = player.canBePicked,
+			CivDefaults = slot?.civDefaults ?? false,
+			LeaderName = slot?.leaderName ?? civ.leader ?? "",
+			LeaderGender = slot?.leaderGender ?? civ.leaderGender,
+			Color = player.primaryColorIndex,
+			Difficulty = slot?.difficulty,
+			Government = player.government?.name ?? "",
+			Era = Math.Max(0, Player.EraIndex(player.eraCivilopediaName)),
+			Treasury = player.gold,
+			StartUnits = slot?.startUnits.Select(u => new StartUnit { type = u.type, count = u.count }).ToList() ?? [],
+			FreeTechs = gameData.techs.Where(t => player.knownTechs.Contains(t.id)).Select(t => t.Name).ToList(),
+			SkipFirstTurn = player.skipFirstTurn,
+			StartWithEmbassies = slot?.startWithEmbassies ?? false,
+		};
+	}
+
+	public string Problem() {
+		if (Treasury < 0) {
+			return $"{Civilization}'s treasury can't be below 0.";
+		}
+		if (!CivDefaults && string.IsNullOrWhiteSpace(LeaderName)) {
+			return $"{Civilization}'s leader needs a name.";
+		}
+		if (StartUnits.Any(u => u.count is < 1 or > 99 || string.IsNullOrEmpty(u.type))) {
+			return $"{Civilization}'s starting units are 1 to 99 of a type.";
+		}
+		return null;
+	}
+
+	public void ApplyTo(GameData gameData, ScenarioInfo info) {
+		Player player = gameData.players.Find(p => p.id.ToString() == Id);
+		if (player == null) {
+			return;
+		}
+		if (gameData.civilizations.Find(c => c.name == Civilization) is Civilization civ && civ != player.civilization) {
+			ScenarioPlayers.ChangeCivilization(gameData, player, civ);
+		}
+		player.canBePicked = Human;
+		player.gold = Treasury;
+		player.skipFirstTurn = SkipFirstTurn;
+		player.eraCivilopediaName = Player.EraIndexToEra(Era);
+		if (gameData.governments.Find(g => g.name == Government) is Government government) {
+			player.government = government;
+		}
+		(string leader, Gender gender, int color, List<string> techs) = ScenarioSettings.CivilizationDefaults(gameData, Civilization);
+		// The civilization's own free advances are always known (the game
+		// adds them as it loads a player), so Free Techs adds to them.
+		List<string> known = CivDefaults ? techs : [.. FreeTechs.Union(techs)];
+		player.knownTechs = gameData.techs.Where(t => known.Contains(t.Name)).Select(t => t.id).ToHashSet();
+		player.primaryColorIndex = CivDefaults ? color : Color;
+
+		info.players.RemoveAll(s => s.player == Id);
+		PlayerSlot slot = new() {
+			player = Id,
+			civ = Choice,
+			civDefaults = CivDefaults,
+			leaderName = CivDefaults || LeaderName == leader ? null : LeaderName.Trim(),
+			leaderGender = CivDefaults || LeaderGender == gender ? null : LeaderGender,
+			difficulty = Difficulty,
+			startUnits = StartUnits.Select(u => new StartUnit { type = u.type, count = u.count }).ToList(),
+			startWithEmbassies = StartWithEmbassies,
+		};
+		// A player with nothing beyond its own data needs no slot.
+		if (slot.civ != CivChoice.Fixed || slot.civDefaults || slot.leaderName != null || slot.leaderGender != null
+				|| slot.difficulty != null || slot.startUnits.Count > 0 || slot.startWithEmbassies) {
+			info.players.Add(slot);
+		}
 	}
 }

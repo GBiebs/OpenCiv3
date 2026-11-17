@@ -1582,18 +1582,20 @@ namespace C7GameData {
 					var wwa = theBiq.Game[0].WarWithAlliance[a, e];
 
 					if (wwa != 0) {
-						save.AllianceWars.TryAdd(
-							alliances.First(al => al.name == theBiq.Game[0].AllianceNames[a]).name,
-							alliances.First(al => al.name == theBiq.Game[0].AllianceNames[e]).name
-							);
+						string one = alliances.First(al => al.name == theBiq.Game[0].AllianceNames[a]).name;
+						string other = alliances.First(al => al.name == theBiq.Game[0].AllianceNames[e]).name;
+						save.AllianceWars.TryAdd(one, other);
+						if (!save.AllianceWarPairs.Any(p => (p[0] == one && p[1] == other) || (p[0] == other && p[1] == one))) {
+							save.AllianceWarPairs.Add([one, other]);
+						}
 					}
 				}
 			}
 
 			// "Declare" war for rival alliances
-			foreach (KeyValuePair<string, string> kvp in save.AllianceWars) {
-				var playerAllianceA = save.Players.Where(p => p.alliance == kvp.Key).ToList();
-				var playerAllianceB = save.Players.Where(p => p.alliance == kvp.Value).ToList();
+			foreach ((string allianceA, string allianceB) in save.AllAllianceWars()) {
+				var playerAllianceA = save.Players.Where(p => p.alliance == allianceA).ToList();
+				var playerAllianceB = save.Players.Where(p => p.alliance == allianceB).ToList();
 
 				foreach (var playerInAllianceA in playerAllianceA) {
 					foreach (var playerInAllianceB in playerAllianceB) {

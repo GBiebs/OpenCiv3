@@ -13,9 +13,9 @@ public partial class EditorChrome {
 	private static readonly string[] Months = ["January", "February", "March", "April", "May", "June", "July", "August",
 		"September", "October", "November", "December"];
 
-	public Control ScenarioPropertiesDialog(ScenarioSettings start, List<string> civilizations, Func<ScenarioSettings, string> apply,
-		Action close, Func<Control>[] moreTabs = null) {
-		ScenarioSettings settings = start with { PlayableCivs = [.. start.PlayableCivs], ScaleTurns = [.. start.ScaleTurns], ScaleUnits = [.. start.ScaleUnits] };
+	public Control ScenarioPropertiesDialog(ScenarioSettings start, ScenarioLists lists, Func<ScenarioSettings, string> apply, Action close) {
+		ScenarioSettings settings = start.Copy();
+		List<string> civilizations = lists.Civilizations;
 		const int width = 1000, height = 690;
 		TextureRect window = Popup.CreateBackground(width, height);
 		window.CustomMinimumSize = new Vector2(width, height);
@@ -38,11 +38,16 @@ public partial class EditorChrome {
 		tabs.AddChild(ScenarioTab(settings, civilizations));
 		Action refreshPoints = null;
 		tabs.AddChild(VictoryPointsTab(settings, out refreshPoints));
-		// A field is greyed out while its victory is off on the Scenario tab.
-		tabs.TabChanged += _ => refreshPoints();
-		foreach (Func<Control> tab in moreTabs ?? []) {
-			tabs.AddChild(tab());
-		}
+		Action refreshAlliances = null;
+		tabs.AddChild(AlliancesTab(settings, out refreshAlliances));
+		tabs.AddChild(PlayersTab(settings, lists));
+		tabs.AddChild(DisastersTab(settings));
+		// A field is greyed out while its victory is off on the Scenario
+		// tab; the alliances name the players as the Players tab has them.
+		tabs.TabChanged += _ => {
+			refreshPoints();
+			refreshAlliances();
+		};
 
 		Label problem = InkLabel("");
 		problem.Name = "Problem";

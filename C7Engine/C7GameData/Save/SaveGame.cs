@@ -138,6 +138,7 @@ namespace C7GameData.Save {
 
 			foreach (KeyValuePair<Alliance, Alliance> kvp in data.allianceWars) {
 				save.AllianceWars.TryAdd(kvp.Key.name, kvp.Value.name);
+				save.AllianceWarPairs.Add([kvp.Key.name, kvp.Value.name]);
 			}
 
 			return save;
@@ -709,9 +710,22 @@ namespace C7GameData.Save {
 		}
 
 		private void ConvertAllianceWars(GameData data) {
-			foreach (var allianceWar in AllianceWars) {
-				data.allianceWars.TryAdd(data.alliances.FirstOrDefault(a => a.name == allianceWar.Key), data.alliances.FirstOrDefault(a => a.name == allianceWar.Value));
+			foreach ((string one, string other) in AllAllianceWars()) {
+				Alliance a = data.alliances?.FirstOrDefault(x => x.name == one);
+				Alliance b = data.alliances?.FirstOrDefault(x => x.name == other);
+				if (a != null && b != null && !data.allianceWars.Any(w => (w.Key == a && w.Value == b) || (w.Key == b && w.Value == a))) {
+					data.allianceWars.Add(new(a, b));
+				}
 			}
+		}
+
+		// The alliance wars: AllianceWarPairs, or in older saves
+		// AllianceWars (which holds one war per alliance).
+		public List<(string, string)> AllAllianceWars() {
+			if (AllianceWarPairs.Count > 0) {
+				return AllianceWarPairs.Where(p => p?.Length == 2).Select(p => (p[0], p[1])).ToList();
+			}
+			return AllianceWars.Select(kvp => (kvp.Key, kvp.Value)).ToList();
 		}
 
 		// The version of the save format this build writes. Bump it when the
@@ -755,6 +769,9 @@ namespace C7GameData.Save {
 		public HashSet<CultureGroup> CultureGroups = new HashSet<CultureGroup>();
 		public HashSet<Alliance> Alliances = new HashSet<Alliance>();
 		public Dictionary<string, string> AllianceWars = new Dictionary<string, string>();
+		// Every pair of alliances locked at war, by name. AllianceWars keeps
+		// one war per alliance, for older versions; older saves have only it.
+		public List<string[]> AllianceWarPairs = new();
 		public List<StrengthBonus> StrengthBonuses = new List<StrengthBonus>();
 		public Dictionary<string, int> HealRates = new Dictionary<string, int>();
 		public Rules Rules = new();

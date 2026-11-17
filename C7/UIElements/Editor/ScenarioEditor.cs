@@ -844,19 +844,21 @@ public partial class ScenarioEditor : Control {
 	public void OpenScenarioProperties() {
 		CloseDialog();
 		GameData data = EngineStorage.gameData;
-		dialog = chrome.ScenarioPropertiesDialog(ScenarioSettings.Of(data, painter.Info),
-			ScenarioSettings.CivilizationNames(data), settings => {
-				if (painting) {
-					return "Finish painting first.";
-				}
-				if (painter.EditScenario(settings) is string why) {
-					return why;
-				}
-				Say("Scenario properties changed");
-				UpdateTitle();
-				Refresh();
-				return null;
-			}, CloseDialog);
+		ScenarioLists lists = new(ScenarioSettings.CivilizationNames(data), ScenarioSettings.DifficultyNames(data),
+			ScenarioSettings.GovernmentNames(data), ScenarioSettings.TechNames(data), ScenarioSettings.UnitTypeNames(data),
+			civ => ScenarioSettings.CivilizationDefaults(data, civ));
+		dialog = chrome.ScenarioPropertiesDialog(ScenarioSettings.Of(data, painter.Info), lists, settings => {
+			if (painting) {
+				return "Finish painting first.";
+			}
+			if (painter.EditScenario(settings) is string why) {
+				return why;
+			}
+			Say("Scenario properties changed");
+			UpdateTitle();
+			Refresh();
+			return null;
+		}, CloseDialog);
 		AddChild(dialog);
 	}
 
