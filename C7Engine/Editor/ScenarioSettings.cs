@@ -37,6 +37,16 @@ public sealed record ScenarioSettings {
 	public int[] ScaleTurns = new int[7], ScaleUnits = new int[7];
 	public int Campaign;
 
+	// Civ3's Victory Point Limits tab: points per action (a wonder's cost x
+	// the multiple / 10, a unit killed's cost / 10 x the multiple, an
+	// advance's cost x the multiple, a captured city's population x the
+	// multiple, a victory location held a turn), the winning conditions
+	// (victory points, a city's culture, the civ's culture, domination's
+	// land and population %), and the capture-the-flag options.
+	public int WonderPoints, DefeatPoints, AdvancePoints, CityConquestPoints, LocationPoints;
+	public int VictoryPointLimit, CultureOneCity, CultureAllCities, DominationLand, DominationPopulation;
+	public bool AnyoneCapturesAnyFlag, RespawnFlagUnits;
+
 	public static ScenarioSettings Of(GameData gameData, ScenarioInfo info) {
 		VictoryConditions vc = gameData.victoryConditions ?? new VictoryConditions();
 		Rules rules = gameData.rules;
@@ -84,6 +94,18 @@ public sealed record ScenarioSettings {
 			ScaleTurns = Enumerable.Range(0, 7).Select(i => i < scale.GetLength(1) ? scale[0, i] : 0).ToArray(),
 			ScaleUnits = Enumerable.Range(0, 7).Select(i => i < scale.GetLength(1) ? scale[1, i] : 0).ToArray(),
 			Campaign = info.campaign,
+			WonderPoints = vc.WonderVictoryPoints,
+			DefeatPoints = vc.DefeatVictoryPoints,
+			AdvancePoints = vc.AdvanceVictoryPoints,
+			CityConquestPoints = vc.CityConquestVictoryPoints,
+			LocationPoints = vc.VictoryLocationPoints,
+			VictoryPointLimit = vc.VictoryPointLimit,
+			CultureOneCity = vc.CultureOneCityWin,
+			CultureAllCities = vc.CultureAllCitiesWin,
+			DominationLand = vc.DominationTerritoryPercent,
+			DominationPopulation = vc.DominationPopulationPercent,
+			AnyoneCapturesAnyFlag = info.anyoneCapturesAnyFlag,
+			RespawnFlagUnits = info.respawnFlagUnits,
 		};
 	}
 
@@ -103,6 +125,12 @@ public sealed record ScenarioSettings {
 		}
 		if (ScaleTurns.Any(t => t < 0) || ScaleUnits.Any(u => u < 0)) {
 			return "The time scale's numbers can't be below 0.";
+		}
+		if (new[] { WonderPoints, DefeatPoints, AdvancePoints, CityConquestPoints, LocationPoints, VictoryPointLimit, CultureOneCity, CultureAllCities }.Any(n => n < 0)) {
+			return "Victory points and culture can't be below 0.";
+		}
+		if (DominationLand is < 1 or > 100 || DominationPopulation is < 1 or > 100) {
+			return "Domination's shares are 1 to 100%.";
 		}
 		return null;
 	}
@@ -145,6 +173,18 @@ public sealed record ScenarioSettings {
 		info.retainCulture = RetainCulture;
 		info.timeLimitMinutes = TimeLimitMinutes;
 		info.campaign = Campaign;
+		vc.WonderVictoryPoints = WonderPoints;
+		vc.DefeatVictoryPoints = DefeatPoints;
+		vc.AdvanceVictoryPoints = AdvancePoints;
+		vc.CityConquestVictoryPoints = CityConquestPoints;
+		vc.VictoryLocationPoints = LocationPoints;
+		vc.VictoryPointLimit = VictoryPointLimit;
+		vc.CultureOneCityWin = CultureOneCity;
+		vc.CultureAllCitiesWin = CultureAllCities;
+		vc.DominationTerritoryPercent = DominationLand;
+		vc.DominationPopulationPercent = DominationPopulation;
+		info.anyoneCapturesAnyFlag = AnyoneCapturesAnyFlag;
+		info.respawnFlagUnits = RespawnFlagUnits;
 
 		TimeOptions old = gameData.timeOptions ?? new TimeOptions();
 		int[,] scale = new int[2, 8];

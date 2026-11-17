@@ -36,6 +36,10 @@ public partial class EditorChrome {
 		StyleTabs(tabs);
 		box.AddChild(tabs);
 		tabs.AddChild(ScenarioTab(settings, civilizations));
+		Action refreshPoints = null;
+		tabs.AddChild(VictoryPointsTab(settings, out refreshPoints));
+		// A field is greyed out while its victory is off on the Scenario tab.
+		tabs.TabChanged += _ => refreshPoints();
 		foreach (Func<Control> tab in moreTabs ?? []) {
 			tabs.AddChild(tab());
 		}
@@ -179,6 +183,60 @@ public partial class EditorChrome {
 		return scroll;
 	}
 
+	// Civ3's Victory Point Limits tab: points per action, winning
+	// conditions (each greyed out while its victory is off), capture the
+	// flag. refresh greys them as the Scenario tab now has them.
+	private Control VictoryPointsTab(ScenarioSettings s, out Action refresh) {
+		VBoxContainer tab = new() { Name = "Victory Point Limits" };
+		tab.AddThemeConstantOverride("separation", 8);
+		List<(SpinBox box, Func<bool> on)> fields = [];
+		GridContainer grid = new() { Columns = 2 };
+		grid.AddThemeConstantOverride("h_separation", 20);
+		grid.AddThemeConstantOverride("v_separation", 4);
+		void Number(string label, int value, int max, Action<int> set, Func<bool> on, string tooltip = null) {
+			grid.AddChild(InkLabel(label));
+			SpinBox spin = Spin(value, 0, max);
+			spin.Name = label;
+			spin.TooltipText = tooltip;
+			spin.ValueChanged += v => set((int)v);
+			grid.AddChild(spin);
+			fields.Add((spin, on));
+		}
+		grid.AddChild(InkLabel("Points per action").WithFontSize(15));
+		grid.AddChild(InkLabel(""));
+		Number("Wonder (cost x multiple / 10):", s.WonderPoints, 9999, v => s.WonderPoints = v, () => s.VictoryPointScoring);
+		Number("Unit killed (cost / 10 x multiple):", s.DefeatPoints, 9999, v => s.DefeatPoints = v, () => s.VictoryPointScoring);
+		Number("Advance (cost x multiple):", s.AdvancePoints, 9999, v => s.AdvancePoints = v, () => s.VictoryPointScoring);
+		Number("City captured (population x multiple):", s.CityConquestPoints, 9999, v => s.CityConquestPoints = v, () => s.VictoryPointScoring);
+		Number("Victory location held, a turn:", s.LocationPoints, 9999, v => s.LocationPoints = v, () => s.VictoryPointScoring);
+		grid.AddChild(InkLabel("Winning conditions").WithFontSize(15));
+		grid.AddChild(InkLabel(""));
+		Number("Victory points:", s.VictoryPointLimit, 999999, v => s.VictoryPointLimit = v, () => s.VictoryPointScoring);
+		Number("Culture of one city:", s.CultureOneCity, 9999999, v => s.CultureOneCity = v, () => s.Cultural);
+		Number("Culture of the civilization:", s.CultureAllCities, 9999999, v => s.CultureAllCities = v, () => s.Cultural);
+		Number("Domination, % of the land:", s.DominationLand, 100, v => s.DominationLand = v, () => s.Domination);
+		Number("Domination, % of the population:", s.DominationPopulation, 100, v => s.DominationPopulation = v, () => s.Domination);
+		tab.AddChild(grid);
+		tab.AddChild(Rule());
+		tab.AddChild(InkLabel("Capture the Flag").WithFontSize(15));
+		CheckBox anyone = Check("Allow anyone to capture any flag", s.AnyoneCapturesAnyFlag);
+		anyone.TooltipText = NotUsedYet;
+		anyone.Toggled += on => s.AnyoneCapturesAnyFlag = on;
+		tab.AddChild(anyone);
+		CheckBox respawn = Check("Respawn flag unit on capture", s.RespawnFlagUnits);
+		respawn.TooltipText = NotUsedYet;
+		respawn.Toggled += on => s.RespawnFlagUnits = on;
+		tab.AddChild(respawn);
+		refresh = () => {
+			foreach ((SpinBox box, Func<bool> on) in fields) {
+				box.Editable = on();
+				box.Modulate = on() ? Colors.White : new Color(1, 1, 1, 0.5f);
+			}
+		};
+		refresh();
+		return tab;
+	}
+
 	// Civ3's Time Options: the limit, the base unit, the start date, the
 	// time scale and the campaign.
 	private Control TimeOptions(ScenarioSettings s) {
@@ -249,5 +307,12 @@ public partial class EditorChrome {
 		scale.AddChild(grid);
 		row.AddChild(scale);
 		return row;
+	}
+}
+
+internal static class LabelSizes {
+	public static Label WithFontSize(this Label label, int size) {
+		label.AddThemeFontSizeOverride("font_size", size);
+		return label;
 	}
 }

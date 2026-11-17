@@ -51,6 +51,13 @@ public class ScenarioSettingsTest : IClassFixture<SaveGameFixture> {
 		ScaleTurns = [10, 20, 30, 40, 50, 60, 70],
 		ScaleUnits = [12, 6, 3, 2, 1, 1, 1],
 		Campaign = 4,
+		WonderPoints = 20,
+		DefeatPoints = 3,
+		VictoryPointLimit = 5000,
+		CultureOneCity = 5000,
+		DominationLand = 50,
+		DominationPopulation = 40,
+		AnyoneCapturesAnyFlag = true,
 	};
 
 	// The settings go where the game reads them (victory conditions, rules,
@@ -73,6 +80,8 @@ public class ScenarioSettingsTest : IClassFixture<SaveGameFixture> {
 		Assert.False(gameData.rules.AllowCultureFlips);
 		Assert.Equal((TimeUnit.Months, -264, 150), (gameData.timeOptions.baseUnit, gameData.timeOptions.startYear, gameData.timeOptions.turnLimit));
 		Assert.Equal(12, gameData.timeOptions.timeScale[1, 0]);
+		Assert.Equal((20, 5000, 50, 5000), (gameData.victoryConditions.WonderVictoryPoints, gameData.victoryConditions.VictoryPointLimit,
+			gameData.victoryConditions.DominationTerritoryPercent, gameData.victoryConditions.CultureOneCityWin));
 		Assert.Equal(["Rome", "Carthage"], painter.Info.playableCivs);
 
 		painter.Undo();
@@ -83,6 +92,8 @@ public class ScenarioSettingsTest : IClassFixture<SaveGameFixture> {
 		Assert.True(undone.Domination);
 		Assert.Empty(undone.PlayableCivs);
 		Assert.NotNull(painter.EditScenario(after with { NumberOfPlayers = 17 }));
+		Assert.NotNull(painter.EditScenario(after with { DominationLand = 0 }));
+		Assert.NotNull(painter.EditScenario(after with { VictoryPointLimit = -1 }));
 	}
 
 	// Saved and opened again, every setting is as it was.

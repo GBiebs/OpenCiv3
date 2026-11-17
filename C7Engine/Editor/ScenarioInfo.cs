@@ -54,6 +54,10 @@ public class ScenarioInfo {
 	public bool preserveRandomSeed, civSpecificAbilities = true, culturallyLinkedStart, respawnAiPlayers, autoPlaceCaptureUnits = true, retainCulture;
 	public int timeLimitMinutes;
 	public int campaign;
+	// Victory Point Limits' capture-the-flag options, kept but not used by
+	// the game yet: anyone may capture any flag; the flag unit comes back
+	// when captured.
+	public bool anyoneCapturesAnyFlag, respawnFlagUnits;
 }
 
 public sealed class PlayerStart {
