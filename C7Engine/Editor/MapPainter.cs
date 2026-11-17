@@ -16,7 +16,7 @@ public sealed record TerrainBrush(TerrainType Terrain, TerrainBrush.Kind Variant
 // improvement of the rules (a road, a mine, a colony...), or a tile's flag
 // (a goody hut, a barbarian camp, a starting or victory point location).
 public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainImprovement Improvement) {
-	public enum Kind { GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation }
+	public enum Kind { River, GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation }
 }
 
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
@@ -140,7 +140,7 @@ public sealed class MapPainter {
 	// The overlay brushes in the order of Civ3's help ("Brush Selector
 	// (Overlay)"): each improvement only if the rules have it.
 	public List<OverlayBrush> OverlayBrushes() {
-		List<OverlayBrush> brushes = [];
+		List<OverlayBrush> brushes = [new OverlayBrush(OverlayBrush.Kind.River, "River", null)];
 		void Improvement(string key, string name) {
 			if (gameData.terrainImprovements.Find(i => i.key == key) is TerrainImprovement improvement) {
 				brushes.Add(new OverlayBrush(OverlayBrush.Kind.Improvement, name, improvement));
@@ -172,6 +172,9 @@ public sealed class MapPainter {
 	// and mines shields, as the game's workers. A goody hut, a barbarian camp
 	// and a starting location exclude one another (Civ3's Tile Properties).
 	public static string CantPlace(Tile tile, OverlayBrush brush) {
+		if (brush.What == OverlayBrush.Kind.River) {
+			return null; // Its edge decides (CantPlaceRiver).
+		}
 		TerrainType terrain = tile.overlayTerrainType;
 		if (terrain == null || terrain.IsWater) {
 			return $"A {brush.Name.ToLowerInvariant()} goes on land only.";
@@ -244,6 +247,40 @@ public sealed class MapPainter {
 		}
 		Journal([tile]);
 		return [tile];
+	}
+
+	// The tile's edges, which rivers run along.
+	public static readonly TileDirection[] Edges = [TileDirection.NORTHEAST, TileDirection.SOUTHEAST, TileDirection.SOUTHWEST, TileDirection.NORTHWEST];
+
+	// Why a river can't run along the tile's edge, or null if it can. On
+	// Civ3's maps a river's edges always have land on both sides (every
+	// river edge in 12 of the user's saves); it reaches the sea at a corner.
+	public static string CantPlaceRiver(Tile tile, TileDirection edge) {
+		if (!tile.neighbors.TryGetValue(edge, out Tile other) || other == null || other == Tile.NONE) {
+			return "The map ends here.";
+		}
+		if (tile.overlayTerrainType.IsWater || other.overlayTerrainType.IsWater) {
+			return "A river runs between land tiles.";
+		}
+		return null;
+	}
+
+	// Lays a river along the tile's edge (both tiles' flags), and works out
+	// the corner flags around it. Returns the tiles to redraw, or none.
+	public List<Tile> PlaceRiver(Tile tile, TileDirection edge) {
+		if (tile == null || tile == Tile.NONE || CantPlaceRiver(tile, edge) != null || Rivers.Has(tile, edge)) {
+			return [];
+		}
+		Tile other = tile.neighbors[edge];
+		List<Tile> around = Rivers.CornersAround([tile, other]);
+		foreach (Tile t in around) {
+			History.Touch(t);
+		}
+		Rivers.Set(tile, edge, true);
+		Rivers.Set(other, edge.Reversed(), true);
+		Rivers.SetCorners(around);
+		Journal(around);
+		return around;
 	}
 
 	public void BeginStroke(string name) {
@@ -365,14 +402,18 @@ public sealed class MapPainter {
 	// What only land has: rivers (on both sides of each edge), huts, camps,
 	// victory locations and starting locations.
 	private void ClearLandThings(Tile tile) {
-		foreach (TileDirection direction in Enum.GetValues<TileDirection>()) {
-			if (Rivers.Has(tile, direction)) {
-				Rivers.Set(tile, direction, false);
-				if (tile.neighbors.TryGetValue(direction, out Tile other) && other != null && other != Tile.NONE) {
-					History.Touch(other);
-					Rivers.Set(other, direction.Reversed(), false);
+		if (Edges.Any(e => Rivers.Has(tile, e))) {
+			List<Tile> around = Rivers.CornersAround([tile]);
+			foreach (Tile t in around) {
+				History.Touch(t);
+			}
+			foreach (TileDirection edge in Edges) {
+				Rivers.Set(tile, edge, false);
+				if (tile.neighbors.TryGetValue(edge, out Tile other) && other != null && other != Tile.NONE) {
+					Rivers.Set(other, edge.Reversed(), false);
 				}
 			}
+			Rivers.SetCorners(around);
 		}
 		tile.hasGoodyHut = false;
 		tile.hasBarbarianCamp = false;
@@ -460,8 +501,57 @@ public sealed class MapPainter {
 	}
 }
 
-// A tile's river flags by direction.
+// A tile's river flags by direction. Civ3 keeps rivers on a tile's four
+// edges (northeast, southeast, southwest, northwest), on both tiles of an
+// edge, and a flag for each corner (north, east, south, west) that is set
+// exactly when the river edges meeting there cut the tile off from the tile
+// across the corner: measured on 12 of the user's Civ3 saves (every corner
+// flag agreed; one edge alone, or two bending round a side tile, leave it
+// off), and how the game reads it (Tile.HasRiverCrossing).
 public static class Rivers {
+	private static readonly (TileDirection corner, TileDirection left, TileDirection right)[] Corners = [
+		(TileDirection.NORTH, TileDirection.NORTHWEST, TileDirection.NORTHEAST),
+		(TileDirection.EAST, TileDirection.NORTHEAST, TileDirection.SOUTHEAST),
+		(TileDirection.SOUTH, TileDirection.SOUTHEAST, TileDirection.SOUTHWEST),
+		(TileDirection.WEST, TileDirection.SOUTHWEST, TileDirection.NORTHWEST),
+	];
+
+	// The tiles whose corner flags the edges of these tiles can change: the
+	// tiles and all their neighbours.
+	public static List<Tile> CornersAround(IEnumerable<Tile> tiles) {
+		HashSet<Tile> around = [];
+		foreach (Tile tile in tiles) {
+			around.Add(tile);
+			foreach (Tile n in tile.neighbors.Values) {
+				if (n != null && n != Tile.NONE) {
+					around.Add(n);
+				}
+			}
+		}
+		return [.. around];
+	}
+
+	// Works out the tiles' corner flags from the edges.
+	public static void SetCorners(IEnumerable<Tile> tiles) {
+		foreach (Tile tile in tiles) {
+			foreach ((TileDirection corner, TileDirection left, TileDirection right) in Corners) {
+				Set(tile, corner, CornerCut(tile, corner, left, right));
+			}
+		}
+	}
+
+	// Whether the river edges at the corner cut the tile off from the one
+	// across it: neither way round the corner (past the left tile or the
+	// right one) is free of river.
+	private static bool CornerCut(Tile tile, TileDirection corner, TileDirection left, TileDirection right) {
+		if (!tile.neighbors.TryGetValue(corner, out Tile across) || across == null || across == Tile.NONE) {
+			return false;
+		}
+		bool viaLeft = !Has(tile, left) && !Has(across, right.Reversed());
+		bool viaRight = !Has(tile, right) && !Has(across, left.Reversed());
+		return !viaLeft && !viaRight;
+	}
+
 	public static bool Has(Tile tile, TileDirection direction) {
 		return direction switch {
 			TileDirection.NORTH => tile.riverNorth,

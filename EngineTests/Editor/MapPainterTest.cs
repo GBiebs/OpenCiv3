@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using C7Engine;
 using C7Engine.Editor;
@@ -6,6 +7,7 @@ using C7Engine.Lua;
 using C7GameData;
 using C7GameData.Save;
 using EngineTests.Utils;
+using QueryCiv3;
 using Xunit;
 
 namespace EngineTests.Editor;
@@ -335,11 +337,11 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		return painter.EndStroke();
 	}
 
-	// Civ3's overlay pop-up, its help's order (rivers aside).
+	// Civ3's overlay pop-up, its help's order.
 	[Fact]
 	public void TheOverlayBrushesAreCiv3s() {
 		(_, MapPainter painter) = NewScenario();
-		Assert.Equal(["Goody Hut", "Barbarian Camp", "Fortress", "Colony", "Irrigation", "Mine", "Railroad", "Road", "Pollution",
+		Assert.Equal(["River", "Goody Hut", "Barbarian Camp", "Fortress", "Colony", "Irrigation", "Mine", "Railroad", "Road", "Pollution",
 			"Starting Location", "Airfield", "Radar Tower", "Outpost", "Victory Point Location", "Ruins"],
 			painter.OverlayBrushes().Select(b => b.Name).ToList());
 	}
@@ -478,5 +480,117 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Assert.True(again.map.tileAt(50, 52).HasRoad() && again.map.tileAt(51, 51).HasRoad());
 		Assert.Contains(again.map.tileAt(50, 48).overlays.GetImprovements(), i => i.key == Tile.TileOverlays.MINE);
 		Assert.True(again.map.tileAt(49, 49).HasColony());
+	}
+	private static EditHistory.Step River(MapPainter painter, params (Tile tile, TileDirection edge)[] edges) {
+		painter.BeginStroke("Place River");
+		foreach ((Tile tile, TileDirection edge) in edges) {
+			painter.PlaceRiver(tile, edge);
+		}
+		return painter.EndStroke();
+	}
+
+	private static int CornerFlags(GameMap map) {
+		return map.tiles.Sum(t => (t.riverNorth ? 1 : 0) + (t.riverEast ? 1 : 0) + (t.riverSouth ? 1 : 0) + (t.riverWest ? 1 : 0));
+	}
+
+	// A river along one edge is on both tiles; one edge alone sets no
+	// corner (Civ3's saves).
+	[Fact]
+	public void ARiverRunsAlongAnEdgeOnBothTiles() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 5, tile);
+		Assert.Equal("River", painter.OverlayBrushes()[0].Name);
+
+		River(painter, (tile, TileDirection.NORTHEAST));
+		Assert.True(tile.riverNortheast);
+		Assert.True(tile.neighbors[TileDirection.NORTHEAST].riverSouthwest);
+		Assert.Equal(0, CornerFlags(gameData.map));
+		Assert.Null(River(painter, (tile.neighbors[TileDirection.NORTHEAST], TileDirection.SOUTHWEST)));
+	}
+
+	// A river straight through a corner cuts the tiles across it off from
+	// each other; one bending round a tile cuts only that tile off from the
+	// one across from it (the two tiles beside the bend stay joined).
+	[Fact]
+	public void CornerFlagsFollowTheEdges() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 7, tile);
+		Tile north = tile.neighbors[TileDirection.NORTH], northwest = tile.neighbors[TileDirection.NORTHWEST];
+
+		// Bending round the northeast tile: its two edges at the corner.
+		River(painter, (tile, TileDirection.NORTHEAST), (north, TileDirection.SOUTHEAST));
+		Assert.False(tile.riverNorth);
+		Assert.False(north.riverSouth);
+		Assert.True(northwest.riverEast);
+		Assert.True(tile.neighbors[TileDirection.NORTHEAST].riverWest);
+
+		// On through the corner: tile|northeast and north|northwest.
+		River(painter, (north, TileDirection.SOUTHWEST));
+		Assert.True(tile.riverNorth);
+		Assert.True(north.riverSouth);
+		Assert.True(northwest.riverEast);
+		Assert.True(tile.neighbors[TileDirection.NORTHEAST].riverWest);
+		Assert.True(tile.HasRiverCrossing(TileDirection.NORTH));
+
+		painter.Undo();
+		Assert.False(tile.riverNorth);
+		Assert.False(north.riverSouthwest);
+		Assert.True(tile.riverNortheast);
+	}
+
+	// Rivers run between land tiles; water painted over one takes its
+	// rivers off both sides and the corners with them, and undo puts them
+	// back.
+	[Fact]
+	public void RiversKeepToLand() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 3, tile);
+		Tile coast = gameData.map.tileAt(50, 46);
+		Assert.NotNull(MapPainter.CantPlaceRiver(tile.neighbors[TileDirection.NORTH], TileDirection.NORTHEAST));
+		Assert.Null(River(painter, (coast, TileDirection.SOUTHEAST)));
+
+		Tile north = tile.neighbors[TileDirection.NORTH];
+		River(painter, (tile, TileDirection.NORTHEAST), (north, TileDirection.SOUTHWEST));
+		Assert.True(tile.riverNorth);
+		Stroke(painter, Brush(painter, "Coast"), 1, north);
+		Assert.False(north.riverSouthwest);
+		Assert.False(north.neighbors[TileDirection.SOUTHWEST].riverNortheast);
+		Assert.False(tile.riverNorth);
+		Assert.True(tile.riverNortheast);
+		painter.Undo();
+		Assert.True(north.riverSouthwest && tile.riverNorth);
+	}
+
+	// The corner rule gives back every corner flag of a real Civ3 game: a
+	// save holds what Civ3 works out while playing. (A scenario's .biq holds
+	// other corner bits, which agree with neither.)
+	[SkippableFact]
+	public void CornerFlagsMatchACiv3Game() {
+		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), Civ3TestData.SkipReason);
+		string conquests = Path.Join(Civ3Location.GetCiv3Path(), "Conquests");
+		string saves = Path.Join(conquests, "Saves");
+		Skip.IfNot(Directory.Exists(saves), "No Civ3 saves");
+		C7GameData.GameData gameData = null;
+		foreach (string path in Directory.GetFiles(saves, "*.SAV")) {
+			try {
+				SaveGame save = ScenarioFiles.Open(path, PathUtils.defaultBicPath,
+					_ => Path.GetFullPath(Path.Combine(conquests, "Text", "PediaIcons.txt")));
+				gameData = ScenarioEditing.Open(save, fixture.behaviors);
+				if (CornerFlags(gameData.map) > 50) {
+					break;
+				}
+			} catch (System.Exception) {
+				// Saves from before Conquests can't be read.
+			}
+			gameData = null;
+		}
+		Skip.If(gameData == null, "No Civ3 save with rivers");
+		var civ3 = gameData.map.tiles.ToDictionary(t => t, t => (t.riverNorth, t.riverEast, t.riverSouth, t.riverWest));
+
+		Rivers.SetCorners(gameData.map.tiles);
+		Assert.All(gameData.map.tiles, t => Assert.Equal(civ3[t], (t.riverNorth, t.riverEast, t.riverSouth, t.riverWest)));
 	}
 }

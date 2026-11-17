@@ -590,7 +590,7 @@ public partial class ScenarioEditor : Control {
 
 	private void ShowTileAt(Vector2 position) {
 		Tile tile = game.EditorTileAt(position);
-		string cantPaint = tile == null ? null : CantPaint(tile);
+		string cantPaint = tile == null ? null : CantPaint(tile, position);
 		// Civ3's "invalid mouse cursor" where the brush can't paint.
 		Input.SetDefaultCursorShape(cantPaint != null ? Input.CursorShape.Forbidden : Input.CursorShape.Arrow);
 		chrome.ShowTile(tile == null ? "" : Describe(tile) + (cantPaint != null ? $"   (can't paint: {cantPaint})" : ""));
@@ -601,8 +601,9 @@ public partial class ScenarioEditor : Control {
 	}
 
 	// Why the brush can't paint on the tile, or null.
-	private string CantPaint(Tile tile) {
+	private string CantPaint(Tile tile, Vector2 position) {
 		return Tool switch {
+			EditorTool.Overlays when PaintingRivers => MapPainter.CantPlaceRiver(tile, EdgeAt(tile, position)),
 			EditorTool.Terrain when terrainBrush != null => MapPainter.CantPaint(tile, terrainBrush.Terrain),
 			EditorTool.Resources when resourceBrush != null => MapPainter.CantPlace(tile, resourceBrush),
 			EditorTool.Overlays when overlayBrush != null => MapPainter.CantPlace(tile, overlayBrush),
@@ -638,8 +639,28 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
+	private bool PaintingRivers => Tool == EditorTool.Overlays && overlayBrush?.What == OverlayBrush.Kind.River;
+
+	// The tile's edge nearest the point: the quarter of the diamond it's in.
+	private TileDirection EdgeAt(Tile tile, Vector2 position) {
+		Vector2 off = position - game.EditorMapView.screenLocationOfTile(tile, true);
+		return off.Y < 0
+			? (off.X >= 0 ? TileDirection.NORTHEAST : TileDirection.NORTHWEST)
+			: (off.X >= 0 ? TileDirection.SOUTHEAST : TileDirection.SOUTHWEST);
+	}
+
 	private void PaintAt(Vector2 position, bool pressed = false) {
 		Tile tile = game.EditorTileAt(position);
+		// The river brush lays the edge the mouse is near: a click anywhere
+		// in the tile takes the edge of its quarter, a drag only edges it
+		// passes close to, so it follows the line the mouse draws.
+		if (PaintingRivers) {
+			if (tile != null && (pressed || !WellInside(tile, position))
+				&& painter.PlaceRiver(tile, EdgeAt(tile, position)).Count > 0) {
+				game.EditorMapView.InvalidateMap();
+			}
+			return;
+		}
 		if (tile == null || tile == lastPainted) {
 			return;
 		}
