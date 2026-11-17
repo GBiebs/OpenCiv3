@@ -257,6 +257,8 @@ public partial class ScenarioSetup : Control {
 	}
 
 	private void UpdateSaveAndStartGame(SaveGame save, GlobalSingleton global) {
+		// A scenario without Custom Rules plays the game's standard rules.
+		C7Engine.Editor.RuleEditing.UseStandardRulesIfNotCustom(save, global.GameMode.GetSave());
 		// The human's player and civilization, and the other "Any" and
 		// "Random" players' (ScenarioStart).
 		if (C7Engine.Editor.ScenarioRules.IsEditorScenario(save)) {

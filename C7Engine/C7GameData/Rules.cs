@@ -323,6 +323,38 @@ namespace C7GameData {
 		// imported from Civ3 take them from the BIQ.
 		public List<string> CultureLevelNames = ["Fledgling", "Weak", "Fragile", "Solid", "Strong", "Glorious"];
 
+		// The rules' names for the four eras, by Civilopedia key (none: the
+		// standard names, EraUtils).
+		public Dictionary<string, string> EraNames = new();
+
+		// What cities of each size level are called (the BIQ RULE's three
+		// labels). Kept for scenarios; the game doesn't show them yet.
+		public List<string> CityLevelNames = ["Town", "City", "Metropolis"];
+
+		// The BIQ RULE's default difficulty level and default money resource,
+		// by name (null: none). Kept for scenarios; the game doesn't use them
+		// yet (a scenario's difficulty is the player's choice).
+		public string DefaultDifficulty;
+		public string DefaultMoneyResource;
+
+		// The diplomatic and espionage missions (the BIQ's ESPN section), in
+		// the BIQ's order (a mission is known by its place there, as Civ3
+		// knows it). These are conquests.biq's, with the game's own names.
+		public List<EspionageMissionRule> EspionageMissions = [
+			new() { Mission = "EstablishEmbassy", Name = "Establish Embassy", CivilopediaEntry = "ESPN_Build_an_Embassy", Diplomat = true, BaseCost = 20 },
+			new() { Mission = "InvestigateCity", Name = "Investigate City", CivilopediaEntry = "ESPN_Investigate_City", Diplomat = true, Spy = true, BaseCost = 10 },
+			new() { Mission = "StealTechnology", Name = "Steal Technology", CivilopediaEntry = "ESPN_Steal_Technology", Diplomat = true, Spy = true, BaseCost = 10 },
+			new() { Mission = "StealWorldMap", Name = "Steal World Map", CivilopediaEntry = "ESPN_Steal_World_Map", Spy = true, BaseCost = 1 },
+			new() { Mission = "PlantSpy", Name = "Plant Spy", CivilopediaEntry = "ESPN_Plant_Spy", Spy = true, BaseCost = 60 },
+			new() { Mission = "StealPlans", Name = "Steal Plans", CivilopediaEntry = "ESPN_Steal_Plans", Spy = true, BaseCost = 10 },
+			new() { Mission = "Propaganda", Name = "Initiate Propaganda", CivilopediaEntry = "ESPN_Initiate_Propaganda", Spy = true, BaseCost = 100 },
+			new() { Mission = "SabotageProduction", Name = "Sabotage Production", CivilopediaEntry = "ESPN_Sabotage_Production", Spy = true, BaseCost = 10 },
+			new() { Mission = "ExposeEnemySpy", Name = "Expose Enemy Spy", CivilopediaEntry = "ESPN_Expose_Enemy_Mole", Spy = true, BaseCost = 80 },
+		];
+
+		// The rules' entry for the mission, or null.
+		public EspionageMissionRule EspionageMissionRuleFor(string mission) => EspionageMissions?.Find(m => m.Mission == mission);
+
 		// How the people of a civ regard another civ's culture, from the
 		// highest ratio of the other's culture to theirs to the lowest, as in
 		// "The Romans are in awe of our culture."
@@ -342,5 +374,27 @@ namespace C7GameData {
 		public string Name;
 		public int Numerator;
 		public int Denominator;
+		// The BIQ's CULT chances, in %: propaganda succeeding, a captured
+		// city resisting, and resisting again. Kept for scenarios; the game
+		// doesn't use them yet (its propaganda and resistance follow
+		// players' studies, see Espionage and City.UpdateResistance).
+		public int PropagandaChance;
+		public int InitialResistanceChance;
+		public int ContinuedResistanceChance;
+	}
+
+	// A diplomatic or espionage mission as the rules name and price it (the
+	// BIQ's ESPN section): Mission is the EspionageMission it is, by name.
+	// The game uses the name and the base cost; who performs it (diplomat or
+	// spy) and the description are kept for scenarios, the game's own
+	// rules decide who may (Espionage.IsEspionageMission).
+	public class EspionageMissionRule {
+		public string Mission;
+		public string Name;
+		public string CivilopediaEntry;
+		public string Description;
+		public bool Diplomat;
+		public bool Spy;
+		public int BaseCost;
 	}
 }

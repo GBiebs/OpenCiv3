@@ -65,7 +65,7 @@ public partial class ScenarioEditor : Control {
 		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
-		EditRules,
+		EditRules, RestoreDefaults,
 		TileProperties, CenterHere, Reassign,
 	}
 
@@ -245,11 +245,16 @@ public partial class ScenarioEditor : Control {
 		}) {
 			scenario.AddCheckItem(name, (int)item);
 			scenario.SetItemChecked(scenario.GetItemIndex((int)item), on);
-			scenario.SetItemDisabled(scenario.GetItemIndex((int)item), true);
+			// Custom Rules is Phase 5's; the others aren't switches yet.
+			scenario.SetItemDisabled(scenario.GetItemIndex((int)item), item != MenuItem.CustomRules);
 		}
+		scenarioMenu = scenario;
 
+		// Civ3's Rules menu; the rules are the scenario's own only with
+		// Custom Rules on.
 		PopupMenu rules = Menu("Rules");
-		Add(rules, "Edit Rules...", MenuItem.EditRules, enabled: false);
+		Add(rules, "Edit Rules...", MenuItem.EditRules, enabled: game.EditorInfo.customRules);
+		Add(rules, "Restore Defaults", MenuItem.RestoreDefaults, enabled: game.EditorInfo.customRules);
 
 		return [file, edit, view, map, scenario, rules];
 	}
@@ -386,6 +391,29 @@ public partial class ScenarioEditor : Control {
 				break;
 			case MenuItem.ScenarioProperties:
 				OpenScenarioProperties();
+				break;
+			case MenuItem.EditRules:
+				OpenRules();
+				break;
+			case MenuItem.RestoreDefaults:
+				if (!painting) {
+					SaveGame scenario = game.CurrentScenario();
+					RuleEditing.RestoreDefaults(scenario, GetNode<GlobalSingleton>("/root/GlobalSingleton").GameMode.GetSave());
+					game.ReopenScenario(scenario);
+				}
+				break;
+			case MenuItem.CustomRules:
+				if (!painting) {
+					// Off: the scenario plays the game's standard rules, so
+					// its own go (Civ3's editor does the same); on: they're
+					// the scenario's to change.
+					SaveGame scenario = game.CurrentScenario();
+					scenario.Scenario.customRules = !game.EditorInfo.customRules;
+					if (!scenario.Scenario.customRules) {
+						RuleEditing.RestoreDefaults(scenario, GetNode<GlobalSingleton>("/root/GlobalSingleton").GameMode.GetSave());
+					}
+					game.ReopenScenario(scenario);
+				}
 				break;
 			case MenuItem.GenerateMap:
 				CloseDialog();
@@ -841,6 +869,28 @@ public partial class ScenarioEditor : Control {
 	}
 
 	// Civ3's Scenario Properties.
+	private PopupMenu scenarioMenu;
+
+	// Civ3's Edit Rules: the pages change a copy of the scenario, which the
+	// editor opens again on OK (a change of rules changes the whole game).
+	public void OpenRules() {
+		CloseDialog();
+		if (!game.EditorInfo.customRules) {
+			Say("Turn Custom Rules on (Scenario menu) to edit the rules.");
+			return;
+		}
+		SaveGame scenario = game.CurrentScenario();
+		dialog = chrome.RulesDialog(scenario, GetNode<GlobalSingleton>("/root/GlobalSingleton").GameMode.GetSave(), edited => {
+			if (painting) {
+				return "Finish painting first.";
+			}
+			CloseDialog();
+			game.ReopenScenario(edited);
+			return null;
+		}, CloseDialog);
+		AddChild(dialog);
+	}
+
 	public void OpenScenarioProperties() {
 		CloseDialog();
 		GameData data = EngineStorage.gameData;

@@ -46,6 +46,11 @@ public static class EraUtils {
 	}
 
 	public static string GetNiceEraName(string era) {
+		// The rules' name for it (a scenario may rename an era).
+		if (era != null && C7Engine.EngineStorage.gameData?.rules?.EraNames?.TryGetValue(era, out string named) == true
+				&& !string.IsNullOrWhiteSpace(named)) {
+			return named;
+		}
 		if (era == ANCIENT_TIMES_CVLPD) {
 			return ANCIENT_TIMES;
 		} else if (era == MIDDLE_AGES_CVLPD) {

@@ -146,6 +146,11 @@ namespace C7Engine {
 		}
 
 		public static string Describe(EspionageMission mission) {
+			// The rules' name for it (a scenario may rename it).
+			if (EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString())?.Name is string named
+					&& !string.IsNullOrWhiteSpace(named)) {
+				return named;
+			}
 			return mission switch {
 				EspionageMission.EstablishEmbassy => "Establish Embassy",
 				EspionageMission.InvestigateCity => "Investigate City",
@@ -206,6 +211,10 @@ namespace C7Engine {
 		// The base costs of conquests.biq's ESPN section, which are the
 		// study's "Base" column.
 		public static int BaseCost(EspionageMission mission) {
+			// The rules' base cost (a scenario may change it).
+			if (EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString()) is EspionageMissionRule rule) {
+				return rule.BaseCost;
+			}
 			return mission switch {
 				EspionageMission.EstablishEmbassy => 20,
 				EspionageMission.InvestigateCity => 10,

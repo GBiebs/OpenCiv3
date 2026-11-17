@@ -2998,6 +2998,28 @@ namespace C7GameData {
 				}
 			}
 			save.Rules.FoodConsumptionPerCitizen = rule.FoodConsumptionPerCitizen;
+			save.Rules.CityLevelNames = [rule.CitySizeLevel1Name, rule.CitySizeLevel2Name, rule.CitySizeLevel3Name];
+			if (rule.DefaultDifficultyLevel >= 0 && rule.DefaultDifficultyLevel < save.Difficulties.Count) {
+				save.Rules.DefaultDifficulty = save.Difficulties[rule.DefaultDifficultyLevel].Name;
+			}
+			GOOD[] goods = biq.Good ?? defaultBiq?.Good;
+			if (goods != null && rule.DefaultMoneyResource >= 0 && rule.DefaultMoneyResource < goods.Length) {
+				save.Rules.DefaultMoneyResource = goods[rule.DefaultMoneyResource].Name;
+			}
+			// The missions by their place in the BIQ (Civ3's order); their
+			// names stay the game's own (as the era names do), so an imported
+			// game reads as before.
+			ESPN[] missions = biq.Espn ?? defaultBiq?.Espn;
+			if (missions?.Length > 0) {
+				for (int i = 0; i < missions.Length && i < save.Rules.EspionageMissions.Count; ++i) {
+					EspionageMissionRule m = save.Rules.EspionageMissions[i];
+					m.CivilopediaEntry = missions[i].CivilopediaEntry;
+					m.Description = missions[i].Description;
+					m.Diplomat = missions[i].Diplomat;
+					m.Spy = missions[i].Spy;
+					m.BaseCost = missions[i].BaseCost;
+				}
+			}
 			save.Rules.MovementAlongRoads = rule.MovementAlongRoads;
 			save.Rules.FortressDefensiveBonus = rule.FortressDefensiveBonus;
 			save.Rules.ChanceToInterceptAirMissions = rule.ChanceToInterceptEnemyAirMissions;
@@ -3054,6 +3076,9 @@ namespace C7GameData {
 						Name = c.Name,
 						Numerator = c.CultureRatioNumerator,
 						Denominator = c.CultureRatioDenominator,
+						PropagandaChance = c.ChanceOfSuccessfulPropaganda,
+						InitialResistanceChance = c.InitialResistanceChance,
+						ContinuedResistanceChance = c.ContinuedResistanceChance,
 					})
 					.OrderByDescending(o => (double)o.Numerator / o.Denominator)
 					.ToList();

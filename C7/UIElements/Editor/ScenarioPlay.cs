@@ -19,6 +19,8 @@ public static class ScenarioPlay {
 	// Goes to the new game screens if the scenario has no players to start
 	// with. Returns whether it did.
 	public static bool SetUpAsNewGame(SaveGame scenario, string path, SceneTree tree) {
+		// A scenario without Custom Rules plays the game's standard rules.
+		C7Engine.Editor.RuleEditing.UseStandardRulesIfNotCustom(scenario, tree.Root.GetNode<GlobalSingleton>("GlobalSingleton").GameMode.GetSave());
 		if (scenario.Players.Count > 0) {
 			return false;
 		}
