@@ -301,7 +301,7 @@ namespace C7GameData {
 			}
 		}
 
-		private void RemoveMapUnit(MapUnit unit) {
+		internal void RemoveMapUnit(MapUnit unit) {
 			if (!_mapUnits.Remove(unit)) {
 				return;
 			}

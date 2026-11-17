@@ -11,6 +11,10 @@ public static class ScenarioEditorSession {
 	private static string pendingPath;
 	private static bool pendingModified;
 
+	// The active player to choose when the editor opens again (by name: the
+	// players are made anew), or null.
+	public static string ActivePlayer { get; set; }
+
 	// Whether the next game scene is the scenario editor.
 	public static bool Opening => pending != null;
 

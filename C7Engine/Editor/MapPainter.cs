@@ -27,7 +27,7 @@ public sealed record Erasable(string Name, Resource Resource = null, OverlayBrus
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
 // is one press of the mouse, however far it's dragged: BeginStroke, Paint
 // at each tile the brush passes over, EndStroke.
-public sealed class MapPainter {
+public sealed partial class MapPainter {
 	private readonly GameData gameData;
 	private readonly Random random;
 	public EditHistory History { get; }

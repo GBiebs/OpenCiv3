@@ -18,6 +18,11 @@ public sealed class EditHistory {
 		// changed them: their order is the player slots', which the tiles'
 		// own states can't put back.
 		internal List<Tile> startsBefore, startsAfter;
+		// What the action did beyond tiles (a city or unit placed, removed
+		// or changed), in order: each undone in reverse, redone in order.
+		internal readonly List<(Action undo, Action redo)> actions = [];
+		// Whether it placed, removed or changed a city (borders follow).
+		public bool ChangesCities { get; internal set; }
 		public IReadOnlyCollection<Tile> Tiles => before.Keys;
 
 		// Whether the action turned land into water or water into land
@@ -73,6 +78,16 @@ public sealed class EditHistory {
 		}
 	}
 
+	// Records something the open action did beyond tiles, with how to undo
+	// and redo it.
+	public void Record(Action undo, Action redo, bool changesCities = false) {
+		if (open == null) {
+			throw new InvalidOperationException("No action is open");
+		}
+		open.actions.Add((undo, redo));
+		open.ChangesCities |= changesCities;
+	}
+
 	// Ends the action. One that changed nothing isn't kept. Returns it, or
 	// null.
 	public Step End() {
@@ -91,7 +106,7 @@ public sealed class EditHistory {
 		} else {
 			step.startsAfter = [.. map.startingLocations];
 		}
-		if (step.before.Count == 0) {
+		if (step.before.Count == 0 && step.actions.Count == 0 && step.startsBefore == null) {
 			return null;
 		}
 		// A new action after an undo: what was undone can't come back, as in
@@ -111,6 +126,9 @@ public sealed class EditHistory {
 		}
 		Step step = undo[^1];
 		undo.RemoveAt(undo.Count - 1);
+		for (int i = step.actions.Count - 1; i >= 0; --i) {
+			step.actions[i].undo();
+		}
 		foreach ((Tile tile, TileState state) in step.before) {
 			state.Restore(tile, map);
 		}
@@ -129,6 +147,9 @@ public sealed class EditHistory {
 			state.Restore(tile, map);
 		}
 		PutStarts(step.startsAfter);
+		foreach ((Action _, Action redo) in step.actions) {
+			redo();
+		}
 		undo.Add(step);
 		return step;
 	}

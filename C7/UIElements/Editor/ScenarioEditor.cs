@@ -4,6 +4,7 @@ using System.Linq;
 using C7Engine;
 using C7Engine.Editor;
 using C7GameData;
+using C7GameData.Save;
 using Godot;
 
 // The scenario editor over the map: its menus (as Civ3's editor's), its
@@ -32,6 +33,10 @@ public partial class ScenarioEditor : Control {
 	private TerrainBrush terrainBrush;
 	private C7GameData.Resource resourceBrush;
 	private OverlayBrush overlayBrush;
+	private UnitPrototype unitBrush;
+	// Civ3's active player: whose cities, units and starting locations the
+	// brushes place.
+	public Player ActivePlayer { get; private set; }
 	private bool painting;
 	private Vector2 paintFrom;
 	private Tile lastPainted;
@@ -52,7 +57,7 @@ public partial class ScenarioEditor : Control {
 		Grid, ZoomIn, ZoomOut,
 		GridCoordinates, FoodShieldIcons, CleanMap, Territory, CityNames, TileOwners, UnitCounts, Minimap,
 		RedistributeStarts, RedistributeResources, RedistributeHuts, RedistributeGrassland, WrapX, WrapY, PolarIceCaps,
-		RandomBonusGrassland,
+		RandomBonusGrassland, SetActivePlayer,
 		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
@@ -103,6 +108,11 @@ public partial class ScenarioEditor : Control {
 		terrainBrush = painter.TerrainBrushes().FirstOrDefault();
 		resourceBrush = painter.ResourceBrushes().FirstOrDefault();
 		overlayBrush = painter.OverlayBrushes().FirstOrDefault();
+		unitBrush = EngineStorage.gameData.unitPrototypes.FirstOrDefault();
+		// The player chosen before the editor opened again (after adding one),
+		// else the first that isn't the barbarians.
+		ActivePlayer = EngineStorage.gameData.players.FirstOrDefault(p => ScenarioPlayers.NameOf(p) == ScenarioEditorSession.ActivePlayer)
+			?? EngineStorage.gameData.players.FirstOrDefault(p => !p.isBarbarians);
 
 		chrome = new EditorChrome(this);
 		AddChild(chrome);
@@ -146,7 +156,7 @@ public partial class ScenarioEditor : Control {
 			shownZoom = game.EditorMapView.cameraZoom;
 			// Civ3's status bar shows the seed of a generated map.
 			GameData data = EngineStorage.gameData;
-			chrome.ShowZoom(shownZoom, data.map.generation != null ? data.seed : null);
+			chrome.ShowZoom(shownZoom, data.map.generation != null ? data.seed : null, ScenarioPlayers.NameOf(ActivePlayer));
 		}
 		if (shotPath != null && ++framesShown == 90) {
 			GetViewport().GetTexture().GetImage().SavePng(shotPath);
@@ -217,6 +227,8 @@ public partial class ScenarioEditor : Control {
 		map.AddCheckItem("Polar Ice Caps", (int)MenuItem.PolarIceCaps);
 		map.AddCheckItem("X Wrapping", (int)MenuItem.WrapX);
 		map.AddCheckItem("Y Wrapping", (int)MenuItem.WrapY);
+		map.AddSeparator();
+		Add(map, "Set Active Player...", MenuItem.SetActivePlayer);
 
 		PopupMenu scenario = Menu("Scenario");
 		Add(scenario, "Properties...", MenuItem.ScenarioProperties, enabled: false);
@@ -395,6 +407,9 @@ public partial class ScenarioEditor : Control {
 					Refresh();
 				}
 				break;
+			case MenuItem.SetActivePlayer:
+				ShowPlayerPicker();
+				break;
 			case MenuItem.RandomBonusGrassland:
 				painter.RandomizeBonusGrassland = !painter.RandomizeBonusGrassland;
 				Refresh();
@@ -425,6 +440,7 @@ public partial class ScenarioEditor : Control {
 		EditorTool.Terrain => terrainBrush?.Name,
 		EditorTool.Resources => resourceBrush?.Name,
 		EditorTool.Overlays => overlayBrush?.Name,
+		EditorTool.Units => unitBrush?.name,
 		_ => null,
 	};
 
@@ -434,6 +450,7 @@ public partial class ScenarioEditor : Control {
 	private static string PickerName(EditorTool tool) => tool switch {
 		EditorTool.Terrain => "TerrainPicker",
 		EditorTool.Resources => "ResourcePicker",
+		EditorTool.Units => "UnitPicker",
 		_ => "OverlayPicker",
 	};
 
@@ -453,6 +470,10 @@ public partial class ScenarioEditor : Control {
 					List<OverlayBrush> brushes = painter.OverlayBrushes();
 					return (brushes.Select(b => b.Name).ToList(), null, brushes.IndexOf(overlayBrush));
 				}
+			case EditorTool.Units: {
+					List<UnitPrototype> types = EngineStorage.gameData.unitPrototypes;
+					return (types.Select(t => t.name).ToList(), null, types.IndexOf(unitBrush));
+				}
 			default:
 				return (null, null, -1);
 		}
@@ -464,6 +485,61 @@ public partial class ScenarioEditor : Control {
 		} catch (System.Exception) {
 			return null;
 		}
+	}
+
+	private PopupMenu playerPicker, civPicker;
+	private const int AddPlayerId = 999;
+
+	// Civ3's Set Active Player: the scenario's players, and Add Player for a
+	// civilization that hasn't one.
+	private void ShowPlayerPicker() {
+		Discard(playerPicker);
+		playerPicker = new PopupMenu { Name = "PlayerPicker" };
+		chrome.StyleMenu(playerPicker);
+		List<Player> players = EngineStorage.gameData.players;
+		for (int i = 0; i < players.Count; ++i) {
+			playerPicker.AddRadioCheckItem(ScenarioPlayers.NameOf(players[i]), i);
+			playerPicker.SetItemChecked(i, players[i] == ActivePlayer);
+		}
+		if (players.Count > 0) {
+			playerPicker.AddSeparator();
+		}
+		playerPicker.AddItem("Add Player...", AddPlayerId);
+		playerPicker.IdPressed += id => {
+			if (id == AddPlayerId) {
+				ShowCivPicker();
+			} else if (id < players.Count) {
+				ActivePlayer = players[(int)id];
+				Say($"Active player: {ScenarioPlayers.NameOf(ActivePlayer)}");
+				Refresh();
+			}
+		};
+		AddChild(playerPicker);
+		playerPicker.Position = (Vector2I)GetViewport().GetMousePosition();
+		playerPicker.Popup();
+	}
+
+	// The civilizations a player can be added for. Adding one opens the
+	// scenario again with it (the players are the scenario's, as Civ3's
+	// Scenario Properties set them), and it's the active player.
+	private void ShowCivPicker() {
+		SaveGame scenario = game.CurrentScenario();
+		List<Civilization> civs = ScenarioPlayers.Available(scenario);
+		Discard(civPicker);
+		civPicker = new PopupMenu { Name = "CivPicker" };
+		chrome.StyleMenu(civPicker);
+		for (int i = 0; i < civs.Count; ++i) {
+			civPicker.AddItem(civs[i].name, i);
+		}
+		civPicker.IdPressed += id => {
+			Civilization civ = civs[(int)id];
+			ScenarioPlayers.Add(scenario, civ, scenario.Scenario);
+			ScenarioEditorSession.ActivePlayer = civ.name;
+			game.ReopenScenario(scenario);
+		};
+		AddChild(civPicker);
+		civPicker.Position = (Vector2I)GetViewport().GetMousePosition();
+		civPicker.Popup();
 	}
 
 	// Takes a menu out of the tree at once (so a new one can have its name)
@@ -512,6 +588,9 @@ public partial class ScenarioEditor : Control {
 			case EditorTool.Overlays when index < painter.OverlayBrushes().Count:
 				overlayBrush = painter.OverlayBrushes()[index];
 				break;
+			case EditorTool.Units when index < EngineStorage.gameData.unitPrototypes.Count:
+				unitBrush = EngineStorage.gameData.unitPrototypes[index];
+				break;
 			default:
 				return;
 		}
@@ -546,6 +625,8 @@ public partial class ScenarioEditor : Control {
 				SetChecked(menu, MenuItem.WrapY, gameMap.wrapVertically);
 				SetChecked(menu, MenuItem.PolarIceCaps, gameMap.polarIceCaps);
 				SetChecked(menu, MenuItem.RandomBonusGrassland, painter.RandomizeBonusGrassland);
+				// The status line's player follows a change of player.
+				shownZoom = -1;
 			}
 			SetEnabled(menu, MenuItem.Undo, painter.History.CanUndo);
 			SetEnabled(menu, MenuItem.Redo, painter.History.CanRedo);
@@ -823,6 +904,8 @@ public partial class ScenarioEditor : Control {
 			EditorTool.Terrain when terrainBrush != null => MapPainter.CantPaint(tile, terrainBrush.Terrain),
 			EditorTool.Resources when resourceBrush != null => MapPainter.CantPlace(tile, resourceBrush),
 			EditorTool.Overlays when overlayBrush != null => MapPainter.CantPlace(tile, overlayBrush),
+			EditorTool.Cities => MapPainter.CantPlaceCity(tile, ActivePlayer),
+			EditorTool.Units when unitBrush != null => MapPainter.CantPlaceUnit(tile, unitBrush, ActivePlayer),
 			_ => null,
 		};
 	}
@@ -834,6 +917,8 @@ public partial class ScenarioEditor : Control {
 			EditorTool.Terrain when terrainBrush != null => $"Paint {terrainBrush.Name}",
 			EditorTool.Resources when resourceBrush != null => $"Place {resourceBrush.Name}",
 			EditorTool.Overlays when overlayBrush != null => $"Place {overlayBrush.Name}",
+			EditorTool.Cities => "Place City",
+			EditorTool.Units when unitBrush != null => $"Place {unitBrush.name}",
 			_ => null,
 		};
 		if (name == null || game.EditorTileAt(position) == null) {
@@ -886,10 +971,16 @@ public partial class ScenarioEditor : Control {
 		if (!pressed && Tool != EditorTool.Terrain && !WellInside(tile, position)) {
 			return;
 		}
+		// A city or a unit a click (Civ3's: "each click places one").
+		if (!pressed && Tool is EditorTool.Cities or EditorTool.Units) {
+			return;
+		}
 		lastPainted = tile;
 		List<Tile> changed = Tool switch {
 			EditorTool.Resources => painter.PlaceResource(tile, resourceBrush),
 			EditorTool.Overlays => painter.PlaceOverlay(tile, overlayBrush),
+			EditorTool.Cities => painter.PlaceCity(tile, ActivePlayer) is null ? [] : [tile],
+			EditorTool.Units => painter.PlaceUnit(tile, unitBrush, ActivePlayer) is null ? [] : [tile],
 			_ => painter.PaintTerrain(tile, BrushSize, terrainBrush),
 		};
 		if (changed.Count > 0) {
