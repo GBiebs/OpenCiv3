@@ -195,6 +195,8 @@ public partial class EditorChrome : Control {
 		}
 		foreach ((int s, Button button) in sizeButtons) {
 			button.SetPressedNoSignal(s == size);
+			// Civ3's brush sizes are the terrain brush's.
+			button.Disabled = tool != EditorTool.Terrain;
 		}
 		gridButton.SetPressedNoSignal(grid);
 		toolLabel.Text = ToolText(tool, size, brush);
@@ -358,6 +360,7 @@ public partial class EditorChrome : Control {
 		if (tool == EditorTool.FogOfWar) {
 			return name;
 		}
-		return brush == null ? $"{name} brush, {size} x {size}" : $"{name} brush: {brush}, {size} x {size}";
+		string sized = tool == EditorTool.Terrain ? $", {size} x {size}" : "";
+		return brush == null ? $"{name} brush{sized}" : $"{name} brush: {brush}{sized}";
 	}
 }

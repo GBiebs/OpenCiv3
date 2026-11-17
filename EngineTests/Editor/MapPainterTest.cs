@@ -244,4 +244,84 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(gameData.map.tiles.Count(t => t.overlayTerrainType.IsCoast), again.map.tiles.Count(t => t.overlayTerrainType.IsCoast));
 		Assert.All(again.map.tiles, t => Assert.NotNull(t.ExtraInfo));
 	}
+	private static Resource ResourceNamed(MapPainter painter, string name) => painter.ResourceBrushes().First(r => r.Name == name);
+
+	private static EditHistory.Step Place(MapPainter painter, Resource resource, Tile tile) {
+		painter.BeginStroke("Place " + resource.Name);
+		painter.PlaceResource(tile, resource);
+		return painter.EndStroke();
+	}
+
+	// Civ3's resource brush lists the rules' resources: Civ3's 22 (its
+	// help's list), then any the rules add.
+	[Fact]
+	public void TheResourceBrushesAreTheRulesResources() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		List<string> names = painter.ResourceBrushes().Select(r => r.Name).ToList();
+		Assert.Equal(gameData.Resources.Where(r => r.Category != ResourceCategory.NONE).Select(r => r.Name), names);
+		Assert.Equal(["Horses", "Iron", "Saltpeter", "Coal", "Oil", "Rubber", "Aluminum", "Uranium",
+			"Wines", "Furs", "Dyes", "Incense", "Spices", "Ivory", "Silks", "Gems",
+			"Whales", "Game", "Fish", "Cattle", "Wheat", "Gold"], names.Take(22));
+	}
+
+	// A resource goes only on terrain the rules allow it on: fish on the
+	// coast, not on grassland; cattle on grassland, not in the ocean.
+	[Fact]
+	public void AResourceIsPlacedOnlyWhereItsTerrainAllowsIt() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile land = gameData.map.tileAt(50, 50), ocean = gameData.map.tileAt(10, 10);
+		Stroke(painter, Brush(painter, "Grassland"), 1, land);
+		Tile coast = land.neighbors[TileDirection.NORTH];
+
+		Assert.NotNull(MapPainter.CantPlace(land, ResourceNamed(painter, "Fish")));
+		Assert.Null(Place(painter, ResourceNamed(painter, "Fish"), land));
+		Assert.Equal(Resource.NONE, land.Resource);
+		Assert.Null(Place(painter, ResourceNamed(painter, "Cattle"), ocean));
+
+		Assert.NotNull(Place(painter, ResourceNamed(painter, "Cattle"), land));
+		Assert.Equal("Cattle", land.Resource.Name);
+		Assert.Equal(land.Resource.Key, land.ResourceKey);
+		Assert.NotNull(Place(painter, ResourceNamed(painter, "Fish"), coast));
+		Assert.Equal("Fish", coast.Resource.Name);
+	}
+
+	// A resource takes the place of another; undo brings the old one back;
+	// the same resource again is no step.
+	[Fact]
+	public void AResourceReplacesAnotherAndIsUndone() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile land = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 1, land);
+		Place(painter, ResourceNamed(painter, "Cattle"), land);
+		Assert.Null(Place(painter, ResourceNamed(painter, "Cattle"), land));
+		Assert.Equal("Place Horses", Place(painter, ResourceNamed(painter, "Horses"), land).Name);
+		Assert.Equal("Horses", land.Resource.Name);
+
+		painter.Undo();
+		Assert.Equal("Cattle", land.Resource.Name);
+		Assert.Equal(land.Resource.Key, land.ResourceKey);
+		painter.Undo();
+		Assert.Equal(Resource.NONE, land.Resource);
+		painter.Redo();
+		painter.Redo();
+		Assert.Equal("Horses", land.Resource.Name);
+	}
+
+	// Placed resources are saved and opened again.
+	[Fact]
+	public void PlacedResourcesAreSavedAndOpenedAgain() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Stroke(painter, Brush(painter, "Grassland"), 3, gameData.map.tileAt(50, 50));
+		Place(painter, ResourceNamed(painter, "Wines"), gameData.map.tileAt(50, 50));
+		Place(painter, ResourceNamed(painter, "Fish"), gameData.map.tileAt(50, 46));
+
+		using TempDirectory dir = new();
+		string path = dir.File("resources.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, new ScenarioInfo { customMap = true }), path);
+		C7GameData.GameData again = ScenarioEditing.Open(ScenarioFiles.ForEditing(SaveGame.Load(path, s => s)), fixture.behaviors);
+
+		Assert.Equal("Wines", again.map.tileAt(50, 50).Resource.Name);
+		Assert.Equal("Fish", again.map.tileAt(50, 46).Resource.Name);
+		Assert.Equal(2, again.map.tiles.Count(t => t.Resource != Resource.NONE && t.Resource.Category != ResourceCategory.NONE));
+	}
 }

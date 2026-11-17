@@ -99,6 +99,37 @@ public sealed class MapPainter {
 	}
 
 
+	// The resource brush's choices: the rules' resources, in their order
+	// (Civ3's: strategic, luxury, then bonus).
+	public List<Resource> ResourceBrushes() {
+		return gameData.Resources.Where(r => r != null && r.Category != ResourceCategory.NONE).ToList();
+	}
+
+	// Why the resource can't be placed on the tile, or null if it can: only
+	// on terrain the rules allow it on (Civ3's help: "resource placement is
+	// also limited by which terrain types can support the given resource").
+	public static string CantPlace(Tile tile, Resource resource) {
+		TerrainType terrain = tile.overlayTerrainType;
+		if (terrain == null || !terrain.allowedResources.Contains(resource.Key)) {
+			return $"{resource.Name} can't be on {(terrain == null ? "this terrain" : NameOf(terrain))}.";
+		}
+		return null;
+	}
+
+	// Places the resource on the tile, in place of any other (Civ3's brush
+	// sizes are the terrain brush's only, so one tile). Returns the tiles to
+	// redraw, or none.
+	public List<Tile> PlaceResource(Tile tile, Resource resource) {
+		if (tile == null || tile == Tile.NONE || CantPlace(tile, resource) != null || tile.Resource == resource) {
+			return [];
+		}
+		History.Touch(tile);
+		tile.Resource = resource;
+		tile.ResourceKey = resource.Key;
+		Journal([tile]);
+		return [tile];
+	}
+
 	public void BeginStroke(string name) {
 		History.Begin(name);
 	}
@@ -240,7 +271,7 @@ public sealed class MapPainter {
 		if (tile.Resource != null && tile.Resource != Resource.NONE && tile.Resource.Category != ResourceCategory.NONE
 			&& !terrain.allowedResources.Contains(tile.Resource.Key)) {
 			tile.Resource = Resource.NONE;
-			tile.ResourceKey = null;
+			tile.ResourceKey = Resource.NONE.Key;
 		}
 		foreach (TerrainImprovement improvement in tile.overlays.GetImprovements().ToList()) {
 			if (terrain.IsWater || !Tile.TileOverlays.TerrainAllows(terrain, improvement)) {

@@ -30,10 +30,12 @@ public partial class ScenarioEditor : Control {
 	// Painting: the left button held down on the map is one stroke.
 	private MapPainter painter;
 	private TerrainBrush terrainBrush;
+	private C7GameData.Resource resourceBrush;
 	private bool painting;
 	private Vector2 paintFrom;
 	private Tile lastPainted;
 	private PopupMenu terrainPicker;
+	private PopupMenu resourcePicker;
 
 	// What the controls show.
 	public EditorTool Tool { get; private set; } = EditorTool.Terrain;
@@ -86,6 +88,7 @@ public partial class ScenarioEditor : Control {
 		painter = new MapPainter(EngineStorage.gameData);
 		// As Civ3's editor starts: the first terrain (desert), 1 x 1.
 		terrainBrush = painter.TerrainBrushes().FirstOrDefault();
+		resourceBrush = painter.ResourceBrushes().FirstOrDefault();
 
 		chrome = new EditorChrome(this);
 		AddChild(chrome);
@@ -180,7 +183,9 @@ public partial class ScenarioEditor : Control {
 	private PopupMenu Menu(string name) {
 		PopupMenu menu = new() { Name = name };
 		menu.IdPressed += id => {
-			if (id >= TerrainPickerIds) {
+			if (id >= ResourcePickerIds) {
+				ChooseResource((int)id - ResourcePickerIds);
+			} else if (id >= TerrainPickerIds) {
 				ChooseTerrain((int)id - TerrainPickerIds);
 			} else {
 				RunMenuItem((MenuItem)(int)id);
@@ -250,9 +255,11 @@ public partial class ScenarioEditor : Control {
 			case >= MenuItem.BrushTerrain and <= MenuItem.FogOfWar:
 				Tool = EditorTool.Terrain + (item - MenuItem.BrushTerrain);
 				Refresh();
-				// As Civ3's: choosing the terrain brush asks which terrain.
+				// As Civ3's: choosing the terrain or resource brush asks which.
 				if (Tool == EditorTool.Terrain) {
 					ShowTerrainPicker();
+				} else if (Tool == EditorTool.Resources) {
+					ShowResourcePicker();
 				}
 				break;
 			case >= MenuItem.Size1 and <= MenuItem.Size7:
@@ -271,10 +278,50 @@ public partial class ScenarioEditor : Control {
 	}
 
 	// What the current brush paints, for the status line.
-	private string BrushName => Tool == EditorTool.Terrain ? terrainBrush?.Name : null;
+	private string BrushName => Tool switch {
+		EditorTool.Terrain => terrainBrush?.Name,
+		EditorTool.Resources => resourceBrush?.Name,
+		_ => null,
+	};
 
-	// The terrain picker's ids, past the menu items'.
+	// The pickers' ids, past the menu items'.
 	private const int TerrainPickerIds = 1000;
+	private const int ResourcePickerIds = 2000;
+
+	// Civ3's pop-up of the resource brush's resources, at the mouse, each
+	// with its icon.
+	private void ShowResourcePicker() {
+		resourcePicker?.QueueFree();
+		resourcePicker = StyledMenu("ResourcePicker");
+		resourcePicker.AddThemeConstantOverride("icon_max_width", 20);
+		List<C7GameData.Resource> resources = painter.ResourceBrushes();
+		for (int i = 0; i < resources.Count; ++i) {
+			Texture2D icon = null;
+			try {
+				icon = TextureLoader.Load("resources.icon", resources[i], useCache: true);
+			} catch (System.Exception) {
+				// No icon: the name alone.
+			}
+			if (icon != null) {
+				resourcePicker.AddIconRadioCheckItem(icon, resources[i].Name, ResourcePickerIds + i);
+			} else {
+				resourcePicker.AddRadioCheckItem(resources[i].Name, ResourcePickerIds + i);
+			}
+			resourcePicker.SetItemChecked(i, resources[i] == resourceBrush);
+		}
+		AddChild(resourcePicker);
+		resourcePicker.Position = (Vector2I)GetViewport().GetMousePosition();
+		resourcePicker.Popup();
+	}
+
+	private void ChooseResource(int index) {
+		List<C7GameData.Resource> resources = painter.ResourceBrushes();
+		if (index >= 0 && index < resources.Count) {
+			resourceBrush = resources[index];
+			Tool = EditorTool.Resources;
+			Refresh();
+		}
+	}
 
 	// Civ3's pop-up of the terrain brush's terrains, at the mouse.
 	private void ShowTerrainPicker() {
@@ -307,6 +354,8 @@ public partial class ScenarioEditor : Control {
 			}
 			foreach (int size in EditorTools.Sizes) {
 				SetChecked(menu, SizeItem(size), size == BrushSize);
+				// Civ3's brush sizes are the terrain brush's.
+				SetEnabled(menu, SizeItem(size), Tool == EditorTool.Terrain);
 			}
 			SetChecked(menu, MenuItem.Grid, GridShown);
 			SetEnabled(menu, MenuItem.Undo, painter.History.CanUndo);
@@ -527,18 +576,27 @@ public partial class ScenarioEditor : Control {
 
 	// Why the brush can't paint on the tile, or null.
 	private string CantPaint(Tile tile) {
-		return Tool == EditorTool.Terrain && terrainBrush != null ? MapPainter.CantPaint(tile, terrainBrush.Terrain) : null;
+		return Tool switch {
+			EditorTool.Terrain when terrainBrush != null => MapPainter.CantPaint(tile, terrainBrush.Terrain),
+			EditorTool.Resources when resourceBrush != null => MapPainter.CantPlace(tile, resourceBrush),
+			_ => null,
+		};
 	}
 
 	// Starts a stroke where the button went down, with the brush in hand
-	// (only the terrain brush paints so far).
+	// (the terrain and resource brushes so far).
 	private void BeginStroke(Vector2 position) {
-		if (Tool != EditorTool.Terrain || terrainBrush == null || game.EditorTileAt(position) == null) {
+		string name = Tool switch {
+			EditorTool.Terrain when terrainBrush != null => $"Paint {terrainBrush.Name}",
+			EditorTool.Resources when resourceBrush != null => $"Place {resourceBrush.Name}",
+			_ => null,
+		};
+		if (name == null || game.EditorTileAt(position) == null) {
 			return;
 		}
 		painting = true;
 		paintFrom = position;
-		painter.BeginStroke($"Paint {terrainBrush.Name}");
+		painter.BeginStroke(name);
 		PaintAt(position);
 	}
 
@@ -558,7 +616,10 @@ public partial class ScenarioEditor : Control {
 			return;
 		}
 		lastPainted = tile;
-		if (painter.PaintTerrain(tile, BrushSize, terrainBrush).Count > 0) {
+		List<Tile> changed = Tool == EditorTool.Resources
+			? painter.PlaceResource(tile, resourceBrush)
+			: painter.PaintTerrain(tile, BrushSize, terrainBrush);
+		if (changed.Count > 0) {
 			game.EditorMapView.InvalidateMap();
 		}
 	}
