@@ -174,4 +174,131 @@ public class ScenarioPeopleTest : IClassFixture<SaveGameFixture> {
 		Assert.True(game.turn >= 3);
 		Assert.Equal(2, game.players.Count(p => !p.isBarbarians && p.cities.Count > 0));
 	}
+	// City Properties: name, owner, size, culture, buildings as one undo
+	// step; a great wonder in one city of the world, the palace in one of
+	// a player's.
+	[Fact]
+	public void CityPropertiesAreEditedAndUndone() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, Player greece) = TwoPlayers();
+		City capital = Act(painter, "Place City", () => painter.PlaceCity(gameData.map.tileAt(50, 50), rome));
+		City other = Act(painter, "Place City", () => painter.PlaceCity(gameData.map.tileAt(54, 50), rome));
+		Building pyramids = gameData.Buildings.First(b => b.name == "The Pyramids");
+		Building temple = gameData.Buildings.First(b => b.name == "Temple");
+		Building palace = gameData.Buildings.First(b => b.isCenterOfEmpire);
+		ScenarioInfo info = new();
+		CityFacts before = painter.FactsOf(other, info);
+
+		CityFacts facts = before with { Name = "Sparta", Owner = greece, Size = 6, Culture = 40, Buildings = [temple, pyramids] };
+		Assert.True(painter.EditCity(other, facts, info));
+		Assert.Equal("Sparta", other.name);
+		Assert.Equal(greece, other.owner);
+		Assert.Contains(other, greece.cities);
+		Assert.DoesNotContain(other, rome.cities);
+		Assert.Equal(6, other.residents.Count);
+		Assert.Equal(40, other.perPlayerCulture[greece]);
+		Assert.Equal([temple, pyramids], other.constructed_buildings.Select(b => b.building));
+
+		Assert.NotNull(painter.CantEdit(capital, painter.FactsOf(capital, info) with { Buildings = [palace, pyramids] }));
+		// Back to Rome with a palace: Rome's capital has one.
+		Assert.NotNull(painter.CantEdit(other, painter.FactsOf(other, info) with { Owner = rome, Buildings = [palace, temple] }));
+		Assert.Null(painter.CantEdit(other, painter.FactsOf(other, info) with { Buildings = [palace] }));
+		Assert.NotNull(painter.CantEdit(other, facts with { Size = 0 }));
+
+		painter.Undo();
+		Assert.Equal(before.Name, other.name);
+		Assert.Equal(rome, other.owner);
+		Assert.Single(other.residents);
+		Assert.Empty(other.constructed_buildings);
+		painter.Redo();
+		Assert.Equal(6, other.residents.Count);
+		Assert.Equal(greece, other.owner);
+	}
+
+	// Unit Properties: type, owner, name, experience, AI strategy, the
+	// civ-specific king, as one undo step; saved and opened again.
+	[Fact]
+	public void UnitPropertiesAreEditedAndKept() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, Player greece) = TwoPlayers();
+		MapUnit unit = Act(painter, "Place", () => painter.PlaceUnit(gameData.map.tileAt(50, 50), gameData.unitPrototypes.First(p => p.name == "Warrior"), rome));
+		UnitPrototype spearman = gameData.unitPrototypes.First(p => p.name == "Spearman");
+		ExperienceLevel elite = gameData.experienceLevels.Last();
+		string strategy = MapPainter.StrategiesOf(spearman).First().ToString();
+		UnitFacts facts = new(spearman, greece, "Leonidas", elite, strategy, true);
+		Assert.True(painter.EditUnit(unit, facts));
+		Assert.Equal((spearman, greece, "Leonidas", elite, strategy, true),
+			(unit.unitType, unit.owner, unit.name, unit.experienceLevel, unit.aiStrategy, unit.useCivSpecificKing));
+		Assert.Equal(unit.maxHitPoints, unit.hitPointsRemaining);
+		Assert.Contains(unit, greece.units);
+		Assert.NotNull(painter.CantEdit(unit, facts with { Type = gameData.unitPrototypes.First(p => p.name == "Galley") }));
+		Assert.NotNull(painter.CantEdit(unit, facts with { AiStrategy = "NoSuchStrategy" }));
+
+		using TempDirectory dir = new();
+		string path = dir.File("unit.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, new ScenarioInfo()), path);
+		C7GameData.GameData again = ScenarioEditing.Open(ScenarioFiles.ForEditing(SaveGame.Load(path, s => s)), fixture.behaviors);
+		MapUnit kept = again.map.tileAt(50, 50).unitsOnTile.Single();
+		Assert.Equal(("Spearman", "Greece", "Leonidas", elite.key, strategy, true),
+			(kept.unitType.name, kept.owner.civilization.name, kept.name, kept.experienceLevelKey, kept.aiStrategy, kept.useCivSpecificKing));
+
+		painter.Undo();
+		Assert.Equal(("Warrior", rome), (unit.unitType.name, unit.owner));
+		Assert.Contains(unit, rome.units);
+	}
+
+	// Delete takes a city or a unit off, undoably; the city's borders go.
+	[Fact]
+	public void CitiesAndUnitsAreDeleted() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, _) = TwoPlayers();
+		Tile tile = gameData.map.tileAt(50, 50);
+		City city = Act(painter, "Place City", () => painter.PlaceCity(tile, rome));
+		MapUnit unit = Act(painter, "Place", () => painter.PlaceUnit(tile, gameData.unitPrototypes.First(p => p.name == "Warrior"), rome));
+		Assert.Equal([$"City: {city.name}", "Warrior (Rome)"], painter.ErasablesOn(tile).Take(2).Select(e => e.Name));
+
+		painter.Erase(tile, painter.ErasablesOn(tile).Take(2).ToList());
+		Assert.Null(tile.cityAtTile);
+		Assert.Empty(tile.unitsOnTile);
+		Assert.Null(tile.OwningPlayer());
+		painter.Undo();
+		Assert.Same(city, tile.cityAtTile);
+		Assert.Same(unit, tile.unitsOnTile.Single());
+		Assert.Equal(rome, tile.OwningPlayer());
+	}
+
+	// Civ3's "Auto": the game names the city from its owner's list when
+	// the scenario starts.
+	[Fact]
+	public void AutoNamedCitiesAreNamedAtTheStart() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, _) = TwoPlayers();
+		City city = Act(painter, "Place City", () => painter.PlaceCity(gameData.map.tileAt(50, 50), rome));
+		ScenarioInfo info = new() { customPlayerData = true };
+		Assert.True(painter.EditCity(city, painter.FactsOf(city, info) with { Name = "Placeholder", AutoName = true }, info));
+		Assert.Contains(city.id.ToString(), info.autoNamedCities);
+
+		using TempDirectory dir = new();
+		string path = dir.File("auto.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, info), path);
+		SaveGame scenario = SaveGame.Load(path, s => s);
+		Assert.Equal("Placeholder", scenario.Cities.Single().name);
+		ScenarioStart.Apply(scenario);
+		Assert.Equal(rome.civilization.cityNames[0], scenario.Cities.Single().name);
+	}
+	// Civ3's Reassign: the tile's city and units go to the active player,
+	// as one undo step.
+	[Fact]
+	public void ReassignGivesTheTileToTheActivePlayer() {
+		(C7GameData.GameData gameData, MapPainter painter, Player rome, Player greece) = TwoPlayers();
+		Tile tile = gameData.map.tileAt(50, 50);
+		City city = Act(painter, "Place City", () => painter.PlaceCity(tile, rome));
+		MapUnit unit = Act(painter, "Place", () => painter.PlaceUnit(tile, gameData.unitPrototypes.First(p => p.name == "Warrior"), rome));
+		ScenarioInfo info = new();
+		Assert.NotNull(painter.CantReassign(tile, rome, info));
+
+		Assert.NotNull(painter.Reassign(tile, greece, info));
+		Assert.Equal((greece, greece), (city.owner, unit.owner));
+		Assert.Equal(greece, tile.OwningPlayer());
+		Assert.Contains(city, greece.cities);
+		painter.Undo();
+		Assert.Equal((rome, rome), (city.owner, unit.owner));
+		Assert.Equal(rome, tile.OwningPlayer());
+	}
 }

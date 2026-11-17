@@ -177,6 +177,8 @@ public partial class ScenarioSetup : Control {
 		save.GameDifficulty = difficulty;
 		// Under Regicide, civs the scenario gives no King get theirs.
 		GameSetup.PlaceScenarioKings(save);
+		// What a scenario made in the editor asks of the game as it starts.
+		C7Engine.Editor.ScenarioStart.Apply(save);
 
 		log.Information("saving updated scenario");
 		global.SaveGame = save;

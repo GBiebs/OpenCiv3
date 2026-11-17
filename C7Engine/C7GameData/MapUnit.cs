@@ -95,6 +95,14 @@ namespace C7GameData {
 		// same unit type, the leader, told apart only by this.
 		public bool isScientificLeader;
 
+		// Civ3's Unit Properties, kept for the scenario editor; the game
+		// doesn't use them yet: the AI strategy the unit starts with (a
+		// SaveUnitPrototype.Flag's name, null for its type's own), and "Use
+		// Civ-Specific King Unit" (the player's own civ's king when the game
+		// starts).
+		public string aiStrategy;
+		public bool useCivSpecificKing;
+
 		public TileDirection facingDirection = TileDirection.SOUTHEAST;
 
 		public float WorkerProgressTowardsJob { get; set; }

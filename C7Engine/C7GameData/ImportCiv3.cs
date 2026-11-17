@@ -1702,7 +1702,9 @@ namespace C7GameData {
 					continue;
 				}
 				ExperienceLevel experience = save.ExperienceLevels[unit.ExperienceLevel];
-				save.Units.Add(createUnitAtLocation(player, unit.Name, unit.UnitType, experience.key, experience.baseHitPoints, unit.X, unit.Y));
+				SaveUnit placed = createUnitAtLocation(player, unit.Name, unit.UnitType, experience.key, experience.baseHitPoints, unit.X, unit.Y);
+				placed.useCivSpecificKing = unit.UseCivilizationKing != 0;
+				save.Units.Add(placed);
 			}
 
 			// Each civ's starting location gets the starting units, at the

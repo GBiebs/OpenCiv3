@@ -22,7 +22,8 @@ public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainIm
 // Something on a tile that the right-click menu's Delete submenu can take
 // off: the resource, an overlay (an improvement or a flag), or the river
 // along one edge.
-public sealed record Erasable(string Name, Resource Resource = null, OverlayBrush Overlay = null, TileDirection? RiverEdge = null);
+public sealed record Erasable(string Name, Resource Resource = null, OverlayBrush Overlay = null, TileDirection? RiverEdge = null,
+	City City = null, MapUnit Unit = null);
 
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
 // is one press of the mouse, however far it's dragged: BeginStroke, Paint
@@ -300,6 +301,12 @@ public sealed partial class MapPainter {
 		if (tile == null || tile == Tile.NONE) {
 			return things;
 		}
+		if (tile.cityAtTile is City city) {
+			things.Add(new Erasable($"City: {city.name}", City: city));
+		}
+		foreach (MapUnit unit in tile.unitsOnTile) {
+			things.Add(new Erasable($"{unit.unitType.name} ({ScenarioPlayers.NameOf(unit.owner)})", Unit: unit));
+		}
 		if (tile.Resource != null && tile.Resource != Resource.NONE && tile.Resource.Category != ResourceCategory.NONE) {
 			things.Add(new Erasable(tile.Resource.Name, Resource: tile.Resource));
 		}
@@ -346,7 +353,13 @@ public sealed partial class MapPainter {
 		HashSet<Tile> redraw = [tile];
 		History.Touch(tile);
 		foreach (Erasable thing in things) {
-			if (thing.Resource != null && tile.Resource == thing.Resource) {
+			if (thing.City is City city && tile.cityAtTile == city) {
+				TakeCity(city);
+				History.Record(() => AddCity(city), () => TakeCity(city), changesCities: true);
+			} else if (thing.Unit is MapUnit unit && tile.unitsOnTile.Contains(unit)) {
+				TakeUnit(unit);
+				History.Record(() => AddUnit(unit), () => TakeUnit(unit));
+			} else if (thing.Resource != null && tile.Resource == thing.Resource) {
 				tile.Resource = Resource.NONE;
 				tile.ResourceKey = Resource.NONE.Key;
 			} else if (thing.RiverEdge is TileDirection edge && Rivers.Has(tile, edge)) {

@@ -243,42 +243,6 @@ public partial class EditorChrome : Control {
 		}
 	}
 
-	public Control TileProperties(Tile tile, Action close) {
-		const int width = 480, height = 560;
-		TextureRect window = Popup.CreateBackground(width, height);
-		window.CustomMinimumSize = new Vector2(width, height);
-		MarginContainer margin = new();
-		margin.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		foreach (string side in new[] { "margin_left", "margin_right" }) {
-			margin.AddThemeConstantOverride(side, 26);
-		}
-		margin.AddThemeConstantOverride("margin_top", 16);
-		margin.AddThemeConstantOverride("margin_bottom", 22);
-		window.AddChild(margin);
-		VBoxContainer box = new();
-		box.AddThemeConstantOverride("separation", 8);
-		margin.AddChild(box);
-		box.AddChild(SetupStyle.MakeHeading(this, "TILE PROPERTIES", 18));
-
-		TabContainer tabs = new() { SizeFlagsVertical = SizeFlags.ExpandFill };
-		StyleTabs(tabs);
-		box.AddChild(tabs);
-		tabs.AddChild(TileTab(tile));
-		tabs.AddChild(TextTab("City", TileFacts.City(tile) is string city ? [city] : ["No city here."]));
-		List<string> units = TileFacts.Units(tile);
-		tabs.AddChild(TextTab("Units", units.Count > 0 ? units : ["No units here."]));
-
-		HBoxContainer buttons = new() { Alignment = BoxContainer.AlignmentMode.Center };
-		buttons.AddThemeConstantOverride("separation", 8);
-		foreach ((string text, Action action) in new (string, Action)[] { ("OK", close), ("Cancel", close), ("Apply", null), ("Help", null) }) {
-			Button button = TextButton(text, null, action);
-			button.CustomMinimumSize = new Vector2(84, 26);
-			buttons.AddChild(button);
-		}
-		box.AddChild(buttons);
-		return Backdrop(window, 0.25f);
-	}
-
 	private static void StyleTabs(TabContainer tabs) {
 		StyleBoxFlat panel = SetupStyle.Box(LightColor, SetupStyle.Brown, 1, 10);
 		tabs.AddThemeStyleboxOverride("panel", panel);
@@ -335,14 +299,6 @@ public partial class EditorChrome : Control {
 		HSeparator rule = new();
 		rule.AddThemeStyleboxOverride("separator", new StyleBoxLine { Color = new Color(SetupStyle.Brown, 0.5f), Thickness = 1 });
 		return rule;
-	}
-
-	private static Control TextTab(string name, List<string> lines) {
-		VBoxContainer tab = new() { Name = name };
-		foreach (string line in lines) {
-			tab.AddChild(InkLabel(line));
-		}
-		return tab;
 	}
 
 	// A dialog's backdrop: the map darkened, catching the clicks meant for

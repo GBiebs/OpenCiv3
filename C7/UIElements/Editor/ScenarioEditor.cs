@@ -62,7 +62,7 @@ public partial class ScenarioEditor : Control {
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
 		EditRules,
-		TileProperties, CenterHere,
+		TileProperties, CenterHere, Reassign,
 	}
 
 	// Arrow keys move the view by this many pixels (four times as far with
@@ -427,6 +427,14 @@ public partial class ScenarioEditor : Control {
 			case MenuItem.TileProperties:
 				OpenTileProperties(contextTile);
 				break;
+			case MenuItem.Reassign:
+				if (contextTile != null && !painting && painter.Reassign(contextTile, ActivePlayer, game.EditorInfo) is EditHistory.Step reassigned) {
+					game.EditorMapView.InvalidateMap();
+					Say(reassigned.Name);
+					UpdateTitle();
+					Refresh();
+				}
+				break;
 			case MenuItem.CenterHere:
 				if (contextTile != null) {
 					game.EditorMapView.centerCameraOnTile(contextTile);
@@ -746,6 +754,9 @@ public partial class ScenarioEditor : Control {
 		contextMenu = StyledMenu("TileMenu");
 		Add(contextMenu, "Tile Properties...", MenuItem.TileProperties);
 		AddDeleteMenu(contextMenu, contextTile);
+		// Civ3's Reassign: what's here goes to the active player.
+		Add(contextMenu, $"Reassign to {ScenarioPlayers.NameOf(ActivePlayer)}", MenuItem.Reassign,
+			enabled: painter.CantReassign(contextTile, ActivePlayer, game.EditorInfo) == null);
 		Add(contextMenu, "Center Here", MenuItem.CenterHere);
 		AddChild(contextMenu);
 		contextMenu.Position = (Vector2I)position;
@@ -792,8 +803,58 @@ public partial class ScenarioEditor : Control {
 			return;
 		}
 		CloseDialog();
-		dialog = chrome.TileProperties(tile, CloseDialog);
+		GameData data = EngineStorage.gameData;
+		TileEditing editing = new() {
+			players = data.players,
+			buildings = data.Buildings,
+			unitTypes = data.unitPrototypes,
+			experience = data.experienceLevels,
+			cityNames = tile.cityAtTile?.owner?.civilization?.cityNames ?? [],
+			city = tile.cityAtTile is City city ? painter.FactsOf(city, game.EditorInfo) : null,
+			units = [.. tile.unitsOnTile],
+			unitFacts = tile.unitsOnTile.Select(MapPainter.FactsOf).ToList(),
+			apply = edits => ApplyTileEdits(tile, edits),
+		};
+		dialog = chrome.TileProperties(tile, editing, CloseDialog);
 		AddChild(dialog);
+	}
+
+	// Applies what Tile Properties changed, the city then each unit, each
+	// an undo step. Returns why it couldn't, or null.
+	private string ApplyTileEdits(Tile tile, TileEditing edits) {
+		if (painting) {
+			return "Finish painting first.";
+		}
+		List<string> done = [];
+		if (edits.city != null && tile.cityAtTile is City city) {
+			CityFacts now = painter.FactsOf(city, game.EditorInfo);
+			bool same = now.Name == edits.city.Name && now.AutoName == edits.city.AutoName && now.Owner == edits.city.Owner
+				&& now.Size == edits.city.Size && now.Culture == edits.city.Culture && now.Buildings.SequenceEqual(edits.city.Buildings);
+			if (!same) {
+				if (painter.CantEdit(city, edits.city) is string why) {
+					return why;
+				}
+				painter.EditCity(city, edits.city, game.EditorInfo);
+				done.Add(city.name);
+			}
+		}
+		for (int i = 0; i < edits.units.Count; ++i) {
+			MapUnit unit = edits.units[i];
+			if (edits.unitFacts[i] != MapPainter.FactsOf(unit)) {
+				if (painter.CantEdit(unit, edits.unitFacts[i]) is string why) {
+					return why;
+				}
+				painter.EditUnit(unit, edits.unitFacts[i]);
+				done.Add(unit.unitType.name);
+			}
+		}
+		if (done.Count > 0) {
+			game.EditorMapView.InvalidateMap();
+			Say($"Edited {string.Join(", ", done)}");
+			UpdateTitle();
+			Refresh();
+		}
+		return null;
 	}
 
 	public void CloseDialog() {

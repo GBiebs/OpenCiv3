@@ -52,6 +52,9 @@ namespace C7GameData.Save {
 
 		// Whether the unit, a great leader, is a scientific one.
 		public bool isScientificLeader;
+		// Civ3's Unit Properties (MapUnit.aiStrategy, useCivSpecificKing).
+		public string aiStrategy;
+		public bool useCivSpecificKing;
 
 		// How many more times this turn the unit may bombard an attacker of
 		// its tile. Saves made before it was saved give a fresh unit's one.
@@ -115,6 +118,8 @@ namespace C7GameData.Save {
 			hasPillagedThisTurn = unit.hasPillagedThisTurn;
 			hasProducedLeader = unit.hasProducedLeader;
 			isScientificLeader = unit.isScientificLeader;
+			aiStrategy = unit.aiStrategy;
+			useCivSpecificKing = unit.useCivSpecificKing;
 			defensiveBombardsRemaining = unit.defensiveBombardsRemaining;
 			isOnAirSuperiority = unit.isOnAirSuperiority;
 			hasInterceptedThisTurn = unit.hasInterceptedThisTurn;
@@ -203,6 +208,8 @@ namespace C7GameData.Save {
 				hasPillagedThisTurn = hasPillagedThisTurn,
 				hasProducedLeader = hasProducedLeader,
 				isScientificLeader = isScientificLeader,
+				aiStrategy = aiStrategy,
+				useCivSpecificKing = useCivSpecificKing,
 				defensiveBombardsRemaining = defensiveBombardsRemaining,
 				isOnAirSuperiority = isOnAirSuperiority,
 				hasInterceptedThisTurn = hasInterceptedThisTurn,

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using C7Engine.AI;
 using C7GameData;
+using C7GameData.Save;
 
 namespace C7Engine.Editor;
 
@@ -158,5 +159,228 @@ public sealed partial class MapPainter {
 		gameData.RemoveMapUnit(unit);
 		unit.owner.units.Remove(unit);
 		TileChangeJournal.Record(unit.location);
+	}
+}
+
+// What Civ3's City Properties set: the name (or Auto), the owner, the size,
+// the culture and the improvements and wonders the city starts with.
+public sealed record CityFacts(string Name, bool AutoName, Player Owner, int Size, int Culture, List<Building> Buildings);
+
+// What Civ3's Unit Properties set: the type, the owner, the name, the
+// experience level, the AI strategy (null for its type's own) and "Use
+// Civ-Specific King Unit".
+public sealed record UnitFacts(UnitPrototype Type, Player Owner, string Name, ExperienceLevel Experience, string AiStrategy, bool CivSpecificKing);
+
+public sealed partial class MapPainter {
+	public CityFacts FactsOf(City city, ScenarioInfo info) {
+		return new CityFacts(city.name, info?.autoNamedCities.Contains(city.id.ToString()) ?? false, city.owner, city.residents.Count,
+			city.perPlayerCulture.GetValueOrDefault(city.owner), city.constructed_buildings.Select(b => b.building).ToList());
+	}
+
+	// Why the city can't have these facts, or null: a name, a size of at
+	// least 1, no negative culture, an owner with cities (not the
+	// barbarians); a great wonder in one city of the world, a small wonder
+	// or the palace in one city of its owner's.
+	public string CantEdit(City city, CityFacts facts) {
+		if (!facts.AutoName && string.IsNullOrWhiteSpace(facts.Name)) {
+			return "The city needs a name, or Auto.";
+		}
+		if (facts.Size < 1) {
+			return "A city's size is at least 1.";
+		}
+		if (facts.Culture < 0) {
+			return "Culture can't be below 0.";
+		}
+		if (facts.Owner == null || facts.Owner.isBarbarians) {
+			return "The barbarians have no cities.";
+		}
+		if (city.location.unitsOnTile.FirstOrDefault(u => u.owner != facts.Owner) is MapUnit stranger) {
+			return $"{ScenarioPlayers.NameOf(stranger.owner)}'s units are in the city.";
+		}
+		foreach (Building building in facts.Buildings) {
+			if (building.IsGreatWonder() && gameData.cities.FirstOrDefault(c => c != city && c.constructed_buildings.Any(b => b.building == building)) is City other) {
+				return $"{building.name} is already in {other.name}: a great wonder is in one city only.";
+			}
+			if ((building.isSmallWonder || building.isCenterOfEmpire)
+				&& facts.Owner.cities.FirstOrDefault(c => c != city && c.constructed_buildings.Any(b => b.building == building)) is City mine) {
+				return $"{building.name} is already in {mine.name}: one city of a player's has it.";
+			}
+		}
+		return null;
+	}
+
+	// Gives the city the facts, as one action. Returns whether it did.
+	public bool EditCity(City city, CityFacts facts, ScenarioInfo info) {
+		if (CantEdit(city, facts) != null) {
+			return false;
+		}
+		CityFacts before = FactsOf(city, info);
+		History.Begin($"Edit {city.name}");
+		Apply(city, facts, info);
+		History.Record(() => Apply(city, before, info), () => Apply(city, facts, info), changesCities: true);
+		History.End();
+		return true;
+	}
+
+	private void Apply(City city, CityFacts facts, ScenarioInfo info) {
+		if (!facts.AutoName || !string.IsNullOrWhiteSpace(facts.Name)) {
+			city.name = facts.Name;
+		}
+		if (info != null) {
+			info.autoNamedCities.Remove(city.id.ToString());
+			if (facts.AutoName) {
+				info.autoNamedCities.Add(city.id.ToString());
+			}
+		}
+		if (city.owner != facts.Owner) {
+			city.owner.cities.Remove(city);
+			city.perPlayerCulture.Remove(city.owner);
+			city.owner = facts.Owner;
+			facts.Owner.cities.Add(city);
+			foreach (CityResident resident in city.residents) {
+				resident.nationality = facts.Owner.civilization;
+			}
+		}
+		city.perPlayerCulture[city.owner] = facts.Culture;
+		foreach (CityBuilding built in city.constructed_buildings.ToList()) {
+			if (!facts.Buildings.Contains(built.building)) {
+				city.RemoveBuilding(built);
+			}
+		}
+		foreach (Building building in facts.Buildings) {
+			if (!city.constructed_buildings.Any(b => b.building == building)) {
+				city.AddBuilding(building);
+			}
+		}
+		city.capital = city.constructed_buildings.Any(b => b.building.isCenterOfEmpire);
+		while (city.residents.Count > facts.Size) {
+			city.RemoveCitizens(1);
+		}
+		while (city.residents.Count < facts.Size) {
+			CityResident resident = new() {
+				city = city,
+				nationality = city.owner.civilization,
+				citizenType = gameData.citizenTypes.Find(x => x.IsDefaultCitizen),
+			};
+			city.AddCitizen(resident);
+			CityTileAssignmentAI.AssignNewCitizenToTile(gameData, resident);
+		}
+		TileChangeJournal.RecordTerrainChange(city.location);
+		gameData.UpdateTileOwners();
+		gameData.InvalidateCachedTradeNetwork();
+		city.owner.DoCorruptionCalculations(gameData);
+	}
+
+	public static UnitFacts FactsOf(MapUnit unit) {
+		return new UnitFacts(unit.unitType, unit.owner, unit.name, unit.experienceLevel, unit.aiStrategy, unit.useCivSpecificKing);
+	}
+
+	// The AI strategies a unit of the type can have: its type's (the rules'
+	// AI strategy flags).
+	public static List<SaveUnitPrototype.Flag> StrategiesOf(UnitPrototype type) {
+		return type.flags.Where(f => f.ToString().StartsWith("AI")).OrderBy(f => f).ToList();
+	}
+
+	// Why the unit can't have these facts, or null: its type on its tile
+	// (as the unit brush places), an owner sharing the tile with no one,
+	// an AI strategy its type has.
+	public string CantEdit(MapUnit unit, UnitFacts facts) {
+		if (facts.Owner == null) {
+			return "A unit needs an owner.";
+		}
+		Tile tile = unit.location;
+		if (tile.unitsOnTile.Any(u => u != unit && u.owner != facts.Owner) || (tile.HasCity() && tile.cityAtTile.owner != facts.Owner)) {
+			return "Another player has units or a city here.";
+		}
+		bool water = tile.overlayTerrainType.IsWater;
+		if (facts.Type.IsSeaUnit() ? !water && !(tile.HasCity() && tile.NeighborsWater()) : water) {
+			return $"A {facts.Type.name} can't be here.";
+		}
+		if (facts.AiStrategy != null && !StrategiesOf(facts.Type).Any(f => f.ToString() == facts.AiStrategy)) {
+			return $"A {facts.Type.name} hasn't that AI strategy.";
+		}
+		return null;
+	}
+
+	public bool EditUnit(MapUnit unit, UnitFacts facts) {
+		if (CantEdit(unit, facts) != null) {
+			return false;
+		}
+		UnitFacts before = FactsOf(unit);
+		History.Begin($"Edit {facts.Type.name}");
+		Apply(unit, facts);
+		History.Record(() => Apply(unit, before), () => Apply(unit, facts));
+		History.End();
+		return true;
+	}
+
+	private void Apply(MapUnit unit, UnitFacts facts) {
+		unit.unitType = facts.Type;
+		if (unit.owner != facts.Owner) {
+			unit.owner.units.Remove(unit);
+			unit.owner = facts.Owner;
+			facts.Owner.units.Add(unit);
+		}
+		unit.name = facts.Name;
+		unit.experienceLevel = facts.Experience;
+		unit.experienceLevelKey = facts.Experience?.key;
+		unit.hitPointsRemaining = unit.maxHitPoints;
+		unit.aiStrategy = facts.AiStrategy;
+		unit.useCivSpecificKing = facts.CivSpecificKing;
+		TileChangeJournal.Record(unit.location);
+	}
+}
+
+public sealed partial class MapPainter {
+	// Why what's on the tile can't go to the player, or null: there's
+	// something of someone else's (a city, units, a colony or outpost), and
+	// the city could be theirs (City Properties' checks).
+	public string CantReassign(Tile tile, Player player, ScenarioInfo info) {
+		if (player == null) {
+			return "Choose a player first (Map > Set Active Player).";
+		}
+		bool someoneElses = (tile.cityAtTile != null && tile.cityAtTile.owner != player) || tile.unitsOnTile.Any(u => u.owner != player)
+			|| (tile.OwnedHolding() != null && tile.holdingOwner != player);
+		if (!someoneElses) {
+			return "Nothing here is someone else's.";
+		}
+		if (tile.cityAtTile is City city) {
+			CityFacts facts = FactsOf(city, info) with { Owner = player };
+			// Its units go too, so they don't stand in the way.
+			if (player.isBarbarians) {
+				return "The barbarians have no cities.";
+			}
+			foreach (Building building in facts.Buildings.Where(b => b.isSmallWonder || b.isCenterOfEmpire)) {
+				if (player.cities.FirstOrDefault(c => c != city && c.constructed_buildings.Any(b => b.building == building)) is City mine) {
+					return $"{building.name} is already in {mine.name}.";
+				}
+			}
+		}
+		return null;
+	}
+
+	// Civ3's Reassign: the tile's city, units and colony or outpost become
+	// the player's, as one action.
+	public EditHistory.Step Reassign(Tile tile, Player player, ScenarioInfo info) {
+		if (CantReassign(tile, player, info) != null) {
+			return null;
+		}
+		History.Begin($"Reassign to {ScenarioPlayers.NameOf(player)}");
+		History.Touch(tile);
+		foreach (MapUnit unit in tile.unitsOnTile.Where(u => u.owner != player).ToList()) {
+			UnitFacts before = FactsOf(unit), after = before with { Owner = player };
+			Apply(unit, after);
+			History.Record(() => Apply(unit, before), () => Apply(unit, after));
+		}
+		if (tile.cityAtTile is City city && city.owner != player) {
+			CityFacts before = FactsOf(city, info), after = before with { Owner = player };
+			Apply(city, after, info);
+			History.Record(() => Apply(city, before, info), () => Apply(city, after, info), changesCities: true);
+		}
+		if (tile.OwnedHolding() != null) {
+			tile.holdingOwner = player;
+		}
+		Journal([tile]);
+		return History.End();
 	}
 }

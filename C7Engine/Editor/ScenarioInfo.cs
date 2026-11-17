@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace C7Engine.Editor;
 
 // What a scenario made in the scenario editor says about itself, beyond the
@@ -21,4 +23,8 @@ public class ScenarioInfo {
 	// Whether the scenario sets up its players itself (Civ3's Player
 	// Properties).
 	public bool customPlayerData = false;
+
+	// The cities whose name is Civ3's "Auto": the game names them from their
+	// owner's list when the scenario starts (ScenarioStart). By city ID.
+	public List<string> autoNamedCities = [];
 }
