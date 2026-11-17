@@ -12,6 +12,13 @@ public sealed record TerrainBrush(TerrainType Terrain, TerrainBrush.Kind Variant
 	public enum Kind { Plain, BonusGrassland, SnowCapped, PineForest }
 }
 
+// One of the overlay brush's choices (Civ3's list, rivers aside): an
+// improvement of the rules (a road, a mine, a colony...), or a tile's flag
+// (a goody hut, a barbarian camp, a starting or victory point location).
+public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainImprovement Improvement) {
+	public enum Kind { GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation }
+}
+
 // Paints the map: the brushes' rules and their undo (EditHistory). A stroke
 // is one press of the mouse, however far it's dragged: BeginStroke, Paint
 // at each tile the brush passes over, EndStroke.
@@ -126,6 +133,115 @@ public sealed class MapPainter {
 		History.Touch(tile);
 		tile.Resource = resource;
 		tile.ResourceKey = resource.Key;
+		Journal([tile]);
+		return [tile];
+	}
+
+	// The overlay brushes in the order of Civ3's help ("Brush Selector
+	// (Overlay)"): each improvement only if the rules have it.
+	public List<OverlayBrush> OverlayBrushes() {
+		List<OverlayBrush> brushes = [];
+		void Improvement(string key, string name) {
+			if (gameData.terrainImprovements.Find(i => i.key == key) is TerrainImprovement improvement) {
+				brushes.Add(new OverlayBrush(OverlayBrush.Kind.Improvement, name, improvement));
+			}
+		}
+		brushes.Add(new OverlayBrush(OverlayBrush.Kind.GoodyHut, "Goody Hut", null));
+		brushes.Add(new OverlayBrush(OverlayBrush.Kind.BarbarianCamp, "Barbarian Camp", null));
+		Improvement(Tile.TileOverlays.FORTRESS, "Fortress");
+		Improvement(Tile.TileOverlays.COLONY, "Colony");
+		Improvement(Tile.TileOverlays.IRRIGATION, "Irrigation");
+		Improvement(Tile.TileOverlays.MINE, "Mine");
+		Improvement(Tile.TileOverlays.RAILROAD, "Railroad");
+		Improvement(Tile.TileOverlays.ROAD, "Road");
+		Improvement(Tile.TileOverlays.POLLUTION, "Pollution");
+		brushes.Add(new OverlayBrush(OverlayBrush.Kind.StartingLocation, "Starting Location", null));
+		Improvement(Tile.TileOverlays.AIRFIELD, "Airfield");
+		Improvement(Tile.TileOverlays.RADAR_TOWER, "Radar Tower");
+		Improvement(Tile.TileOverlays.OUTPOST, "Outpost");
+		brushes.Add(new OverlayBrush(OverlayBrush.Kind.VictoryLocation, "Victory Point Location", null));
+		Improvement(Tile.TileOverlays.RUINS, "Ruins");
+		return brushes;
+	}
+
+	// Why the overlay can't go on the tile, or null if it can. Overlays are
+	// land's. A city's tile takes only a road, a railroad or a victory point
+	// location (the game keeps improvements off city tiles). The terrain must
+	// allow the improvement: forts, colonies, airfields, radar towers and
+	// outposts by its flags, roads where they add commerce, irrigation food
+	// and mines shields, as the game's workers. A goody hut, a barbarian camp
+	// and a starting location exclude one another (Civ3's Tile Properties).
+	public static string CantPlace(Tile tile, OverlayBrush brush) {
+		TerrainType terrain = tile.overlayTerrainType;
+		if (terrain == null || terrain.IsWater) {
+			return $"A {brush.Name.ToLowerInvariant()} goes on land only.";
+		}
+		bool roadLike = brush.Improvement?.layer == TerrainImprovement.Layer.Roads;
+		if (tile.HasCity() && !roadLike && brush.What != OverlayBrush.Kind.VictoryLocation) {
+			return "A city stands here.";
+		}
+		if (brush.Improvement is TerrainImprovement improvement) {
+			bool allowed = improvement.key switch {
+				Tile.TileOverlays.IRRIGATION => improvement.GetYieldBonus(terrain, Tile.YieldType.Food) > 0,
+				Tile.TileOverlays.MINE => improvement.GetYieldBonus(terrain, Tile.YieldType.Production) > 0,
+				_ => Tile.TileOverlays.TerrainAllows(terrain, improvement),
+			};
+			return allowed ? null : $"A {brush.Name.ToLowerInvariant()} can't be on {NameOf(terrain)}.";
+		}
+		bool hut = tile.hasGoodyHut, camp = tile.hasBarbarianCamp, start = tile.map?.startingLocations.Contains(tile) ?? false;
+		return brush.What switch {
+			OverlayBrush.Kind.GoodyHut when camp => "A barbarian camp is here.",
+			OverlayBrush.Kind.GoodyHut when start => "A starting location is here.",
+			OverlayBrush.Kind.BarbarianCamp when hut => "A goody hut is here.",
+			OverlayBrush.Kind.BarbarianCamp when start => "A starting location is here.",
+			OverlayBrush.Kind.StartingLocation when hut => "A goody hut is here.",
+			OverlayBrush.Kind.StartingLocation when camp => "A barbarian camp is here.",
+			_ => null,
+		};
+	}
+
+	// Whether the tile already has the overlay (a railroad is a road too).
+	private static bool Has(Tile tile, OverlayBrush brush) {
+		if (brush.Improvement?.key == Tile.TileOverlays.ROAD && tile.HasRoad()) {
+			return true;
+		}
+		return brush.What switch {
+			OverlayBrush.Kind.GoodyHut => tile.hasGoodyHut,
+			OverlayBrush.Kind.BarbarianCamp => tile.hasBarbarianCamp,
+			OverlayBrush.Kind.StartingLocation => tile.map?.startingLocations.Contains(tile) ?? false,
+			OverlayBrush.Kind.VictoryLocation => tile.isVictoryLocation,
+			_ => tile.overlays.HasImprovement(brush.Improvement),
+		};
+	}
+
+	// Puts the overlay on the tile (one tile: Civ3's brush sizes are the
+	// terrain brush's). An improvement takes the place of the one on its
+	// layer: irrigation a mine's, a railroad a road's, an outpost a
+	// fortress's... A colony, outpost, airfield or radar tower placed here
+	// belongs to no one until the editor has players to give it to.
+	// Returns the tiles to redraw, or none.
+	public List<Tile> PlaceOverlay(Tile tile, OverlayBrush brush) {
+		if (tile == null || tile == Tile.NONE || CantPlace(tile, brush) != null || Has(tile, brush)) {
+			return [];
+		}
+		History.Touch(tile);
+		switch (brush.What) {
+			case OverlayBrush.Kind.GoodyHut:
+				tile.hasGoodyHut = true;
+				break;
+			case OverlayBrush.Kind.BarbarianCamp:
+				tile.hasBarbarianCamp = true;
+				break;
+			case OverlayBrush.Kind.StartingLocation:
+				Map.startingLocations.Add(tile);
+				break;
+			case OverlayBrush.Kind.VictoryLocation:
+				tile.isVictoryLocation = true;
+				break;
+			default:
+				tile.overlays.Add(brush.Improvement);
+				break;
+		}
 		Journal([tile]);
 		return [tile];
 	}

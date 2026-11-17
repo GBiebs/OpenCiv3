@@ -16,6 +16,8 @@ public sealed class TileState {
 	private string resourceKey;
 	private bool goodyHut, barbarianCamp, victoryLocation, startingLocation;
 	private List<TerrainImprovement> improvements;
+	// Whose colony, outpost, airfield or radar tower it is.
+	private Player holdingOwner;
 	private Civ3ExtraInfo art;
 
 	public static TileState Of(Tile tile, GameMap map) {
@@ -40,6 +42,7 @@ public sealed class TileState {
 			victoryLocation = tile.isVictoryLocation,
 			startingLocation = map.startingLocations.Contains(tile),
 			improvements = [.. tile.overlays.GetImprovements()],
+			holdingOwner = tile.holdingOwner,
 			// The art is replaced, never changed in place (see
 			// TerrainTextureFiles), so keeping the reference keeps the art.
 			art = tile.ExtraInfo,
@@ -82,6 +85,8 @@ public sealed class TileState {
 				tile.overlays.Add(improvement);
 			}
 		}
+		// After the improvements: taking a holding away forgets its owner.
+		tile.holdingOwner = holdingOwner;
 		tile.ExtraInfo = art;
 	}
 
@@ -94,6 +99,6 @@ public sealed class TileState {
 			&& resource == other.resource && goodyHut == other.goodyHut && barbarianCamp == other.barbarianCamp
 			&& victoryLocation == other.victoryLocation && startingLocation == other.startingLocation
 			&& improvements.Count == other.improvements.Count && improvements.TrueForAll(other.improvements.Contains)
-			&& art == other.art;
+			&& holdingOwner == other.holdingOwner && art == other.art;
 	}
 }

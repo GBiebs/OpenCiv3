@@ -324,4 +324,159 @@ public class MapPainterTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal("Fish", again.map.tileAt(50, 46).Resource.Name);
 		Assert.Equal(2, again.map.tiles.Count(t => t.Resource != Resource.NONE && t.Resource.Category != ResourceCategory.NONE));
 	}
+	private static OverlayBrush OverlayNamed(MapPainter painter, string name) => painter.OverlayBrushes().First(b => b.Name == name);
+
+	private static EditHistory.Step Overlay(MapPainter painter, string name, params Tile[] tiles) {
+		OverlayBrush brush = OverlayNamed(painter, name);
+		painter.BeginStroke("Place " + brush.Name);
+		foreach (Tile tile in tiles) {
+			painter.PlaceOverlay(tile, brush);
+		}
+		return painter.EndStroke();
+	}
+
+	// Civ3's overlay pop-up, its help's order (rivers aside).
+	[Fact]
+	public void TheOverlayBrushesAreCiv3s() {
+		(_, MapPainter painter) = NewScenario();
+		Assert.Equal(["Goody Hut", "Barbarian Camp", "Fortress", "Colony", "Irrigation", "Mine", "Railroad", "Road", "Pollution",
+			"Starting Location", "Airfield", "Radar Tower", "Outpost", "Victory Point Location", "Ruins"],
+			painter.OverlayBrushes().Select(b => b.Name).ToList());
+	}
+
+	// Improvements go where the terrain allows them, each taking the place of
+	// the one on its layer; nothing goes on water.
+	[Fact]
+	public void ImprovementsFollowTheTerrain() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile grass = gameData.map.tileAt(50, 50), mountain = gameData.map.tileAt(52, 50), forest = gameData.map.tileAt(48, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 5, grass);
+		Stroke(painter, Brush(painter, "Mountains"), 1, mountain);
+		Stroke(painter, Brush(painter, "Forest"), 1, forest);
+		Tile ocean = gameData.map.tileAt(10, 10);
+
+		Overlay(painter, "Road", grass);
+		Assert.True(grass.HasRoad());
+		Overlay(painter, "Railroad", grass);
+		Assert.True(grass.HasRailroad());
+		Overlay(painter, "Irrigation", grass);
+		Assert.True(grass.HasIrrigation());
+		Overlay(painter, "Mine", grass);
+		Assert.False(grass.HasIrrigation());
+		Assert.True(grass.HasRailroad());
+		Overlay(painter, "Pollution", grass);
+		Overlay(painter, "Ruins", grass);
+		Assert.True(grass.HasPollution() && grass.HasRuins());
+
+		Assert.NotNull(MapPainter.CantPlace(mountain, OverlayNamed(painter, "Irrigation")));
+		Assert.Null(MapPainter.CantPlace(mountain, OverlayNamed(painter, "Mine")));
+		Assert.NotNull(MapPainter.CantPlace(forest, OverlayNamed(painter, "Mine")));
+		Assert.Null(Overlay(painter, "Irrigation", mountain));
+		Assert.Null(Overlay(painter, "Road", ocean));
+		Assert.Null(Overlay(painter, "Goody Hut", ocean));
+		Assert.Null(Overlay(painter, "Road", grass));
+	}
+
+	// A colony and an outpost: a colony shares its tile with a fortress, an
+	// outpost takes a fortress's place; placed, they belong to no one.
+	[Fact]
+	public void StructuresShareOrTakeTheirLayer() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile tile = gameData.map.tileAt(50, 50);
+		Stroke(painter, Brush(painter, "Plains"), 3, tile);
+		Overlay(painter, "Fortress", tile);
+		Overlay(painter, "Colony", tile);
+		Assert.True(tile.HasColony());
+		Assert.Null(tile.holdingOwner);
+		Overlay(painter, "Outpost", tile);
+		Assert.True(tile.HasOutpost());
+		Assert.True(tile.HasColony());
+		Assert.Equal(2, tile.overlays.GetImprovements().Count);
+
+		// Water takes the colony and its owner; undo gives both back.
+		Player owner = new() { id = ID.FromString("player-1") };
+		tile.holdingOwner = owner;
+		Stroke(painter, Brush(painter, "Coast"), 1, tile);
+		Assert.False(tile.HasColony());
+		Assert.Null(tile.holdingOwner);
+		painter.Undo();
+		Assert.True(tile.HasColony());
+		Assert.Equal(owner, tile.holdingOwner);
+	}
+
+	// A goody hut, a barbarian camp and a starting location exclude one
+	// another, as in Civ3's Tile Properties.
+	[Fact]
+	public void HutsCampsAndStartsExcludeOneAnother() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile a = gameData.map.tileAt(50, 50), b = gameData.map.tileAt(52, 50), c = gameData.map.tileAt(51, 51);
+		Stroke(painter, Brush(painter, "Grassland"), 5, a);
+		Overlay(painter, "Goody Hut", a);
+		Overlay(painter, "Barbarian Camp", b);
+		Overlay(painter, "Starting Location", c);
+		foreach (string name in new[] { "Barbarian Camp", "Starting Location" }) {
+			Assert.Null(Overlay(painter, name, a));
+		}
+		foreach (string name in new[] { "Goody Hut", "Starting Location" }) {
+			Assert.Null(Overlay(painter, name, b));
+		}
+		foreach (string name in new[] { "Goody Hut", "Barbarian Camp" }) {
+			Assert.Null(Overlay(painter, name, c));
+		}
+		Assert.True(a.hasGoodyHut && !a.hasBarbarianCamp);
+		Assert.True(b.hasBarbarianCamp && !b.hasGoodyHut);
+		Assert.Equal([c], gameData.map.startingLocations);
+		Assert.NotNull(Overlay(painter, "Victory Point Location", c));
+		Assert.True(c.isVictoryLocation);
+	}
+
+	// The starting locations are in the player slots' order; undoing a
+	// stroke that took one away puts it back in its place.
+	[Fact]
+	public void StartingLocationsKeepTheirOrderThroughUndo() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Tile a = gameData.map.tileAt(40, 50), b = gameData.map.tileAt(50, 50), c = gameData.map.tileAt(60, 50);
+		Stroke(painter, Brush(painter, "Grassland"), 1, a, b, c);
+		Overlay(painter, "Starting Location", a);
+		Overlay(painter, "Starting Location", b);
+		Overlay(painter, "Starting Location", c);
+		Assert.Equal([a, b, c], gameData.map.startingLocations);
+
+		Stroke(painter, Brush(painter, "Coast"), 1, b);
+		Assert.Equal([a, c], gameData.map.startingLocations);
+		painter.Undo();
+		Assert.Equal([a, b, c], gameData.map.startingLocations);
+		painter.Redo();
+		Assert.Equal([a, c], gameData.map.startingLocations);
+		painter.Undo();
+		painter.Undo();
+		Assert.Equal([a, b], gameData.map.startingLocations);
+	}
+
+	// Overlays are saved and opened again.
+	[Fact]
+	public void PlacedOverlaysAreSavedAndOpenedAgain() {
+		(C7GameData.GameData gameData, MapPainter painter) = NewScenario();
+		Stroke(painter, Brush(painter, "Grassland"), 5, gameData.map.tileAt(50, 50));
+		Overlay(painter, "Goody Hut", gameData.map.tileAt(50, 50));
+		Overlay(painter, "Barbarian Camp", gameData.map.tileAt(52, 50));
+		Overlay(painter, "Starting Location", gameData.map.tileAt(48, 50));
+		Overlay(painter, "Victory Point Location", gameData.map.tileAt(50, 52));
+		Overlay(painter, "Road", gameData.map.tileAt(50, 52), gameData.map.tileAt(51, 51));
+		Overlay(painter, "Mine", gameData.map.tileAt(50, 48));
+		Overlay(painter, "Colony", gameData.map.tileAt(49, 49));
+
+		using TempDirectory dir = new();
+		string path = dir.File("overlays.json");
+		ScenarioFiles.Save(ScenarioFiles.ToScenario(gameData, new ScenarioInfo { customMap = true }), path);
+		C7GameData.GameData again = ScenarioEditing.Open(ScenarioFiles.ForEditing(SaveGame.Load(path, s => s)), fixture.behaviors);
+
+		Assert.True(again.map.tileAt(50, 50).hasGoodyHut);
+		Assert.True(again.map.tileAt(52, 50).hasBarbarianCamp);
+		Assert.Equal([again.map.tileAt(48, 50)], again.map.startingLocations);
+		Assert.True(again.map.tileAt(50, 52).isVictoryLocation);
+		Assert.True(again.map.tileAt(50, 52).HasRoad() && again.map.tileAt(51, 51).HasRoad());
+		Assert.Contains(again.map.tileAt(50, 48).overlays.GetImprovements(), i => i.key == Tile.TileOverlays.MINE);
+		Assert.True(again.map.tileAt(49, 49).HasColony());
+	}
 }

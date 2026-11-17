@@ -14,6 +14,10 @@ public sealed class EditHistory {
 		public string Name { get; init; }
 		internal readonly Dictionary<Tile, TileState> before = [];
 		internal readonly Dictionary<Tile, TileState> after = [];
+		// The map's starting locations before and after, when the action
+		// changed them: their order is the player slots', which the tiles'
+		// own states can't put back.
+		internal List<Tile> startsBefore, startsAfter;
 		public IReadOnlyCollection<Tile> Tiles => before.Keys;
 	}
 
@@ -45,7 +49,7 @@ public sealed class EditHistory {
 		if (open != null) {
 			throw new InvalidOperationException($"\"{open.Name}\" hasn't ended");
 		}
-		open = new Step { Name = name };
+		open = new Step { Name = name, startsBefore = [.. map.startingLocations] };
 	}
 
 	// Called before a tile changes in the open action (more than once is
@@ -72,6 +76,11 @@ public sealed class EditHistory {
 				step.after[tile] = after;
 			}
 		}
+		if (step.startsBefore.SequenceEqual(map.startingLocations)) {
+			step.startsBefore = null;
+		} else {
+			step.startsAfter = [.. map.startingLocations];
+		}
 		if (step.before.Count == 0) {
 			return null;
 		}
@@ -95,6 +104,7 @@ public sealed class EditHistory {
 		foreach ((Tile tile, TileState state) in step.before) {
 			state.Restore(tile, map);
 		}
+		PutStarts(step.startsBefore);
 		redo.Add(step);
 		return step;
 	}
@@ -108,7 +118,15 @@ public sealed class EditHistory {
 		foreach ((Tile tile, TileState state) in step.after) {
 			state.Restore(tile, map);
 		}
+		PutStarts(step.startsAfter);
 		undo.Add(step);
 		return step;
+	}
+
+	private void PutStarts(List<Tile> starts) {
+		if (starts != null) {
+			map.startingLocations.Clear();
+			map.startingLocations.AddRange(starts);
+		}
 	}
 }
