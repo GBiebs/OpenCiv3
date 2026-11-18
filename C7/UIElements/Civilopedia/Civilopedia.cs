@@ -234,7 +234,8 @@ public partial class Civilopedia : CenterContainer {
 		EngineStorage.ReadGameData((GameData gd) => {
 			LoadLegacyFiles();
 			if (catalog == null || !ReferenceEquals(gd, catalogGameData)) {
-				catalog = CivilopediaCatalog.Build(gd, text);
+				// The scenario's own articles over the game's.
+				catalog = CivilopediaCatalog.Build(gd, text?.With(gd.rules?.CivilopediaEntries));
 				catalogGameData = gd;
 				history.Clear();
 				historyIndex = -1;

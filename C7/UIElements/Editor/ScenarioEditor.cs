@@ -21,8 +21,9 @@ public partial class ScenarioEditor : Control {
 	private PopupMenu contextMenu;
 	private Control dialog;
 
-	// Whether the file dialog is choosing a file to open or to save as.
-	private bool choosingFileToSave;
+	// What the file dialog is choosing a file for.
+	private enum FilePurpose { Open, Save, Import, Package }
+	private FilePurpose filePurpose;
 
 	// Panning the map by dragging with the middle button.
 	private bool panning;
@@ -67,6 +68,7 @@ public partial class ScenarioEditor : Control {
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
 		EditRules, RestoreDefaults,
 		TileProperties, CenterHere, Reassign,
+		Import, Revert, Recent1, Recent2, Recent3, Recent4, Package, CheckScenario,
 	}
 
 	// Arrow keys move the view by this many pixels (four times as far with
@@ -79,6 +81,9 @@ public partial class ScenarioEditor : Control {
 	private float shownZoom = -1;
 
 	public ScenarioEditor() { }
+
+	// The scenario's file, or null until it's saved.
+	internal string ScenarioPath => game.EditorPath;
 
 	public ScenarioEditor(Game game) {
 		this.game = game;
@@ -174,7 +179,19 @@ public partial class ScenarioEditor : Control {
 		Add(file, "New", MenuItem.New, (Key)KeyModifierMask.MaskCtrl | Key.N);
 		Add(file, "Open...", MenuItem.Open, (Key)KeyModifierMask.MaskCtrl | Key.O);
 		Add(file, "Save", MenuItem.Save, (Key)KeyModifierMask.MaskCtrl | Key.S);
+		Add(file, "Import...", MenuItem.Import);
 		Add(file, "Save As...", MenuItem.SaveAs);
+		Add(file, "Revert to Saved", MenuItem.Revert, enabled: game.EditorPath != null && File.Exists(game.EditorPath));
+		file.AddSeparator();
+		Add(file, "Package Scenario...", MenuItem.Package);
+		// Civ3's last four files.
+		List<string> recent = EditorRecentFiles.List();
+		if (recent.Count > 0) {
+			file.AddSeparator();
+			for (int i = 0; i < recent.Count && i < 4; ++i) {
+				Add(file, $"{i + 1} {Path.GetFileName(recent[i])}", MenuItem.Recent1 + i);
+			}
+		}
 		file.AddSeparator();
 		Add(file, "Exit to Main Menu", MenuItem.Exit);
 
@@ -237,6 +254,7 @@ public partial class ScenarioEditor : Control {
 		PopupMenu scenario = Menu("Scenario");
 		Add(scenario, "Properties...", MenuItem.ScenarioProperties);
 		Add(scenario, "Player Properties...", MenuItem.PlayerProperties, enabled: false);
+		Add(scenario, "Check Scenario...", MenuItem.CheckScenario);
 		scenario.AddSeparator();
 		foreach ((MenuItem item, string name, bool on) in new[] {
 			(MenuItem.CustomRules, "Custom Rules", game.EditorInfo.customRules),
@@ -306,6 +324,31 @@ public partial class ScenarioEditor : Control {
 				break;
 			case MenuItem.Exit:
 				game.ExitEditor();
+				break;
+			case MenuItem.Import:
+				ShowFileDialog(FilePurpose.Import);
+				break;
+			case MenuItem.Revert:
+				// Civ3's Revert to Saved: the file as it is on disk.
+				if (game.EditorPath != null && game.OpenScenario(game.EditorPath) is string revertProblem) {
+					Say($"Couldn't revert: {revertProblem}", problem: true);
+				}
+				break;
+			case >= MenuItem.Recent1 and <= MenuItem.Recent4: {
+					List<string> recentFiles = EditorRecentFiles.List();
+					int at = item - MenuItem.Recent1;
+					if (at < recentFiles.Count && game.OpenScenario(recentFiles[at]) is string recentProblem) {
+						Say($"Couldn't open {Path.GetFileName(recentFiles[at])}: {recentProblem}", problem: true);
+					}
+					break;
+				}
+			case MenuItem.CheckScenario:
+				CloseDialog();
+				dialog = chrome.ReportDialog("CHECK SCENARIO", CheckScenario(), "No problems found.", null, null, CloseDialog);
+				AddChild(dialog);
+				break;
+			case MenuItem.Package:
+				StartPackaging();
 				break;
 			case MenuItem.Undo:
 			case MenuItem.Redo:
@@ -724,27 +767,38 @@ public partial class ScenarioEditor : Control {
 		chrome.ShowMessage(message, problem);
 	}
 
-	private void ShowFileDialog(bool save) {
-		choosingFileToSave = save;
+	private void ShowFileDialog(bool save) => ShowFileDialog(save ? FilePurpose.Save : FilePurpose.Open);
+
+	private void ShowFileDialog(FilePurpose purpose) {
+		filePurpose = purpose;
+		bool save = purpose is FilePurpose.Save or FilePurpose.Package;
 		string folder = ScenarioEditorSession.ScenariosDirectory;
 		try {
 			Directory.CreateDirectory(folder);
 		} catch (System.Exception e) when (e is IOException or System.UnauthorizedAccessException) {
 			Say($"Couldn't make the scenarios folder: {e.Message}", problem: true);
 		}
-		if (save) {
+		if (purpose == FilePurpose.Package) {
+			fileDialog.Title = "Package Scenario";
+			fileDialog.FileMode = FileDialog.FileModeEnum.SaveFile;
+			fileDialog.Filters = ["*.zip ; Packaged scenarios"];
+			fileDialog.CurrentDir = Path.GetDirectoryName(game.EditorPath);
+			fileDialog.CurrentFile = Path.GetFileNameWithoutExtension(game.EditorPath) + ".zip";
+		} else if (save) {
 			fileDialog.Title = "Save Scenario";
 			fileDialog.FileMode = FileDialog.FileModeEnum.SaveFile;
 			fileDialog.Filters = ["*.json ; OpenCiv3 scenarios"];
 			fileDialog.CurrentDir = game.EditorPath != null ? Path.GetDirectoryName(game.EditorPath) : folder;
 			fileDialog.CurrentFile = game.EditorPath != null ? Path.GetFileName(game.EditorPath) : FileNameFor(game.EditorInfo.title);
 		} else {
-			fileDialog.Title = "Open Scenario";
+			fileDialog.Title = purpose == FilePurpose.Import ? "Import From" : "Open Scenario";
 			fileDialog.FileMode = FileDialog.FileModeEnum.OpenFile;
 			fileDialog.Filters = [
-				"*.json, *.biq ; Scenarios (OpenCiv3 and Civ3)",
+				"*.json, *.biq, *.bix, *.bic, *.zip ; Scenarios (OpenCiv3 and Civ3)",
+				"*.zip ; Packaged scenarios (put in the Scenarios folder)",
 				"*.json ; OpenCiv3 scenarios and saved games",
-				"*.biq ; Civ3 scenarios",
+				"*.biq ; Civ3 Conquests scenarios",
+				"*.bix, *.bic ; Civ3 and Play the World scenarios",
 				"*.sav ; Civ3 saved games",
 			];
 			fileDialog.CurrentDir = folder;
@@ -764,12 +818,28 @@ public partial class ScenarioEditor : Control {
 	}
 
 	private void OnFileChosen(string path) {
-		if (choosingFileToSave) {
+		if (filePurpose == FilePurpose.Package) {
+			if (!path.EndsWith(".zip", System.StringComparison.OrdinalIgnoreCase)) {
+				path += ".zip";
+			}
+			Package(path);
+		} else if (filePurpose == FilePurpose.Import) {
+			ShowImport(path);
+		} else if (filePurpose == FilePurpose.Save) {
 			if (!path.EndsWith(".json", System.StringComparison.OrdinalIgnoreCase)) {
 				path += ".json";
 			}
 			SaveTo(path);
 		} else {
+			// A packaged scenario goes into the Scenarios folder first.
+			if (path.EndsWith(".zip", System.StringComparison.OrdinalIgnoreCase)) {
+				try {
+					path = ScenarioContent.Install(path, ScenarioEditorSession.ScenariosDirectory);
+				} catch (System.Exception e) when (e is IOException or InvalidDataException or System.UnauthorizedAccessException) {
+					Say($"Couldn't install {Path.GetFileName(path)}: {e.Message}", problem: true);
+					return;
+				}
+			}
 			string problem = game.OpenScenario(path);
 			if (problem != null) {
 				Say($"Couldn't open {Path.GetFileName(path)}: {problem}", problem: true);
@@ -777,9 +847,65 @@ public partial class ScenarioEditor : Control {
 		}
 	}
 
+	// Civ3's Import: the other file's rules, map or player data (see
+	// ScenarioImport).
+	private void ShowImport(string path) {
+		SaveGame source;
+		try {
+			source = ScenarioEditorSession.OpenFile(path, out _);
+		} catch (System.Exception e) {
+			Say($"Couldn't open {Path.GetFileName(path)}: {e.Message}", problem: true);
+			return;
+		}
+		bool hasMap = source.Scenario?.customMap != false && source.Map.tiles.Count > 0;
+		CloseDialog();
+		dialog = chrome.ImportDialog(Path.GetFileName(path), hasMap, (rules, map, players) => {
+			SaveGame result = ScenarioImport.Import(game.CurrentScenario(), source, rules, map, players, out string problem);
+			if (result == null) {
+				Say(problem, problem: true);
+				return;
+			}
+			CloseDialog();
+			game.ReopenScenario(result);
+		}, CloseDialog);
+		AddChild(dialog);
+	}
+
+	// Check Scenario: Civ3's limits and the art the scenario names (its
+	// own folder's, then the game's).
+	private List<string> CheckScenario() {
+		return ScenarioContent.Check(game.CurrentScenario(), AnimationManager.CanDraw, picture => CivilopediaArt.FindFile(picture) != null);
+	}
+
+	// Package Scenario: the saved scenario and its own folder as one .zip,
+	// after its check.
+	private void StartPackaging() {
+		if (game.EditorPath == null || painter.History.Modified) {
+			Say("Save the scenario first: the package is made from its file.", problem: true);
+			return;
+		}
+		CloseDialog();
+		dialog = chrome.ReportDialog("PACKAGE SCENARIO", CheckScenario(), "No problems found.", "Package...", () => {
+			CloseDialog();
+			ShowFileDialog(FilePurpose.Package);
+		}, CloseDialog);
+		AddChild(dialog);
+	}
+
+	private void Package(string zipPath) {
+		try {
+			string folder = ScenarioContent.SearchFolder(EngineStorage.gameData.scenarioSearchPath, game.EditorPath);
+			ScenarioContent.Package(game.EditorPath, folder, zipPath);
+			Say($"Packaged {Path.GetFileName(zipPath)}: put it in a friend's Scenarios folder, or open it in the editor.");
+		} catch (System.Exception e) when (e is IOException or System.UnauthorizedAccessException) {
+			Say($"Couldn't package: {e.Message}", problem: true);
+		}
+	}
+
 	private void SaveTo(string path) {
 		string problem = game.SaveScenario(path);
 		if (problem == null) {
+			EditorRecentFiles.Add(path);
 			painter.History.MarkSaved();
 			Say($"Saved {Path.GetFileName(path)}");
 			UpdateTitle();

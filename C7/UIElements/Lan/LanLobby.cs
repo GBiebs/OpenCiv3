@@ -243,10 +243,7 @@ public partial class LanLobby : Control {
 		if (path == null) {
 			throw new InvalidOperationException("There is no game to host");
 		}
-		return SaveManager.LoadSave(path, GamePaths.DefaultBicPath, scenarioSearchPath => {
-			Util.setModPath(scenarioSearchPath);
-			return Util.Civ3MediaPath("Text/PediaIcons.txt");
-		});
+		return SaveManager.LoadSave(path, GamePaths.DefaultBicPath, Util.PediaIconsPathFor);
 	}
 
 	// The host's status line and Start Game button, as the seats stand.

@@ -46,6 +46,13 @@ public sealed class RuleField {
 	// Why the item can't take a value of the field (a wonder's field on an
 	// improvement), or null.
 	public Func<SaveGame, object, string> Refuse;
+	// A Text field the editor can fill by importing a file into the
+	// scenario's own folder (see ScenarioContent): under this media folder
+	// (like "Art/Civilopedia/Icons/Units"), the value its media path; or,
+	// with ImportsUnitArt, a unit's animation (its INI's folder), the value
+	// the art's name.
+	public string ImportFolder;
+	public bool ImportsUnitArt;
 }
 
 public sealed class RulePage {

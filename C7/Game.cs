@@ -535,9 +535,8 @@ public partial class Game : Node {
 				// since the search path/mod path is a static global variable - we want to
 				// be sure it is always set properly, so doing it during game creation
 				// is reasonable.
-				Util.setModPath(scenarioSearchPath);
 				log.Debug("RelativeModPath ", scenarioSearchPath);
-				return Util.Civ3MediaPath("Text/PediaIcons.txt");
+				return Util.PediaIconsPathFor(scenarioSearchPath);
 			},
 			GameModeLoader = (config) => {
 				Global.ActivateGameMode(config);

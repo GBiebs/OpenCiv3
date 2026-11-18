@@ -203,9 +203,8 @@ public partial class ScenarioSetup : Control {
 									GamePaths.DefaultBicPath,
 									(string scenarioSearchPath) => {
 										// See corresponding logic in Game.cs
-										Util.setModPath(scenarioSearchPath);
 										log.Debug("RelativeModPath ", scenarioSearchPath);
-										return Util.Civ3MediaPath("Text/PediaIcons.txt");
+										return Util.PediaIconsPathFor(scenarioSearchPath);
 									});
 	}
 

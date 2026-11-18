@@ -112,14 +112,23 @@ public partial class AnimationManager {
 
 	// Whether units are drawn with our own art, described by its metadata,
 	// rather than with Civ3's INIs and flics: in standalone mode.
-	private static bool OwnUnitArt => C7Engine.C7Settings.UseStandaloneMode();
+	// A scenario's own unit art (an INI and its flics in its own folder, see
+	// Util.ScenarioRoots) is drawn as Civ3's is, in either mode.
+	private static bool OwnUnitArt(string artName) => C7Engine.C7Settings.UseStandaloneMode() && !ScenarioUnitArt(artName);
+
+	// Whether the game can draw units with the art name (Check Scenario).
+	public static bool CanDraw(string artName) => HasUnitArt(artName);
+
+	private static bool ScenarioUnitArt(string artName) {
+		return !string.IsNullOrEmpty(artName) && Util.ScenarioHasArt(string.Format("Art/Units/{0}/{0}.INI", artName));
+	}
 
 	private static bool HasUnitArt(string name) {
 		if (string.IsNullOrEmpty(name)) {
 			return false;
 		}
 		if (!unitArtExists.TryGetValue(name, out bool exists)) {
-			if (OwnUnitArt) {
+			if (OwnUnitArt(name)) {
 				exists = ModernGraphics.LoadUnitMetadata(name) != null;
 			} else {
 				try {
@@ -160,7 +169,7 @@ public partial class AnimationManager {
 
 	// The header values of the flic a unit art's action is drawn with.
 	public Util.FlicSheet GetUnitFlicSheet(string artName, MapUnit.AnimatedAction action) {
-		if (!OwnUnitArt) {
+		if (!OwnUnitArt(artName)) {
 			return RemadeFlicSheet(artName, getUnitFlicFilepath(artName, action))
 				?? getFlicSheet("Art/Units/" + artName, getUnitINIData(artName), action);
 		}
@@ -371,8 +380,9 @@ public partial class AnimationManager {
 
 		// This actually doesn't return the tint frame with the civ color applied. The shader still needs to be applied.
 		ImageTexture baseFrame, tintFrame;
-		Util.FlicSheet? remade = OwnUnitArt ? null : RemadeFlicSheet(ArtNameFor(unit), filepath);
-		if (OwnUnitArt || remade != null) {
+		bool own = OwnUnitArt(ArtNameFor(unit));
+		Util.FlicSheet? remade = own ? null : RemadeFlicSheet(ArtNameFor(unit), filepath);
+		if (own || remade != null) {
 			Util.FlicSheet sheet = remade ?? GetUnitFlicSheet(ArtNameFor(unit), thumbnailAction);
 			(baseFrame, tintFrame) = LoadOwnFrame(filepath, sheet, flicAnimationDirectionToRow(thumbnailDirection), thumbnailFrame);
 		} else {
@@ -410,7 +420,7 @@ public partial class AnimationManager {
 		}
 		if (!unitActionExists.TryGetValue((artName, action), out bool exists)) {
 			try {
-				exists = HasUnitArt(artName) && (OwnUnitArt
+				exists = HasUnitArt(artName) && (OwnUnitArt(artName)
 					? OwnFlicName(artName, action) == OwnMetadata(artName).FlicNameOf(action.ToString())
 					: !string.IsNullOrEmpty(getUnitINIData(artName)["Animations"][action.ToString()]));
 			} catch (Exception e) {
@@ -435,7 +445,7 @@ public partial class AnimationManager {
 	}
 
 	public string getUnitFlicFilepath(string artName, MapUnit.AnimatedAction action) {
-		if (OwnUnitArt) {
+		if (OwnUnitArt(artName)) {
 			return OwnFlicPath(artName, OwnFlicName(artName, action));
 		}
 		string directory = string.Format("Art/Units/{0}", artName);
@@ -561,8 +571,9 @@ public partial class AnimationManager {
 			return false;
 		}
 		string filepath = getUnitFlicFilepath(artName, action);
-		Util.FlicSheet? remade = OwnUnitArt ? null : RemadeFlicSheet(artName, filepath);
-		if (OwnUnitArt || remade != null) {
+		bool own = OwnUnitArt(artName);
+		Util.FlicSheet? remade = own ? null : RemadeFlicSheet(artName, filepath);
+		if (own || remade != null) {
 			loadOwnAnimation(filepath, remade ?? GetUnitFlicSheet(artName, action), name, spriteFrames, tintFrames);
 		} else {
 			loadFlicAnimation(filepath, name, ref this.spriteFrames, ref this.tintFrames);

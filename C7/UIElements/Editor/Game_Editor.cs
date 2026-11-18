@@ -32,12 +32,17 @@ public partial class Game {
 		editing = true;
 		EditorInfo = scenario.Scenario ?? new ScenarioInfo();
 		EditorPath = path;
+		if (path != null) {
+			EditorRecentFiles.Add(path);
+		}
 
 		// As for a game, the scenario's art folders. But it's shown in the
 		// mode the game is in (with or without Civ3), not the one it was
 		// made in: switching modes, as loading a game does, would change the
 		// player's setting. The scenario keeps its own mode when saved.
 		Util.setModPath(scenario.ScenarioSearchPath);
+		// Its own art folder may be next to its file (see Util.ScenarioRoots).
+		Util.setScenarioFolder(path == null ? null : Path.GetDirectoryName(path));
 		Util.ClearCaches();
 		ScenarioEditing.Open(scenario, Global.GameMode.behaviors);
 		controller = null;
@@ -109,6 +114,7 @@ public partial class Game {
 			return e.Message;
 		}
 		// A Civ3 scenario or a saved game is saved as a new scenario.
+		EditorRecentFiles.Add(path);
 		ScenarioEditorSession.Open(scenario, isScenario ? path : null);
 		GetTree().ChangeSceneToFile("res://C7Game.tscn");
 		return null;

@@ -402,6 +402,8 @@ public static partial class RulePages {
 		},
 		Fields = [
 			Rule.Text<SaveTech>("", "Civilopedia Entry:", t => t.CivilopediaEntry, (t, v) => t.CivilopediaEntry = v, "The advance's Civilopedia key."),
+			Pedia<SaveTech>(t => t.CivilopediaEntry, history: false, column: 1),
+			Pedia<SaveTech>(t => t.CivilopediaEntry, history: true, column: 1),
 			Rule.Number<SaveTech>("", "Cost:", t => t.Cost, (t, v) => t.Cost = v, 0, 99999, "The advance's cost, before the world size's tech rate."),
 			Rule.Choice<SaveTech>("", "Era:", (s, t) => EraName(s, t.EraCivilopediaName ?? EraKeyOrder[0]),
 				(s, t, v) => t.EraCivilopediaName = EraKeyOrder.First(k => EraName(s, k) == v),
@@ -544,6 +546,8 @@ public static partial class RulePages {
 		Restore = (s, d) => s.Buildings = d.Buildings,
 		Fields = [
 			Rule.Text<SaveBuilding>("", "Civilopedia Entry:", b => b.civilopediaEntry, (b, v) => b.civilopediaEntry = v, "The improvement's Civilopedia key."),
+			Pedia<SaveBuilding>(b => b.civilopediaEntry, history: false, column: 2),
+			Pedia<SaveBuilding>(b => b.civilopediaEntry, history: true, column: 2),
 			new RuleField {
 				Label = "Category:", Kind = RuleFieldKind.Choice, Help = "An improvement, a small wonder (one per civilization) or a wonder (one in the world).",
 				Choices = _ => [.. Categories],
@@ -612,14 +616,63 @@ public static partial class RulePages {
 		],
 	};
 
-	private static RuleField Art(string label, Func<Art, string> get, Func<Art, string, Art> set, string help) => new() {
-		Group = "Art",
-		Label = label,
-		Kind = RuleFieldKind.Text,
-		Help = help,
-		Get = (_, o) => get(((SaveUnitPrototype)o).art) ?? "",
-		Set = (_, o, v) => ((SaveUnitPrototype)o).art = set(((SaveUnitPrototype)o).art, (string)v),
+	private static RuleField Art(string label, Func<Art, string> get, Func<Art, string, Art> set, string help,
+			string importFolder = null, bool unitArt = false) {
+		return new() {
+			Group = "Art",
+			Label = label,
+			Kind = RuleFieldKind.Text,
+			Help = help,
+			ImportFolder = importFolder,
+			ImportsUnitArt = unitArt,
+			Get = (_, o) => get(((SaveUnitPrototype)o).art) ?? "",
+			Set = (_, o, v) => ((SaveUnitPrototype)o).art = set(((SaveUnitPrototype)o).art, (string)v),
+		};
+	}
+
+	private const string PediaUnitIcons = "Art/Civilopedia/Icons/Units";
+
+	// The item's article in the scenario's own Civilopedia (its text, or
+	// its history), by its Civilopedia key (Rules.CivilopediaEntries). Empty:
+	// the game's own article.
+	private static RuleField Pedia<T>(Func<T, string> key, bool history, int column) => new() {
+		Group = "Civilopedia",
+		Column = column,
+		Label = history ? "History:" : "Text:",
+		Kind = RuleFieldKind.Lines,
+		Help = (history ? "Its history (the Description button)" : "Its Civilopedia article")
+			+ " in this scenario, in Civilopedia.txt's markup, by its Civilopedia key; empty: the game's own.",
+		Get = (s, o) => {
+			CivilopediaEntryRule entry = PediaEntry(s, key((T)o));
+			return entry == null ? new List<string>() : new List<string>(history ? entry.History : entry.Text);
+		},
+		Set = (s, o, v) => {
+			string k = key((T)o);
+			if (string.IsNullOrWhiteSpace(k)) {
+				return;
+			}
+			List<string> lines = (List<string>)v;
+			CivilopediaEntryRule entry = PediaEntry(s, k);
+			if (entry == null) {
+				entry = new CivilopediaEntryRule { Key = k };
+				s.Rules.CivilopediaEntries.Add(entry);
+			}
+			if (history) {
+				entry.History = lines;
+			} else {
+				entry.Text = lines;
+			}
+			if (entry.Text.Count == 0 && entry.History.Count == 0) {
+				s.Rules.CivilopediaEntries.Remove(entry);
+			}
+		},
+		Refuse = (_, o) => string.IsNullOrWhiteSpace(key((T)o)) ? "Give it a Civilopedia key first." : null,
 	};
+
+	private static CivilopediaEntryRule PediaEntry(SaveGame s, string key) {
+		s.Rules.CivilopediaEntries ??= [];
+		return string.IsNullOrWhiteSpace(key) ? null : s.Rules.CivilopediaEntries.Find(e => string.Equals(e.Key, key.Trim(), StringComparison.OrdinalIgnoreCase));
+	}
 
 	private static List<string> TerrainKeysToNames(SaveGame s, IEnumerable<string> keys) => keys.Select(k => s.TerrainTypes.Find(t => t.Key == k)?.DisplayName ?? k).ToList();
 
@@ -652,6 +705,8 @@ public static partial class RulePages {
 		},
 		Fields = [
 			Rule.Text<SaveUnitPrototype>("", "Civilopedia Entry:", u => u.civilopediaEntry, (u, v) => u.civilopediaEntry = v, "The unit's Civilopedia key."),
+			Pedia<SaveUnitPrototype>(u => u.civilopediaEntry, history: false, column: 1),
+			Pedia<SaveUnitPrototype>(u => u.civilopediaEntry, history: true, column: 1),
 			Rule.Choices<SaveUnitPrototype>("", "Class:", (_, u) => u.categories.ToList(), (_, u, v) => u.categories = v.ToHashSet(),
 				_ => ["Land", "Sea", "Air"], "Land, sea or air.", maxChoices: 1),
 			Rule.Choice<SaveUnitPrototype>("Requires", "Advance:", (s, u) => TechName(s, u.requiredTech), (s, u, v) => u.requiredTech = TechId(s, v), TechNames,
@@ -685,7 +740,8 @@ public static partial class RulePages {
 			Rule.Choices<SaveUnitPrototype>("Upgrades and Captives", "Ignores Movement Cost Of:", (s, u) => TerrainKeysToNames(s, u.ignoreMovementCost),
 				(s, u, v) => u.ignoreMovementCost = v.Select(n => s.TerrainTypes.Find(t => t.DisplayName == n)?.Key ?? n).ToHashSet(), TerrainNames,
 				"Terrain it crosses as if it were flat.", column: 1),
-			Art("Animation Folder:", a => a.mainArt.defaultName, (a, v) => { a.mainArt.defaultName = v; return a; }, "The folder of its animations."),
+			Art("Animation Folder:", a => a.mainArt.defaultName, (a, v) => { a.mainArt.defaultName = v; return a; },
+				"The folder of its animations, Art/Units/<name> (Import copies one, its INI chosen, into the scenario's folder).", unitArt: true),
 			new RuleField {
 				Group = "Art", Label = "Icon:", Kind = RuleFieldKind.Number, Min = 0, Max = 999, Help = "Its small icon, by its place in the unit icons.",
 				Get = (_, o) => ((SaveUnitPrototype)o).art.thumbnailArt.defaultIndex,
@@ -696,8 +752,10 @@ public static partial class RulePages {
 					u.art = art;
 				},
 			},
-			Art("Civilopedia Picture (small):", a => a.pediaArt.small, (a, v) => { a.pediaArt.small = v; return a; }, "Its small Civilopedia picture."),
-			Art("Civilopedia Picture (large):", a => a.pediaArt.large, (a, v) => { a.pediaArt.large = v; return a; }, "Its large Civilopedia picture."),
+			Art("Civilopedia Picture (small):", a => a.pediaArt.small, (a, v) => { a.pediaArt.small = v; return a; },
+				"Its small Civilopedia picture (a .pcx or .png; Import copies one into the scenario's folder).", PediaUnitIcons),
+			Art("Civilopedia Picture (large):", a => a.pediaArt.large, (a, v) => { a.pediaArt.large = v; return a; },
+				"Its large Civilopedia picture (a .pcx or .png; Import copies one into the scenario's folder).", PediaUnitIcons),
 			Rule.Flags<SaveUnitPrototype, SaveUnitPrototype.Flag>("Abilities", "Abilities:", u => u.flags, "What it can do (Civ3's unit abilities).",
 				f => !f.ToString().StartsWith("AI"), column: 1),
 			Rule.Flags<SaveUnitPrototype, SaveUnitPrototype.Flag>("Abilities", "AI Strategies:", u => u.flags, "What the AI uses it for.",

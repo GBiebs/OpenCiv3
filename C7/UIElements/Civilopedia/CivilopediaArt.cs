@@ -28,8 +28,15 @@ public static class CivilopediaArt {
 	// The file for a media path, like Text/Civilopedia.txt, or null if
 	// neither Civ3 nor our folder has it.
 	public static CivilopediaFiles.Found? FindFile(string mediaPath) {
+		// The scenario's own picture comes first, in either mode.
+		if (!string.IsNullOrWhiteSpace(mediaPath) && Util.ScenarioMediaPath(mediaPath.Trim().Replace('\\', '/')) is string own) {
+			return new CivilopediaFiles.Found(own, IsPng(own));
+		}
 		return CivilopediaFiles.Find(mediaPath, C7Settings.UseStandaloneMode(), InCiv3, InOurFolder);
 	}
+
+	// A PNG is loaded as an image (Civ3's PCX through the game's loader).
+	private static bool IsPng(string path) => System.IO.Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase);
 
 	private static string InCiv3(string mediaPath) {
 		try {

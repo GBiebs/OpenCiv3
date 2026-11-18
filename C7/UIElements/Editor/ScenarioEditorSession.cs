@@ -45,17 +45,7 @@ public static class ScenarioEditorSession {
 	// art, which has no PediaIcons file: the game itself gets round that by
 	// switching to Civ3's mode to load a Civ3 scenario, which the editor
 	// doesn't do (see Game_Editor.InitializeEditor).
-	private static string PediaIconsPath(string searchPath) {
-		Util.setModPath(searchPath);
-		if (Util.HasCiv3Media("Text/PediaIcons.txt")) {
-			return Util.Civ3MediaPath("Text/PediaIcons.txt");
-		}
-		string civ3s = Path.Combine(Util.Civ3Root ?? "", "Conquests", "Text", "PediaIcons.txt");
-		if (!string.IsNullOrEmpty(Util.Civ3Root) && File.Exists(civ3s)) {
-			return civ3s;
-		}
-		return ProjectSettings.GlobalizePath("res://Civilopedia/Text/PediaIcons.txt");
-	}
+	private static string PediaIconsPath(string searchPath) => Util.PediaIconsPathFor(searchPath);
 
 	public static (SaveGame scenario, string path) Take() {
 		(SaveGame, string) taken = (pending, pendingPath);

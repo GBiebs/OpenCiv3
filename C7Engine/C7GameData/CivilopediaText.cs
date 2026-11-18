@@ -53,6 +53,31 @@ namespace C7GameData {
 
 		public bool Has(string key) => Get(key) != null;
 
+		// This text with a scenario's own articles laid over it (an article
+		// the scenario gives replaces the game's of that key; its history
+		// only if it gives one). This text is left as it is.
+		public CivilopediaText With(IEnumerable<CivilopediaEntryRule> entries) {
+			CivilopediaText result = new();
+			foreach (CivilopediaArticle a in articles.Values) {
+				result.articles[a.Key] = a;
+			}
+			result.GameConceptKeys.AddRange(GameConceptKeys);
+			foreach (CivilopediaEntryRule entry in entries ?? []) {
+				if (string.IsNullOrWhiteSpace(entry?.Key)) {
+					continue;
+				}
+				string key = entry.Key.Trim();
+				CivilopediaArticle old = Get(key);
+				result.articles[key] = new CivilopediaArticle {
+					Key = key,
+					Name = old?.Name,
+					Lines = entry.Text?.Count > 0 ? [.. entry.Text] : old?.Lines ?? [],
+					DescriptionLines = entry.History?.Count > 0 ? [.. entry.History] : old?.DescriptionLines ?? [],
+				};
+			}
+			return result;
+		}
+
 		// Reads a Civilopedia.txt, which is Windows-1252 text. A missing or
 		// unreadable file gives an empty Civilopedia rather than an error, so
 		// the game still runs without Civ3's text (e.g. in standalone mode).

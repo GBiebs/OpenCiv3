@@ -37,6 +37,9 @@ public partial class Util {
 	//   exactCaseRoot: The first part of the file path, not made case-insensitive. This is intended be the root Civ 3 path from GetCiv3Path().
 	//   ignoredCaseExtension: The second part of the file path that will be searched ignoring case.
 	public static string FileExistsIgnoringCase(string exactCaseRoot, string ignoredCaseExtension) {
+		if (exactCaseRoot == null || ignoredCaseExtension == null) {
+			return null;
+		}
 		// In debug builds paths that are specified relative to the project directory
 		// will start with res://. We want to turn those into real paths.
 		if (exactCaseRoot.Contains("res://")) {
@@ -143,11 +146,76 @@ public partial class Util {
 		// would find the default PediaIcons.txt instead of the scenario
 		// specific file.
 		modPath = modPath?.Replace("\\conquests\\", "\\Conquests\\");
+		// A new game or scenario: its file's folder, if any, is set after.
+		scenarioFolder = null;
 		ClearMediaPathCache();
+	}
+
+	// Sets the scenario's search folders and returns its PediaIcons file:
+	// its own if its folders have one, else Civ3's, else the game's own
+	// (standalone mode's Civilopedia). Without Civ3 the game's media has no
+	// PediaIcons file, so a scenario with search folders but none of its own
+	// (one made in the editor, with only art) mustn't ask for one.
+	public static string PediaIconsPathFor(string searchPath) {
+		setModPath(searchPath);
+		if (HasCiv3Media("Text/PediaIcons.txt")) {
+			return Civ3MediaPath("Text/PediaIcons.txt");
+		}
+		string civ3s = System.IO.Path.Combine(Civ3Root ?? "", "Conquests", "Text", "PediaIcons.txt");
+		if (!string.IsNullOrEmpty(Civ3Root) && System.IO.File.Exists(civ3s)) {
+			return civ3s;
+		}
+		return ProjectSettings.GlobalizePath("res://Civilopedia/Text/PediaIcons.txt");
 	}
 
 	// Whether a scenario's mod path is set.
 	public static bool HasModPath => !string.IsNullOrEmpty(modPath);
+
+	// The folder of the scenario file being played or edited, where its
+	// search folders are looked for first (see ScenarioRoots), or null.
+	private static string scenarioFolder;
+	public static void setScenarioFolder(string folder) {
+		scenarioFolder = string.IsNullOrEmpty(folder) ? null : folder;
+		ClearMediaPathCache();
+	}
+
+	// The game's own Scenarios folder, where Load Scenario and the editor
+	// keep scenarios.
+	public static string GameScenariosFolder => System.IO.Path.Combine(C7Settings.WritableDirectory, "Scenarios");
+
+	// Where a scenario's search folders (its mod path) are looked for before
+	// Civ3's folders: next to the scenario file, and in the game's Scenarios
+	// folder. A scenario saved as Scenarios/Name.json with its art in
+	// Scenarios/Name/Art/... (search folder "Name") finds it there, with or
+	// without Civ3, wherever the game is installed.
+	private static IEnumerable<string> ScenarioRoots() {
+		if (scenarioFolder != null) {
+			yield return scenarioFolder;
+		}
+		yield return GameScenariosFolder;
+	}
+
+	// The media in the scenario's own folders (not Civ3's), or null.
+	private static string FindInScenarioFolders(string mediaPath) {
+		if (string.IsNullOrEmpty(modPath) || string.IsNullOrEmpty(mediaPath)) {
+			return null;
+		}
+		foreach (string path in modPath.Split(";")) {
+			if (string.IsNullOrWhiteSpace(path)) {
+				continue;
+			}
+			foreach (string root in ScenarioRoots()) {
+				if (FileExistsIgnoringCase(root, System.IO.Path.Combine(path.Trim(), mediaPath)) is string found) {
+					return found;
+				}
+			}
+		}
+		return null;
+	}
+
+	// The media if the scenario has its own copy in its folders next to the
+	// scenario file or in the game's Scenarios folder, else null.
+	public static string ScenarioMediaPath(string mediaPath) => FindInScenarioFolders(mediaPath);
 
 	// Civ3MediaPath results by media path. A null value means the media
 	// couldn't be found. The results are only valid for the current roots,
@@ -200,6 +268,9 @@ public partial class Util {
 	private static string FindCiv3MediaPath(string mediaPath, bool standalone) {
 		//First, check if the file exists via a scenario's mod path
 		//For now this is only checked relative to Civ3, not relative to C7.
+		if (FindInScenarioFolders(mediaPath) is string own) {
+			return own;
+		}
 		if (!string.IsNullOrEmpty(modPath)) {
 			string[] paths = modPath.Split(";");
 			foreach (string path in paths) {
@@ -268,6 +339,9 @@ public partial class Util {
 	public static bool ScenarioHasArt(string mediaPath) {
 		if (string.IsNullOrEmpty(modPath) || string.IsNullOrEmpty(mediaPath)) {
 			return false;
+		}
+		if (FindInScenarioFolders(mediaPath) != null) {
+			return true;
 		}
 		foreach (string path in modPath.Split(";")) {
 			foreach (string tryPath in new[] { path, "Conquests/Conquests/" + path, "Conquests/Scenarios/" + path, "civ3PTW/Scenarios/" + path }) {

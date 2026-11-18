@@ -384,6 +384,11 @@ namespace C7GameData {
 		// civilization.
 		public int FlavorPreferencePercent = 50;
 
+		// A scenario's own Civilopedia articles, laid over the game's
+		// Civilopedia.txt (CivilopediaText.With): a new unit's, or another
+		// text for one of the game's. The scenario editor writes them.
+		public List<CivilopediaEntryRule> CivilopediaEntries = [];
+
 		// The rules' entry for the mission, or null.
 		public EspionageMissionRule EspionageMissionRuleFor(string mission) => EspionageMissions?.Find(m => m.Mission == mission);
 
@@ -413,6 +418,15 @@ namespace C7GameData {
 		public int PropagandaChance;
 		public int InitialResistanceChance;
 		public int ContinuedResistanceChance;
+	}
+
+	// One of a scenario's Civilopedia articles (Rules.CivilopediaEntries):
+	// its key (PRTO_Knight...), its text and its history (Civ3's DESC_
+	// article), in Civilopedia.txt's markup, a line each.
+	public class CivilopediaEntryRule {
+		public string Key;
+		public List<string> Text = [];
+		public List<string> History = [];
 	}
 
 	// A flavor (see Rules.Flavors): its relationship (%) with each flavor,

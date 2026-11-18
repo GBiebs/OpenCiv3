@@ -274,6 +274,45 @@ public partial class EditorChrome {
 		top.AddChild(toggle);
 	}
 
+	// "Import...": a file (an animation's INI for a unit's art) copied into
+	// the scenario's own folder, beside its file (ScenarioContent); its
+	// search folder is set to that folder. The scenario must be saved first.
+	private Button ImportButton(RuleField field, SaveGame save, Action<string> chosen, Action<string> report) {
+		Button button = new() { Text = "Import...", TooltipText = "Copy a file into the scenario's own folder." };
+		button.Pressed += () => {
+			string scenarioPath = editor.ScenarioPath;
+			if (scenarioPath == null) {
+				report("Save the scenario first: its files go in a folder beside it.");
+				return;
+			}
+			FileDialog files = new() {
+				FileMode = FileDialog.FileModeEnum.OpenFile,
+				Access = FileDialog.AccessEnum.Filesystem,
+				Title = field.ImportsUnitArt ? "Choose the animation's INI" : "Choose a picture",
+				Filters = field.ImportsUnitArt ? ["*.ini ; Unit animations (Civ3's Art/Units/<name>/<name>.INI)"] : ["*.pcx, *.png ; Pictures"],
+				Size = new Vector2I(900, 600),
+			};
+			files.FileSelected += path => {
+				try {
+					string folder = ScenarioContent.SearchFolder(save.ScenarioSearchPath, scenarioPath);
+					string value = field.ImportsUnitArt
+						? ScenarioContent.ImportUnitArt(scenarioPath, folder, path)
+						: ScenarioContent.ImportFile(scenarioPath, folder, path, field.ImportFolder);
+					save.ScenarioSearchPath = ScenarioContent.WithSearchFolder(save.ScenarioSearchPath, folder);
+					chosen(value);
+					report(null);
+				} catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException or ArgumentException) {
+					report(e.Message);
+				}
+				files.QueueFree();
+			};
+			files.Canceled += () => files.QueueFree();
+			AddChild(files);
+			files.PopupCentered();
+		};
+		return button;
+	}
+
 	// A node name from a label: Godot leaves out : / . @ % and quotes.
 	public static string NodeName(string label) => new(label.Where(c => !":/.@%\"".Contains(c)).ToArray());
 
@@ -302,6 +341,17 @@ public partial class EditorChrome {
 					StyleField(text);
 					text.TextChanged += t => Set(t);
 					control = text;
+					if (field.ImportFolder != null || field.ImportsUnitArt) {
+						// The text keeps the field's name; the row has its own.
+						text.Name = NodeName(field.Label);
+						HBoxContainer row = new() { Name = NodeName(field.Label) + " Row" };
+						row.AddChild(text);
+						row.AddChild(ImportButton(field, save, chosen => {
+							text.Text = chosen;
+							Set(chosen);
+						}, report));
+						control = row;
+					}
 					break;
 				}
 			case RuleFieldKind.Check: {
@@ -344,7 +394,13 @@ public partial class EditorChrome {
 					break;
 				}
 			case RuleFieldKind.Lines: {
-					TextEdit lines = new() { Text = string.Join("\n", (List<string>)value), CustomMinimumSize = new Vector2(150, 110) };
+					// A Civilopedia article is prose: wider, and wrapped.
+					bool prose = field.Group == "Civilopedia";
+					TextEdit lines = new() {
+						Text = string.Join("\n", (List<string>)value),
+						CustomMinimumSize = prose ? new Vector2(300, 110) : new Vector2(150, 110),
+						WrapMode = prose ? TextEdit.LineWrappingMode.Boundary : TextEdit.LineWrappingMode.None,
+					};
 					StyleField(lines);
 					lines.AddThemeFontSizeOverride("font_size", 14);
 					lines.TextChanged += () => Set(lines.Text.Split('\n').Select(l => l.Trim()).Reverse().SkipWhile(l => l == "").Reverse().ToList());
@@ -411,7 +467,9 @@ public partial class EditorChrome {
 			default:
 				throw new ArgumentException(field.Kind.ToString());
 		}
-		control.Name = NodeName(field.Label);
+		if (control is not HBoxContainer { Name: var rowName } || !rowName.ToString().EndsWith(" Row")) {
+			control.Name = NodeName(field.Label);
+		}
 		control.TooltipText = tooltip;
 		grid.AddChild(label);
 		grid.AddChild(control);
