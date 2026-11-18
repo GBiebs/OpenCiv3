@@ -136,6 +136,7 @@ namespace C7GameData {
 			}
 			ImportDifficulties();
 			ImportRules();
+			ImportFlavors();
 		}
 
 		public static SaveGame ImportSav(string savePath, string defaultBicPath, Func<string, string> getPediaIconsPath) {
@@ -933,6 +934,18 @@ namespace C7GameData {
 				civ.civilopediaEntry = race.CivilopediaEntry?.Trim();
 				civ.kingUnit = KingUnitName(race.UnitTypeForKing);
 				LoadBuildFlags(race, civ);
+				civ.greatLeaderNames = theBiq.RaceGreatLeaderName?[i]?.Select(n => n.Name).ToList() ?? [];
+				civ.scientificLeaderNames = theBiq.RaceScientificLeaderName?[i]?.Select(n => n.Name).ToList() ?? [];
+				civ.pluralName = race.Plurality != 0;
+				civ.nameGender = race.CivilizationGender == 0 ? Gender.Male : Gender.Female;
+				civ.diplomacyTextIndex = race.DiplomacyTextIndex;
+				civ.governorManagesCitizens = race.ManageCitizens;
+				civ.governorEmphasizesFood = race.EmphasizeFood;
+				civ.governorEmphasizesShields = race.EmphasizeShields;
+				civ.governorEmphasizesTrade = race.EmphasizeTrade;
+				civ.governorManagesProduction = race.ManageProduction;
+				civ.governorNoWonders = race.NoWonders;
+				civ.governorNoSmallWonders = race.NoSmallWonders;
 
 				// Look up the image for non-barbarian civs.
 				string artName = pediaIcons.GetLeaderArtName(race.CivilopediaEntry);
@@ -2580,6 +2593,19 @@ namespace C7GameData {
 					}
 				}
 				AddYieldBonusesForTerrainImprovements(c7TerrainType.Key, terrain);
+				c7TerrainType.landmark = new TerrainLandmark {
+					enabled = terrain.LandmarkEnabled != 0,
+					name = terrain.LandmarkName ?? "",
+					civilopediaEntry = terrain.LandmarkCivilopediaEntry ?? "",
+					food = terrain.LandmarkFood,
+					shields = terrain.LandmarkShields,
+					commerce = terrain.LandmarkCommerce,
+					irrigationBonus = terrain.LandmarkIrrigationBonus,
+					miningBonus = terrain.LandmarkMiningBonus,
+					roadBonus = terrain.LandmarkRoadBonus,
+					movementCost = terrain.LandmarkMovementBonus,
+					defenseBonus = terrain.LandmarkDefensiveBonus,
+				};
 				save.TerrainTypes.Add(c7TerrainType);
 				civ3Index++;
 			}
@@ -2908,6 +2934,10 @@ namespace C7GameData {
 				g.freeUnitsPerCity = govt.FreeUnitsPerCity;
 				g.freeUnitsPerMetropolis = govt.FreeUnitsPerMetropolis;
 				g.unitCost = govt.UnitCost;
+				g.assimilationChance = govt.AssimilationChance;
+				g.immuneTo = govt.ImmuneTo;
+				g.diplomatLevel = ExperienceKey(govt.DiplomatsAre);
+				g.spyLevel = ExperienceKey(govt.SpiesAre);
 				string[] maleTitles = [govt.MaleRulerTitle1, govt.MaleRulerTitle2, govt.MaleRulerTitle3, govt.MaleRulerTitle4];
 				string[] femaleTitles = [govt.FemaleRulerTitle1, govt.FemaleRulerTitle2, govt.FemaleRulerTitle3, govt.FemaleRulerTitle4];
 				for (int i = 0; i < Math.Clamp(govt.RulerTitlePairsUsed, 1, maleTitles.Length); i++) {
@@ -2916,6 +2946,60 @@ namespace C7GameData {
 				}
 
 				save.Governments.Add(g);
+			}
+			// How each government stands against each other one.
+			for (int a = 0; a < save.Governments.Count && theBiq.GovtGovt != null && a < theBiq.GovtGovt.GetLength(0); ++a) {
+				for (int b = 0; b < save.Governments.Count && b < theBiq.GovtGovt.GetLength(1); ++b) {
+					QueryCiv3.Biq.GOVT_GOVT r = theBiq.GovtGovt[a, b];
+					save.Governments[a].relations.Add(new GovernmentRelation {
+						government = save.Governments[b].name,
+						canBribe = r.CanBribe != 0,
+						briberyModifier = r.BriberyModifier,
+						resistanceModifier = r.ResistanceModifier,
+					});
+				}
+			}
+		}
+
+		// The key of the experience level at the index, or null.
+		private string ExperienceKey(int index) {
+			return index >= 0 && index < save.ExperienceLevels.Count ? save.ExperienceLevels[index].key : null;
+		}
+
+		// Civ3's flavors, and which advances, improvements and civilizations
+		// have each (a bit per flavor in their Flavors field).
+		private void ImportFlavors() {
+			FLAV[] flavors = biq.Flav ?? defaultBiq?.Flav;
+			if (flavors == null) {
+				return;
+			}
+			save.Rules.Flavors = [];
+			for (int i = 0; i < flavors.Length; ++i) {
+				FLAV f = flavors[i];
+				save.Rules.Flavors.Add(new FlavorRule {
+					Name = f.Name,
+					Relationships = Enumerable.Range(0, Math.Clamp(f.NumberOfFlavors, 0, 7)).Select(j => f.FlavorRelationship[j]).ToList(),
+				});
+			}
+			List<FlavorRule> list = save.Rules.Flavors;
+			void Mark(int bits, string name, Func<FlavorRule, List<string>> into) {
+				for (int i = 0; i < list.Count && i < 31; ++i) {
+					if ((bits & (1 << i)) != 0) {
+						into(list[i]).Add(name);
+					}
+				}
+			}
+			TECH[] techs = biq.Tech ?? defaultBiq?.Tech;
+			for (int i = 0; techs != null && i < techs.Length && i < save.Techs.Count; ++i) {
+				Mark(techs[i].Flavors, save.Techs[i].Name, f => f.Techs);
+			}
+			BLDG[] buildings = biq.Bldg ?? defaultBiq?.Bldg;
+			for (int i = 0; buildings != null && i < buildings.Length; ++i) {
+				Mark(buildings[i].Flavors, BuildingName(buildings, i), f => f.Buildings);
+			}
+			RACE[] races = biq.Race ?? defaultBiq?.Race;
+			for (int i = 0; races != null && i < races.Length && i < save.Civilizations.Count; ++i) {
+				Mark(races[i].Flavors, save.Civilizations[i].name, f => f.Civilizations);
 			}
 		}
 

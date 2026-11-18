@@ -77,6 +77,19 @@ namespace C7GameData {
 
 		public List<string> cityNames = new List<string>();
 
+		// Kept for scenarios; the game doesn't use them yet: the BIQ RACE's
+		// great leaders and scientific leaders (the game names leaders from
+		// the eras' researchers), whether the name is plural and its
+		// grammatical gender, the diplomacy text index, and the city
+		// governor's settings for the AI.
+		public List<string> greatLeaderNames = new();
+		public List<string> scientificLeaderNames = new();
+		public bool pluralName = true;
+		public Gender nameGender;
+		public int diplomacyTextIndex;
+		public bool governorManagesCitizens, governorEmphasizesFood, governorEmphasizesShields, governorEmphasizesTrade,
+			governorManagesProduction, governorNoWonders, governorNoSmallWonders;
+
 		// The IDs of all the techs that this civ starts with.
 		public HashSet<ID> startingTechs = new();
 

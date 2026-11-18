@@ -875,6 +875,13 @@ namespace C7GameData.Save {
 			return save;
 		}
 
+		// A deep copy of one of a save's items (a unit type, a building...),
+		// as the save would write and read it.
+		public static T DeepCopy<T>(T item) {
+			byte[] json = JsonSerializer.SerializeToUtf8Bytes(item, JsonOptions);
+			return JsonSerializer.Deserialize<T>(json, JsonOptions);
+		}
+
 		// Makes a deep copy of a SaveGame instance via JSON serialization
 		public SaveGame Clone() {
 			byte[] json = JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);

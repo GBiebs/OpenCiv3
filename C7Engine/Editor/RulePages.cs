@@ -7,13 +7,15 @@ using C7GameData.Save;
 
 namespace C7Engine.Editor;
 
-// Phase 5's rules pages, in Civ3's tab order: Citizens, Combat Experience,
-// Culture, Difficulty Levels, Diplomats and Spies, Eras, General Settings,
-// World Sizes, Worker Jobs. Ranges are Civ3's where its help gives one,
-// otherwise roomy.
-public static class RulePages {
+// The rules pages, in Civ3's tab order. Phase 5's here: Citizens, Combat
+// Experience, Culture, Difficulty Levels, Diplomats and Spies, Eras, General
+// Settings, World Sizes, Worker Jobs; Phase 6's in RulePages_Big.cs. Ranges
+// are Civ3's where its help gives one, otherwise roomy.
+public static partial class RulePages {
+	// Civ3's tabs, in its order.
 	public static readonly List<RulePage> All = [
-		Citizens(), Experience(), Culture(), Difficulties(), Espionage(), Eras(), General(), WorldSizes(), WorkerJobs(),
+		Citizens(), Civilizations(), Advances(), Experience(), Culture(), Difficulties(), Espionage(), Eras(), FlavorsPage(),
+		General(), Governments(), Improvements(), Resources(), Terrain(), Units(), WorkerJobs(), WorldSizes(),
 	];
 
 	public static RulePage Find(string name) => All.Find(p => p.Name == name);
@@ -323,7 +325,7 @@ public static class RulePages {
 	private static readonly string[] EraKeys = [EraUtils.ANCIENT_TIMES_CVLPD, EraUtils.MIDDLE_AGES_CVLPD, EraUtils.INDUSTRIAL_AGE_CVLPD, EraUtils.MODERN_ERA_CVLPD];
 	private static readonly string[] StandardEraNames = [EraUtils.ANCIENT_TIMES, EraUtils.MIDDLE_AGES, EraUtils.INDUSTRIAL_AGE, EraUtils.MODERN_ERA];
 
-	internal static string EraName(SaveGame s, string key) => s.Rules.EraNames.TryGetValue(key, out string name) && !string.IsNullOrWhiteSpace(name)
+	public static string EraName(SaveGame s, string key) => s.Rules.EraNames.TryGetValue(key, out string name) && !string.IsNullOrWhiteSpace(name)
 		? name : StandardEraNames[Array.IndexOf(EraKeys, key)];
 
 	// Civ3's Eras page: the four eras' names and their researchers' names

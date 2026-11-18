@@ -101,6 +101,8 @@ public partial class EditorChrome {
 		tab.AddThemeConstantOverride("separation", 6);
 		int index = 0;
 		IList Items() => page.Items(save);
+		// The item shown, or null on a page with none.
+		object Current() => Items().Count > 0 ? Items()[Math.Min(index, Items().Count - 1)] : null;
 
 		// The selector and its buttons, as Civ3's.
 		HBoxContainer top = new() { Visible = !page.IsSingle };
@@ -133,7 +135,10 @@ public partial class EditorChrome {
 			IList items = Items();
 			index = Math.Clamp(index, 0, Math.Max(0, items.Count - 1));
 			selector.Clear();
-			SetupStyle.AddItems(selector, items.Cast<object>().Select(i => page.ItemName(save, i)).ToList(), index);
+			// A page may have none yet (the standard rules have no flavors).
+			if (items.Count > 0) {
+				SetupStyle.AddItems(selector, items.Cast<object>().Select(i => page.ItemName(save, i)).ToList(), index);
+			}
 		}
 		void ShowFields() {
 			foreach (Node child in columns.GetChildren()) {
@@ -176,12 +181,15 @@ public partial class EditorChrome {
 
 		if (page.Rename != null) {
 			top.AddChild(TextButton("Rename", "Gives it another name.", () => {
-				newName.Text = page.ItemName(save, Items()[index]);
+				if (Current() == null) {
+					return;
+				}
+				newName.Text = page.ItemName(save, Current());
 				renaming.Visible = true;
 				newName.GrabFocus();
 			}).WithName("Rename"));
 			renaming.AddChild(TextButton("OK", null, () => {
-				string why = page.Rename(save, Items()[index], newName.Text);
+				string why = page.Rename(save, Current(), newName.Text);
 				report(why);
 				if (why == null) {
 					Show();
@@ -192,7 +200,7 @@ public partial class EditorChrome {
 		}
 		if (page.Add != null) {
 			top.AddChild(TextButton("Add", "Adds one like the one shown.", () => {
-				object added = page.Add(save, Items()[index]);
+				object added = page.Add(save, Current());
 				index = Items().IndexOf(added);
 				report(null);
 				Show();
@@ -200,19 +208,22 @@ public partial class EditorChrome {
 		}
 		if (page.Delete != null) {
 			void DeleteNow() {
-				string why = page.Delete(save, Items()[index]);
+				string why = page.Delete(save, Current());
 				report(why);
 				if (why == null) {
 					Show();
 				}
 			}
 			top.AddChild(TextButton("Delete", "Deletes the one shown.", () => {
-				List<string> uses = page.UsedBy?.Invoke(save, Items()[index]) ?? [];
+				if (Current() == null) {
+					return;
+				}
+				List<string> uses = page.UsedBy?.Invoke(save, Current()) ?? [];
 				if (uses.Count == 0) {
 					DeleteNow();
 					return;
 				}
-				question.Text = $"{page.ItemName(save, Items()[index])} is used for {string.Join(", ", uses)}. Delete it, and clear those?";
+				question.Text = $"{page.ItemName(save, Current())} is used for {string.Join(", ", uses)}. Delete it, and clear those?";
 				asking.Visible = true;
 			}).WithName("Delete"));
 			asking.AddChild(TextButton("Delete", null, DeleteNow).WithName("Delete Anyway"));
@@ -220,9 +231,47 @@ public partial class EditorChrome {
 		}
 		tab.AddChild(asking);
 		tab.AddChild(scroll);
+		if (page.Name == "Civilization Advances") {
+			AddScienceTree(tab, top, scroll, save, tech => {
+				index = Items().IndexOf(tech);
+				ShowItems();
+				ShowFields();
+			}, report);
+		}
 		Show();
 		refresh = Show;
 		return tab;
+	}
+
+	// Civ3's science advisor, an era at a time, in place of the fields:
+	// drag an advance to place it (its X and Y); the one moved is shown.
+	private void AddScienceTree(VBoxContainer tab, HBoxContainer top, Control fields, SaveGame save, Action<SaveTech> shown, Action<string> report) {
+		VBoxContainer tree = new() { Visible = false, SizeFlagsVertical = SizeFlags.ExpandFill };
+		OptionButton era = SetupStyle.MakeDropdown("The era shown");
+		era.Name = "Tree Era";
+		era.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+		era.CustomMinimumSize = new Vector2(200, 0);
+		string[] eras = [C7GameData.EraUtils.ANCIENT_TIMES_CVLPD, C7GameData.EraUtils.MIDDLE_AGES_CVLPD,
+			C7GameData.EraUtils.INDUSTRIAL_AGE_CVLPD, C7GameData.EraUtils.MODERN_ERA_CVLPD];
+		SetupStyle.AddItems(era, eras.Select(k => RulePages.EraName(save, k)).ToList(), 0);
+		ScienceTreeView view = new(save, eras[0], (tech, x, y) => {
+			shown(tech);
+			report($"{tech.Name} at {x}, {y}.");
+		});
+		era.ItemSelected += i => {
+			view.Era = eras[i];
+			view.QueueRedraw();
+		};
+		tree.AddChild(era);
+		tree.AddChild(view);
+		tab.AddChild(tree);
+		Button toggle = TextButton("Science Tree", "Lay the advances out by dragging, an era at a time (Civ3's science advisor).", () => {
+			tree.Visible = !tree.Visible;
+			fields.Visible = !tree.Visible;
+			view.QueueRedraw();
+		});
+		toggle.Name = "Science Tree";
+		top.AddChild(toggle);
 	}
 
 	// A node name from a label: Godot leaves out : / . @ % and quotes.
@@ -300,6 +349,26 @@ public partial class EditorChrome {
 					lines.AddThemeFontSizeOverride("font_size", 14);
 					lines.TextChanged += () => Set(lines.Text.Split('\n').Select(l => l.Trim()).Reverse().SkipWhile(l => l == "").Reverse().ToList());
 					control = lines;
+					break;
+				}
+			case RuleFieldKind.Numbers when field.NumberLabels != null: {
+					// A number for each name (a flavor's relationships, a
+					// government's modifiers).
+					List<int> numbers = [.. (List<int>)value];
+					List<string> names = field.NumberLabels(save, item);
+					GridContainer named = new() { Columns = 2 };
+					named.AddThemeConstantOverride("v_separation", 2);
+					for (int i = 0; i < names.Count && i < numbers.Count; ++i) {
+						int at = i;
+						named.AddChild(InkLabel(names[i]));
+						SpinBox spin = Spin(numbers[i], field.Min, field.Max);
+						spin.ValueChanged += v => {
+							numbers[at] = (int)v;
+							Set(new List<int>(numbers));
+						};
+						named.AddChild(spin);
+					}
+					control = named;
 					break;
 				}
 			case RuleFieldKind.Numbers: {

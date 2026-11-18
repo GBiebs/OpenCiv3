@@ -112,6 +112,18 @@ namespace C7GameData {
 		// Player.AdoptGovernment). Fascism has both in conquests.biq.
 		public bool xenophobic;
 		public bool forcedResettlement;
+
+		// Kept for scenarios; the game doesn't use them yet (its espionage
+		// and culture follow players' studies): the BIQ GOVT's assimilation
+		// chance (%), the experience level of its diplomats and spies (by
+		// key), what it's immune to (the BIQ's value), and how it stands
+		// against each government (by name): whether its cities can be
+		// bribed, and the bribery and resistance modifiers.
+		public int assimilationChance;
+		public string diplomatLevel;
+		public string spyLevel;
+		public int immuneTo;
+		public List<GovernmentRelation> relations = new();
 		public int freeUnitsPerTown;
 		public int freeUnitsPerCity;
 		public int freeUnitsPerMetropolis;
@@ -149,5 +161,13 @@ namespace C7GameData {
 		private static void TilePenalty(Tile.Yield yield) {
 			yield.penalty += yield.yield > 2 ? 1 : 0;
 		}
+	}
+
+	// See Government.relations.
+	public class GovernmentRelation {
+		public string government;
+		public bool canBribe;
+		public int briberyModifier;
+		public int resistanceModifier;
 	}
 }

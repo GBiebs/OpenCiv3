@@ -76,6 +76,12 @@ namespace C7GameData {
 		}
 		public Civ3FoliageAction allowedFoliageAction = Civ3FoliageAction.None;
 
+		// Civ3's landmark terrain: a second set of values for the type,
+		// painted as its own terrain (the BIQ TERR's landmark fields). Kept
+		// for scenarios; the game has no landmark tiles yet. Null if the
+		// rules give none.
+		public TerrainLandmark landmark;
+
 		//some stuff about graphics would probably make sense, too
 
 		// Checks of the key are made in very hot code (pathing, visibility,
@@ -233,5 +239,15 @@ namespace C7GameData {
 			{ 12, "sea"},
 			{ 13, "ocean"}
 		};
+	}
+
+	// See TerrainType.landmark.
+	public class TerrainLandmark {
+		public bool enabled;
+		public string name = "";
+		public string civilopediaEntry = "";
+		public int food, shields, commerce;
+		public int irrigationBonus, miningBonus, roadBonus;
+		public int movementCost, defenseBonus;
 	}
 }

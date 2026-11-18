@@ -352,6 +352,12 @@ namespace C7GameData {
 			new() { Mission = "ExposeEnemySpy", Name = "Expose Enemy Spy", CivilopediaEntry = "ESPN_Expose_Enemy_Mole", Spy = true, BaseCost = 80 },
 		];
 
+		// Civ3's flavors: named leanings that steer the AI's research and
+		// building (the BIQ's FLAV, and the flavors of each advance,
+		// improvement and civilization, kept here by name). Kept for
+		// scenarios; the game's AI doesn't use them yet.
+		public List<FlavorRule> Flavors = [];
+
 		// The rules' entry for the mission, or null.
 		public EspionageMissionRule EspionageMissionRuleFor(string mission) => EspionageMissions?.Find(m => m.Mission == mission);
 
@@ -381,6 +387,17 @@ namespace C7GameData {
 		public int PropagandaChance;
 		public int InitialResistanceChance;
 		public int ContinuedResistanceChance;
+	}
+
+	// A flavor (see Rules.Flavors): its relationship (%) with each flavor,
+	// in Flavors' order, and the advances, improvements and civilizations
+	// that have it, by name.
+	public class FlavorRule {
+		public string Name;
+		public List<int> Relationships = [];
+		public List<string> Techs = [];
+		public List<string> Buildings = [];
+		public List<string> Civilizations = [];
 	}
 
 	// A diplomatic or espionage mission as the rules name and price it (the

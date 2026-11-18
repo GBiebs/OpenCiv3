@@ -16,6 +16,9 @@ public static class RuleEditing {
 		if (field.ReadOnly) {
 			return $"{field.Label.TrimEnd(':')} can't be changed.";
 		}
+		if (field.Refuse?.Invoke(save, item) is string why) {
+			return why;
+		}
 		switch (field.Kind) {
 			case RuleFieldKind.Number when value is not int n || n < field.Min || n > field.Max:
 				return $"{field.Label.TrimEnd(':')} is {field.Min} to {field.Max}.";

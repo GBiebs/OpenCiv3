@@ -40,6 +40,12 @@ public sealed class RuleField {
 	public Action<SaveGame, object, object> Set;
 	// The names a Choice or Choices picks from.
 	public Func<SaveGame, List<string>> Choices;
+	// For Numbers: a name for each number (a fixed count, shown as a
+	// list of named fields); null for Civ3's spaceship-parts style.
+	public Func<SaveGame, object, List<string>> NumberLabels;
+	// Why the item can't take a value of the field (a wonder's field on an
+	// improvement), or null.
+	public Func<SaveGame, object, string> Refuse;
 }
 
 public sealed class RulePage {
@@ -161,6 +167,53 @@ internal static class Rule {
 			Get = (_, o) => get((T)o) ?? [],
 			Set = (_, o, v) => set((T)o, (List<int>)v),
 		};
+
+	// An enum's value as the pages show it: "AIOffense" is "AI Offense".
+	public static string Pretty(string name) => System.Text.RegularExpressions.Regex.Replace(
+		System.Text.RegularExpressions.Regex.Replace(name, "([a-z0-9])([A-Z])", "$1 $2"), "([A-Z]+)([A-Z][a-z])", "$1 $2");
+
+	// A set of an enum's values (flags, traits, orders) as named
+	// checkboxes; which picks the values the field shows.
+	public static RuleField Flags<T, E>(string group, string label, Func<T, ICollection<E>> get, string help, Func<E, bool> which = null,
+		bool notUsed = false, int column = 0) where E : struct, System.Enum {
+		which ??= _ => true;
+		List<E> values = System.Enum.GetValues<E>().Where(which).ToList();
+		Dictionary<string, E> byName = values.ToDictionary(e => Pretty(e.ToString()));
+		return new() {
+			Group = group,
+			Column = column,
+			Label = label,
+			Kind = RuleFieldKind.Choices,
+			Help = help,
+			NotUsed = notUsed,
+			Choices = _ => values.Select(e => Pretty(e.ToString())).ToList(),
+			Get = (_, o) => get((T)o).Where(values.Contains).Select(e => Pretty(e.ToString())).ToList(),
+			Set = (_, o, v) => {
+				ICollection<E> set = get((T)o);
+				values.ForEach(e => set.Remove(e));
+				foreach (string name in (List<string>)v) {
+					set.Add(byName[name]);
+				}
+			},
+		};
+	}
+
+	// One of an enum's values.
+	public static RuleField OneOf<T, E>(string group, string label, Func<T, E> get, Action<T, E> set, string help,
+		bool notUsed = false, int column = 0) where E : struct, System.Enum {
+		Dictionary<string, E> byName = System.Enum.GetValues<E>().ToDictionary(e => Pretty(e.ToString()));
+		return new() {
+			Group = group,
+			Column = column,
+			Label = label,
+			Kind = RuleFieldKind.Choice,
+			Help = help,
+			NotUsed = notUsed,
+			Choices = _ => byName.Keys.ToList(),
+			Get = (_, o) => Pretty(get((T)o).ToString()),
+			Set = (_, o, v) => set((T)o, byName[(string)v]),
+		};
+	}
 
 	// A name no other item has: the name, else "name (2)", "(3)"...
 	public static string Unique(string name, IEnumerable<string> taken) {
