@@ -172,7 +172,9 @@ namespace C7Engine.AI {
 			}
 			GameData gameData = EngineStorage.gameData;
 			int beakers = player.BeakersPerTurn();
-			List<(Tech tech, double value)> values = available.Select(t => (t, TechValue(gameData, player, t, beakers))).ToList();
+			// The civ's flavors make it favour some (see Flavors).
+			List<(Tech tech, double value)> values = available
+				.Select(t => (t, TechValue(gameData, player, t, beakers) * Flavors.TechFactor(gameData.rules, player.civilization, t))).ToList();
 			double total = values.Sum(v => v.value);
 			if (total <= 0) {
 				return null;

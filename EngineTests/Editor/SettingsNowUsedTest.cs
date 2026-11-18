@@ -528,6 +528,37 @@ public class SettingsNowUsedTest : IClassFixture<SaveGameFixture> {
 		Assert.False(tile.isLandmark);
 	}
 
+	// ---- Flavors ----
+
+	[Fact]
+	public void FlavorsMakeTheAiFavourTheirAdvancesAndImprovements() {
+		Tech tech = gameData.techs.First();
+		Building building = gameData.Buildings.First(b => !b.IsGreatWonder());
+		Rules rules = gameData.rules;
+		rules.Flavors = [
+			new FlavorRule { Name = "Warlike", Relationships = [100, 40], Civilizations = [us.civilization.name], Techs = [], Buildings = [] },
+			new FlavorRule { Name = "Builder", Relationships = [40, 100], Civilizations = [], Techs = [tech.Name], Buildings = [building.name] },
+		];
+		rules.FlavorPreferencePercent = 50;
+		// A related flavor: 40%.
+		Assert.Equal(40, C7Engine.AI.Flavors.Affinity(rules, us.civilization, tech.Name, f => f.Techs));
+		Assert.Equal(1.2, C7Engine.AI.Flavors.TechFactor(rules, us.civilization, tech), 6);
+		Assert.Equal(1.2, C7Engine.AI.Flavors.BuildingFactor(rules, us.civilization, building), 6);
+		// Its own flavor: the full 50% more.
+		rules.Flavors[1].Civilizations.Add(us.civilization.name);
+		Assert.Equal(1.5, C7Engine.AI.Flavors.TechFactor(rules, us.civilization, tech), 6);
+		// None: unchanged.
+		Assert.Equal(1.0, C7Engine.AI.Flavors.TechFactor(rules, them.civilization, tech), 6);
+		Assert.Equal(1.0, C7Engine.AI.Flavors.TechFactor(rules, us.civilization, gameData.techs.Last()), 6);
+
+		// The AI's research leans to it: with a big pull, nearly always.
+		List<Tech> two = [gameData.techs[0], gameData.techs[1]];
+		rules.Flavors[1].Techs = [two[1].Name];
+		rules.FlavorPreferencePercent = 100000;
+		int picked = Enumerable.Range(0, 200).Count(_ => C7Engine.AI.DevelopmentAI.ChooseResearchAsCiv3(us, two) == two[1]);
+		Assert.True(picked > 190, $"{picked}");
+	}
+
 	// ---- Importing Civ3's switches ----
 
 	[SkippableFact]

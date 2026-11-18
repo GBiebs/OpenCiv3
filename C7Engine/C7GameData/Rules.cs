@@ -376,9 +376,13 @@ namespace C7GameData {
 
 		// Civ3's flavors: named leanings that steer the AI's research and
 		// building (the BIQ's FLAV, and the flavors of each advance,
-		// improvement and civilization, kept here by name). Kept for
-		// scenarios; the game's AI doesn't use them yet.
+		// improvement and civilization, kept here by name; see
+		// C7Engine.AI.Flavors).
 		public List<FlavorRule> Flavors = [];
+		// Not Civ3's (its weighting is undocumented): how much more (%) an
+		// advance or improvement of its own flavor is worth to a computer
+		// civilization.
+		public int FlavorPreferencePercent = 50;
 
 		// The rules' entry for the mission, or null.
 		public EspionageMissionRule EspionageMissionRuleFor(string mission) => EspionageMissions?.Find(m => m.Mission == mission);

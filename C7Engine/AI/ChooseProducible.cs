@@ -202,7 +202,9 @@ namespace C7Engine {
 			if (option is UnitPrototype unit) {
 				return ScoreUnit(stats, city, player, unit);
 			} else if (option is Building building) {
-				return ScoreBuilding(stats, city, player, building);
+				// The civ's flavors make it favour some (see Flavors).
+				float score = ScoreBuilding(stats, city, player, building);
+				return score > 0 ? score * (float)Flavors.BuildingFactor(EngineStorage.gameData?.rules, player.civilization, building) : score;
 			} else if (option is Inflow inflow) {
 				return ScoreInflow(stats, city, player, inflow);
 			} else {

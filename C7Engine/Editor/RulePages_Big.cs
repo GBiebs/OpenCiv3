@@ -34,8 +34,7 @@ public static partial class RulePages {
 		Column = column,
 		Label = "Flavors:",
 		Kind = RuleFieldKind.Choices,
-		NotUsed = true,
-		Help = "The leanings it has, which steer the AI's choices (Civ3's flavors).",
+		Help = "Its flavors: a computer civilization favours the advances and improvements sharing its civilization's (or related ones).",
 		Choices = FlavorNames,
 		Get = (s, o) => (s.Rules.Flavors ?? []).Where(f => members(f).Contains(nameOf((T)o))).Select(f => f.Name).ToList(),
 		Set = (s, o, v) => {
@@ -743,7 +742,7 @@ public static partial class RulePages {
 		Restore = (s, d) => s.Rules.Flavors = d.Rules.Flavors,
 		Fields = [
 			new RuleField {
-				Label = "Relationships (%):", Kind = RuleFieldKind.Numbers, Min = -100, Max = 100, NotUsed = true,
+				Label = "Relationships (%):", Kind = RuleFieldKind.Numbers, Min = -100, Max = 100,
 				Help = "How strongly the AI that has this flavor leans to each flavor.",
 				NumberLabels = (s, _) => FlavorNames(s),
 				Get = (s, o) => {
@@ -752,9 +751,9 @@ public static partial class RulePages {
 				},
 				Set = (_, o, v) => ((FlavorRule)o).Relationships = (List<int>)v,
 			},
-			Rule.Choices<FlavorRule>("", "Advances:", (_, f) => f.Techs, (_, f, v) => f.Techs = v, TechNames, "The advances with this flavor.", notUsed: true),
-			Rule.Choices<FlavorRule>("", "Improvements:", (_, f) => f.Buildings, (_, f, v) => f.Buildings = v, BuildingNames, "The improvements with it.", notUsed: true),
-			Rule.Choices<FlavorRule>("", "Civilizations:", (_, f) => f.Civilizations, (_, f, v) => f.Civilizations = v, CivNames, "The civilizations with it.", notUsed: true),
+			Rule.Choices<FlavorRule>("", "Advances:", (_, f) => f.Techs, (_, f, v) => f.Techs = v, TechNames, "The advances with this flavor."),
+			Rule.Choices<FlavorRule>("", "Improvements:", (_, f) => f.Buildings, (_, f, v) => f.Buildings = v, BuildingNames, "The improvements with it."),
+			Rule.Choices<FlavorRule>("", "Civilizations:", (_, f) => f.Civilizations, (_, f, v) => f.Civilizations = v, CivNames, "The civilizations with it."),
 		],
 	};
 }
