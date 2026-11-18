@@ -281,6 +281,12 @@ public sealed record ScenarioSettings {
 		gameData.rules.AcceleratedProduction = AcceleratedProduction;
 		gameData.rules.AllowCultureFlips = CulturalConversion;
 		gameData.rules.ScientificLeaders = ScientificLeaders;
+		gameData.rules.PreserveRandomSeed = PreserveRandomSeed;
+		gameData.rules.CivSpecificAbilities = CivSpecificAbilities;
+		gameData.rules.CulturallyLinkedStart = CulturallyLinkedStart;
+		gameData.rules.RespawnAiPlayers = RespawnAiPlayers;
+		gameData.rules.RetainCultureOnCapture = RetainCulture;
+		gameData.rules.TimeLimitMinutes = TimeLimitMinutes;
 		info.preserveRandomSeed = PreserveRandomSeed;
 		info.civSpecificAbilities = CivSpecificAbilities;
 		info.culturallyLinkedStart = CulturallyLinkedStart;

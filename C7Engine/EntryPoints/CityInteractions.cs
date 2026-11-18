@@ -365,6 +365,12 @@ namespace C7Engine {
 			captor.neverHadCityOrSettler = false;
 			city.owner = captor;
 			city.perPlayerCulture.TryAdd(captor, 0);
+			// Civ3's Retain Culture on Capture: "the full cultural value of a
+			// city is retained by a conquering civ" (its buildings go as
+			// usual, above).
+			if (gameData.rules?.RetainCultureOnCapture == true) {
+				city.perPlayerCulture[captor] = Math.Max(city.perPlayerCulture[captor], city.GetCultureFor(oldOwner));
+			}
 			gameData.OnCityOwnerChanged(city);
 			// Civ3's City_Transfer: a city taken by force may flip again
 			// after one turn.

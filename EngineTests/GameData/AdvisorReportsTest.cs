@@ -6,17 +6,27 @@ namespace EngineTests.GameData;
 
 public class AdvisorReportsTest {
 
+	// Civ3's editor: levels at the multiplier (1000) times 2, 4, 8, 16 and
+	// 32.
 	[Theory]
 	[InlineData(0, "Fledgling")]
-	[InlineData(9, "Fledgling")]
-	[InlineData(10, "Weak")]
-	[InlineData(999, "Fragile")]
-	[InlineData(1000, "Solid")]
-	[InlineData(50000, "Strong")]
-	[InlineData(100000, "Glorious")]
+	[InlineData(1999, "Fledgling")]
+	[InlineData(2000, "Weak")]
+	[InlineData(4000, "Fragile")]
+	[InlineData(8000, "Solid")]
+	[InlineData(31999, "Strong")]
+	[InlineData(32000, "Glorious")]
 	[InlineData(5000000, "Glorious")]
-	public void CultureLevel_TakesTenTimesTheCultureForEachLevel(int culture, string expected) {
+	public void CultureLevel_DoublesTheMultiplierForEachLevel(int culture, string expected) {
 		Assert.Equal(expected, CultureReport.CultureLevel(new Rules(), culture));
+	}
+
+	[Fact]
+	public void CultureLevel_FollowsTheRulesMultiplier() {
+		Rules rules = new() { BorderExpansionMultiplier = 10 };
+		Assert.Equal("Fledgling", CultureReport.CultureLevel(rules, 19));
+		Assert.Equal("Weak", CultureReport.CultureLevel(rules, 20));
+		Assert.Equal("Glorious", CultureReport.CultureLevel(rules, 320));
 	}
 
 	[Theory]

@@ -64,7 +64,12 @@ public class TimeLimitVictory : IVictory {
 
 	public string Header() => "Time Limits";
 
+	// Whether the game's time limit in minutes was reached when last
+	// evaluated (see PlayTime).
+	private bool outOfTime;
+
 	public VictoryStatus Evaluate(Player player, GameData gameData) {
+		outOfTime = PlayTime.LimitReached(gameData);
 		return new VictoryStatus {
 			Player = player,
 			CurrentTurn = gameData.turn
@@ -73,7 +78,7 @@ public class TimeLimitVictory : IVictory {
 
 	// A turn limit of 0 or less means the game has none.
 	public bool HasVictory(VictoryStatus status) {
-		return _turnLimit > 0 && status.CurrentTurn >= _turnLimit;
+		return outOfTime || (_turnLimit > 0 && status.CurrentTurn >= _turnLimit);
 	}
 
 	public IEnumerable<string[]> GenerateStatusRows(VictoryStatus status, List<VictoryStatus> rivalStatuses) {

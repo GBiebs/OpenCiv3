@@ -87,10 +87,14 @@ namespace C7Engine {
 		// Who carries out a mission: the embassy, or a planted spy of some
 		// experience (the study's "Embassy", "Regular spy" and "Veteran
 		// spy" rows).
+		// A government's spies may also be conscripts or elite (the BIQ's
+		// "spies are"); the study gives their planting chances only.
 		public enum Agent {
 			Embassy,
 			RegularSpy,
 			VeteranSpy,
+			ConscriptSpy,
+			EliteSpy,
 		}
 
 		public class MissionOption {
@@ -229,12 +233,53 @@ namespace C7Engine {
 			};
 		}
 
-		// The experience of a civ's planted spies: conquests.biq's GOVT
-		// "spies are" field is veteran for Communism and Fascism and regular
-		// for the rest. The ruleset doesn't carry the field, so it goes by
-		// the government's name.
+		// The experience of a civ's planted spies: its government's "spies
+		// are" (Government.spyLevel; Civ3's editor's "Spies Are"). Rules
+		// without it go by conquests.biq's: veteran for Communism and
+		// Fascism, regular for the rest.
 		public static Agent SpyLevel(Player player) {
-			return player.government?.name is "Communism" or "Fascism" ? Agent.VeteranSpy : Agent.RegularSpy;
+			return LevelStep(player.government?.spyLevel) switch {
+				null => player.government?.name is "Communism" or "Fascism" ? Agent.VeteranSpy : Agent.RegularSpy,
+				< 0 => Agent.ConscriptSpy,
+				0 => Agent.RegularSpy,
+				1 => Agent.VeteranSpy,
+				_ => Agent.EliteSpy,
+			};
+		}
+
+		// A spy's level as a name, for the espionage screen.
+		public static string SpyLevelName(Agent agent) => agent switch {
+			Agent.ConscriptSpy => "Conscript",
+			Agent.VeteranSpy => "Veteran",
+			Agent.EliteSpy => "Elite",
+			_ => "Regular",
+		};
+
+		// The steps of the civ's diplomats' experience above regular (below,
+		// negative): its government's "diplomats are" (Civ3's editor's
+		// "Diplomats Are"; regular in every government of conquests.biq).
+		// The embassy's missions are its diplomats' (see GetawayPercent).
+		public static int DiplomatStep(Player player) => LevelStep(player.government?.diplomatLevel) ?? 0;
+
+		// An experience level's steps above regular: the rules' levels
+		// (conscript, regular, veteran, elite), by name, else by place; null
+		// for none.
+		private static int? LevelStep(string level) {
+			if (string.IsNullOrEmpty(level)) {
+				return null;
+			}
+			int named = level.ToLowerInvariant() switch {
+				"conscript" => -1,
+				"regular" => 0,
+				"veteran" => 1,
+				"elite" => 2,
+				_ => int.MinValue,
+			};
+			if (named != int.MinValue) {
+				return named;
+			}
+			int index = EngineStorage.gameData?.experienceLevels.FindIndex(e => e.key == level) ?? -1;
+			return index < 0 ? null : index - 1;
 		}
 
 		// Who sends the mission: the planted spy if there is one, else the
@@ -410,11 +455,16 @@ namespace C7Engine {
 		// carefully or safely: embassy 40/55/65, regular spy 60/75/85,
 		// veteran spy 70/85/95 (confirmed by Kool Keith and Jazzmail,
 		// https://forums.civfanatics.com/threads/steal-technology.232487/post-5709659).
-		public static int GetawayPercent(Agent agent, EspionageRisk risk = EspionageRisk.Immediately) {
+		// Conscript and elite spies (50 and 80) and the embassy's 10 a step
+		// of its diplomats' experience (DiplomatStep) are our extrapolation:
+		// the study has regular and veteran spies only.
+		public static int GetawayPercent(Agent agent, EspionageRisk risk = EspionageRisk.Immediately, int diplomatStep = 0) {
 			int immediate = agent switch {
-				Agent.Embassy => 40,
+				Agent.Embassy => Math.Clamp(40 + 10 * diplomatStep, 0, 100),
+				Agent.ConscriptSpy => 50,
 				Agent.RegularSpy => 60,
 				Agent.VeteranSpy => 70,
+				Agent.EliteSpy => 80,
 				_ => 40,
 			};
 			return immediate + risk switch {
@@ -462,7 +512,12 @@ namespace C7Engine {
 		// The study's chances of planting a spy: regular 50%, veteran 60%.
 		// (It also gives, in brackets, conscript 20% and elite 75%, which no
 		// government's spies are in Conquests.)
-		public static int PlantSpyPercent(Agent agent) => agent == Agent.VeteranSpy ? 60 : 50;
+		public static int PlantSpyPercent(Agent agent) => agent switch {
+			Agent.ConscriptSpy => 20,
+			Agent.VeteranSpy => 60,
+			Agent.EliteSpy => 75,
+			_ => 50,
+		};
 
 		public static int SuccessPercent(GameData gameData, Player actor, EspionageMission mission, Player target, City city,
 				EspionageRisk risk = EspionageRisk.Immediately) {
@@ -486,7 +541,7 @@ namespace C7Engine {
 					if (mission == EspionageMission.ExposeEnemySpy && !HasSpy(target, actor)) {
 						return 0;
 					}
-					int getaway = GetawayPercent(AgentFor(actor, target, mission), risk);
+					int getaway = GetawayPercent(AgentFor(actor, target, mission), risk, DiplomatStep(actor));
 					return HasSecondRoll(mission) ? getaway * SuccessIfNotCaughtPercent / 100 : getaway;
 				default:
 					return 0;
@@ -513,15 +568,47 @@ namespace C7Engine {
 			{ 20, 15, 0, -10, -10, -20, -25, 0 },
 		};
 
+		// The rules' modifier (the sender's government's "Bribery Modifier"
+		// against the target's, Government.relations), else the table above.
 		public static int GovernmentModifier(Player actor, Player target) {
+			GovernmentRelation relation = Relation(actor, target);
+			if (relation != null) {
+				return relation.briberyModifier;
+			}
 			int row = Array.IndexOf(GovernmentOrder, actor.government?.name);
 			int column = Array.IndexOf(GovernmentOrder, target.government?.name);
 			return row < 0 || column < 0 ? 0 : GovernmentModifiers[row, column];
 		}
 
-		// "Democracy is immune against propaganda" (the study; conquests.biq
-		// has Democracy immune to the Initiate Propaganda mission).
-		public static bool ImmuneToPropaganda(Player target) => target.government?.name == "Democracy";
+		// The sender's government's relation to the target's, if the rules
+		// have one.
+		private static GovernmentRelation Relation(Player actor, Player target) {
+			return actor.government?.relations?.Find(r => r.government == target.government?.name);
+		}
+
+		// Whether the sender's government may bribe the target's (Civ3's
+		// "Cannot Bribe this Government Type ... effectively prevents
+		// bribery"), which propaganda is.
+		public static bool CanBribe(Player actor, Player target) => Relation(actor, target)?.canBribe ?? true;
+
+		// Whether the target's government is immune to the mission: its
+		// "Immune To" (Government.immuneTo, a mission's place in Civ3's list,
+		// Rules.EspionageMissions). Rules without the governments' Civ3
+		// fields go by conquests.biq: "Democracy is immune against
+		// propaganda" (the study).
+		public static bool ImmuneTo(Player target, EspionageMission mission) {
+			Government g = target.government;
+			if (g == null) {
+				return false;
+			}
+			if (g.relations == null || g.relations.Count == 0) {
+				return mission == EspionageMission.Propaganda && g.name == "Democracy";
+			}
+			List<EspionageMissionRule> missions = EngineStorage.gameData?.rules?.EspionageMissions;
+			return g.immuneTo >= 0 && missions != null && g.immuneTo < missions.Count && missions[g.immuneTo].Mission == mission.ToString();
+		}
+
+		public static bool ImmuneToPropaganda(Player target) => ImmuneTo(target, EspionageMission.Propaganda);
 
 		// Propaganda's "culture" term: conquests.biq's CULT "chance of
 		// successful propaganda" by how the target regards the sender's
@@ -531,7 +618,12 @@ namespace C7Engine {
 		// civ's of the sender's culture, as the culture advisor reports it.
 		private static readonly int[] CultureFactors = [30, 25, 20, 10, 5, 3];
 
+		// The rules' chances (Culture's "Chance of Successful Propaganda"),
+		// else the table above.
 		public static int CultureFactor(GameData gameData, Player actor, Player target) {
+			if (gameData.rules.CultureOpinions.Any(o => o.PropagandaChance != 0)) {
+				return CultureReport.Opinion(gameData.rules, TotalCulture(target), TotalCulture(actor))?.PropagandaChance ?? 0;
+			}
 			string opinion = CultureReport.OpinionOf(gameData.rules, TotalCulture(target), TotalCulture(actor));
 			int index = gameData.rules.CultureOpinions.FindIndex(o => o.Name == opinion);
 			return index >= 0 && index < CultureFactors.Length ? CultureFactors[index] : 0;
@@ -548,7 +640,13 @@ namespace C7Engine {
 		// BIQ's "resistant to bribery" flag).
 		public static int PersuasionPercent(GameData gameData, Player actor, City city, CityResident resident) {
 			Player target = city.owner;
-			int chance = SpyLevel(actor) == Agent.VeteranSpy ? 10 : 0;
+			// Conscript -10 and elite 20 are our extrapolation.
+			int chance = SpyLevel(actor) switch {
+				Agent.ConscriptSpy => -10,
+				Agent.VeteranSpy => 10,
+				Agent.EliteSpy => 20,
+				_ => 0,
+			};
 			chance += GovernmentModifier(actor, target);
 			chance += CultureFactor(gameData, actor, target);
 			chance -= 5 * city.location.unitsOnTile.Count(u => u.owner == target);
@@ -647,6 +745,9 @@ namespace C7Engine {
 					return "We need an Intelligence Agency for espionage.";
 				}
 				if (NeedsSpy(mission) && !pr.hasSpy) return "We need a spy in their capital first.";
+				if (ImmuneTo(target, mission)) {
+					return $"The {target.civilization.noun} government is immune to {(mission == EspionageMission.Propaganda ? "propaganda" : Describe(mission))}.";
+				}
 				switch (mission) {
 					case EspionageMission.PlantSpy:
 						if (pr.hasSpy) return "We already have a spy in their capital.";
@@ -659,7 +760,7 @@ namespace C7Engine {
 						if (StealableTechs(gameData, actor, target).Count == 0) return "They know nothing we could steal.";
 						break;
 					case EspionageMission.Propaganda:
-						if (ImmuneToPropaganda(target)) return $"The {target.civilization.noun} government is immune to propaganda.";
+						if (!CanBribe(actor, target)) return $"The {target.civilization.noun} government can't be bribed.";
 						break;
 				}
 			}
@@ -760,7 +861,7 @@ namespace C7Engine {
 			// others, failing the success roll is being caught.
 			int getaway = mission switch {
 				EspionageMission.EstablishEmbassy or EspionageMission.InvestigateCity => 100,
-				_ when HasSecondRoll(mission) => GetawayPercent(agent, risk),
+				_ when HasSecondRoll(mission) => GetawayPercent(agent, risk, DiplomatStep(actor)),
 				_ => chance,
 			};
 			int r = roll ?? GameData.rng.Next(100);

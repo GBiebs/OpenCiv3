@@ -14328,32 +14328,50 @@
       {
         "name": "in awe of",
         "numerator": 3,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 30,
+        "initialResistanceChance": 40,
+        "continuedResistanceChance": 30
       },
       {
         "name": "admirers of",
         "numerator": 2,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 25,
+        "initialResistanceChance": 50,
+        "continuedResistanceChance": 40
       },
       {
         "name": "impressed with",
         "numerator": 1,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 20,
+        "initialResistanceChance": 60,
+        "continuedResistanceChance": 50
       },
       {
         "name": "unimpressed by",
         "numerator": 3,
-        "denominator": 4
+        "denominator": 4,
+        "propagandaChance": 10,
+        "initialResistanceChance": 70,
+        "continuedResistanceChance": 60
       },
       {
         "name": "dismissive of",
         "numerator": 1,
-        "denominator": 2
+        "denominator": 2,
+        "propagandaChance": 5,
+        "initialResistanceChance": 80,
+        "continuedResistanceChance": 70
       },
       {
         "name": "disdainful of",
         "numerator": 1,
-        "denominator": 3
+        "denominator": 3,
+        "propagandaChance": 3,
+        "initialResistanceChance": 90,
+        "continuedResistanceChance": 80
       }
     ]
   },
@@ -15856,6 +15874,20 @@
       "hasTradeBonus": false,
       "id": "Government-1",
       "name": "Anarchy",
+      "assimilationChance": 1,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Anarchy",
       "defaultType": false,
       "transitionType": true,
@@ -15880,6 +15912,20 @@
       "hasTradeBonus": false,
       "id": "Government-2",
       "name": "Despotism",
+      "assimilationChance": 1,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 15, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": -10, "resistanceModifier": 5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": -15, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": -20, "resistanceModifier": 5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -30, "resistanceModifier": 5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Despotism",
       "defaultType": true,
       "transitionType": false,
@@ -15904,6 +15950,20 @@
       "hasTradeBonus": false,
       "id": "Government-3",
       "name": "Monarchy",
+      "assimilationChance": 2,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 20, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 15, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": -5, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": -10, "resistanceModifier": 5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -25, "resistanceModifier": 5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Monarchy",
       "prerequisiteTech": "tech-20",
       "defaultType": false,
@@ -15929,6 +15989,20 @@
       "hasTradeBonus": false,
       "id": "Government-4",
       "name": "Communism",
+      "assimilationChance": 4,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Veteran",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 25, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 20, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 5, "resistanceModifier": -5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": -10, "resistanceModifier": -5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -20, "resistanceModifier": 5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Communism",
       "prerequisiteTech": "tech-47",
       "defaultType": false,
@@ -15954,6 +16028,20 @@
       "hasTradeBonus": true,
       "id": "Government-5",
       "name": "Republic",
+      "assimilationChance": 2,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 30, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 25, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 10, "resistanceModifier": 5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": 8, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -5, "resistanceModifier": 5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Republic",
       "prerequisiteTech": "tech-19",
       "defaultType": false,
@@ -15979,6 +16067,20 @@
       "hasTradeBonus": true,
       "id": "Government-6",
       "name": "Democracy",
+      "assimilationChance": 4,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": 6,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 35, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 30, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 20, "resistanceModifier": -5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": 10, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": 5, "resistanceModifier": -5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Democracy",
       "prerequisiteTech": "tech-35",
       "defaultType": false,
@@ -16004,6 +16106,20 @@
       "hasTradeBonus": false,
       "id": "Government-7",
       "name": "Fascism",
+      "assimilationChance": 2,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Veteran",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": -5, "resistanceModifier": 0 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": -20, "resistanceModifier": -10 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": -10, "resistanceModifier": -5 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -10, "resistanceModifier": -5 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Fascism",
       "prerequisiteTech": "tech-83",
       "defaultType": false,
@@ -16029,6 +16145,20 @@
       "hasTradeBonus": false,
       "id": "Government-8",
       "name": "Feudalism",
+      "assimilationChance": 3,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 20, "resistanceModifier": -5 },
+        { "government": "Despotism", "canBribe": true, "briberyModifier": 15, "resistanceModifier": -5 },
+        { "government": "Monarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 5 },
+        { "government": "Communism", "canBribe": true, "briberyModifier": -10, "resistanceModifier": 5 },
+        { "government": "Republic", "canBribe": true, "briberyModifier": -10, "resistanceModifier": 0 },
+        { "government": "Democracy", "canBribe": true, "briberyModifier": -20, "resistanceModifier": 0 },
+        { "government": "Fascism", "canBribe": true, "briberyModifier": -25, "resistanceModifier": 5 },
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Feudalism",
       "prerequisiteTech": "tech-23",
       "defaultType": false,

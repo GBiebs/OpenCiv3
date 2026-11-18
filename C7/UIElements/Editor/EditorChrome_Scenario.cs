@@ -160,7 +160,7 @@ public partial class EditorChrome {
 		right.AddChild(InkLabel("Game Rules:"));
 		ScrollContainer ruleScroll = new() { CustomMinimumSize = new Vector2(0, 150) };
 		VBoxContainer rules = new();
-		Option(rules, "Preserve Random Seed", s.PreserveRandomSeed, on => s.PreserveRandomSeed = on, NotUsedYet);
+		Option(rules, "Preserve Random Seed", s.PreserveRandomSeed, on => s.PreserveRandomSeed = on, "A game loaded part way through goes on with the random numbers it was saved with (off: new ones each load).");
 		Option(rules, "Accelerated Production", s.AcceleratedProduction, on => s.AcceleratedProduction = on);
 		Option(rules, "City Elimination", s.CityElimination, on => s.CityElimination = on);
 		Option(rules, "Regicide", s.Regicide, on => s.Regicide = on);
@@ -168,9 +168,9 @@ public partial class EditorChrome {
 		Option(rules, "Victory Point Scoring", s.VictoryPointScoring, on => s.VictoryPointScoring = on);
 		Option(rules, "Capture the Unit", s.CaptureTheFlag, on => s.CaptureTheFlag = on);
 		Option(rules, "Reverse Capture the Flag", s.ReverseCaptureTheFlag, on => s.ReverseCaptureTheFlag = on);
-		Option(rules, "Civ-Specific Abilities", s.CivSpecificAbilities, on => s.CivSpecificAbilities = on, NotUsedYet);
-		Option(rules, "Culturally-Linked Start", s.CulturallyLinkedStart, on => s.CulturallyLinkedStart = on, NotUsedYet);
-		Option(rules, "Respawn AI Players", s.RespawnAiPlayers, on => s.RespawnAiPlayers = on, NotUsedYet);
+		Option(rules, "Civ-Specific Abilities", s.CivSpecificAbilities, on => s.CivSpecificAbilities = on, "Civilizations have their traits (off: none has any).");
+		Option(rules, "Culturally-Linked Start", s.CulturallyLinkedStart, on => s.CulturallyLinkedStart = on, "Civilizations of a culture group start near each other on a generated map.");
+		Option(rules, "Respawn AI Players", s.RespawnAiPlayers, on => s.RespawnAiPlayers = on, "A computer civilization destroyed comes back as one no player has been, on free land.");
 		Option(rules, "Allow Cultural Conversion", s.CulturalConversion, on => s.CulturalConversion = on);
 		Option(rules, "Scientific Leaders", s.ScientificLeaders, on => s.ScientificLeaders = on);
 		ruleScroll.AddChild(rules);
@@ -180,7 +180,7 @@ public partial class EditorChrome {
 		Option(right, "Auto Place Capture Units", s.AutoPlaceCaptureUnits, on => s.AutoPlaceCaptureUnits = on, NotUsedYet);
 		Option(right, "Auto Place Victory Locations", s.AutoPlaceVictoryLocations, on => s.AutoPlaceVictoryLocations = on);
 		Option(right, "Reveal Entire Map", s.RevealMap, on => s.RevealMap = on, "Every player knows the whole map from the start.");
-		Option(right, "Retain Culture on Capture", s.RetainCulture, on => s.RetainCulture = on, NotUsedYet);
+		Option(right, "Retain Culture on Capture", s.RetainCulture, on => s.RetainCulture = on, "A captured city keeps its culture for its captor.");
 		columns.AddChild(right);
 
 		tab.AddChild(Rule());
@@ -256,7 +256,7 @@ public partial class EditorChrome {
 		turns.ValueChanged += v => s.TurnLimit = (int)v;
 		limit.AddChild(LabeledColumn("Turns:", turns));
 		SpinBox minutes = Spin(s.TimeLimitMinutes, 0, 9999);
-		minutes.TooltipText = NotUsedYet;
+		minutes.TooltipText = "The game ends after this many minutes of play, as at the turn limit (0: no limit).";
 		minutes.ValueChanged += v => s.TimeLimitMinutes = (int)v;
 		limit.AddChild(LabeledColumn("Minutes:", minutes));
 		SpinBox campaign = Spin(s.Campaign, 0, 99);

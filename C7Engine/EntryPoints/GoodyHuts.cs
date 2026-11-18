@@ -182,10 +182,26 @@ public static class GoodyHuts {
 		}
 	}
 
+	// The rules' money resource (Civ3's General Settings' Default Money
+	// Resource: "the selected resource will be placed on the map in the
+	// location of the goody hut whenever a goody hut is entered"), unless
+	// the tile has a resource already. None by default.
+	private static void LeaveMoneyResource(GameData gameData, Tile tile) {
+		string name = gameData.rules?.DefaultMoneyResource;
+		if (string.IsNullOrEmpty(name) || (tile.Resource != null && tile.Resource != Resource.NONE)) {
+			return;
+		}
+		Resource money = gameData.Resources.FirstOrDefault(r => r.Name == name);
+		if (money != null) {
+			tile.Resource = money;
+		}
+	}
+
 	// Opens the hut for the player, whose unit entered it, or with no unit
 	// for a city founded next to it or whose borders grew over it.
 	private static Outcome Open(GameData gameData, Player player, MapUnit unit, Tile tile, bool byBorders = false) {
 		tile.hasGoodyHut = false;
+		LeaveMoneyResource(gameData, tile);
 		TileChangeJournal.Record(tile);
 
 		int level = Level(gameData, player);

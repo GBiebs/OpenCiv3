@@ -53,7 +53,7 @@ public class ScenarioInfo {
 	// Seed, Civ-Specific Abilities, Culturally-Linked Start, Respawn AI
 	// Players, Auto Place Capture Units, Retain Culture on Capture, the
 	// time limit in minutes, Conquests' campaign number.
-	public bool preserveRandomSeed, civSpecificAbilities = true, culturallyLinkedStart, respawnAiPlayers, autoPlaceCaptureUnits = true, retainCulture;
+	public bool preserveRandomSeed = true, civSpecificAbilities = true, culturallyLinkedStart, respawnAiPlayers, autoPlaceCaptureUnits = true, retainCulture;
 	public int timeLimitMinutes;
 	public int campaign;
 	// Victory Point Limits' capture-the-flag options, kept but not used by

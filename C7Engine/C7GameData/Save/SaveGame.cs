@@ -72,6 +72,8 @@ namespace C7GameData.Save {
 				Seed = data.seed,
 				RngState = (data.random as GameRandom)?.State,
 				TurnNumber = data.turn,
+				PlayedSeconds = data.playedSeconds,
+				FallenCivilizations = data.fallenCivilizations.Select(c => c.name).ToList(),
 				Civilizations = data.civilizations,
 				CultureGroups = data.cultureGroups,
 				Alliances = data.alliances,
@@ -264,13 +266,21 @@ namespace C7GameData.Save {
 			}
 
 			// The game ends at the turn limit only if that was chosen;
-			// otherwise it goes on until someone wins.
-			if (conditions?.UseTurnLimit == true) {
-				data.victories.Add(new TimeLimitVictory(data.timeOptions.turnLimit));
+			// otherwise it goes on until someone wins. A time limit in
+			// minutes (Rules.TimeLimitMinutes) ends it too.
+			if (conditions?.UseTurnLimit == true || data.rules?.TimeLimitMinutes > 0) {
+				data.victories.Add(new TimeLimitVictory(conditions?.UseTurnLimit == true ? data.timeOptions.turnLimit : 0));
 			}
 		}
 
 		private void OnGameCreation() {
+			// Civ3's Civ-Specific Abilities off: no civilization has its
+			// traits in this game (Rules.CivSpecificAbilities).
+			if (EngineStorage.gameData.rules?.CivSpecificAbilities == false) {
+				foreach (Civilization civ in EngineStorage.gameData.civilizations) {
+					civ.traits.Clear();
+				}
+			}
 			foreach (Player p in EngineStorage.gameData.players) {
 				// Backfill citizen assignments for scenarios that don't specify
 				// them.
@@ -331,8 +341,16 @@ namespace C7GameData.Save {
 		// The game's random number generator, carrying on from where it was
 		// when the game was saved. Saves made before its state was saved
 		// start it afresh each turn from the seed.
+		//
+		// Unless the rules don't preserve the random seed (Civ3's Preserve
+		// Random Seed, Rules.PreserveRandomSeed): then a game loaded part way
+		// through gets new random numbers, so playing a turn again may turn
+		// out differently.
 		private Random CreateRandom(int seed) {
 			if (RngState is ulong state) {
+				if (Rules?.PreserveRandomSeed == false) {
+					return new GameRandom(GameRandom.InitialState(Random.Shared.Next(), TurnNumber));
+				}
 				return new GameRandom(state);
 			}
 			return new GameRandom(GameRandom.InitialState(seed, TurnNumber));
@@ -382,11 +400,13 @@ namespace C7GameData.Save {
 			// copy data without references
 			var data = new GameData(Seed) {
 				turn = TurnNumber,
+				playedSeconds = PlayedSeconds,
 				terrainTypes = TerrainTypes,
 				Resources = Resources,
 				scenarioSearchPath = ScenarioSearchPath,
 				scenarioName = ScenarioName,
 				civilizations = Civilizations,
+				fallenCivilizations = Civilizations.Where(c => FallenCivilizations.Contains(c.name)).ToList(),
 				cultureGroups = CultureGroups,
 				alliances = Alliances,
 				citizenTypes = CitizenTypes,
@@ -751,6 +771,10 @@ namespace C7GameData.Save {
 		// or null in saves made before it was saved.
 		public ulong? RngState;
 		public int TurnNumber = 0;
+		// Seconds of real time played (GameData.playedSeconds).
+		public double PlayedSeconds;
+		// GameData.fallenCivilizations, by name.
+		public List<string> FallenCivilizations = [];
 		public SaveMap Map = new SaveMap();
 		public List<TerrainType> TerrainTypes = new List<TerrainType>();
 		public List<SaveTerrainImprovement> TerrainImprovements = [];

@@ -737,6 +737,11 @@ namespace C7GameData {
 				return;
 			}
 			QueryCiv3.Biq.GAME game = games[0];
+			save.Rules ??= new Rules();
+			save.Rules.CulturallyLinkedStart = game.CulturallyLinkedStart;
+			save.Rules.RespawnAiPlayers = game.RespawnAiPlayers;
+			save.Rules.PreserveRandomSeed = game.PreserveRandomSeed;
+			save.Rules.RetainCultureOnCapture = game.RetainCulture != 0;
 			save.VictoryConditions = new VictoryConditions {
 				// A scenario that turns on its time limit keeps it.
 				UseTurnLimit = game.UseTimeLimit != 0,

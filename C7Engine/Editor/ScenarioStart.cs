@@ -12,6 +12,7 @@ namespace C7Engine.Editor;
 // settled (AssignCivilizations).
 public static class ScenarioStart {
 	public static void Apply(SaveGame save) {
+		SwitchesToRules(save);
 		ApplyPlayerSlots(save);
 		NameAutoNamedCities(save);
 		GiveStartUnits(save);
@@ -19,6 +20,22 @@ public static class ScenarioStart {
 		LockAlliances(save);
 		RevealTiles(save);
 		RevealMap(save);
+	}
+
+	// The Scenario tab's switches the game reads from its rules (the
+	// editor writes both; a scenario saved before it did has them only in
+	// its ScenarioInfo).
+	private static void SwitchesToRules(SaveGame save) {
+		ScenarioInfo info = save.Scenario;
+		if (info == null || save.Rules == null) {
+			return;
+		}
+		save.Rules.CivSpecificAbilities = info.civSpecificAbilities;
+		save.Rules.CulturallyLinkedStart = info.culturallyLinkedStart;
+		save.Rules.RespawnAiPlayers = info.respawnAiPlayers;
+		save.Rules.PreserveRandomSeed = info.preserveRandomSeed;
+		save.Rules.RetainCultureOnCapture = info.retainCulture;
+		save.Rules.TimeLimitMinutes = info.timeLimitMinutes;
 	}
 
 	// A civilization the human may play, and the player it makes them.

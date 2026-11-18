@@ -93,8 +93,10 @@ public partial class ScenarioSetup : Control {
 
 		// Set up the difficulty buttons
 		difficultyContainer.Columns = save.Difficulties.Count;
-		// The difficulty chosen for the last game, if the scenario has it.
-		string initiallySelectedDifficulty = NewGameChoices.Load().ChosenDifficulty(save.Difficulties).Name;
+		// The scenario's default level, else the one chosen for the last
+		// game, if the scenario has it.
+		string initiallySelectedDifficulty = NewGameChoices.Load().ChosenDifficulty(save.Difficulties,
+			NewGameChoices.ScenarioDifficulty(save), save.Rules?.DefaultDifficulty).Name;
 		foreach (Difficulty difficulty in save.Difficulties) {
 			CenterContainer container = new();
 			difficultyContainer.AddChild(container);

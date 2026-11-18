@@ -188,6 +188,28 @@ namespace C7GameData {
 		// leaders" flag.
 		public bool ScientificLeaders = true;
 
+		// Civ3's Scenario Properties switches (the BIQ and SAV GAME section),
+		// the scenario editor's Scenario tab:
+		// - Civ-Specific Abilities: off, no civilization has its traits (see
+		//   SaveGame.OnGameCreation). The GAME section's bit is clear even in
+		//   conquests.biq, so it isn't imported.
+		// - Culturally-Linked Start: civilizations of a culture group start
+		//   near each other (see GameSetup).
+		// - Respawn AI Players: a computer civilization destroyed comes back
+		//   (see AiRespawn).
+		// - Preserve Random Seed: a loaded game goes on with the random
+		//   numbers it was saved with; off, they're new each load (see
+		//   SaveGame.CreateRandom). On by default, as the game always was.
+		// - Retain Culture on Capture: a captured city keeps its culture for
+		//   its captor (see CityInteractions).
+		// - The time limit in minutes of play (0 none; see PlayTime).
+		public bool CivSpecificAbilities = true;
+		public bool CulturallyLinkedStart;
+		public bool RespawnAiPlayers;
+		public bool PreserveRandomSeed = true;
+		public bool RetainCultureOnCapture;
+		public int TimeLimitMinutes;
+
 		// Each army needs this many cities to support it. A civ can't build an
 		// army unless (armies + 1) * CitiesNeededToSupportAnArmy <= cities.
 		public int CitiesNeededToSupportAnArmy = 4;
@@ -365,12 +387,12 @@ namespace C7GameData {
 		// highest ratio of the other's culture to theirs to the lowest, as in
 		// "The Romans are in awe of our culture."
 		public List<CultureOpinion> CultureOpinions = [
-			new() { Name = "in awe of", Numerator = 3, Denominator = 1 },
-			new() { Name = "admirers of", Numerator = 2, Denominator = 1 },
-			new() { Name = "impressed with", Numerator = 1, Denominator = 1 },
-			new() { Name = "unimpressed by", Numerator = 3, Denominator = 4 },
-			new() { Name = "dismissive of", Numerator = 1, Denominator = 2 },
-			new() { Name = "disdainful of", Numerator = 1, Denominator = 3 },
+			new() { Name = "in awe of", Numerator = 3, Denominator = 1, PropagandaChance = 30, InitialResistanceChance = 40, ContinuedResistanceChance = 30 },
+			new() { Name = "admirers of", Numerator = 2, Denominator = 1, PropagandaChance = 25, InitialResistanceChance = 50, ContinuedResistanceChance = 40 },
+			new() { Name = "impressed with", Numerator = 1, Denominator = 1, PropagandaChance = 20, InitialResistanceChance = 60, ContinuedResistanceChance = 50 },
+			new() { Name = "unimpressed by", Numerator = 3, Denominator = 4, PropagandaChance = 10, InitialResistanceChance = 70, ContinuedResistanceChance = 60 },
+			new() { Name = "dismissive of", Numerator = 1, Denominator = 2, PropagandaChance = 5, InitialResistanceChance = 80, ContinuedResistanceChance = 70 },
+			new() { Name = "disdainful of", Numerator = 1, Denominator = 3, PropagandaChance = 3, InitialResistanceChance = 90, ContinuedResistanceChance = 80 },
 		];
 	}
 
@@ -381,9 +403,9 @@ namespace C7GameData {
 		public int Numerator;
 		public int Denominator;
 		// The BIQ's CULT chances, in %: propaganda succeeding, a captured
-		// city resisting, and resisting again. Kept for scenarios; the game
-		// doesn't use them yet (its propaganda and resistance follow
-		// players' studies, see Espionage and City.UpdateResistance).
+		// city resisting, and resisting again (see Espionage's propaganda
+		// and City.ResistancePercent; rules without them, all 0, play by
+		// conquests.biq's numbers).
 		public int PropagandaChance;
 		public int InitialResistanceChance;
 		public int ContinuedResistanceChance;

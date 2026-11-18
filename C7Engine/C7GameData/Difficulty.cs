@@ -39,12 +39,10 @@ namespace C7GameData {
 
 		public int AIToAITradeRate;
 
-		// The BIQ's corruption percentage, 100 at every level in the
-		// standard rules. UNVERIFIED (no Civ3 source found) what it does:
-		// Civ3's corruption formula only uses the percentage of optimal
-		// cities
-		// (https://civfanatics.com/civ3/strategy/game-mechanics/everything-about-corruption-c3c-edition/),
-		// so it is kept but not used.
+		// The percentage of normal corruption and waste a player at this
+		// level suffers (the BIQ's corruption percentage, Civ3's editor's
+		// Corruption Modifier; 100 at every level in the standard rules).
+		// See City.DifficultyCorruptionFactor.
 		public int CorruptionPercentage = 100;
 
 		// Number of citizens quelled by military: how many resisters each

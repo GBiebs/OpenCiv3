@@ -13,22 +13,39 @@ namespace C7GameData {
 		public static int CulturePerTurn(Player player) => player.cities.Sum(c => c.GetCulturePerTurn());
 
 		// The name of the culture level a civ with this much culture has
-		// reached. Each level takes ten times the culture of the one below.
+		// reached. Civ3's editor: "Each level is calculated by multiplying
+		// the Level Multiplier by two ... under the default level multiplier
+		// of 1000, the values for these cultural levels are 1000, 2000, 4000,
+		// 8000, 16000, and 32000" (Rules.BorderExpansionMultiplier). Our
+		// reading: the first name until the second level's culture, the last
+		// from the last level's on.
 		public static string CultureLevel(Rules rules, int totalCulture) {
 			List<string> names = rules.CultureLevelNames;
 			if (names == null || names.Count == 0) {
 				return "";
 			}
-			int level = (int)Math.Floor(Math.Log10(Math.Max(1, totalCulture)));
-			return names[Math.Clamp(level, 0, names.Count - 1)];
+			long threshold = Math.Max(1, rules.BorderExpansionMultiplier);
+			int level = 0;
+			for (int i = 1; i < names.Count; ++i) {
+				threshold *= 2;
+				if (totalCulture >= threshold) {
+					level = i;
+				}
+			}
+			return names[level];
 		}
 
 		// How a civ with theirCulture regards a civ with ourCulture, as in
 		// "The Romans are <opinion> our culture."
 		public static string OpinionOf(Rules rules, int theirCulture, int ourCulture) {
-			List<CultureOpinion> opinions = rules.CultureOpinions;
+			return Opinion(rules, theirCulture, ourCulture)?.Name ?? "";
+		}
+
+		// The opinion itself (see OpinionOf), or null if the rules have none.
+		public static CultureOpinion Opinion(Rules rules, int theirCulture, int ourCulture) {
+			List<CultureOpinion> opinions = rules?.CultureOpinions;
 			if (opinions == null || opinions.Count == 0) {
-				return "";
+				return null;
 			}
 			// With no culture on either side, the two are even rather than
 			// in awe of each other.
@@ -38,10 +55,10 @@ namespace C7GameData {
 			foreach (CultureOpinion opinion in opinions) {
 				// ours / theirs >= numerator / denominator, without dividing.
 				if ((long)ourCulture * opinion.Denominator >= (long)theirCulture * opinion.Numerator) {
-					return opinion.Name;
+					return opinion;
 				}
 			}
-			return opinions[^1].Name;
+			return opinions[^1];
 		}
 
 		// "a" or "an", for the culture level sentence.

@@ -41,6 +41,8 @@ public class CreateGame {
 		// The Advanced AI's map profile, once for the game.
 		AI.Advanced.AdvancedTuning.StartGame(gameData, behaviors?.advancedProfiles);
 		EngineStorage.gameData.onGameCreation();
+		// Play time is counted from now (see PlayTime).
+		PlayTime.Tick(gameData);
 		Staging.FinishOnLoad(gameData);
 		// The statistics rate the start positions of a game just beginning.
 		StartPositionRating.RateNewGame(gameData);

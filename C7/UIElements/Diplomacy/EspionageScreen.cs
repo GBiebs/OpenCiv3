@@ -591,7 +591,7 @@ public partial class EspionageScreen : Control {
 			$"Diplomatic Advance: {YesNo(Knows(diplomatic))}",
 			$"Espionage Advance: {YesNo(Knows(espionage))}",
 			$"Intelligence Center: {YesNo(Espionage.HasIntelligenceAgency(player))}",
-			$"Spy Experience: {(Espionage.SpyLevel(player) == Espionage.Agent.VeteranSpy ? "Veteran" : "Regular")}",
+			$"Spy Experience: {Espionage.SpyLevelName(Espionage.SpyLevel(player))}",
 		];
 		assets.Text = string.Join("\n", lines);
 	}

@@ -102,12 +102,27 @@ public static class ScenarioFiles {
 				customMap = save.Map.tiles.Count > 0,
 				customPlayerData = save.Players.Count > 0,
 			};
+			FromRules(save.Scenario, save.Rules);
 		}
 		if (save.Map.tiles.Count == 0) {
 			save.Map = BlankMap(save, DefaultWidth, DefaultHeight, DefaultTerrain);
 		}
 		Clean(save);
 		return save;
+	}
+
+	// The Scenario tab's switches the game keeps in its rules (a Civ3
+	// file's GAME section, imported).
+	private static void FromRules(ScenarioInfo info, Rules rules) {
+		if (rules == null) {
+			return;
+		}
+		info.civSpecificAbilities = rules.CivSpecificAbilities;
+		info.culturallyLinkedStart = rules.CulturallyLinkedStart;
+		info.respawnAiPlayers = rules.RespawnAiPlayers;
+		info.preserveRandomSeed = rules.PreserveRandomSeed;
+		info.retainCulture = rules.RetainCultureOnCapture;
+		info.timeLimitMinutes = rules.TimeLimitMinutes;
 	}
 
 	// The scenario being edited, as a save to write to its file.
@@ -138,6 +153,7 @@ public static class ScenarioFiles {
 		save.GameDifficultyIndex = null;
 		save.TurnNumber = 0;
 		save.RngState = null;
+		save.PlayedSeconds = 0;
 		save.History = new();
 		save.Replay = new();
 		save.PlayLog = null;

@@ -224,7 +224,9 @@ namespace C7Engine {
 				// voting turn, and may elect a winner.
 				UnitedNations.ProcessEndOfRound(gameData);
 
+				PlayTime.Tick(gameData);
 				CheckVictory(gameData);
+				AiRespawn.ProcessEndOfRound(gameData);
 
 				// Twenty turns before the turn limit, the humans are warned
 				// that the game will end.

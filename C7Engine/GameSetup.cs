@@ -354,7 +354,7 @@ public partial class GameSetup {
 		SetUpTeams(save, teams);
 	}
 
-	private class PlannedPlayer {
+	internal class PlannedPlayer {
 		public Civilization civ;
 		public bool isHuman;
 		public string name;
@@ -376,6 +376,9 @@ public partial class GameSetup {
 	// that were picked at random are swapped for other civs first.
 	private static List<SaveTile> AssignStartingLocations(SaveGame save, Random rand, List<PlannedPlayer> planned, HashSet<string> taken) {
 		List<SaveTile> starts = save.Map.startingLocations.Take(planned.Count).ToList();
+		if (save.Rules?.CulturallyLinkedStart == true) {
+			starts = LinkStartsByCulture(save.Map, starts, planned);
+		}
 		HashSet<SaveTile> coastal = starts.Where(t => IsNextToSea(save.Map, t)).ToHashSet();
 
 		int seafaring = planned.Take(starts.Count).Count(p => IsSeafaring(p.civ));
@@ -415,6 +418,48 @@ public partial class GameSetup {
 			(starts[i], starts[j]) = (starts[j], starts[i]);
 		}
 		return starts;
+	}
+
+	// Civ3's Culturally-Linked Start (Rules.CulturallyLinkedStart):
+	// civilizations of the same culture group start near each other. Each
+	// group in turn, largest first, takes the free start farthest from those
+	// taken (the first, for the first group), then its other members the
+	// free starts nearest it. Our reading: Civ3's help says nothing of how.
+	// Seafaring civs' coastal starts still come first (after this).
+	internal static List<SaveTile> LinkStartsByCulture(SaveMap map, List<SaveTile> starts, List<PlannedPlayer> planned) {
+		int n = Math.Min(starts.Count, planned.Count);
+		SaveTile[] result = new SaveTile[starts.Count];
+		List<SaveTile> free = starts.Take(n).ToList();
+		List<SaveTile> taken = [];
+		IEnumerable<IGrouping<string, int>> groups = Enumerable.Range(0, n)
+			.GroupBy(i => planned[i].civ?.cultureGroupKey ?? planned[i].civ?.cultureGroup?.name ?? "")
+			.OrderByDescending(g => g.Count()).ThenBy(g => g.Min());
+		foreach (IGrouping<string, int> group in groups) {
+			SaveTile seed = taken.Count == 0 ? free[0] : free.OrderByDescending(t => taken.Min(o => StartDistance(map, t, o))).First();
+			foreach (int i in group) {
+				SaveTile start = free.OrderBy(t => StartDistance(map, t, seed)).First();
+				free.Remove(start);
+				taken.Add(start);
+				result[i] = start;
+			}
+		}
+		for (int i = n; i < starts.Count; ++i) {
+			result[i] = starts[i];
+		}
+		return [.. result];
+	}
+
+	// Steps between two tiles in Civ3's coordinates (X + Y even), across
+	// the map's wrapping edges.
+	private static int StartDistance(SaveMap map, SaveTile a, SaveTile b) {
+		int dx = Math.Abs(a.X - b.X), dy = Math.Abs(a.Y - b.Y);
+		if (map.wrapHorizontally) {
+			dx = Math.Min(dx, map.tilesWide - dx);
+		}
+		if (map.wrapVertically) {
+			dy = Math.Min(dy, map.tilesTall - dy);
+		}
+		return Math.Max(dy, (dx + dy) / 2);
 	}
 
 	// Whether any of the eight tiles around the tile is salt water.

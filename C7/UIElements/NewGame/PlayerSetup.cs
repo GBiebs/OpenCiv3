@@ -198,7 +198,8 @@ public partial class PlayerSetup : Control {
 
 		// Set up the difficulty buttons
 		difficultyContainer.Columns = save.Difficulties.Count;
-		string initiallySelectedDifficulty = choices.ChosenDifficulty(save.Difficulties).Name;
+		string initiallySelectedDifficulty = choices.ChosenDifficulty(save.Difficulties,
+			ScenarioPlay.RulesForNewGame != null ? NewGameChoices.ScenarioDifficulty(save) : null, save.Rules?.DefaultDifficulty).Name;
 		foreach (Difficulty difficulty in save.Difficulties) {
 			CenterContainer container = new();
 			difficultyContainer.AddChild(container);

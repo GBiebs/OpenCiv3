@@ -5445,32 +5445,50 @@
       {
         "name": "in awe of",
         "numerator": 3,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 30,
+        "initialResistanceChance": 40,
+        "continuedResistanceChance": 30
       },
       {
         "name": "admirers of",
         "numerator": 2,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 25,
+        "initialResistanceChance": 50,
+        "continuedResistanceChance": 40
       },
       {
         "name": "impressed with",
         "numerator": 1,
-        "denominator": 1
+        "denominator": 1,
+        "propagandaChance": 20,
+        "initialResistanceChance": 60,
+        "continuedResistanceChance": 50
       },
       {
         "name": "unimpressed by",
         "numerator": 3,
-        "denominator": 4
+        "denominator": 4,
+        "propagandaChance": 10,
+        "initialResistanceChance": 70,
+        "continuedResistanceChance": 60
       },
       {
         "name": "dismissive of",
         "numerator": 1,
-        "denominator": 2
+        "denominator": 2,
+        "propagandaChance": 5,
+        "initialResistanceChance": 80,
+        "continuedResistanceChance": 70
       },
       {
         "name": "disdainful of",
         "numerator": 1,
-        "denominator": 3
+        "denominator": 3,
+        "propagandaChance": 3,
+        "initialResistanceChance": 90,
+        "continuedResistanceChance": 80
       }
     ]
   },
@@ -6523,6 +6541,14 @@
       "hasTradeBonus": true,
       "id": "Government-1",
       "name": "Feudalism",
+      "assimilationChance": 3,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 20, "resistanceModifier": -5 }
+      ],
       "civilopediaEntry": "GOVT_Despotism",
       "defaultType": true,
       "transitionType": false,
@@ -6559,6 +6585,14 @@
       "hasTradeBonus": false,
       "id": "Government-2",
       "name": "Anarchy",
+      "assimilationChance": 1,
+      "diplomatLevel": "Regular",
+      "spyLevel": "Regular",
+      "immuneTo": -1,
+      "relations": [
+        { "government": "Feudalism", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 },
+        { "government": "Anarchy", "canBribe": true, "briberyModifier": 0, "resistanceModifier": 0 }
+      ],
       "civilopediaEntry": "GOVT_Anarchy",
       "defaultType": false,
       "transitionType": true,

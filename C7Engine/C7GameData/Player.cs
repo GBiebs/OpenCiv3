@@ -682,6 +682,11 @@ namespace C7GameData {
 			tileKnowledge = new TileKnowledge(this);
 		}
 
+		// Knows nothing of the map, as at the start of a game (see AiRespawn).
+		internal void ForgetTheMap() {
+			tileKnowledge = new TileKnowledge(this);
+		}
+
 		public bool HasExploredTile(Tile tile) {
 			return this.tileKnowledge.knownTiles.Contains(tile);
 		}
@@ -1860,6 +1865,7 @@ namespace C7GameData {
 				}
 
 				c.UpdateResistance(gameData);
+				c.Assimilate();
 				int sizeBefore = c.residents.Count;
 				bool starvedOut = c.HandleCityGrowth(gameData);
 				if ((starvedOut || c.residents.Count < sizeBefore) && IsToldNews) {

@@ -152,6 +152,11 @@ namespace C7GameData {
 		public VictoryConditions victoryConditions;
 		public List<IVictory> victories = new();
 		public bool gameOver;
+		// The civilizations computer players were before they respawned as
+		// others, which don't come back (see AiRespawn).
+		public List<Civilization> fallenCivilizations = new();
+		// Seconds of real time the game has been played (see PlayTime).
+		public double playedSeconds;
 		public Player winner;
 		// What the winner earned for winning before 2050 AD, added to their
 		// score (see ScoreVictory.EarlyWinBonus).

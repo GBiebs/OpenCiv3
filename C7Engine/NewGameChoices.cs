@@ -270,6 +270,11 @@ public class NewGameChoices {
 		return pool[random.Next(pool.Count)];
 	}
 
+	// A scenario's default difficulty: its rules', if it has its own rules.
+	public static string ScenarioDifficulty(C7GameData.Save.SaveGame save) {
+		return save?.Scenario?.customRules == true ? save.Rules?.DefaultDifficulty : null;
+	}
+
 	public Civilization ChosenCivilization(List<Civilization> civilizations) {
 		List<Civilization> playable = civilizations.Where(c => !c.isBarbarian).ToList();
 		return playable.Find(c => c.name == Civilization)
@@ -277,9 +282,14 @@ public class NewGameChoices {
 			?? playable.FirstOrDefault();
 	}
 
-	// The difficulty chosen, if the ruleset has it, or the default one.
-	public Difficulty ChosenDifficulty(List<Difficulty> difficulties) {
-		return difficulties.Find(d => d.Name == Difficulty)
+	// The difficulty chosen, if the ruleset has it, or the default one:
+	// the rules' own (Civ3's General Settings' Default Difficulty Level),
+	// else Regent. A scenario's default comes first (preferred, see
+	// ScenarioDifficulty), as Civ3 opens a scenario at its rules' level.
+	public Difficulty ChosenDifficulty(List<Difficulty> difficulties, string preferred = null, string rulesDefault = null) {
+		return difficulties.Find(d => preferred != null && d.Name == preferred)
+			?? difficulties.Find(d => d.Name == Difficulty)
+			?? difficulties.Find(d => rulesDefault != null && d.Name == rulesDefault)
 			?? difficulties.Find(d => d.Name == DefaultDifficulty)
 			?? difficulties.FirstOrDefault();
 	}

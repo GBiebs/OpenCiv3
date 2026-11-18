@@ -17,7 +17,7 @@ public static class ScenarioEditing {
 		// A scenario has no difficulty of its own: the player chooses one to
 		// play it at (see ScenarioFiles.Clean). It's shown at the usual one.
 		if (scenario.GameDifficultyIndex == null && scenario.GameDifficulty?.Name == null && scenario.Difficulties.Count > 0) {
-			scenario.GameDifficulty = new NewGameChoices().ChosenDifficulty(scenario.Difficulties);
+			scenario.GameDifficulty = new NewGameChoices().ChosenDifficulty(scenario.Difficulties, null, scenario.Rules?.DefaultDifficulty);
 		}
 		GameData gameData = scenario.ToGameData(behaviors);
 		EngineStorage.gameData = gameData;
