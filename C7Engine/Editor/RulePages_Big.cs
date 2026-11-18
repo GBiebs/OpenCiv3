@@ -113,19 +113,23 @@ public static partial class RulePages {
 		yields[type] = value;
 	}
 
+	private const string LandmarkHelp = "Its value on a landmark tile of this terrain, in place of the terrain's.";
+
 	private static RuleField Landmark(string label, Func<TerrainLandmark, int> get, Action<TerrainLandmark, int> set, int min, int max,
-			bool notUsed = false, string help = "Its value on a landmark tile of this terrain, in place of the terrain's.") => new() {
-				Group = "Landmark Terrain",
-				Column = 2,
-				Label = label,
-				Kind = RuleFieldKind.Number,
-				Min = min,
-				Max = max,
-				NotUsed = notUsed,
-				Help = help,
-				Get = (_, o) => get(((TerrainType)o).landmark ?? new TerrainLandmark()),
-				Set = (_, o, v) => set(((TerrainType)o).landmark ??= new TerrainLandmark(), (int)v),
-			};
+			bool notUsed = false, string help = LandmarkHelp) {
+		return new() {
+			Group = "Landmark Terrain",
+			Column = 2,
+			Label = label,
+			Kind = RuleFieldKind.Number,
+			Min = min,
+			Max = max,
+			NotUsed = notUsed,
+			Help = help,
+			Get = (_, o) => get(((TerrainType)o).landmark ?? new TerrainLandmark()),
+			Set = (_, o, v) => set(((TerrainType)o).landmark ??= new TerrainLandmark(), (int)v),
+		};
+	}
 
 	// Civ3's Terrain page (with its landmark terrain). Civ3's terrains are
 	// fixed: no Add or Delete.
