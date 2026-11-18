@@ -121,6 +121,7 @@ namespace C7GameData.Save {
 		public int citiesLost;
 		// The civ's victory points.
 		public int victoryPoints;
+		public int flagsCaptured;
 		// For the Rising Tide score: enemy units defeated, cities taken
 		// and turns survived.
 		public int unitsKilled;
@@ -233,6 +234,7 @@ namespace C7GameData.Save {
 				obtainedResources = obtainedResources == null ? new() : new HashSet<string>(obtainedResources),
 				citiesLost = citiesLost,
 				victoryPoints = victoryPoints,
+				flagsCaptured = flagsCaptured,
 				unitsKilled = unitsKilled,
 				citiesCaptured = citiesCaptured,
 				turnsSurvived = turnsSurvived,
@@ -383,6 +385,7 @@ namespace C7GameData.Save {
 			obtainedResources = player.obtainedResources.Count == 0 ? null : player.obtainedResources.Order().ToList();
 			citiesLost = player.citiesLost;
 			victoryPoints = player.victoryPoints;
+			flagsCaptured = player.flagsCaptured;
 			unitsKilled = player.unitsKilled;
 			citiesCaptured = player.citiesCaptured;
 			turnsSurvived = player.turnsSurvived;

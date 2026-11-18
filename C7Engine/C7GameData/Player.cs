@@ -482,6 +482,8 @@ namespace C7GameData {
 
 		// The civ's victory points (see VictoryPoints).
 		public int victoryPoints = 0;
+		// Enemy flags brought to our capital (see CaptureTheFlag).
+		public int flagsCaptured = 0;
 
 		// Under PersistentResources (MDJ), the keys of the resources the civ
 		// has had, which stay its own (see RecordObtainedResources).

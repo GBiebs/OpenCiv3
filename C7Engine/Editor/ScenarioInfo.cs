@@ -49,17 +49,18 @@ public class ScenarioInfo {
 	// The whole map known to every player when the game starts
 	// (ScenarioStart).
 	public bool revealMap;
-	// Kept for scenarios but not used by the game yet: Preserve Random
-	// Seed, Civ-Specific Abilities, Culturally-Linked Start, Respawn AI
-	// Players, Auto Place Capture Units, Retain Culture on Capture, the
-	// time limit in minutes, Conquests' campaign number.
+	// The Scenario tab's switches, which the game keeps in its rules
+	// (Rules.CivSpecificAbilities and the rest) and victory conditions
+	// (Auto Place Capture Units): copied there by ScenarioSettings and
+	// ScenarioStart. Conquests' campaign number is kept only (Civ3 itself
+	// does nothing with it).
 	public bool preserveRandomSeed = true, civSpecificAbilities = true, culturallyLinkedStart, respawnAiPlayers, autoPlaceCaptureUnits = true, retainCulture;
 	public int timeLimitMinutes;
 	public int campaign;
-	// Victory Point Limits' capture-the-flag options, kept but not used by
-	// the game yet: anyone may capture any flag; the flag unit comes back
-	// when captured.
-	public bool anyoneCapturesAnyFlag, respawnFlagUnits;
+	// Victory Point Limits' capture-the-flag options (the game's
+	// VictoryConditions; see CaptureTheFlag): anyone may capture any flag;
+	// the flag unit comes back when captured.
+	public bool anyoneCapturesAnyFlag, respawnFlagUnits = true;
 
 	// Civ3's Player Properties beyond what the players keep themselves
 	// (government, era, treasury, advances, colour, Skip 1st Turn): one

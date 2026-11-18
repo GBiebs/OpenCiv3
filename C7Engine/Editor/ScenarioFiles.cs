@@ -103,6 +103,11 @@ public static class ScenarioFiles {
 				customPlayerData = save.Players.Count > 0,
 			};
 			FromRules(save.Scenario, save.Rules);
+			if (save.VictoryConditions is C7GameData.VictoryConditions vc) {
+				save.Scenario.autoPlaceCaptureUnits = vc.AutoPlaceCaptureUnits;
+				save.Scenario.anyoneCapturesAnyFlag = vc.AnyoneCapturesAnyFlag;
+				save.Scenario.respawnFlagUnits = vc.RespawnFlagUnits;
+			}
 		}
 		if (save.Map.tiles.Count == 0) {
 			save.Map = BlankMap(save, DefaultWidth, DefaultHeight, DefaultTerrain);

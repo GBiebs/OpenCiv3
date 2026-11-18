@@ -166,8 +166,9 @@ public partial class EditorChrome {
 		Option(rules, "Regicide", s.Regicide, on => s.Regicide = on);
 		Option(rules, "Regicide (all Kings)", s.MassRegicide, on => s.MassRegicide = on);
 		Option(rules, "Victory Point Scoring", s.VictoryPointScoring, on => s.VictoryPointScoring = on);
-		Option(rules, "Capture the Unit", s.CaptureTheFlag, on => s.CaptureTheFlag = on);
-		Option(rules, "Reverse Capture the Flag", s.ReverseCaptureTheFlag, on => s.ReverseCaptureTheFlag = on);
+		Option(rules, "Capture the Unit", s.CaptureTheFlag, on => s.CaptureTheFlag = on,
+			"Capture the Flag: take an enemy's flag unit and bring it to your capital, for victory points (or the win without Victory Point Scoring).");
+		Option(rules, "Reverse Capture the Flag", s.ReverseCaptureTheFlag, on => s.ReverseCaptureTheFlag = on, NotUsedYet);
 		Option(rules, "Civ-Specific Abilities", s.CivSpecificAbilities, on => s.CivSpecificAbilities = on, "Civilizations have their traits (off: none has any).");
 		Option(rules, "Culturally-Linked Start", s.CulturallyLinkedStart, on => s.CulturallyLinkedStart = on, "Civilizations of a culture group start near each other on a generated map.");
 		Option(rules, "Respawn AI Players", s.RespawnAiPlayers, on => s.RespawnAiPlayers = on, "A computer civilization destroyed comes back as one no player has been, on free land.");
@@ -177,7 +178,7 @@ public partial class EditorChrome {
 		right.AddChild(ruleScroll);
 		right.AddChild(Rule());
 		Option(right, "Auto Place King Units", s.AutoPlaceKings, on => s.AutoPlaceKings = on);
-		Option(right, "Auto Place Capture Units", s.AutoPlaceCaptureUnits, on => s.AutoPlaceCaptureUnits = on, NotUsedYet);
+		Option(right, "Auto Place Capture Units", s.AutoPlaceCaptureUnits, on => s.AutoPlaceCaptureUnits = on, "Each civilization's flag unit starts in its capital.");
 		Option(right, "Auto Place Victory Locations", s.AutoPlaceVictoryLocations, on => s.AutoPlaceVictoryLocations = on);
 		Option(right, "Reveal Entire Map", s.RevealMap, on => s.RevealMap = on, "Every player knows the whole map from the start.");
 		Option(right, "Retain Culture on Capture", s.RetainCulture, on => s.RetainCulture = on, "A captured city keeps its culture for its captor.");
@@ -225,11 +226,11 @@ public partial class EditorChrome {
 		tab.AddChild(Rule());
 		tab.AddChild(InkLabel("Capture the Flag").WithFontSize(15));
 		CheckBox anyone = Check("Allow anyone to capture any flag", s.AnyoneCapturesAnyFlag);
-		anyone.TooltipText = NotUsedYet;
+		anyone.TooltipText = "Any civilization may take any flag, its own too (else not its own).";
 		anyone.Toggled += on => s.AnyoneCapturesAnyFlag = on;
 		tab.AddChild(anyone);
 		CheckBox respawn = Check("Respawn flag unit on capture", s.RespawnFlagUnits);
-		respawn.TooltipText = NotUsedYet;
+		respawn.TooltipText = "A flag brought to a capital comes back in its civilization's capital.";
 		respawn.Toggled += on => s.RespawnFlagUnits = on;
 		tab.AddChild(respawn);
 		refresh = () => {

@@ -7315,6 +7315,7 @@
       "workerStrength": 1,
       "unproducible": true,
       "flags": [
+        "flagUnit",
         "immobile"
       ],
       "categories": [

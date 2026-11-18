@@ -477,7 +477,7 @@ public static partial class RulePages {
 			Unit("Basic Barbarian:", s => s.BarbarianInfo.basicBarbarianUnit, (s, v) => s.BarbarianInfo.basicBarbarianUnit = v, "The barbarians' usual unit."),
 			Unit("Advanced Barbarian:", s => s.BarbarianInfo.advancedBarbarianUnit, (s, v) => s.BarbarianInfo.advancedBarbarianUnit = v, "The barbarians' stronger unit."),
 			Unit("Barbarian Sea Unit:", s => s.BarbarianInfo.barbarianSeaUnit, (s, v) => s.BarbarianInfo.barbarianSeaUnit = v, "The barbarians' ship."),
-			Unit("Flag Unit:", s => s.Rules.FlagUnitType, (s, v) => s.Rules.FlagUnitType = v, "The unit captured in capture-the-flag games.", notUsed: true),
+			Unit("Flag Unit:", s => s.Rules.FlagUnitType, (s, v) => s.Rules.FlagUnitType = v, "The unit captured in capture-the-flag games."),
 			Rule.Choice<SaveGame>("Artificial Intelligence", "Default Difficulty Level:", (s, _) => s.Rules.DefaultDifficulty, (s, _, v) => s.Rules.DefaultDifficulty = v,
 				s => s.Difficulties.Select(d => d.Name).ToList(), "The level a new game or the scenario starts at.", allowNone: true, column: 0),
 			Rule.Choice<SaveGame>("Resources", "Default Money Resource:", (s, _) => s.Rules.DefaultMoneyResource, (s, _, v) => s.Rules.DefaultMoneyResource = v,

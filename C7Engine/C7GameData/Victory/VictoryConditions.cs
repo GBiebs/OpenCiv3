@@ -20,6 +20,19 @@ public class VictoryConditions {
 	public bool CaptureTheFlag { get; set; }
 	public bool ReverseCaptureTheFlag { get; set; }
 
+	// Capture the Flag (see CaptureTheFlag): whether each civ's flag is
+	// placed when the game starts (the GAME section's "place capture
+	// units"), whether any civ may take any flag, its own too, whether a
+	// flag brought in comes back at its civ's capital, and the victory
+	// points and gold a flag brought in scores (the GAME section's
+	// "capturing special unit", 1000 in conquests.biq, and "gold for
+	// capture").
+	public bool AutoPlaceCaptureUnits { get; set; } = true;
+	public bool AnyoneCapturesAnyFlag { get; set; }
+	public bool RespawnFlagUnits { get; set; } = true;
+	public int CaptureFlagVictoryPoints { get; set; } = 1000;
+	public int GoldForCapture { get; set; }
+
 	// Whether each civ is given its King units when a game starts with
 	// Regicide or Mass Regicide (the BIQ GAME section's "autoplace kings";
 	// see InstantElimination.PlaceKings). Scenarios that place their kings
@@ -83,6 +96,11 @@ public class VictoryConditions {
 			AdvanceVictoryPoints = other.AdvanceVictoryPoints;
 			CityConquestVictoryPoints = other.CityConquestVictoryPoints;
 			AutoPlaceVictoryLocations = other.AutoPlaceVictoryLocations;
+			AutoPlaceCaptureUnits = other.AutoPlaceCaptureUnits;
+			AnyoneCapturesAnyFlag = other.AnyoneCapturesAnyFlag;
+			RespawnFlagUnits = other.RespawnFlagUnits;
+			CaptureFlagVictoryPoints = other.CaptureFlagVictoryPoints;
+			GoldForCapture = other.GoldForCapture;
 			VictoryLocationPoints = other.VictoryLocationPoints;
 		}
 		return this;

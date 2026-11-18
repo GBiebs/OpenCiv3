@@ -112,7 +112,7 @@ public sealed record ScenarioSettings {
 			CulturalConversion = rules.AllowCultureFlips,
 			ScientificLeaders = rules.ScientificLeaders,
 			AutoPlaceKings = vc.AutoPlaceKings,
-			AutoPlaceCaptureUnits = info.autoPlaceCaptureUnits,
+			AutoPlaceCaptureUnits = vc.AutoPlaceCaptureUnits,
 			AutoPlaceVictoryLocations = vc.AutoPlaceVictoryLocations,
 			RevealMap = info.revealMap,
 			RetainCulture = info.retainCulture,
@@ -136,8 +136,8 @@ public sealed record ScenarioSettings {
 			CultureAllCities = vc.CultureAllCitiesWin,
 			DominationLand = vc.DominationTerritoryPercent,
 			DominationPopulation = vc.DominationPopulationPercent,
-			AnyoneCapturesAnyFlag = info.anyoneCapturesAnyFlag,
-			RespawnFlagUnits = info.respawnFlagUnits,
+			AnyoneCapturesAnyFlag = vc.AnyoneCapturesAnyFlag,
+			RespawnFlagUnits = vc.RespawnFlagUnits,
 			AllianceNames = AllianceNamesOf(gameData),
 			AllianceOf = gameData.players.Where(p => p.alliance != null && !p.IsIndependent)
 				.ToDictionary(p => p.id.ToString(), p => p.alliance.index),
@@ -292,6 +292,7 @@ public sealed record ScenarioSettings {
 		info.culturallyLinkedStart = CulturallyLinkedStart;
 		info.respawnAiPlayers = RespawnAiPlayers;
 		info.autoPlaceCaptureUnits = AutoPlaceCaptureUnits;
+		vc.AutoPlaceCaptureUnits = AutoPlaceCaptureUnits;
 		info.revealMap = RevealMap;
 		info.retainCulture = RetainCulture;
 		info.timeLimitMinutes = TimeLimitMinutes;
@@ -308,6 +309,8 @@ public sealed record ScenarioSettings {
 		vc.DominationPopulationPercent = DominationPopulation;
 		info.anyoneCapturesAnyFlag = AnyoneCapturesAnyFlag;
 		info.respawnFlagUnits = RespawnFlagUnits;
+		vc.AnyoneCapturesAnyFlag = AnyoneCapturesAnyFlag;
+		vc.RespawnFlagUnits = RespawnFlagUnits;
 
 		ApplyAlliances(gameData);
 		Rules rules = gameData.rules;

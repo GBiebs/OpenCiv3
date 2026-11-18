@@ -110,7 +110,7 @@ public class ScenarioCorpusTest : IClassFixture<SaveGameFixture> {
 
 	// The scenario's own PediaIcons file, else Civ3's (as the editor does
 	// without Civ3's mode, see ScenarioEditorSession).
-	private static Func<string, string> PediaIconsFor(string conquests, string scenarios) {
+	internal static Func<string, string> PediaIconsFor(string conquests, string scenarios) {
 		string civ3s = Path.GetFullPath(Path.Combine(conquests, "Text", "PediaIcons.txt"));
 		return modPath => {
 			if (string.IsNullOrEmpty(modPath)) {

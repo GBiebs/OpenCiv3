@@ -94,6 +94,9 @@ public partial class MapUnit {
 			GoodyHuts.Enter(EngineStorage.gameData, this, tile);
 		}
 
+		// Bring captured flags home (Capture the Flag).
+		CaptureTheFlag.OnEnterTile(EngineStorage.gameData, this, tile);
+
 		// Capture the enemy city on the tile unless we're the barbarians,
 		// who don't hold cities: they sack it and leave (see
 		// City.SackedByBarbarians).
@@ -769,6 +772,13 @@ public partial class MapUnit {
 			C7Engine.AI.AiExperiments.onUnitTaken?.Invoke(enemy, owner);
 			if (owner.IsIndependent) {
 				gameData.RemoveUnit(enemy);
+			} else if (CaptureTheFlag.MayCapture(gameData, owner, enemy)) {
+				if (!captured.TryGetValue(enemy.owner, out List<string> taken)) {
+					taken = new();
+					captured[enemy.owner] = taken;
+				}
+				taken.Add(enemy.unitType.name);
+				CaptureTheFlag.Capture(gameData, enemy, this);
 			} else if (enemy.unitType.isSettler || enemy.unitType.isWorker || enemy.unitType.CanBeCapturedBy(owner)) {
 				Player loser = enemy.owner;
 				if (!captured.TryGetValue(loser, out List<string> names)) {

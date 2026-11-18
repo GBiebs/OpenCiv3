@@ -38,6 +38,11 @@ public static class ScenarioStart {
 		save.Rules.PreserveRandomSeed = info.preserveRandomSeed;
 		save.Rules.RetainCultureOnCapture = info.retainCulture;
 		save.Rules.TimeLimitMinutes = info.timeLimitMinutes;
+		if (save.VictoryConditions != null) {
+			save.VictoryConditions.AutoPlaceCaptureUnits = info.autoPlaceCaptureUnits;
+			save.VictoryConditions.AnyoneCapturesAnyFlag = info.anyoneCapturesAnyFlag;
+			save.VictoryConditions.RespawnFlagUnits = info.respawnFlagUnits;
+		}
 	}
 
 	// A civilization the human may play, and the player it makes them.

@@ -777,6 +777,11 @@ namespace C7GameData {
 		private static void ImportInstantElimination(VictoryConditions conditions, QueryCiv3.Biq.GAME game) {
 			conditions.AutoPlaceKings = game.AutoPlaceKings != 0;
 			conditions.AutoPlaceVictoryLocations = game.AutoPlaceVictoryLocations != 0;
+			conditions.AutoPlaceCaptureUnits = game.PlaceCaptureUnits != 0;
+			conditions.AnyoneCapturesAnyFlag = game.CaptureAnyFlag != 0;
+			conditions.RespawnFlagUnits = game.RespawnFlagUnits != 0;
+			conditions.CaptureFlagVictoryPoints = System.Math.Max(0, game.CapturingSpecialUnit);
+			conditions.GoldForCapture = System.Math.Max(0, game.GoldForCapture);
 			conditions.VictoryLocationPoints = Math.Max(0, game.VictoryPointScoring);
 			if (game.CityEliminationCount > 0) {
 				conditions.CityEliminationCount = game.CityEliminationCount;

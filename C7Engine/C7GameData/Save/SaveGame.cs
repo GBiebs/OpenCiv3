@@ -264,6 +264,11 @@ namespace C7GameData.Save {
 			if (conditions?.CityElimination == true) {
 				data.victories.Add(new EliminationCondition(conditions.CityEliminationCount));
 			}
+			// Capture the Flag wins by bringing in a flag, unless victory
+			// points decide (see CaptureTheFlag).
+			if (conditions?.CaptureTheFlag == true && !conditions.VictoryLocations) {
+				data.victories.Add(new CaptureTheFlagVictory());
+			}
 
 			// The game ends at the turn limit only if that was chosen;
 			// otherwise it goes on until someone wins. A time limit in
@@ -274,6 +279,8 @@ namespace C7GameData.Save {
 		}
 
 		private void OnGameCreation() {
+			// Each civ's flag, at the start of a Capture the Flag game.
+			C7Engine.CaptureTheFlag.PlaceFlags(EngineStorage.gameData);
 			// Civ3's Civ-Specific Abilities off: no civilization has its
 			// traits in this game (Rules.CivSpecificAbilities).
 			if (EngineStorage.gameData.rules?.CivSpecificAbilities == false) {
