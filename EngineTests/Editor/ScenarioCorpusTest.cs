@@ -46,7 +46,8 @@ public class ScenarioCorpusTest : IClassFixture<SaveGameFixture> {
 		string conquests = Path.Join(Civ3Location.GetCiv3Path() ?? "", "Conquests");
 		string folder = Environment.GetEnvironmentVariable("C7_EDITOR_CORPUS_DIR") ?? Path.Join(conquests, "Scenarios");
 		Skip.If(!Directory.Exists(folder), $"No scenarios at {folder}");
-		List<string> files = Directory.GetFiles(folder, "*.biq").Order().ToList();
+		List<string> files = Directory.GetFiles(folder)
+			.Where(f => Path.GetExtension(f).ToLowerInvariant() is ".biq" or ".bix" or ".bic").Order().ToList();
 		if (Environment.GetEnvironmentVariable("C7_EDITOR_CORPUS_DIR") == null && File.Exists(PathUtils.defaultBicPath)) {
 			files.Insert(0, PathUtils.defaultBicPath);
 		}
@@ -147,7 +148,9 @@ public class ScenarioCorpusTest : IClassFixture<SaveGameFixture> {
 				playerCivilization = scenario.Civilizations.First(c => !c.isBarbarian),
 				difficulty = difficulty,
 				worldCharacteristics = new WorldCharacteristics(scenario) { worldSize = size, mapSeed = 1 },
-				opponents = Enumerable.Repeat(new SelectedOpponent { isRandom = true }, Math.Max(1, size.numberOfCivs - 1)).ToList(),
+				// No more than the rules have civilizations for.
+				opponents = Enumerable.Repeat(new SelectedOpponent { isRandom = true },
+					Math.Max(1, Math.Min(size.numberOfCivs, scenario.Civilizations.Count(c => !c.isBarbarian)) - 1)).ToList(),
 				victoryConditions = scenario.VictoryConditions ?? new VictoryConditions(),
 			}.Populate(scenario);
 		}
@@ -164,11 +167,30 @@ public class ScenarioCorpusTest : IClassFixture<SaveGameFixture> {
 			TurnHandling.OnBeginTurn();
 			TurnHandling.InitTurnData();
 			Task firstTurn = TurnHandling.AdvanceTurn();
-			EngineWaits.WaitForStartTurnMessage(_ => { });
+			List<string> first = new();
+			try {
+				EngineWaits.WaitForStartTurnMessage(m => first.Add(m.GetType().Name));
+			} catch (TimeoutException) when (firstTurn.IsFaulted) {
+				// The turn's own failure says more than the wait's.
+				firstTurn.GetAwaiter().GetResult();
+			} catch (TimeoutException e) {
+				throw new TimeoutException($"{e.Message} First turn; the engine last sent {string.Join(", ", first.TakeLast(6))}; the turn is {firstTurn.Status}.", e);
+			}
 			firstTurn.GetAwaiter().GetResult();
+			// The last messages the engine sent, for a turn that never ends.
+			Queue<string> last = new();
 			for (int turn = 0; turn < turns && !gameData.gameOver; ++turn) {
 				new MsgEndTurn { turn = gameData.turn }.send();
-				EngineWaits.WaitForStartTurnMessage(_ => { });
+				try {
+					EngineWaits.WaitForStartTurnMessage(m => {
+						last.Enqueue(m.GetType().Name);
+						if (last.Count > 6) {
+							last.Dequeue();
+						}
+					});
+				} catch (TimeoutException e) {
+					throw new TimeoutException($"{e.Message} Turn {gameData.turn}; the engine last sent {string.Join(", ", last)}.", e);
+				}
 			}
 		} finally {
 			gameData.observerMode = false;

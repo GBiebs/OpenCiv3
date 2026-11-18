@@ -18,7 +18,7 @@ namespace C7Engine {
 		private static SaveFileFormat getFileFormat(string path) {
 			return Path.GetExtension(path).ToUpper() switch {
 				".SAV" => SaveFileFormat.Sav,
-				".BIQ" => SaveFileFormat.Biq,
+				".BIQ" or ".BIX" or ".BIC" => SaveFileFormat.Biq,
 				".JSON" => SaveFileFormat.C7,
 				_ => SaveFileFormat.Invalid,
 			};

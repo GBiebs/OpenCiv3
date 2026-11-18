@@ -76,5 +76,18 @@ namespace QueryCiv3.Biq {
 		public bool IsLandmark { get => Util.GetFlag(C3CBonuses[1], 5); }
 
 		private fixed byte UnknownBuffer5[2];
+
+		// A Civ3 or Play the World tile (a .bic or .bix) keeps its terrain, overlays and bonuses only in the older
+		// fields, Terrain, OverlayFlags and BonusFlags; Conquests' copies have the same layout (on Rise of Rome's
+		// map, where Conquests kept both, 99% of tiles have them equal). Its river edges are in RiverConnections, as
+		// Conquests' are; the river corners (RiverNorth...) are left unset.
+		public void FillFromLegacy() {
+			// Their terrains 9, 10 and 11 (Coast, Sea, Ocean) are Conquests' 11, 12 and 13: Conquests put Marsh and
+			// Volcano before them.
+			static int Renumber(int terrain) => terrain >= 9 ? terrain + 2 : terrain;
+			C3CTerrain[0] = (byte)(Renumber(Terrain & 0x0F) | (Renumber((Terrain & 0xF0) >> 4) << 4));
+			C3COverlays[0] = OverlayFlags;
+			C3CBonuses[0] = BonusFlags;
+		}
 	}
 }

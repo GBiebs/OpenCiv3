@@ -112,8 +112,17 @@ namespace QueryCiv3 {
 		}
 
 		// The minimum BIQ major version this reader understands. Earlier versions (vanilla "BIC " files and
-		// Play the World "BICX" files before version 12) have different, mostly shorter, record layouts.
+		// Play the World "BICX" files before version 12) have shorter records: compared with conquests.biq word by
+		// word, Play the World's civ3X.bix and vanilla's civ3mod.bic records are the start of Conquests' (where a
+		// record's parts depend on a count, as GOVT's table of governments, the counts place them), so the reader takes
+		// them as Conquests records with the newer fields zeroed. Their tiles keep terrain, overlays and bonuses only
+		// in the older fields (see TILE.FillFromLegacy). Vanilla files before version 2 aren't read.
 		public const int MIN_SUPPORTED_MAJOR_VERSION = 12;
+		public const int MIN_LEGACY_MAJOR_VERSION = 2;
+		public const int LEGACY_TERRAIN_COUNT = 12;
+
+		// Whether the file is from Civ3 or Play the World (a .bic or .bix) rather than Conquests.
+		public bool IsLegacy { get; private set; }
 
 		/// <summary>
 		/// Throws a <see cref="NotSupportedException"/> unless the file is a Conquests BIQ (a BICX or BICQ file with
@@ -123,11 +132,11 @@ namespace QueryCiv3 {
 			ArgumentNullException.ThrowIfNull(file);
 			Civ3Version version = file.Civ3Version;
 			string type = version.FileTypeName?.Trim() ?? "";
-			if (!file.IsBicFile || (type != "BICX" && type != "BICQ")) {
-				throw new NotSupportedException($"Unsupported BIQ file: its type is '{type}', but only Conquests BIQ files (BICX or BICQ, version {MIN_SUPPORTED_MAJOR_VERSION} or later) are supported.");
+			if (!file.IsBicFile || (type != "BICX" && type != "BICQ" && type != "BIC")) {
+				throw new NotSupportedException($"Unsupported BIQ file: its type is '{type}', but only Civ3 rules and scenario files (BIC, BICX or BICQ) are supported.");
 			}
-			if (version.MajorVersion < MIN_SUPPORTED_MAJOR_VERSION) {
-				throw new NotSupportedException($"Unsupported BIQ file: {type} version {version.MajorVersion}.{version.MinorVersion} is from Civ3 or Play the World; only Conquests BIQ files (version {MIN_SUPPORTED_MAJOR_VERSION} or later) are supported.");
+			if (version.MajorVersion < MIN_LEGACY_MAJOR_VERSION) {
+				throw new NotSupportedException($"Unsupported BIQ file: {type} version {version.MajorVersion}.{version.MinorVersion} is older than this reader understands (version {MIN_LEGACY_MAJOR_VERSION} or later).");
 			}
 		}
 
@@ -135,9 +144,27 @@ namespace QueryCiv3 {
 		// Throws NotSupportedException for anything but a Conquests BIQ, and InvalidDataException for malformed data: every read
 		// is checked against the end of the data, and against the length of the record it is part of.
 		public unsafe void Load(byte[] data, int start, int length) {
+			try {
+				LoadRecords(data, start, length);
+				if (IsLegacy && Terr != null && Terr.Length == LEGACY_TERRAIN_COUNT) {
+					// Civ3's and Play the World's 12 terrains lack Conquests' Marsh and Volcano (between Jungle and
+					// Coast); the importer reads terrain by its place in Conquests' list, so their own terrain list
+					// gives way to the default rules' (its changes are lost) and their tiles are renumbered
+					// (TILE.FillFromLegacy).
+					Terr = null;
+					TerrGood = null;
+				}
+			} finally {
+				readingLegacy = false;
+			}
+		}
+
+		private unsafe void LoadRecords(byte[] data, int start, int length) {
 			ArgumentNullException.ThrowIfNull(data);
 			FileData = new Civ3File(data, start, length);
 			EnsureSupportedVersion(FileData);
+			IsLegacy = FileData.Civ3Version.MajorVersion < MIN_SUPPORTED_MAJOR_VERSION;
+			readingLegacy = IsLegacy;
 			if (length < SECTION_HEADERS_START) {
 				throw new InvalidDataException($"Malformed BIQ file: it is {length} bytes long, too short for its {SECTION_HEADERS_START} byte header.");
 			}
@@ -422,6 +449,11 @@ namespace QueryCiv3 {
 							break;
 						case 0x454c4954: // TILE
 							Tile = ReadStaticSection<TILE>(bytePtr, ref offset, length, count, section);
+							if (IsLegacy) {
+								for (int i = 0; i < Tile.Length; i++) {
+									Tile[i].FillFromLegacy();
+								}
+							}
 							break;
 						case 0x54494e55: // UNIT
 							Unit = ReadStaticSection<UNIT>(bytePtr, ref offset, length, count, section);
@@ -489,7 +521,15 @@ namespace QueryCiv3 {
 		}
 
 		// Copies the size bytes at offset, which must be inside the record ending at recordEnd, to dest
+		// In a legacy file (a .bic or .bix) a record may end before a part Conquests added: as much as it has is copied,
+		// the rest left zeroed (as CopyTail).
+		[ThreadStatic] private static bool readingLegacy;
+
 		private static unsafe void CopyChunk(byte* data, ref long offset, long recordEnd, void* dest, long size, string section) {
+			if (readingLegacy && offset + size > recordEnd) {
+				CopyTail(data, ref offset, recordEnd, dest, size);
+				return;
+			}
 			CheckRange(offset, size, recordEnd, section);
 			Buffer.MemoryCopy(data + offset, dest, size, size);
 			offset += size;
@@ -507,6 +547,9 @@ namespace QueryCiv3 {
 		private static unsafe T[] ReadArray<T>(byte* data, ref long offset, long recordEnd, int count, string section) where T : unmanaged {
 			if (count < 0) {
 				throw Malformed(section, $"negative count {count}");
+			}
+			if (readingLegacy && offset + (long)count * sizeof(T) > recordEnd) {
+				count = (int)Math.Max(0, (recordEnd - offset) / sizeof(T));
 			}
 			long size = (long)count * sizeof(T);
 			CheckRange(offset, size, recordEnd, section);

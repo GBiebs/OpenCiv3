@@ -979,7 +979,10 @@ namespace C7GameData {
 			// TODO: consolidate unit spawning routines (here)
 
 			var defaultExpLevel = this.defaultExperienceLevel;
-			var barbExpLevel = this.experienceLevels.First(e => e.baseHitPoints == this.barbarianInfo.maxHitpoints);
+			// A mod's experience levels may have none with the barbarians'
+			// hit points: then their weakest.
+			var barbExpLevel = this.experienceLevels.FirstOrDefault(e => e.baseHitPoints == this.barbarianInfo.maxHitpoints)
+				?? this.experienceLevels.MinBy(e => e.baseHitPoints);
 
 			MapUnit newUnit = proto.GetInstance(this.GenerateID(proto.name), proto, player, location: tile);
 

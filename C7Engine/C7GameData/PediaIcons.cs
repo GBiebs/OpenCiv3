@@ -73,11 +73,17 @@ namespace C7GameData {
 					// +2 because +1 specifies if the building has different
 					// columns for culture groups or by era. We don't try to
 					// support that yet.
-					buildingToRowNumberMapping[lines[i].Substring(6)] = Int32.Parse(lines[i + 2]);
+					// Some Play the World mods give pictures there instead
+					// of a row: they're left out.
+					if (Int32.TryParse(lines[i + 2].Trim(), out int row)) {
+						buildingToRowNumberMapping[lines[i].Substring(6)] = row;
+					}
 				}
 
 				if (lines[i].StartsWith("#UNITICON_PRTO") && i + 1 < lines.Length) {
-					unitSmallIconsIndex[lines[i].Substring(10)] = Int32.Parse(lines[i + 1]);
+					if (Int32.TryParse(lines[i + 1].Trim(), out int index)) {
+						unitSmallIconsIndex[lines[i].Substring(10)] = index;
+					}
 				}
 
 				if (lines[i].StartsWith("#ICON_PRTO") && i + 2 < lines.Length) {

@@ -273,6 +273,7 @@ namespace C7GameData {
 			// make barbarians unpickable
 			save.Players.Where(p => p.isBarbarian).ToList().ForEach(p => p.canBePicked = false);
 
+
 			return save;
 		}
 
@@ -494,8 +495,8 @@ namespace C7GameData {
 			// the randomly generated number for something such as a battle or
 			// anarchy calculation will be stored in the game so that you
 			// cannot save your game and reload continuously to get a favored
-			// outcome" (https://civfanatics.com/civ3/faq/). C7 always saves
-			// its random state (GameRandom), so it always behaves that way.
+			// outcome" (https://civfanatics.com/civ3/faq/). C7 saves its
+			// random state (GameRandom); see Rules.PreserveRandomSeed.
 			// Without a map, GameSetup.Populate sets the seed of the map it
 			// generates.
 			save.Seed = hasMap ? biq.Wmap[0].MapSeed : Random.Shared.Next(int.MaxValue);
@@ -666,6 +667,15 @@ namespace C7GameData {
 
 			// make barbarians unpickable
 			save.Players.Where(p => p.isBarbarian).ToList().ForEach(p => p.canBePicked = false);
+
+			// Players with nothing on the map and nowhere to start (some Play
+			// the World scenarios) are placed at setup in Civ3: the game
+			// chooses them then, as for a map without player data (their own
+			// settings, such as gold or advances, are lost).
+			if (save.Map.tiles.Count > 0 && save.Units.Count == 0 && save.Cities.Count == 0 && save.Map.startingLocations.Count == 0 && save.Players.Count > 0) {
+				log.Information("The players have no units, cities or starts; they're chosen at setup");
+				save.Players.Clear();
+			}
 
 			return save;
 		}
@@ -1058,6 +1068,11 @@ namespace C7GameData {
 
 			Government defaultGovernment = save.Governments.Find(g => g.defaultType) ?? save.Governments[0];
 
+			// A BIQ with only a map (no LEAD) has no players: they're chosen at
+			// setup, as for a new game on its map.
+			if (biq.Lead is null && biq.Tile is not null && LeadBiq == null) {
+				return;
+			}
 			// Make a player for each civ. The barbarians are always civ 0.
 			for (int i = 0; i < save.Civilizations.Count; ++i) {
 				Civilization civ = save.Civilizations[i];
@@ -2369,7 +2384,7 @@ namespace C7GameData {
 				if (bldg.Capitalization) {
 					SaveInflow inflow = new () {
 						name = bldg.Name,
-						iconRowIndex = pediaIcons.buildingToRowNumberMapping[bldg.CivilopediaEntry],
+						iconRowIndex = BuildingIconRow(bldg.CivilopediaEntry),
 						localYield = [
 							new SaveLocalYield(InflowYield.commerce, "inflows.result.wealth.commerce"),
 						],
@@ -2387,7 +2402,7 @@ namespace C7GameData {
 					greatWonderProperties=bldg.Wonder ? new SaveBuilding.GreatWonderProperties() : null,
 					culturePerTurn=bldg.Culture,
 					contentFacesInCity=bldg.ContentFaces - bldg.UnhappyFaces,
-					iconRowIndex=pediaIcons.buildingToRowNumberMapping[bldg.CivilopediaEntry],
+					iconRowIndex=BuildingIconRow(bldg.CivilopediaEntry),
 					combatDefenseBonus=bldg.DefenseBonus / 100.0,
 					navalDefenseBonus=bldg.NavalDefenseBonus / 100.0,
 					maintenanceCost=bldg.MaintenanceCost,
@@ -2600,7 +2615,9 @@ namespace C7GameData {
 			int civ3Index = 0;
 			foreach (TERR terrain in Terr) {
 				TerrainType c7TerrainType = TerrainType.ImportFromCiv3(civ3Index, terrain);
-				for (int i = 0; i < TerrGood.GetLength(1); ++i) {
+				// The default rules' table may have more resources than an
+				// older file's own list (26 against Play the World's 22).
+				for (int i = 0; i < TerrGood.GetLength(1) && i < save.Resources.Count; ++i) {
 					if (TerrGood[civ3Index, i]) {
 						c7TerrainType.allowedResources.Add(save.Resources[i].Key);
 					}
@@ -2676,6 +2693,13 @@ namespace C7GameData {
 				description = "Metropolis",
 				amount = Rule.MetropolisDefenseBonus / 100.0
 			});
+		}
+
+		// The building's row of icons in PediaIcons.txt, or 0 (the first) if
+		// the mod's file hasn't it (some Play the World mods leave buildings
+		// out).
+		private int BuildingIconRow(string civilopediaEntry) {
+			return civilopediaEntry != null && pediaIcons.buildingToRowNumberMapping.TryGetValue(civilopediaEntry, out int row) ? row : 0;
 		}
 
 		private SaveUnitPrototype MatchCiv3IndexToImportedUnit(int civ3Index) {
@@ -3202,7 +3226,7 @@ namespace C7GameData {
 		// sizes are left for the rules to give (Civ3's are kept in the
 		// bundled ruleset, see RegenerateRuleset).
 		private void ImportWorldSizes() {
-			if (biq?.Wsiz is not WSIZ[] sizes || sizes.Length == 0) {
+			if ((biq?.Wsiz ?? defaultBiq?.Wsiz) is not WSIZ[] sizes || sizes.Length == 0) {
 				return;
 			}
 			save.WorldSizes = sizes.Select((w, i) => new WorldSize {

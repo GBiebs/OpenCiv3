@@ -88,7 +88,7 @@ public partial class Civ3FileDialog : FileDialog {
 		}
 		CurrentDir = ScenarioEditorSession.ScenariosDirectory;
 		FileMode = FileDialog.FileModeEnum.OpenFile;
-		Filters = new[] { "*.json, *.biq, *.BIQ ; Scenarios" };
+		Filters = new[] { "*.json, *.biq, *.BIQ, *.bix, *.BIX, *.bic, *.BIC ; Scenarios" };
 		ShowSavesButtons(false);
 		if (scenariosButton != null) {
 			scenariosButton.Visible = true;

@@ -320,6 +320,13 @@ public partial class GameSetup {
 			planned.Add(new PlannedPlayer { civ = civ, isHuman = false, isRandom = isRandom, team = opponent.team, aiType = opponent.aiType });
 		}
 
+		// A map made elsewhere with too few starts (a Civ3 map with no player
+		// data) gets the generator's, as Civ3 places civs on it at setup.
+		if (save.Map.tiles.Count > 0 && save.Map.startingLocations.Count < planned.Count && worldCharacteristics != null) {
+			List<SaveTile> found = MapGenerator.StartsFor(save.Map, worldCharacteristics, worldCharacteristics.mapSeed);
+			HashSet<(int, int)> have = save.Map.startingLocations.Select(t => (t.X, t.Y)).ToHashSet();
+			save.Map.startingLocations.AddRange(found.Where(t => !have.Contains((t.X, t.Y))).Take(planned.Count - save.Map.startingLocations.Count));
+		}
 		if (save.Map.startingLocations.Count < planned.Count) {
 			throw new InvalidOperationException($"The map has {save.Map.startingLocations.Count} starting locations, too few for {planned.Count} civilizations");
 		}
@@ -592,9 +599,17 @@ public partial class GameSetup {
 		var defaultExpLevelKey = save.DefaultExperienceLevel;
 
 		var defaultExpLevel = save.ExperienceLevels.First(e => e.key == defaultExpLevelKey);
-		var barbExpLevel = save.ExperienceLevels.First(e => e.baseHitPoints == save.BarbarianInfo.maxHitpoints);
+		// A mod's experience levels may have none with the barbarians' hit
+		// points: then their weakest.
+		var barbExpLevel = save.ExperienceLevels.FirstOrDefault(e => e.baseHitPoints == save.BarbarianInfo.maxHitpoints)
+			?? save.ExperienceLevels.MinBy(e => e.baseHitPoints);
 
-		var proto = save.UnitPrototypes.First(p => p.name == unitType);
+		var proto = save.UnitPrototypes.FirstOrDefault(p => p.name == unitType);
+		// A mod's rules may name a starting unit they haven't got.
+		if (proto == null) {
+			log.Warning($"The rules have no unit {unitType} to start with");
+			return;
+		}
 
 		SaveUnit unit = new() {
 			id = ids.CreateID(unitType),

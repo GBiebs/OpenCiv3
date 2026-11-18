@@ -250,6 +250,46 @@ namespace C7Engine {
 			return (resources, huts, bonus, starts);
 		}
 
+		// Starting locations for a map made elsewhere that has too few (a Civ3
+		// map with no player data, which Civ3 places civs on at setup): the
+		// generator's own step, run on the saved map's terrain, rivers and
+		// resources, with the seed. The tiles are the map's own.
+		public static List<SaveTile> StartsFor(SaveMap map, WorldCharacteristics wc, int seed) {
+			Civ3MapGenerator.Settings settings = SettingsOf(wc);
+			settings.width = map.tilesWide;
+			settings.height = map.tilesTall;
+			settings.wrapX = map.wrapHorizontally;
+			settings.wrapY = map.wrapVertically;
+			settings.seed = seed;
+			Civ3MapGenerator g = new(settings, RulesOf(wc));
+			Dictionary<int, SaveTile> byIndex = [];
+			foreach (SaveTile t in map.tiles) {
+				int k = g.Index(t.X, t.Y);
+				byIndex[k] = t;
+				int terrain = Array.IndexOf(Civ3TerrainKeys, t.overlayTerrain);
+				int baseTerrain = Array.IndexOf(Civ3TerrainKeys, t.baseTerrain);
+				g.terrain[k] = terrain < 0 ? Civ3MapGenerator.Grassland : terrain;
+				g.baseTerrain[k] = baseTerrain < 0 ? g.terrain[k] : baseTerrain;
+				bool Has(string f) => t.features.Contains(f);
+				g.river[k] = (byte)((Has("riverNorth") ? 0x01 : 0) | (Has("riverNortheast") ? 0x02 : 0) | (Has("riverEast") ? 0x04 : 0)
+					| (Has("riverSoutheast") ? 0x08 : 0) | (Has("riverSouth") ? 0x10 : 0) | (Has("riverSouthwest") ? 0x20 : 0)
+					| (Has("riverWest") ? 0x40 : 0) | (Has("riverNorthwest") ? 0x80 : 0));
+				g.flags[k] = (Has("bonusShield") ? Civ3MapGenerator.BonusGrasslandFlag : 0) | (Has("snowCapped") ? Civ3MapGenerator.SnowCappedFlag : 0)
+					| (Has("pineForest") ? Civ3MapGenerator.ColdFlag : 0);
+				g.resource[k] = string.IsNullOrEmpty(t.resource) ? -1 : wc.resources.FindIndex(r => r.Key == t.resource);
+				g.hut[k] = Has("goodyHut");
+			}
+			g.FindBodies();
+			g.RedoStartingLocations();
+			List<SaveTile> starts = [];
+			for (int s = 1; s <= g.startCount && s < g.startSlots.Length; ++s) {
+				if (g.startSlots[s] >= 0 && byIndex.TryGetValue(g.startSlots[s], out SaveTile start)) {
+					starts.Add(start);
+				}
+			}
+			return starts;
+		}
+
 		// The keys of Civ3's terrain types, by Civ3's numbers (TERR's order).
 		public static readonly string[] Civ3TerrainKeys = {
 			"desert", "plains", "grassland", "tundra", "flood plain", "hills", "mountains",

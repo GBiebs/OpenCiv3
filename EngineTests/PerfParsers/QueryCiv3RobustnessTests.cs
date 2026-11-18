@@ -64,15 +64,27 @@ public class QueryCiv3RobustnessTests {
 	}
 
 	[Theory]
-	[InlineData("BIC ", 2)]
-	[InlineData("BIC ", 4)]
-	[InlineData("BICX", 11)]
-	[InlineData("BICQ", 11)]
+	[InlineData("BIC ", 1)]
+	[InlineData("BICX", 1)]
 	[InlineData("CIV3", 12)]
 	[InlineData("ABCD", 12)]
 	public void UnsupportedBiqVersionsAreRejected(string type, int majorVersion) {
 		byte[] biq = Biq(type, majorVersion, 0, Section("GOOD", new byte[88]));
 		Assert.Throws<NotSupportedException>(() => new BiqData(biq));
+	}
+
+	// Civ3's and Play the World's files (.bic, .bix) are read as Conquests
+	// records with the newer fields zeroed (see BiqData.MIN_LEGACY_MAJOR_VERSION).
+	[Theory]
+	[InlineData("BIC ", 2, true)]
+	[InlineData("BIC ", 4, true)]
+	[InlineData("BICX", 11, true)]
+	[InlineData("BICQ", 12, false)]
+	public void OlderBiqVersionsAreReadAsLegacy(string type, int majorVersion, bool legacy) {
+		byte[] biq = Biq(type, majorVersion, 0, Section("GOOD", new byte[88]));
+		BiqData data = new(biq);
+		Assert.Equal(legacy, data.IsLegacy);
+		Assert.Single(data.Good);
 	}
 
 	[Fact]
@@ -228,20 +240,16 @@ public class QueryCiv3RobustnessTests {
 	}
 
 	[SkippableFact]
-	public void Civ3BiqsLoadOrAreRejectedAsUnsupported() {
+	public void Civ3BiqsLoad() {
 		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), "No Civ3 install found.");
 
 		int loaded = 0;
 		foreach (string path in Civ3Files(".biq", ".bic", ".bix")) {
 			byte[] bytes = Util.ReadFile(path);
-			Civ3File file = new(bytes);
-			if (file.Civ3Version.FileVersion == FileVersion.Conquests) {
-				BiqData data = new(bytes);
-				Assert.NotNull(data.Bldg);
-				loaded++;
-			} else {
-				Assert.Throws<NotSupportedException>(() => new BiqData(bytes));
-			}
+			// Every Civ3, Play the World and Conquests file is read (some
+			// have only a map, or only a few of the rules).
+			Assert.NotNull(new BiqData(bytes));
+			loaded++;
 		}
 		Assert.True(loaded > 0);
 	}
