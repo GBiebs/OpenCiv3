@@ -114,13 +114,13 @@ public partial class TileInfoPopup : Popup {
 
 		if (player.tileKnowledge.isTileKnown(tile) || isObserverMode) {
 			terrainLabel.Text = tile.baseTerrainType?.DisplayName ?? "";
-			overlayLabel.Text = tile.overlayTerrainType?.DisplayName ?? "";
+			overlayLabel.Text = tile.TerrainName();
 			resourceLabel.Text = tile.Resource?.Name ?? "";
 			foodLabel.Text = $"Food: {tile.FoodYield(player).baseYield}";
 			shieldLabel.Text = $"Shields: {tile.ProductionYield(player).baseYield}";
 			goldLabel.Text = $"Gold: {tile.CommerceYield(player).baseYield}";
 
-			if (tile.baseTerrainType == tile.overlayTerrainType)
+			if (tile.baseTerrainType == tile.overlayTerrainType && tile.Landmark == null)
 				overlayLabel.Text = "";
 
 			if (tile.Resource != null && !player.KnowsAboutResource(tile.Resource) && !isObserverMode)

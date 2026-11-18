@@ -55,6 +55,9 @@ namespace C7GameData.Save {
 			if (tile.isVictoryLocation) {
 				features.Add(VictoryLocationFeature);
 			}
+			if (tile.isLandmark) {
+				features.Add(LandmarkFeature);
+			}
 
 			overlays.AddRange(tile.overlays.GetImprovements().Select(i => i.key));
 			holdingOwner = HoldingOwnerOf(tile);
@@ -93,7 +96,8 @@ namespace C7GameData.Save {
 				&& HasFeature(tile.hasBarbarianCamp, "barbarianCamp", ref feature)
 				&& HasFeature(tile.hasGoodyHut, "goodyHut", ref feature)
 				&& HasFeature(tile.hasHadForestCleared, "hasHadForestCleared", ref feature)
-				&& HasFeature(tile.isVictoryLocation, VictoryLocationFeature, ref feature);
+				&& HasFeature(tile.isVictoryLocation, VictoryLocationFeature, ref feature)
+				&& HasFeature(tile.isLandmark, LandmarkFeature, ref feature);
 			if (!same || feature != features.Count) {
 				return false;
 			}
@@ -108,6 +112,8 @@ namespace C7GameData.Save {
 
 		// The feature a Victory Location has.
 		public const string VictoryLocationFeature = "victoryLocation";
+		// The feature a landmark has (Tile.isLandmark).
+		public const string LandmarkFeature = "landmark";
 
 		private bool HasFeature(bool has, string name, ref int next) {
 			return !has || (next < features.Count && features[next++] == name);
@@ -180,6 +186,7 @@ namespace C7GameData.Save {
 					case "snowCapped": tile.isSnowCapped = true; break;
 					case "pineForest": tile.isPineForest = true; break;
 					case VictoryLocationFeature: tile.isVictoryLocation = true; break;
+					case LandmarkFeature: tile.isLandmark = true; break;
 				}
 			}
 

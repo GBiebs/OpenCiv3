@@ -474,6 +474,60 @@ public class SettingsNowUsedTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(plainType, plain.prototype);
 	}
 
+	// ---- Terrain: landmarks ----
+
+	[Fact]
+	public void ALandmarkTileHasItsTerrainsLandmarkValues() {
+		Tile tile = gameData.map.tiles.First(t => IsEmptyLand(t) && t.overlayTerrainType == t.baseTerrainType && t.Resource == Resource.NONE
+			&& !t.BordersRiver() && t.overlays.GetImprovements().Count() == 0);
+		TerrainType terrain = tile.overlayTerrainType;
+		terrain.landmark = new TerrainLandmark { enabled = true, name = "Cedars", food = 5, shields = 4, commerce = 3, movementCost = 3, defenseBonus = 75 };
+		int food = tile.FoodYield(us).baseYield;
+		Assert.Equal(terrain.movementCost, tile.MovementCost());
+		Assert.Equal(terrain.DisplayName, tile.TerrainName());
+
+		tile.isLandmark = true;
+		Assert.Equal(5, tile.FoodYield(us).baseYield);
+		Assert.Equal(4, tile.ProductionYield(us).baseYield);
+		Assert.Equal(3, tile.CommerceYield(us).baseYield);
+		Assert.Equal(3, tile.MovementCost());
+		Assert.Equal(0.75, tile.TerrainDefenseBonus().amount);
+		Assert.Equal("Cedars", tile.TerrainName());
+		MapUnit unit = gameData.SpawnUnit(us, gameData.unitPrototypes.First(p => p.defense > 0 && p.IsLandUnit()), tile);
+		Assert.Contains(unit.ListStrengthBonusesVersus(unit, C7GameData.CombatRole.Defense, TileDirection.NORTH), b => b.amount == 0.75);
+		Assert.Equal(75, MapUnit.TileBombardDefencePercent(tile));
+
+		// A landmark whose terrain has none is the terrain.
+		terrain.landmark.enabled = false;
+		Assert.Equal(food, tile.FoodYield(us).baseYield);
+
+		// Saved and loaded.
+		terrain.landmark.enabled = true;
+		SaveGame saved = SaveGame.FromJSON(SaveGame.FromGameData(gameData).ToCompactJSON());
+		Assert.Contains(SaveTile.LandmarkFeature, saved.Map.tiles.First(t => t.X == tile.XCoordinate && t.Y == tile.YCoordinate).features);
+		C7GameData.GameData loaded = saved.ToGameData(fixture.behaviors);
+		Assert.True(loaded.map.tileAt(tile.XCoordinate, tile.YCoordinate).isLandmark);
+	}
+
+	[Fact]
+	public void TheOverlayBrushPlacesALandmarkOnItsTerrain() {
+		Tile tile = gameData.map.tiles.First(t => IsEmptyLand(t) && !t.overlayTerrainType.IsWater);
+		TerrainType terrain = tile.overlayTerrainType;
+		terrain.landmark = new TerrainLandmark { enabled = true, name = "Cedars" };
+		MapPainter painter = new(gameData);
+		OverlayBrush brush = painter.OverlayBrushes().Single(b => b.What == OverlayBrush.Kind.Landmark);
+		Assert.Equal("Cedars", brush.Name);
+		Tile other = gameData.map.tiles.First(t => t.overlayTerrainType.Key != terrain.Key);
+		Assert.NotNull(MapPainter.CantPlace(other, brush));
+		Assert.Null(MapPainter.CantPlace(tile, brush));
+		painter.BeginStroke("Landmark");
+		painter.PlaceOverlay(tile, brush);
+		painter.EndStroke();
+		Assert.True(tile.isLandmark);
+		painter.Undo();
+		Assert.False(tile.isLandmark);
+	}
+
 	// ---- Importing Civ3's switches ----
 
 	[SkippableFact]
@@ -487,5 +541,20 @@ public class SettingsNowUsedTest : IClassFixture<SaveGameFixture> {
 		Assert.True(save.Rules.RetainCultureOnCapture);
 		Assert.True(save.Scenario.retainCulture);
 		Assert.True(ScenarioSettings.Of(ScenarioEditing.Open(save, fixture.behaviors), save.Scenario).RetainCulture);
+	}
+
+	[SkippableFact]
+	public void MesopotamiasLandmarksAreImported() {
+		Skip.If(Civ3TestData.ShouldSkipCiv3DependentTests(), Civ3TestData.SkipReason);
+		string conquests = Path.Join(Civ3Location.GetCiv3Path(), "Conquests");
+		// The conquest itself (its multiplayer version has no landmarks).
+		string file = Path.Join(conquests, "Conquests", "1 Mesopotamia.biq");
+		Skip.If(!File.Exists(file), "No Mesopotamia");
+		SaveGame save = ScenarioFiles.Open(file, PathUtils.defaultBicPath, ScenarioCorpusTest.PediaIconsFor(conquests, Path.GetDirectoryName(file)));
+		C7GameData.GameData g = save.ToGameData(fixture.behaviors);
+		List<Tile> landmarks = g.map.tiles.Where(t => t.Landmark != null).ToList();
+		Assert.NotEmpty(landmarks);
+		Assert.Equal(20, landmarks.Count);
+		Assert.All(landmarks, t => Assert.Equal("Cedars of Lebanon", t.TerrainName()));
 	}
 }

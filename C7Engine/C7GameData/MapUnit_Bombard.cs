@@ -685,7 +685,7 @@ namespace C7GameData {
 		// The tile's defence against bombardment, in per cent: its terrain's
 		// and its fortress's or barricade's (see TileBombardDefence).
 		internal static int TileBombardDefencePercent(Tile tile) {
-			double bonus = tile.overlayTerrainType?.defenseBonus.amount ?? 0;
+			double bonus = tile.overlayTerrainType == null ? 0 : tile.TerrainDefenseBonus().amount;
 			foreach (StrengthBonus sb in tile.overlays.GetDefenseBonuses()) {
 				bonus += sb.amount;
 			}

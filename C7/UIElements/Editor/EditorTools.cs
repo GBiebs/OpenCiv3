@@ -75,12 +75,12 @@ public static class TileFacts {
 			new("Starting Location", map.startingLocations.Contains(tile)), new("Colony", has(Tile.TileOverlays.COLONY)),
 			new("Airfield", has(Tile.TileOverlays.AIRFIELD)), new("Radar Tower", has(Tile.TileOverlays.RADAR_TOWER)),
 			new("Outpost", has(Tile.TileOverlays.OUTPOST)), new("Victory Location", tile.isVictoryLocation),
-			new("Ruins", tile.HasRuins()),
+			new("Ruins", tile.HasRuins()), new("Landmark", tile.isLandmark),
 		];
 	}
 
 	public static string Terrain(Tile tile) {
-		string terrain = tile.overlayTerrainType?.DisplayName ?? "";
+		string terrain = tile.TerrainName();
 		if (tile.baseTerrainType != null && tile.baseTerrainType != tile.overlayTerrainType) {
 			terrain += $" on {tile.baseTerrainType.DisplayName}";
 		}

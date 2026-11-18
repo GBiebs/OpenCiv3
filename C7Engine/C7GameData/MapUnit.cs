@@ -531,7 +531,7 @@ namespace C7GameData {
 				if (isFortified && !IsWaterUnit() && movementPoints.canMove)
 					yield return gD.fortificationBonus;
 
-				yield return location.overlayTerrainType.defenseBonus;
+				yield return location.TerrainDefenseBonus();
 
 				foreach (StrengthBonus sb in location.overlays.GetDefenseBonuses()) {
 					yield return sb;

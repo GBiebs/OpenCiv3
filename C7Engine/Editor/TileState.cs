@@ -14,7 +14,7 @@ public sealed class TileState {
 	private bool riverN, riverNE, riverE, riverSE, riverS, riverSW, riverW, riverNW;
 	private Resource resource;
 	private string resourceKey;
-	private bool goodyHut, barbarianCamp, victoryLocation, startingLocation;
+	private bool goodyHut, barbarianCamp, victoryLocation, startingLocation, landmark;
 	private List<TerrainImprovement> improvements;
 	// Whose colony, outpost, airfield or radar tower it is.
 	private Player holdingOwner;
@@ -40,6 +40,7 @@ public sealed class TileState {
 			goodyHut = tile.hasGoodyHut,
 			barbarianCamp = tile.hasBarbarianCamp,
 			victoryLocation = tile.isVictoryLocation,
+			landmark = tile.isLandmark,
 			startingLocation = map.startingLocations.Contains(tile),
 			improvements = [.. tile.overlays.GetImprovements()],
 			holdingOwner = tile.holdingOwner,
@@ -69,6 +70,7 @@ public sealed class TileState {
 		tile.hasGoodyHut = goodyHut;
 		tile.hasBarbarianCamp = barbarianCamp;
 		tile.isVictoryLocation = victoryLocation;
+		tile.isLandmark = landmark;
 		bool listed = map.startingLocations.Contains(tile);
 		if (startingLocation && !listed) {
 			map.startingLocations.Add(tile);
@@ -99,7 +101,7 @@ public sealed class TileState {
 			&& riverN == other.riverN && riverNE == other.riverNE && riverE == other.riverE && riverSE == other.riverSE
 			&& riverS == other.riverS && riverSW == other.riverSW && riverW == other.riverW && riverNW == other.riverNW
 			&& resource == other.resource && goodyHut == other.goodyHut && barbarianCamp == other.barbarianCamp
-			&& victoryLocation == other.victoryLocation && startingLocation == other.startingLocation
+			&& victoryLocation == other.victoryLocation && startingLocation == other.startingLocation && landmark == other.landmark
 			&& improvements.Count == other.improvements.Count && improvements.TrueForAll(other.improvements.Contains)
 			&& holdingOwner == other.holdingOwner && art == other.art;
 	}

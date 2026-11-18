@@ -545,6 +545,9 @@ namespace C7GameData {
 				if (civ3Tile.VictoryPointLocation == 0) {
 					tile.features.Add(SaveTile.VictoryLocationFeature);
 				}
+				if (civ3Tile.IsLandmark) {
+					tile.features.Add(SaveTile.LandmarkFeature);
+				}
 				if (civ3Tile.Ruin > 0) {
 					tile.overlays.Add(RUINS);
 				}

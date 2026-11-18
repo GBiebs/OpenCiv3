@@ -70,7 +70,10 @@ namespace QueryCiv3.Biq {
 		public bool RiverWest { get => Util.GetFlag(C3CBonuses[1], 1); }
 		public bool RiverEast { get => Util.GetFlag(C3CBonuses[1], 2); }
 		public bool RiverSouth { get => Util.GetFlag(C3CBonuses[1], 3); }
-		public bool IsLandmark { get => Util.GetFlag(C3CBonuses[3], 1); }
+		// The bit Civ3's conquests set on their landmark tiles: all 20 on
+		// Mesopotamia's map are forest (its Cedars of Lebanon), 17 of WWII
+		// in the Pacific's 22 sea (its Great Barrier Reef).
+		public bool IsLandmark { get => Util.GetFlag(C3CBonuses[1], 5); }
 
 		private fixed byte UnknownBuffer5[2];
 	}

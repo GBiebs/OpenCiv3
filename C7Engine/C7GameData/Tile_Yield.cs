@@ -110,7 +110,7 @@ public partial class Tile {
 
 	private int BaseFoodYield(Player player) {
 		if (this.HasFallout()) return 0;
-		int yield = overlayTerrainType.baseFoodProduction;
+		int yield = Landmark?.food ?? overlayTerrainType.baseFoodProduction;
 		if (this.Resource != Resource.NONE && KnowsResource(player)) {
 			yield += this.Resource.FoodBonus;
 		}
@@ -203,7 +203,7 @@ public partial class Tile {
 	// Production yield
 	private int BaseProductionYield(Player player) {
 		if (this.HasFallout()) return 0;
-		int yield = overlayTerrainType.baseShieldProduction;
+		int yield = Landmark?.shields ?? overlayTerrainType.baseShieldProduction;
 		if (this.isBonusShield && overlayTerrainType.IsGrassland) {
 			yield++;
 		}
@@ -277,7 +277,7 @@ public partial class Tile {
 	// Commerce yield
 	private int BaseCommerceYield(Player player) {
 		if (this.HasFallout()) return 0;
-		int yield = overlayTerrainType.baseCommerceProduction;
+		int yield = Landmark?.commerce ?? overlayTerrainType.baseCommerceProduction;
 		if (this.Resource != Resource.NONE && KnowsResource(player)) {
 			yield += this.Resource.CommerceBonus;
 		}

@@ -94,6 +94,26 @@ namespace C7GameData {
 		// VictoryPoints.ScoreVictoryLocations).
 		public bool isVictoryLocation = false;
 
+		// A landmark (Civ3's landmark terrain, as Mesopotamia's Cedars of
+		// Lebanon): the tile's terrain has its landmark values (its name,
+		// food, shields, commerce, movement cost and defense), where the
+		// terrain has a landmark (TerrainType.landmark, enabled).
+		public bool isLandmark = false;
+
+		// The landmark values the tile has, or null.
+		public TerrainLandmark Landmark => isLandmark && overlayTerrainType?.landmark is TerrainLandmark l && l.enabled ? l : null;
+
+		// The terrain's defense bonus here: the landmark's, or the terrain's.
+		public StrengthBonus TerrainDefenseBonus() {
+			if (Landmark is TerrainLandmark l) {
+				return new StrengthBonus { description = string.IsNullOrEmpty(l.name) ? overlayTerrainType.DisplayName : l.name, amount = l.defenseBonus / 100.0 };
+			}
+			return overlayTerrainType.defenseBonus;
+		}
+
+		// The terrain's name here: the landmark's, or the terrain's.
+		public string TerrainName() => Landmark is TerrainLandmark { name.Length: > 0 } l ? l.name : overlayTerrainType?.DisplayName ?? "";
+
 		//See discussion on page 4 of the "Babylon" thread (https://forums.civfanatics.com/threads/0-1-babylon-progress-thread.673959) about sub-terrain type and Civ3 properties.
 		//We may well move these properties somewhere, whether that's Civ3ExtraInfo, a Civ3Tile child class, a Dictionary property, or something else, in the future.
 		public bool isBonusShield;
@@ -174,7 +194,7 @@ namespace C7GameData {
 		// with the save format that it's the overaly terrain that has actual
 		// movement cost
 		public int MovementCost() {
-			return overlayTerrainType.movementCost;
+			return Landmark?.movementCost ?? overlayTerrainType.movementCost;
 		}
 
 		// Like MovementCost(), impassability comes from the overlay terrain

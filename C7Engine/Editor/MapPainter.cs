@@ -16,7 +16,11 @@ public sealed record TerrainBrush(TerrainType Terrain, TerrainBrush.Kind Variant
 // improvement of the rules (a road, a mine, a colony...), or a tile's flag
 // (a goody hut, a barbarian camp, a starting or victory point location).
 public sealed record OverlayBrush(OverlayBrush.Kind What, string Name, TerrainImprovement Improvement) {
-	public enum Kind { River, GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation }
+	public enum Kind { River, GoodyHut, BarbarianCamp, Improvement, StartingLocation, VictoryLocation, Landmark }
+
+	// A Landmark brush's terrain (Civ3's help: "A new entry for each type of
+	// terrain that can have a landmark ... appears in the list of overlays").
+	public TerrainType Terrain { get; init; }
 }
 
 // Something on a tile that the right-click menu's Delete submenu can take
@@ -172,6 +176,10 @@ public sealed partial class MapPainter {
 		Improvement(Tile.TileOverlays.OUTPOST, "Outpost");
 		brushes.Add(new OverlayBrush(OverlayBrush.Kind.VictoryLocation, "Victory Point Location", null));
 		Improvement(Tile.TileOverlays.RUINS, "Ruins");
+		foreach (TerrainType terrain in gameData.terrainTypes.Where(t => t.landmark?.enabled == true)) {
+			string name = string.IsNullOrWhiteSpace(terrain.landmark.name) ? $"Landmark {terrain.DisplayName}" : terrain.landmark.name;
+			brushes.Add(new OverlayBrush(OverlayBrush.Kind.Landmark, name, null) { Terrain = terrain });
+		}
 		return brushes;
 	}
 
@@ -187,6 +195,11 @@ public sealed partial class MapPainter {
 			return null; // Its edge decides (CantPlaceRiver).
 		}
 		TerrainType terrain = tile.overlayTerrainType;
+		// A landmark goes on its own terrain (the sea's too), as our
+		// reading: Civ3 paints the terrain with it.
+		if (brush.What == OverlayBrush.Kind.Landmark) {
+			return terrain?.Key == brush.Terrain?.Key ? null : $"{brush.Name} goes on {NameOf(brush.Terrain)} only.";
+		}
 		if (terrain == null || terrain.IsWater) {
 			return $"A {brush.Name.ToLowerInvariant()} goes on land only.";
 		}
@@ -237,6 +250,7 @@ public sealed partial class MapPainter {
 			OverlayBrush.Kind.BarbarianCamp => tile.hasBarbarianCamp,
 			OverlayBrush.Kind.StartingLocation => tile.map?.startingLocations.Contains(tile) ?? false,
 			OverlayBrush.Kind.VictoryLocation => tile.isVictoryLocation,
+			OverlayBrush.Kind.Landmark => tile.isLandmark,
 			_ => tile.overlays.HasImprovement(brush.Improvement),
 		};
 	}
@@ -264,6 +278,9 @@ public sealed partial class MapPainter {
 				break;
 			case OverlayBrush.Kind.VictoryLocation:
 				tile.isVictoryLocation = true;
+				break;
+			case OverlayBrush.Kind.Landmark:
+				tile.isLandmark = true;
 				break;
 			default:
 				tile.overlays.Add(brush.Improvement);
@@ -404,6 +421,9 @@ public sealed partial class MapPainter {
 						break;
 					case OverlayBrush.Kind.VictoryLocation:
 						tile.isVictoryLocation = false;
+						break;
+					case OverlayBrush.Kind.Landmark:
+						tile.isLandmark = false;
 						break;
 					case OverlayBrush.Kind.Improvement when tile.overlays.HasImprovement(overlay.Improvement):
 						tile.overlays.Remove(overlay.Improvement);
@@ -615,6 +635,7 @@ public sealed partial class MapPainter {
 		tile.hasGoodyHut = false;
 		tile.hasBarbarianCamp = false;
 		tile.isVictoryLocation = false;
+		tile.isLandmark = false;
 		Map.startingLocations.Remove(tile);
 	}
 

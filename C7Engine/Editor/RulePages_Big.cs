@@ -113,15 +113,16 @@ public static partial class RulePages {
 		yields[type] = value;
 	}
 
-	private static RuleField Landmark(string label, Func<TerrainLandmark, int> get, Action<TerrainLandmark, int> set, int min, int max) => new() {
+	private static RuleField Landmark(string label, Func<TerrainLandmark, int> get, Action<TerrainLandmark, int> set, int min, int max,
+			bool notUsed = false, string help = "Its value on a landmark tile of this terrain, in place of the terrain's.") => new() {
 		Group = "Landmark Terrain",
 		Column = 2,
 		Label = label,
 		Kind = RuleFieldKind.Number,
 		Min = min,
 		Max = max,
-		NotUsed = true,
-		Help = "Civ3's landmark version of this terrain.",
+		NotUsed = notUsed,
+		Help = help,
 		Get = (_, o) => get(((TerrainType)o).landmark ?? new TerrainLandmark()),
 		Set = (_, o, v) => set(((TerrainType)o).landmark ??= new TerrainLandmark(), (int)v),
 	};
@@ -185,21 +186,22 @@ public static partial class RulePages {
 				"An advance (Medicine) ends the disease.", column: 2),
 			Rule.Number<TerrainType>("Disease", "Disease Strength:", t => t.diseaseStrength, (t, v) => t.diseaseStrength = v, 0, 100, "How likely it strikes.", column: 2),
 			new RuleField {
-				Group = "Landmark Terrain", Column = 2, Label = "Enabled", Kind = RuleFieldKind.Check, NotUsed = true, Help = "The rules have a landmark version of this terrain.",
+				Group = "Landmark Terrain", Column = 2, Label = "Enabled", Kind = RuleFieldKind.Check,
+				Help = "The terrain has a landmark version, placed with the overlay brush; a landmark tile has the values below.",
 				Get = (_, o) => ((TerrainType)o).landmark?.enabled ?? false,
 				Set = (_, o, v) => (((TerrainType)o).landmark ??= new TerrainLandmark()).enabled = (bool)v,
 			},
 			new RuleField {
-				Group = "Landmark Terrain", Column = 2, Label = "Name:", Kind = RuleFieldKind.Text, NotUsed = true, Help = "The landmark's name.",
+				Group = "Landmark Terrain", Column = 2, Label = "Name:", Kind = RuleFieldKind.Text, Help = "The landmark's name, shown for the tile in the game.",
 				Get = (_, o) => ((TerrainType)o).landmark?.name ?? "",
 				Set = (_, o, v) => (((TerrainType)o).landmark ??= new TerrainLandmark()).name = (string)v,
 			},
 			Landmark("Food:", l => l.food, (l, v) => l.food = v, 0, 99),
 			Landmark("Shields:", l => l.shields, (l, v) => l.shields = v, 0, 99),
 			Landmark("Commerce:", l => l.commerce, (l, v) => l.commerce = v, 0, 99),
-			Landmark("Irrigation Bonus:", l => l.irrigationBonus, (l, v) => l.irrigationBonus = v, 0, 99),
-			Landmark("Mining Bonus:", l => l.miningBonus, (l, v) => l.miningBonus = v, 0, 99),
-			Landmark("Road Bonus:", l => l.roadBonus, (l, v) => l.roadBonus = v, 0, 99),
+			Landmark("Irrigation Bonus:", l => l.irrigationBonus, (l, v) => l.irrigationBonus = v, 0, 99, true, "Civ3's irrigation bonus on the landmark."),
+			Landmark("Mining Bonus:", l => l.miningBonus, (l, v) => l.miningBonus = v, 0, 99, true, "Civ3's mining bonus on the landmark."),
+			Landmark("Road Bonus:", l => l.roadBonus, (l, v) => l.roadBonus = v, 0, 99, true, "Civ3's road bonus on the landmark."),
 			Landmark("Movement Cost:", l => l.movementCost, (l, v) => l.movementCost = v, 0, 99),
 			Landmark("Defense Bonus (%):", l => l.defenseBonus, (l, v) => l.defenseBonus = v, 0, 999),
 		],
