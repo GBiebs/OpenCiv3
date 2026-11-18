@@ -14,6 +14,8 @@ public static class ScenarioStart {
 	public static void Apply(SaveGame save) {
 		SwitchesToRules(save);
 		ApplyPlayerSlots(save);
+		ComputerDifficulties(save);
+		CivSpecificKings(save);
 		NameAutoNamedCities(save);
 		GiveStartUnits(save);
 		StartWithEmbassies(save);
@@ -66,6 +68,28 @@ public static class ScenarioStart {
 			choices.AddRange(free.Select(c => new HumanChoice(c, any.id.ToString())));
 		}
 		return choices;
+	}
+
+	// Units marked "Use Civ-Specific King Unit" (Civ3's Unit Properties)
+	// become their owner's civilization's king (Civ3's Civilizations page),
+	// once the civilizations are settled. A civilization without one keeps
+	// the unit as placed.
+	private static void CivSpecificKings(SaveGame save) {
+		foreach (SaveUnit unit in save.Units.Where(u => u.useCivSpecificKing)) {
+			string civ = save.Players.Find(p => p.id == unit.owner)?.civilization;
+			string king = save.Civilizations.Find(c => c.name == civ)?.kingUnit;
+			if (king != null && save.UnitPrototypes.Any(p => p.name == king)) {
+				unit.prototype = king;
+			}
+		}
+	}
+
+	// Each computer player the scenario gives a difficulty plays at it
+	// (its AI bonuses; GameData.AiBonusDifficulty).
+	private static void ComputerDifficulties(SaveGame save) {
+		foreach (SavePlayer player in save.Players.Where(p => !p.human)) {
+			player.difficulty = DifficultyFor(save, player.id.ToString());
+		}
 	}
 
 	// The difficulty the scenario sets for the player (Civ3's Player

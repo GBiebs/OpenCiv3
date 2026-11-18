@@ -120,7 +120,7 @@ public partial class EditorChrome {
 			grid.AddChild(colorRow);
 
 			grid.AddChild(InkLabel("Difficulty:"));
-			OptionButton difficulty = SetupStyle.MakeDropdown("The human's is the game's (Any: the player's choice). A computer player's is kept, not used: the game has one difficulty.");
+			OptionButton difficulty = SetupStyle.MakeDropdown("The human's is the game's (Any: the player's choice). A computer player plays with its own level's bonuses (Any: the game's).");
 			difficulty.Name = "Difficulty";
 			SetupStyle.AddItems(difficulty, [AnyLabel, .. lists.Difficulties], p.Difficulty == null ? 0 : Math.Max(0, lists.Difficulties.IndexOf(p.Difficulty) + 1));
 			difficulty.ItemSelected += i => p.Difficulty = i == 0 ? null : lists.Difficulties[(int)i - 1];

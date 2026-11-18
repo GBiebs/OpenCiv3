@@ -89,6 +89,12 @@ namespace C7GameData {
 		// The civ's place in the rules' list of civilizations, the BIQ's RACE
 		// order (which Civ3's per-civ text in diplomacy.txt follows), or -1.
 		public int CivilizationIndex(Civilization civ) => civ == null ? -1 : civilizations.IndexOf(civ);
+
+		// Which civ's lines of Civ3's diplomacy.txt the civ speaks: its
+		// diplomacy text index (Civ3's editor's "Diplomacy Text Index"), or
+		// without one (0, the barbarians', which no civ speaks) its place in
+		// the list.
+		public int DiplomacyTextIndex(Civilization civ) => civ?.diplomacyTextIndex > 0 ? civ.diplomacyTextIndex : CivilizationIndex(civ);
 		internal HashSet<CultureGroup> cultureGroups = new HashSet<CultureGroup>();
 		internal HashSet<Alliance> alliances;
 		// Each pair of alliances locked at war, once.
@@ -134,7 +140,13 @@ namespace C7GameData {
 		// except for an Advanced AI, which gets Regent's, where Civ3 gives
 		// the AI none. The Advanced AI is meant to beat a human with no
 		// advantage over one (see doc/ai-roadmap.md).
+		//
+		// A computer player a scenario gives a level of its own (Civ3's Player
+		// Properties' difficulty, SavePlayer.difficulty) gets that level's.
 		public Difficulty AiBonusDifficulty(Player player) {
+			if (player != null && !player.isHuman && player.difficulty != null && difficulties.Find(d => d.Name == player.difficulty) is Difficulty own) {
+				return own;
+			}
 			return player != null && player.IsAdvancedAi ? AiRulesDifficulty() : gameDifficulty;
 		}
 

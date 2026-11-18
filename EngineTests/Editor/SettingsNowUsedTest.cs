@@ -370,6 +370,110 @@ public class SettingsNowUsedTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(20, west.Max() - west.Min());
 	}
 
+	// ---- Civilizations: leader names, diplomacy text ----
+
+	[Fact]
+	public void LeadersAreNamedFromTheCivilizationsListsInOrder() {
+		us.civilization.greatLeaderNames = ["Alpha", "Beta"];
+		us.civilization.scientificLeaderNames = ["Gamma"];
+		City city = BuildCity(us);
+		MapUnit soldier = gameData.SpawnUnit(us, gameData.unitPrototypes.First(p => p.attack > 0 && p.IsLandUnit()), city.location);
+		Assert.Equal("Alpha", soldier.ProduceLeader().name);
+		Assert.Equal("Beta", soldier.ProduceLeader().name);
+		Assert.Equal("Alpha", soldier.ProduceLeader().name);
+		Assert.Equal("Gamma", MapUnit.NextLeaderName(gameData, us, us.civilization.scientificLeaderNames));
+		Assert.Null(MapUnit.NextLeaderName(gameData, us, []));
+	}
+
+	[Fact]
+	public void ACivSpeaksTheDiplomacyLinesOfItsTextIndex() {
+		Civilization civ = them.civilization;
+		civ.diplomacyTextIndex = 0;
+		Assert.Equal(gameData.CivilizationIndex(civ), gameData.DiplomacyTextIndex(civ));
+		civ.diplomacyTextIndex = 7;
+		Assert.Equal(7, gameData.DiplomacyTextIndex(civ));
+	}
+
+	// ---- Diplomats and Spies: performed by, description ----
+
+	[Fact]
+	public void WhoMayCarryOutAMissionFollowsTheRules() {
+		EspionageMissionRule investigate = gameData.rules.EspionageMissionRuleFor(nameof(EspionageMission.InvestigateCity));
+		EspionageMissionRule sabotage = gameData.rules.EspionageMissionRuleFor(nameof(EspionageMission.SabotageProduction));
+		// The standard rules: as the game always had them.
+		Assert.False(C7Engine.Espionage.IsEspionageMission(EspionageMission.InvestigateCity));
+		Assert.True(C7Engine.Espionage.NeedsSpy(EspionageMission.SabotageProduction));
+		Assert.True(C7Engine.Espionage.IsEspionageMission(EspionageMission.PlantSpy));
+		Assert.False(C7Engine.Espionage.NeedsSpy(EspionageMission.PlantSpy));
+
+		// A diplomat may sabotage: the embassy does it, no spy needed.
+		sabotage.Diplomat = true;
+		Assert.False(C7Engine.Espionage.NeedsSpy(EspionageMission.SabotageProduction));
+		// Only a spy may investigate.
+		investigate.Diplomat = false;
+		Assert.True(C7Engine.Espionage.NeedsSpy(EspionageMission.InvestigateCity));
+		// No one may.
+		investigate.Spy = false;
+		Assert.False(C7Engine.Espionage.Allowed(EspionageMission.InvestigateCity));
+		us.EnsureRelationshipExists(them);
+		Assert.Equal("Neither diplomats nor spies may carry out this mission.",
+			C7Engine.Espionage.Unavailable(gameData, us, EspionageMission.InvestigateCity, them, them.cities.FirstOrDefault()));
+
+		Assert.Null(C7Engine.Espionage.Title(EspionageMission.InvestigateCity));
+		investigate.Description = "Snoop";
+		Assert.Equal("Snoop", C7Engine.Espionage.Title(EspionageMission.InvestigateCity));
+	}
+
+	// ---- Players: a computer player's difficulty ----
+
+	[Fact]
+	public void AComputerPlayerGetsItsOwnLevelsBonuses() {
+		Difficulty deity = gameData.difficulties.First(d => d.Name == "Deity");
+		Assert.Equal(gameData.gameDifficulty, gameData.AiBonusDifficulty(them));
+		them.difficulty = "Deity";
+		Assert.Equal(deity, gameData.AiBonusDifficulty(them));
+		// Saved and loaded.
+		SaveGame saved = SaveGame.FromJSON(SaveGame.FromGameData(gameData).ToCompactJSON());
+		Assert.Equal("Deity", saved.Players.First(p => p.id == them.id).difficulty);
+		// A human's is the game's.
+		Player human = gameData.players.First(p => p.isHuman);
+		human.difficulty = "Deity";
+		Assert.Equal(gameData.gameDifficulty, gameData.AiBonusDifficulty(human));
+	}
+
+	// ---- Unit Properties: AI strategy, civ-specific king ----
+
+	[Fact]
+	public void APlacedUnitsAiStrategySteersTheAi() {
+		City city = BuildCity(us);
+		MapUnit unit = gameData.SpawnUnit(us, gameData.unitPrototypes.First(p => p.attack > 0 && p.defense > 0 && p.IsLandUnit() && !p.isKing), city.location);
+		Assert.Null(C7Engine.PlayerAI.ScenarioStrategyAI(unit, us));
+		unit.aiStrategy = nameof(SaveUnitPrototype.Flag.AIDefense);
+		Assert.IsType<C7Engine.AI.UnitAI.DefenderAI>(C7Engine.PlayerAI.ScenarioStrategyAI(unit, us));
+		Assert.IsType<C7Engine.AI.UnitAI.DefenderAI>(C7Engine.PlayerAI.GetAIForUnit(unit, us));
+		unit.aiStrategy = nameof(SaveUnitPrototype.Flag.AIOffense);
+		Assert.Null(C7Engine.PlayerAI.ScenarioStrategyAI(unit, us));
+	}
+
+	[Fact]
+	public void AUnitMarkedCivSpecificKingBecomesItsCivsKing() {
+		SaveGame save = fixture.saveGame.Clone();
+		List<SaveUnit> units = save.Units.GroupBy(u => u.owner.ToString())
+			.First(g => g.Count() >= 2 && save.Players.Any(p => p.id.ToString() == g.Key && !p.isBarbarian)).ToList();
+		SavePlayer player = save.Players.First(p => p.id.ToString() == units[0].owner.ToString());
+		Civilization civ = save.Civilizations.First(c => c.name == player.civilization);
+		SaveUnit marked = units[0];
+		SaveUnit plain = units[1];
+		string king = save.UnitPrototypes.First(p => p.name != marked.prototype).name;
+		civ.kingUnit = king;
+		string plainType = plain.prototype;
+		marked.useCivSpecificKing = true;
+		save.Scenario = new ScenarioInfo();
+		ScenarioStart.Apply(save);
+		Assert.Equal(king, marked.prototype);
+		Assert.Equal(plainType, plain.prototype);
+	}
+
 	// ---- Importing Civ3's switches ----
 
 	[SkippableFact]

@@ -109,6 +109,9 @@ namespace C7GameData.Save {
 		// saves from before this was saved, and loading works it out (see
 		// SaveGame.ConvertCities).
 		public bool? receivedStartUnits;
+		// A computer player's own difficulty level, by name (Civ3's Player
+		// Properties); null: the game's (see GameData.AiBonusDifficulty).
+		public string difficulty;
 
 		// For Regicide and Elimination: the King units the civ has lost,
 		// and the cities enemies have taken from it.
@@ -225,6 +228,7 @@ namespace C7GameData.Save {
 				stats = stats ?? new(),
 				neverHadCityOrSettler = neverHadCityOrSettler,
 				receivedStartUnits = receivedStartUnits ?? false,
+				difficulty = difficulty,
 				kingsLost = kingsLost,
 				obtainedResources = obtainedResources == null ? new() : new HashSet<string>(obtainedResources),
 				citiesLost = citiesLost,
@@ -374,6 +378,7 @@ namespace C7GameData.Save {
 			stats = player.stats.IsEmpty ? null : player.stats;
 			neverHadCityOrSettler = player.neverHadCityOrSettler;
 			receivedStartUnits = player.receivedStartUnits;
+			difficulty = player.difficulty;
 			kingsLost = player.kingsLost;
 			obtainedResources = player.obtainedResources.Count == 0 ? null : player.obtainedResources.Order().ToList();
 			citiesLost = player.citiesLost;

@@ -1038,6 +1038,22 @@ namespace C7Engine {
 			});
 		}
 
+		// A unit a scenario gave an AI strategy of its own (Civ3's Unit
+		// Properties; MapUnit.aiStrategy): Defense holds its ground,
+		// Explore explores while there is anything to find. The other
+		// strategies, and these when they can't, leave the unit to the AI's
+		// usual choice for its type.
+		internal static UnitAI ScenarioStrategyAI(MapUnit unit, Player player) {
+			switch (unit.aiStrategy) {
+				case nameof(C7GameData.Save.SaveUnitPrototype.Flag.AIDefense) when unit.CanDefendOnLand() || !unit.IsLandUnit():
+					return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(unit, player));
+				case nameof(C7GameData.Save.SaveUnitPrototype.Flag.AIExplore):
+					return ExplorerAI.MaybeMakeAiData(unit, player) is ExplorerAIData data ? new ExplorerAI(data) : null;
+				default:
+					return null;
+			}
+		}
+
 		public static UnitAI GetAIForUnit(MapUnit unit, Player player) {
 			//figure out an AI behavior
 			if (unit.IsArmy() && ArmyAI.IsEnabled(player)) {
@@ -1057,6 +1073,9 @@ namespace C7Engine {
 			// Kings & Nomads: the King's city keeps its guard.
 			if (KingsAndNomadsAI.GuardsTheKing(unit, player)) {
 				return new DefenderAI(DefenderAI.MakeAiDataForDefendInPlace(unit, player));
+			}
+			if (ScenarioStrategyAI(unit, player) is UnitAI chosen) {
+				return chosen;
 			}
 			if (unit.IsLeader()) {
 				return MakeLeaderAI(unit, player);

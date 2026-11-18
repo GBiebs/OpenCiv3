@@ -149,6 +149,21 @@ namespace C7Engine {
 			public NewsEvent newsEvent = new();
 		}
 
+		// Whether the rules let anyone carry out the mission (a diplomat or a
+		// spy).
+		public static bool Allowed(EspionageMission mission) {
+			EspionageMissionRule rule = EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString());
+			return rule == null || rule.Diplomat || rule.Spy;
+		}
+
+		// The title of the mission's window (Civ3's editor's Description: "the
+		// title of the window that is displayed when a player initiates the
+		// selected mission"), or null for none.
+		public static string Title(EspionageMission mission) {
+			string title = EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString())?.Description;
+			return string.IsNullOrWhiteSpace(title) ? null : title;
+		}
+
 		public static string Describe(EspionageMission mission) {
 			// The rules' name for it (a scenario may rename it).
 			if (EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString())?.Name is string named
@@ -175,8 +190,13 @@ namespace C7Engine {
 				or EspionageMission.SabotageProduction or EspionageMission.Propaganda;
 		}
 
-		// The missions that need the Intelligence Agency.
+		// The missions that need the Intelligence Agency: those the rules let
+		// a spy carry out but not a diplomat (Civ3's editor's "performed by";
+		// conquests.biq's are these six), else the six.
 		public static bool IsEspionageMission(EspionageMission mission) {
+			if (EngineStorage.gameData?.rules?.EspionageMissionRuleFor(mission.ToString()) is EspionageMissionRule rule) {
+				return !rule.Diplomat;
+			}
 			return mission is EspionageMission.PlantSpy or EspionageMission.ExposeEnemySpy
 				or EspionageMission.SabotageProduction or EspionageMission.Propaganda
 				or EspionageMission.StealWorldMap or EspionageMission.StealPlans;
@@ -708,6 +728,9 @@ namespace C7Engine {
 			}
 			if (!PlayerRelationship.TryGetRelationship(actor, target, out PlayerRelationship pr)) {
 				return $"We have not met the {target.civilization.noun}.";
+			}
+			if (!Allowed(mission)) {
+				return "Neither diplomats nor spies may carry out this mission.";
 			}
 			if (TargetsCity(mission)) {
 				if (city == null || city.owner != target || !gameData.cities.Contains(city)) {

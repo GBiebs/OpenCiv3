@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using C7Engine;
 
@@ -80,12 +81,27 @@ public partial class MapUnit {
 		gameData.gameHistory.Record(gameData.turn, ReplayEventType.GreatLeader, leader.owner, leader.location, name);
 	}
 
+	// The name of the civilization's next leader from its list (Civ3's
+	// editor: "A list of names used when the selected civilization produces
+	// a Great Leader"; scientific leaders have their own), in order, again
+	// from the first once all were used; null without a list. Counted from
+	// the replay's leaders of that player named from the list.
+	internal static string NextLeaderName(GameData gameData, Player player, List<string> names) {
+		if (names == null || names.Count == 0) {
+			return null;
+		}
+		string key = GameHistory.KeyOf(player);
+		int used = gameData?.gameHistory?.Events.Count(e => e.Type == ReplayEventType.GreatLeader && e.Civ == key && names.Contains(e.Text)) ?? 0;
+		return names[used % names.Count];
+	}
+
 	internal MapUnit ProduceLeader() {
 		UnitPrototype proto = LeaderPrototype();
 		if (proto == null || !Tile.IsTileValid(location))
 			return null;
 		hasProducedLeader = true;
 		MapUnit leader = EngineStorage.gameData.SpawnUnit(owner, proto, location);
+		leader.name = NextLeaderName(EngineStorage.gameData, owner, owner.civilization?.greatLeaderNames) ?? leader.name;
 		RecordGreatLeader(EngineStorage.gameData, leader);
 		log.Information("{Unit}'s victory has produced a great leader, {Leader}", this, leader);
 		if (owner.IsToldNews) {

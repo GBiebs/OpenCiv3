@@ -470,6 +470,10 @@ namespace C7GameData {
 		// (see SaveGame.ConvertCities).
 		public bool receivedStartUnits = false;
 
+		// A computer player's own difficulty level, by name, or null for the
+		// game's (see GameData.AiBonusDifficulty).
+		public string difficulty;
+
 		// How many of the civ's King units have died, and how many of its
 		// cities enemies have taken, for Regicide and Elimination (see
 		// InstantElimination).

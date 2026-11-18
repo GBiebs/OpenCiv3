@@ -52,7 +52,7 @@ public static class DiplomacyLines {
 	// for the civ and mood, so the same pick gives the same line.
 	public static string Say(GameData gameData, string key, Player ai, Player human, int pick, int? mood = null) {
 		DiplomacyEntry entry = Text.Get(key);
-		string line = entry?.Line(gameData.CivilizationIndex(ai.civilization), mood ?? Mood(gameData, ai, human), pick);
+		string line = entry?.Line(gameData.DiplomacyTextIndex(ai.civilization), mood ?? Mood(gameData, ai, human), pick);
 		if (line == null) {
 			entry = null;
 			line = Fallback.GetValueOrDefault(key, "");

@@ -157,7 +157,7 @@ public partial class EditorChrome {
 			experience.ItemSelected += i => Set(editing.unitFacts[index] with { Experience = editing.experience[(int)i] });
 			grid.AddChild(experience);
 			grid.AddChild(InkLabel("AI Strategy:"));
-			OptionButton strategy = SetupStyle.MakeDropdown("Its type's own unless chosen (kept for scenarios; the game doesn't use it yet)");
+			OptionButton strategy = SetupStyle.MakeDropdown("A computer player's unit: Defense holds its ground, Explore explores; the others, and its type's own, leave it to the AI's usual choice.");
 			grid.AddChild(strategy);
 			void Strategies(UnitPrototype t) {
 				List<SaveUnitPrototype.Flag> options = MapPainter.StrategiesOf(t);
@@ -173,7 +173,7 @@ public partial class EditorChrome {
 				Strategies(editing.unitTypes[(int)i]);
 			};
 			CheckBox king = Check("Use Civ-Specific King Unit", facts.CivSpecificKing);
-			king.TooltipText = "Kept for scenarios; the game doesn't use it yet.";
+			king.TooltipText = "When the game starts, the unit becomes its owner's civilization's king (if it has one).";
 			king.Toggled += on => Set(editing.unitFacts[index] with { CivSpecificKing = on });
 			form.AddChild(king);
 		}
