@@ -240,10 +240,19 @@ public partial class PlayerSetup : Control {
 		}
 	}
 
+	// A scenario of rules alone (see ScenarioPlay): its game rules and
+	// victory conditions are where the boxes start, not the last game's
+	// (a scenario such as QC plays with Accelerated Production on), and
+	// what's chosen for it isn't remembered for the next normal game.
+	private static bool PlayingScenario => ScenarioPlay.RulesForNewGame != null;
+
 	private void AddRules() {
 		// The victory types allowed last time (or by default), with the
-		// thresholds (domination, culture) the scenario or ruleset sets.
-		victoryConditions = choices.ChosenVictoryConditions(save.VictoryConditions);
+		// thresholds (domination, culture) the scenario or ruleset sets; a
+		// scenario's own.
+		victoryConditions = PlayingScenario && save.VictoryConditions != null
+			? save.VictoryConditions
+			: choices.ChosenVictoryConditions(save.VictoryConditions);
 		rulesContainer.Columns = 3;
 		rulesContainer.AddThemeConstantOverride("v_separation", 0);
 		rulesContainer.AddThemeConstantOverride("h_separation", 12);
@@ -302,7 +311,7 @@ public partial class PlayerSetup : Control {
 		showScoreboard = new Civ3Checkbox {
 			Text = "Show scoreboard",
 			FontSize = 14,
-			ButtonPressed = choices.ShowScoreboard ?? true,
+			ButtonPressed = PlayingScenario ? save.Rules.ShowScoreboard : choices.ShowScoreboard ?? true,
 			TooltipText = "With more than one human player, show everyone's score and how long the current turn has taken.",
 		};
 		rulesContainer.AddChild(showScoreboard);
@@ -330,7 +339,7 @@ public partial class PlayerSetup : Control {
 			Text = "No corruption near capital",
 			FontSize = 12,
 			// Off unless it was chosen for the last game, like the rule itself.
-			ButtonPressed = choices.CoreCitiesFreeOfCorruption ?? false,
+			ButtonPressed = PlayingScenario ? save.Rules.CoreCitiesFreeOfCorruption : choices.CoreCitiesFreeOfCorruption ?? false,
 			TooltipText = "Custom rule: the capital and the 5 cities nearest it have no corruption or waste.",
 		};
 		corruptionBox.AddChild(coreCitiesFreeOfCorruption);
@@ -342,7 +351,7 @@ public partial class PlayerSetup : Control {
 			// like in Civ3. Rising Tide always starts with it on (owner's
 			// ruling, 2026-10-24).
 			ButtonPressed = GetNode<GlobalSingleton>("/root/GlobalSingleton").Scenario == GameScenario.RisingTide
-				|| (choices.AcceleratedProduction ?? save.Rules.AcceleratedProduction),
+				|| (PlayingScenario ? save.Rules.AcceleratedProduction : choices.AcceleratedProduction ?? save.Rules.AcceleratedProduction),
 			TooltipText = "Cities need half the food to grow and half the shields to build, as in Civ3.",
 		};
 		rulesContainer.AddChild(acceleratedProduction);
@@ -352,7 +361,7 @@ public partial class PlayerSetup : Control {
 			FontSize = 14,
 			// As chosen last time, or as the scenario or ruleset sets it,
 			// like in Civ3.
-			ButtonPressed = choices.CultureFlips ?? save.Rules.AllowCultureFlips,
+			ButtonPressed = PlayingScenario ? save.Rules.AllowCultureFlips : choices.CultureFlips ?? save.Rules.AllowCultureFlips,
 			TooltipText = "Cities may defect to a neighboring civilization whose culture outweighs their owner's. A garrison makes it less likely.",
 		};
 		rulesContainer.AddChild(cultureFlips);
@@ -362,7 +371,7 @@ public partial class PlayerSetup : Control {
 			FontSize = 14,
 			// As chosen last time, or as the scenario or ruleset sets it,
 			// like in Civ3.
-			ButtonPressed = choices.ScientificLeaders ?? save.Rules.ScientificLeaders,
+			ButtonPressed = PlayingScenario ? save.Rules.ScientificLeaders : choices.ScientificLeaders ?? save.Rules.ScientificLeaders,
 			TooltipText = "The first civilization to discover an advance may gain a scientific leader (3% chance, 5% for scientific civilizations), who can complete anything a city is building, wonders included.",
 		};
 		rulesContainer.AddChild(scientificLeaders);
@@ -437,7 +446,7 @@ public partial class PlayerSetup : Control {
 			MinValue = Rules.MinCorruptionRate,
 			MaxValue = Rules.MaxCorruptionRate,
 			Step = 0.05,
-			Value = choices.CorruptionRate ?? save.Rules.CorruptionRate,
+			Value = PlayingScenario ? save.Rules.CorruptionRate : choices.CorruptionRate ?? save.Rules.CorruptionRate,
 			CustomMinimumSize = new Vector2(140, 20),
 			SizeFlagsVertical = SizeFlags.ShrinkCenter,
 			TooltipText = tooltip,
@@ -974,6 +983,11 @@ public partial class PlayerSetup : Control {
 				}
 			}
 
+			if (PlayingScenario) {
+				// The scenario's rules aren't the next normal game's.
+				choices.Save();
+				return;
+			}
 			choices.SetVictoryConditions(gameSetup.victoryConditions);
 			choices.ShowScoreboard = gameSetup.showScoreboard;
 			choices.CoreCitiesFreeOfCorruption = gameSetup.coreCitiesFreeOfCorruption;

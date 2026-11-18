@@ -13,7 +13,7 @@ public partial class EditorChrome {
 	private static readonly string[] Months = ["January", "February", "March", "April", "May", "June", "July", "August",
 		"September", "October", "November", "December"];
 
-	public Control ScenarioPropertiesDialog(ScenarioSettings start, ScenarioLists lists, Func<ScenarioSettings, string> apply, Action close) {
+	public Control ScenarioPropertiesDialog(ScenarioSettings start, ScenarioLists lists, Func<ScenarioSettings, string> apply, Action close, int tab = 0) {
 		ScenarioSettings settings = start.Copy();
 		List<string> civilizations = lists.Civilizations;
 		const int width = 1000, height = 690;
@@ -42,6 +42,8 @@ public partial class EditorChrome {
 		tabs.AddChild(AlliancesTab(settings, out refreshAlliances));
 		tabs.AddChild(PlayersTab(settings, lists));
 		tabs.AddChild(DisastersTab(settings));
+		tabs.AddChild(WorldTab(settings));
+		tabs.Ready += () => tabs.CurrentTab = Math.Clamp(tab, 0, tabs.GetTabCount() - 1);
 		// A field is greyed out while its victory is off on the Scenario
 		// tab; the alliances name the players as the Players tab has them.
 		tabs.TabChanged += _ => {
@@ -68,6 +70,51 @@ public partial class EditorChrome {
 		}
 		box.AddChild(buttons);
 		return Backdrop(window, 0.25f);
+	}
+
+	// The new game's world for a scenario without its own map (ours, see
+	// ScenarioWorldSetup): each setting the player's choice, where the
+	// world setup screen starts, or the only one allowed.
+	private Control WorldTab(ScenarioSettings s) {
+		VBoxContainer tab = new() { Name = "World" };
+		tab.AddThemeConstantOverride("separation", 8);
+		Label note = InkLabel("For a scenario without its own map (Custom Map off), the world the new game is made on. "
+			+ "Each setting can be left to the player, chosen for them as a default they may change, or made the only one allowed.");
+		note.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+		note.CustomMinimumSize = new Vector2(900, 0);
+		tab.AddChild(note);
+		GridContainer grid = new() { Columns = 3 };
+		grid.AddThemeConstantOverride("h_separation", 14);
+		grid.AddThemeConstantOverride("v_separation", 8);
+		List<string> sizes = Data?.worldSizes.Select(w => w.name).ToList() ?? [];
+		foreach (ScenarioWorld.Setting setting in ScenarioWorld.All) {
+			WorldChoice choice = ScenarioWorld.Of(s.World, setting);
+			List<ScenarioWorld.Option> options = ScenarioWorld.Options(setting, sizes);
+			Label label = InkLabel(ScenarioWorld.Label(setting) + ":");
+			label.CustomMinimumSize = new Vector2(140, 0);
+			grid.AddChild(label);
+			OptionButton values = SetupStyle.MakeDropdown();
+			values.Name = NodeName(ScenarioWorld.Label(setting));
+			values.CustomMinimumSize = new Vector2(220, 0);
+			int chosen = options.FindIndex(o => o.Value == choice.value);
+			SetupStyle.AddItems(values, ["Player's choice", .. options.Select(o => o.Label)], chosen + 1);
+			grid.AddChild(values);
+			CheckBox only = Check("Only this", choice.only && chosen >= 0);
+			only.Name = NodeName(ScenarioWorld.Label(setting)) + " Only";
+			only.TooltipText = "Ticked: the only one the player may choose. Unticked: where the setup screen starts.";
+			only.Disabled = chosen < 0;
+			only.Toggled += on => choice.only = on;
+			values.ItemSelected += i => {
+				choice.value = i == 0 ? null : options[(int)i - 1].Value;
+				only.Disabled = i == 0;
+				if (i == 0) {
+					only.ButtonPressed = false;
+				}
+			};
+			grid.AddChild(only);
+		}
+		tab.AddChild(grid);
+		return tab;
 	}
 
 	// In a scroll box, for windows too small for all of it.

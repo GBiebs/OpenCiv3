@@ -858,6 +858,12 @@ namespace C7GameData.Save {
 		// Conquests' campaigns goes into the Campaign Record by it.
 		public string ScenarioName;
 
+		// Civ3's Playable Civilizations, from a Civ3 scenario file (its GAME
+		// section), by name; null when every civilization may play. The
+		// scenario editor keeps them in Scenario.playableCivs instead (see
+		// C7Engine.Editor.ScenarioRules.IsPlayable).
+		public List<string> PlayableCivilizations;
+
 		public List<Difficulty> Difficulties = new();
 		public Difficulty GameDifficulty = new();
 		// GameDifficulty's place in Difficulties, or null in saves made

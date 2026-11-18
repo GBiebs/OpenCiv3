@@ -2009,9 +2009,15 @@ namespace C7GameData {
 			}
 		}
 
-		// Resisters don't eat (see StartResistance).
+		// Resisters don't eat (see StartResistance). Each citizen eats the
+		// rules' Food Consumption/Citizen (Civ3's General Settings: "how
+		// much food each citizen in a city consumes. Default is 2 food").
 		public int FoodConsumedPerTurn() {
-			return (residents.Count - ResistersInCity()) * 2;
+			return (residents.Count - ResistersInCity()) * FoodPerCitizen(owner);
+		}
+
+		public static int FoodPerCitizen(Player owner) {
+			return Math.Max(0, owner?.rules?.FoodConsumptionPerCitizen ?? 2);
 		}
 
 		// Civ3's resistance in a city taken by force, after

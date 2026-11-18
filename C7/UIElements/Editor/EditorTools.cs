@@ -8,12 +8,15 @@ using Godot;
 // What the scenario editor paints with: Civ3's editor's brushes (its
 // toolbar and Map menu), their keys, and the game art each is shown with,
 // which is there with Civ3 and without.
-public enum EditorTool { Terrain, Resources, Overlays, Cities, Units, FogOfWar }
+// Move Map is ours (the user's request, 2026-11-18): Civ3's editor
+// moves the view with the scroll bars and the minimap only.
+public enum EditorTool { Terrain, Resources, Overlays, Cities, Units, FogOfWar, MoveMap }
 
 public static class EditorTools {
 	public record Info(EditorTool Tool, string Name, string Tooltip, Key Hotkey);
 
 	public static readonly Info[] All = [
+		new(EditorTool.MoveMap, "Move Map", "Drag the map to move around it (H). The middle button drags it with any brush.", Key.H),
 		new(EditorTool.Terrain, "Terrain", "Paint terrain (T)", Key.T),
 		new(EditorTool.Resources, "Resources", "Place natural resources (R)", Key.R),
 		new(EditorTool.Overlays, "Overlays", "Rivers, roads, irrigation, mines, huts, camps, starting locations... (O)", Key.O),
@@ -36,6 +39,7 @@ public static class EditorTools {
 			EditorTool.Overlays => "unit_build_road",
 			EditorTool.Cities => "unit_build_city",
 			EditorTool.Units => "unit_fortify",
+			EditorTool.MoveMap => "unit_goto",
 			_ => "unit_explore",
 		};
 		return "ui.unit_control." + action;

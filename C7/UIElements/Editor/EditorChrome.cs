@@ -15,7 +15,7 @@ public partial class EditorChrome : Control {
 	private Label titleLabel, tileLabel, toolLabel, messageLabel, zoomLabel;
 	private readonly Dictionary<EditorTool, Button> toolButtons = [];
 	private readonly Dictionary<int, Button> sizeButtons = [];
-	private Button gridButton, undoButton, redoButton;
+	private Button gridButton, undoButton, redoButton, playersButton;
 
 	private static readonly Color StripColor = new(0.96f, 0.92f, 0.79f);
 	private static readonly Color LightColor = new(0.99f, 0.96f, 0.88f);
@@ -103,15 +103,24 @@ public partial class EditorChrome : Control {
 		}
 		tools.AddChild(Divider());
 		tools.AddChild(TextButton("Scenario...", "Scenario properties", () => Run(ScenarioEditor.MenuItem.ScenarioProperties)));
-		tools.AddChild(TextButton("Players...", "Player properties", null));
+		// Set Active Player from the toolbar too (the user, 2026-11-18: not
+		// only the Map menu's), with the players' properties.
+		playersButton = TextButton("Player: Nobody", "The active player, whose cities, units and starting locations the brushes place: "
+			+ "choose another, add a player, or open the players' properties.", null);
+		playersButton.Disabled = false;
+		playersButton.Pressed += () => editor.ShowPlayerPicker(playersButton.GlobalPosition + new Vector2(0, playersButton.Size.Y));
+		playersButton.Name = "Players";
+		tools.AddChild(playersButton);
 		tools.AddChild(Divider());
 		OptionButton rulesPage = SetupStyle.MakeDropdown("The rules page to edit");
 		rulesPage.SizeFlagsHorizontal = SizeFlags.Fill;
 		rulesPage.CustomMinimumSize = new Vector2(190, 0);
 		SetupStyle.AddItems(rulesPage, RulesPages, 0);
-		rulesPage.Disabled = true;
+		rulesPage.Name = "RulesPage";
 		tools.AddChild(rulesPage);
-		tools.AddChild(TextButton("Edit", "Edit this rules page", null));
+		Button editPage = TextButton("Edit", "Edit this rules page", () => editor.OpenRules(RulesPages[Math.Max(0, rulesPage.Selected)]));
+		editPage.Name = "EditRulesPage";
+		tools.AddChild(editPage);
 
 		PanelContainer bottom = StripPanel();
 		bottom.SetAnchorsAndOffsetsPreset(LayoutPreset.BottomWide);
@@ -184,8 +193,10 @@ public partial class EditorChrome : Control {
 	public void ShowTile(string text) => tileLabel.Text = text;
 
 	// Civ3's status bar shows the zoom level.
-	public void ShowZoom(float zoom, int? seed, string player) => zoomLabel.Text = $"Player: {player}   "
-		+ (seed is int s ? $"Seed {s}   " : "") + $"Zoom {Mathf.RoundToInt(zoom * 100)}%";
+	public void ShowZoom(float zoom, int? seed, string player) {
+		zoomLabel.Text = $"Player: {player}   " + (seed is int s ? $"Seed {s}   " : "") + $"Zoom {Mathf.RoundToInt(zoom * 100)}%";
+		playersButton.Text = $"Player: {player}";
+	}
 
 	// What Undo and Redo would take back or do again, null for nothing.
 	public void ShowUndo(string undo, string redo) {
@@ -319,6 +330,9 @@ public partial class EditorChrome : Control {
 	// The status line's text: the brush, what it paints and its size.
 	private static string ToolText(EditorTool tool, int size, string brush) {
 		string name = EditorTools.Of(tool).Name;
+		if (tool == EditorTool.MoveMap) {
+			return "Move Map: drag the map";
+		}
 		if (tool == EditorTool.FogOfWar) {
 			return $"{brush ?? name}, {size} x {size}";
 		}

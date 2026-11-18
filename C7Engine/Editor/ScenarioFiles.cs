@@ -101,6 +101,8 @@ public static class ScenarioFiles {
 				title = name ?? save.ScenarioName ?? "",
 				customMap = save.Map.tiles.Count > 0,
 				customPlayerData = save.Players.Count > 0,
+				// A Civ3 file's Playable Civilizations.
+				playableCivs = [.. save.PlayableCivilizations ?? []],
 			};
 			FromRules(save.Scenario, save.Rules);
 			if (save.VictoryConditions is C7GameData.VictoryConditions vc) {
@@ -109,6 +111,8 @@ public static class ScenarioFiles {
 				save.Scenario.respawnFlagUnits = vc.RespawnFlagUnits;
 			}
 		}
+		// The scenario's own list is the one kept.
+		save.PlayableCivilizations = null;
 		if (save.Map.tiles.Count == 0) {
 			save.Map = BlankMap(save, DefaultWidth, DefaultHeight, DefaultTerrain);
 		}

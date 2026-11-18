@@ -503,6 +503,7 @@ namespace C7GameData {
 
 			ImportSharedBiqData();
 			ImportBiqVictory();
+			ImportPlayableCivilizations();
 			if (hasMap) {
 				ImportBicLeaders();
 				ImportBicUnits();
@@ -1056,6 +1057,20 @@ namespace C7GameData {
 			}
 			.Where(t => t.Item1)
 			.Select(t => t.Item2);
+		}
+
+		// Civ3's Playable Civilizations (the GAME section's list, by the
+		// civs' places in RACE), by name; none when every civ is listed.
+		private void ImportPlayableCivilizations() {
+			int[] playable = GameBiq?.GameCiv?[0];
+			if (playable is not { Length: > 0 }) {
+				return;
+			}
+			List<string> names = playable.Where(i => i >= 0 && i < save.Civilizations.Count && !save.Civilizations[i].isBarbarian)
+				.Select(i => save.Civilizations[i].name).Distinct().ToList();
+			if (names.Count > 0 && names.Count < save.Civilizations.Count(c => !c.isBarbarian)) {
+				save.PlayableCivilizations = names;
+			}
 		}
 
 		private void ImportBicLeaders() {

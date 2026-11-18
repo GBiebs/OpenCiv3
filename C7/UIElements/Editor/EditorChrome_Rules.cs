@@ -13,7 +13,7 @@ using Godot;
 // of the scenario; OK hands it to the editor (apply returns why it
 // couldn't, or null).
 public partial class EditorChrome {
-	public Control RulesDialog(SaveGame rules, SaveGame defaults, Func<SaveGame, string> apply, Action close) {
+	public Control RulesDialog(SaveGame rules, SaveGame defaults, Func<SaveGame, string> apply, Action close, string startPage = null) {
 		const int width = 1200, height = 700;
 		TextureRect window = Popup.CreateBackground(width, height);
 		window.CustomMinimumSize = new Vector2(width, height);
@@ -43,6 +43,9 @@ public partial class EditorChrome {
 			tabs.AddChild(RulePageTab(page, rules, Report, out Action refresh));
 			refreshes.Add(refresh);
 		}
+		// The page the toolbar chose.
+		int start = Math.Max(0, Array.FindIndex(RulePages.All.ToArray(), p => p.Name == startPage));
+		tabs.Ready += () => tabs.CurrentTab = start;
 		box.AddChild(problem);
 
 		HBoxContainer buttons = new() { Alignment = BoxContainer.AlignmentMode.Center };

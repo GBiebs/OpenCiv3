@@ -46,6 +46,9 @@ public class ScenarioInfo {
 	// civilizations a player may pick (empty: all).
 	public int numberOfPlayers;
 	public List<string> playableCivs = [];
+	// For a scenario without its own map, the world the new game's setup
+	// screen starts on or is limited to (ours, see ScenarioWorldSetup).
+	public ScenarioWorldSetup world = new();
 	// The whole map known to every player when the game starts
 	// (ScenarioStart).
 	public bool revealMap;

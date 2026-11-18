@@ -140,7 +140,8 @@ public partial class Tile {
 			// A Kings & Nomads city-state's center makes more, the more so the
 			// bigger it is (see CityStates).
 			if (CityStateTrade.IsCityState(cityAtTile)) {
-				yield += CityStates.CenterFood + CityStates.CenterFoodPerCitizen * cityAtTile.residents.Count;
+				// Its citizens fed as the rules feed them (2 food each in Civ3's).
+				yield += CityStates.CenterFood + CityStates.CenterFoodPerCitizen * City.FoodPerCitizen(cityAtTile.owner) / 2 * cityAtTile.residents.Count;
 			}
 		}
 

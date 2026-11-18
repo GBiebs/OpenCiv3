@@ -25,8 +25,9 @@ public partial class ScenarioEditor : Control {
 	private enum FilePurpose { Open, Save, Import, Package }
 	private FilePurpose filePurpose;
 
-	// Panning the map by dragging with the middle button.
-	private bool panning;
+	// Panning the map by dragging with the middle button, or the left one
+	// with the Move Map tool (leftPanning).
+	private bool panning, leftPanning;
 	private Vector2 panFrom;
 
 	// Painting: the left button held down on the map is one stroke.
@@ -63,7 +64,7 @@ public partial class ScenarioEditor : Control {
 		GridCoordinates, FoodShieldIcons, CleanMap, Territory, CityNames, TileOwners, UnitCounts, Minimap,
 		RedistributeStarts, RedistributeResources, RedistributeHuts, RedistributeGrassland, WrapX, WrapY, PolarIceCaps,
 		RandomBonusGrassland, SetActivePlayer,
-		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar,
+		BrushTerrain, BrushResources, BrushOverlays, BrushCities, BrushUnits, FogOfWar, MoveMap,
 		Size1, Size3, Size5, Size7, GenerateMap, ClearMap,
 		ScenarioProperties, PlayerProperties, CustomRules, CustomMap, CustomPlayerData,
 		EditRules, RestoreDefaults,
@@ -156,6 +157,9 @@ public partial class ScenarioEditor : Control {
 		if (painting && !Input.IsMouseButtonPressed(MouseButton.Left)) {
 			EndStroke();
 		}
+		if (leftPanning && !Input.IsMouseButtonPressed(MouseButton.Left)) {
+			panning = leftPanning = false;
+		}
 		// The game's minimap, in its HUD frame, gives way to the editor's.
 		if (game.EditorMapView.GameMiniMap is MiniMap gameMiniMap && gameMiniMap.Visible) {
 			gameMiniMap.Hide();
@@ -222,7 +226,7 @@ public partial class ScenarioEditor : Control {
 
 		PopupMenu map = Menu("Map");
 		foreach (EditorTools.Info tool in EditorTools.All) {
-			map.AddRadioCheckItem(tool.Name + (tool.Tool == EditorTool.FogOfWar ? "" : " Brush"), (int)ToolItem(tool.Tool));
+			map.AddRadioCheckItem(tool.Name + (tool.Tool is EditorTool.FogOfWar or EditorTool.MoveMap ? "" : " Brush"), (int)ToolItem(tool.Tool));
 			if (tool.Hotkey != Key.None) {
 				map.SetItemAccelerator(map.GetItemIndex((int)ToolItem(tool.Tool)), tool.Hotkey);
 			}
@@ -253,7 +257,7 @@ public partial class ScenarioEditor : Control {
 
 		PopupMenu scenario = Menu("Scenario");
 		Add(scenario, "Properties...", MenuItem.ScenarioProperties);
-		Add(scenario, "Player Properties...", MenuItem.PlayerProperties, enabled: false);
+		Add(scenario, "Player Properties...", MenuItem.PlayerProperties);
 		Add(scenario, "Check Scenario...", MenuItem.CheckScenario);
 		scenario.AddSeparator();
 		foreach ((MenuItem item, string name, bool on) in new[] {
@@ -421,7 +425,7 @@ public partial class ScenarioEditor : Control {
 				MapView mapView = game.EditorMapView;
 				mapView.setCameraZoom(mapView.cameraZoom + (item == MenuItem.ZoomIn ? 0.25f : -0.25f), GetViewportRect().Size / 2);
 				break;
-			case >= MenuItem.BrushTerrain and <= MenuItem.FogOfWar:
+			case >= MenuItem.BrushTerrain and <= MenuItem.MoveMap:
 				Tool = EditorTool.Terrain + (item - MenuItem.BrushTerrain);
 				Refresh();
 				// As Civ3's: choosing the terrain, resource or overlay brush
@@ -434,6 +438,9 @@ public partial class ScenarioEditor : Control {
 				break;
 			case MenuItem.ScenarioProperties:
 				OpenScenarioProperties();
+				break;
+			case MenuItem.PlayerProperties:
+				OpenScenarioProperties(PlayersTab);
 				break;
 			case MenuItem.EditRules:
 				OpenRules();
@@ -578,11 +585,12 @@ public partial class ScenarioEditor : Control {
 	}
 
 	private PopupMenu playerPicker, civPicker;
-	private const int AddPlayerId = 999, NobodyId = 998;
+	private const int AddPlayerId = 999, NobodyId = 998, PropertiesId = 997;
 
 	// Civ3's Set Active Player: the scenario's players, and Add Player for a
-	// civilization that hasn't one.
-	private void ShowPlayerPicker() {
+	// civilization that hasn't one. At the mouse, or where the toolbar's
+	// button says.
+	public void ShowPlayerPicker(Vector2? at = null) {
 		Discard(playerPicker);
 		playerPicker = new PopupMenu { Name = "PlayerPicker" };
 		chrome.StyleMenu(playerPicker);
@@ -597,9 +605,13 @@ public partial class ScenarioEditor : Control {
 		playerPicker.AddRadioCheckItem("Nobody (Any)", NobodyId);
 		playerPicker.SetItemChecked(playerPicker.GetItemIndex(NobodyId), ActivePlayer == null);
 		playerPicker.AddItem("Add Player...", AddPlayerId);
+		playerPicker.AddSeparator();
+		playerPicker.AddItem("Player Properties...", PropertiesId);
 		playerPicker.IdPressed += id => {
 			if (id == AddPlayerId) {
 				ShowCivPicker();
+			} else if (id == PropertiesId) {
+				OpenScenarioProperties(PlayersTab);
 			} else if (id == NobodyId) {
 				ActivePlayer = null;
 				Say("Active player: nobody (starting locations are Any)");
@@ -611,7 +623,7 @@ public partial class ScenarioEditor : Control {
 			}
 		};
 		AddChild(playerPicker);
-		playerPicker.Position = (Vector2I)GetViewport().GetMousePosition();
+		playerPicker.Position = (Vector2I)(at ?? GetViewport().GetMousePosition());
 		playerPicker.Popup();
 	}
 
@@ -999,7 +1011,8 @@ public partial class ScenarioEditor : Control {
 
 	// Civ3's Edit Rules: the pages change a copy of the scenario, which the
 	// editor opens again on OK (a change of rules changes the whole game).
-	public void OpenRules() {
+	// On the page named (the toolbar's), or the first.
+	public void OpenRules(string page = null) {
 		CloseDialog();
 		if (!game.EditorInfo.customRules) {
 			Say("Turn Custom Rules on (Scenario menu) to edit the rules.");
@@ -1013,11 +1026,14 @@ public partial class ScenarioEditor : Control {
 			CloseDialog();
 			game.ReopenScenario(edited);
 			return null;
-		}, CloseDialog);
+		}, CloseDialog, page);
 		AddChild(dialog);
 	}
 
-	public void OpenScenarioProperties() {
+	// Scenario Properties' Players tab (see EditorChrome.ScenarioPropertiesDialog).
+	private const int PlayersTab = 3;
+
+	public void OpenScenarioProperties(int tab = 0) {
 		CloseDialog();
 		GameData data = EngineStorage.gameData;
 		ScenarioLists lists = new(ScenarioSettings.CivilizationNames(data), ScenarioSettings.DifficultyNames(data),
@@ -1034,7 +1050,7 @@ public partial class ScenarioEditor : Control {
 			UpdateTitle();
 			Refresh();
 			return null;
-		}, CloseDialog);
+		}, CloseDialog, tab);
 		AddChild(dialog);
 	}
 
@@ -1101,9 +1117,16 @@ public partial class ScenarioEditor : Control {
 				mapView.setCameraZoom(mapView.cameraZoom + delta, wheel.Position);
 				GetViewport().SetInputAsHandled();
 				break;
-			case InputEventMouseButton { ButtonIndex: MouseButton.Middle } middle:
+			case InputEventMouseButton { ButtonIndex: MouseButton.Middle } middle when !leftPanning:
 				panning = middle.Pressed;
 				panFrom = middle.Position;
+				GetViewport().SetInputAsHandled();
+				break;
+			// The Move Map tool: the left button drags the view.
+			case InputEventMouseButton { ButtonIndex: MouseButton.Left } left when Tool == EditorTool.MoveMap && !painting:
+				panning = leftPanning = left.Pressed;
+				panFrom = left.Position;
+				Input.SetDefaultCursorShape(left.Pressed ? Input.CursorShape.Drag : Input.CursorShape.Move);
 				GetViewport().SetInputAsHandled();
 				break;
 			case InputEventMouseButton { ButtonIndex: MouseButton.Left, Pressed: true } left when !panning:
@@ -1168,8 +1191,10 @@ public partial class ScenarioEditor : Control {
 	private void ShowTileAt(Vector2 position) {
 		Tile tile = game.EditorTileAt(position);
 		string cantPaint = tile == null ? null : CantPaint(tile, position);
-		// Civ3's "invalid mouse cursor" where the brush can't paint.
-		Input.SetDefaultCursorShape(cantPaint != null ? Input.CursorShape.Forbidden : Input.CursorShape.Arrow);
+		// Civ3's "invalid mouse cursor" where the brush can't paint; the
+		// Move Map tool's is a hand.
+		Input.SetDefaultCursorShape(Tool == EditorTool.MoveMap ? (leftPanning ? Input.CursorShape.Drag : Input.CursorShape.Move)
+			: cantPaint != null ? Input.CursorShape.Forbidden : Input.CursorShape.Arrow);
 		chrome.ShowTile(tile == null ? "" : Describe(tile) + (cantPaint != null ? $"   (can't paint: {cantPaint})" : ""));
 	}
 

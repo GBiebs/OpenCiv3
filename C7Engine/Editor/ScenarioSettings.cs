@@ -16,6 +16,8 @@ public sealed record ScenarioSettings {
 	public int NumberOfPlayers;
 	// Empty: every civilization is playable.
 	public List<string> PlayableCivs = [];
+	// The new game's world, for a scenario without its own map.
+	public ScenarioWorldSetup World = new();
 
 	// The victory conditions the scenario allows (a player may turn them off
 	// at setup, not on).
@@ -71,6 +73,7 @@ public sealed record ScenarioSettings {
 	// A copy whose lists and arrays are its own, for a dialog to change.
 	public ScenarioSettings Copy() => this with {
 		PlayableCivs = [.. PlayableCivs],
+		World = World.Copy(),
 		ScaleTurns = [.. ScaleTurns],
 		ScaleUnits = [.. ScaleUnits],
 		AllianceNames = [.. AllianceNames],
@@ -92,6 +95,7 @@ public sealed record ScenarioSettings {
 			DebugMode = gameData.debugMode,
 			NumberOfPlayers = info.numberOfPlayers,
 			PlayableCivs = [.. info.playableCivs],
+			World = (info.world ?? new()).Copy(),
 			Domination = vc.AllowDominationVictory,
 			SpaceRace = vc.AllowSpaceRaceVictory,
 			Diplomatic = vc.AllowDiplomaticVictory,
@@ -260,6 +264,7 @@ public sealed record ScenarioSettings {
 		gameData.debugMode = DebugMode;
 		info.numberOfPlayers = NumberOfPlayers;
 		info.playableCivs = [.. PlayableCivs];
+		info.world = World.Copy();
 
 		gameData.victoryConditions ??= new VictoryConditions();
 		VictoryConditions vc = gameData.victoryConditions;

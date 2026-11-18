@@ -2785,7 +2785,11 @@ public partial class Game : Node {
 	// New Game (Ctrl-Shift-Q, or from the game menu): leaves this game for
 	// the new game screens, once the player agrees to abandon it.
 	public void AskToStartNewGame() {
-		AskToAbandonGame(() => GetTree().ChangeSceneToFile("res://UIElements/NewGame/world_setup.tscn"));
+		AskToAbandonGame(() => {
+			// A new game on the usual rules, not a scenario's played before.
+			ScenarioPlay.Clear();
+			GetTree().ChangeSceneToFile("res://UIElements/NewGame/world_setup.tscn");
+		});
 	}
 
 	// Quick Start from the game menu: a new game with the last game's setup

@@ -111,6 +111,7 @@ public class ScenarioSettingsTest : IClassFixture<SaveGameFixture> {
 		ScenarioSettings kept = ScenarioSettings.Of(again, saved.Scenario);
 		Assert.Equal(after with {
 			PlayableCivs = kept.PlayableCivs,
+			World = kept.World,
 			ScaleTurns = kept.ScaleTurns,
 			ScaleUnits = kept.ScaleUnits,
 			AllianceNames = kept.AllianceNames,

@@ -48,9 +48,10 @@ public static class ScenarioRules {
 	}
 
 	// Whether the scenario lets a player pick the civilization (Civ3's
-	// Playable Civilizations: none chosen means all).
+	// Playable Civilizations: none chosen means all). A Civ3 file played
+	// as it is keeps its list in the save (SaveGame.PlayableCivilizations).
 	public static bool IsPlayable(SaveGame save, string civilization) {
-		List<string> playable = save?.Scenario?.playableCivs;
+		List<string> playable = save?.Scenario != null ? save.Scenario.playableCivs : save?.PlayableCivilizations;
 		return playable == null || playable.Count == 0 || playable.Contains(civilization);
 	}
 
