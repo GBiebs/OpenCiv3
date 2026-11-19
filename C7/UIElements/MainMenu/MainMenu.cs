@@ -102,6 +102,8 @@ public partial class MainMenu : Node {
 		Global.WatchNextGame = false;
 		Global.Scenario = GameScenario.None;
 		ScenarioPlay.Clear();
+		// A Civ3 scenario or save played in Civ3's mode only for its game.
+		Global.ActivatePreferredGameMode();
 
 		LoadDialog.SetDirectoryForLoadingSaves();
 		LoadScenarioDialog.SetDirectoryForLoadingScenarios();
@@ -111,7 +113,7 @@ public partial class MainMenu : Node {
 		// The Settings page switches between the two.
 		if (!C7Settings.UseStandaloneMode() && !GamePaths.Civ3Available()) {
 			log.Information("No Civ3 install found, switching to standalone mode");
-			Global.ActivateGameMode(GamePaths.standalone);
+			Global.ActivateGameMode(GamePaths.standalone, remember: true);
 		}
 
 		ButtonContainer.Visible = true;
@@ -365,7 +367,7 @@ public partial class MainMenu : Node {
 	}
 
 	private void UseStandaloneModePressed() {
-		Global.ActivateGameMode(GamePaths.standalone);
+		Global.ActivateGameMode(GamePaths.standalone, remember: true);
 		DisplayTitleScreen();
 	}
 

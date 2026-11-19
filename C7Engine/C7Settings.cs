@@ -147,9 +147,34 @@ namespace C7Engine {
 		}
 
 		// Whether to play with the game's own art and rules rather than a Civ3
-		// install's. Standalone is the default until the player chooses.
+		// install's: the mode of the game being played (a Civ3 scenario or
+		// save plays in Civ3's), else the player's choice.
 		public static bool UseStandaloneMode() {
+			return sessionStandaloneMode ?? PrefersStandaloneMode();
+		}
+
+		// The player's choice (the Settings page): standalone is the default
+		// until the player chooses. A game in the other mode doesn't change
+		// it (the user, 2026-11-18: "that should be true unless it's changed
+		// in a setting").
+		public static bool PrefersStandaloneMode() {
 			return GetSettingsValueOrDefault("locations", "useStandaloneMode", "true") == "true";
+		}
+
+		// The mode of the game being played when it isn't the player's
+		// choice; null otherwise.
+		private static bool? sessionStandaloneMode;
+
+		// Plays in a mode: the player's choice from now on (remember), or
+		// only until SetMode is called again.
+		public static void SetMode(bool standalone, bool remember) {
+			if (remember) {
+				SetValue("locations", "useStandaloneMode", standalone ? "true" : "false");
+				SaveSettings();
+				sessionStandaloneMode = null;
+			} else {
+				sessionStandaloneMode = standalone == PrefersStandaloneMode() ? null : standalone;
+			}
 		}
 	}
 }

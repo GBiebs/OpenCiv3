@@ -57,7 +57,10 @@ public partial class GlobalSingleton : Node {
 		SaveGame = null;
 	}
 
-	public void ActivateGameMode(GameMode.Config config) {
+	// Plays in the mode; remember makes it the player's choice (the
+	// Settings page), otherwise it lasts until the main menu (a game or
+	// scenario made in the other mode; see C7Settings.SetMode).
+	public void ActivateGameMode(GameMode.Config config, bool remember = false) {
 		// Ensure we clear out our image caches, as scenarios and games will
 		// use the same filenames but have different content for them.
 		Util.ClearCaches();
@@ -72,13 +75,14 @@ public partial class GlobalSingleton : Node {
 		var (audioLua, audioConfig) = GameMode.audio;
 		AudioLoader.SetConfig(audioLua, audioConfig);
 
-		if (config.addonPaths.Contains("standalone")) {
-			C7Settings.SetValue("locations", "useStandaloneMode", "true");
-		} else {
-			C7Settings.SetValue("locations", "useStandaloneMode", "false");
-		}
+		C7Settings.SetMode(config.addonPaths.Contains("standalone"), remember);
+	}
 
-		C7Settings.SaveSettings();
+	// Back to the player's own mode, if a game played in the other.
+	public void ActivatePreferredGameMode() {
+		if (C7Settings.UseStandaloneMode() != C7Settings.PrefersStandaloneMode()) {
+			ActivateGameMode(C7Settings.PrefersStandaloneMode() ? GamePaths.standalone : GamePaths.basic);
+		}
 	}
 
 	private void LuaTypeRegistrations() {
@@ -100,6 +104,6 @@ public partial class GlobalSingleton : Node {
 	public void ToggleStandaloneMode() {
 		GameMode.Config newConfig = C7Settings.UseStandaloneMode() ? GamePaths.basic : GamePaths.standalone;
 
-		ActivateGameMode(newConfig);
+		ActivateGameMode(newConfig, remember: true);
 	}
 }

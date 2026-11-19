@@ -134,6 +134,22 @@ public class EditorQualityOfLifeTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(gameData.worldSizes[0].name, ScenarioWorld.Size(world.worldSize, gameData.worldSizes).name);
 	}
 
+	// A game in the other mode (a Civ3 scenario in Civ3's) plays in it
+	// without changing the player's choice.
+	[Fact]
+	public void AGamesModeDoesntChangeThePlayersChoice() {
+		bool preferred = C7Settings.PrefersStandaloneMode();
+		try {
+			C7Settings.SetMode(!preferred, remember: false);
+			Assert.Equal(!preferred, C7Settings.UseStandaloneMode());
+			Assert.Equal(preferred, C7Settings.PrefersStandaloneMode());
+			C7Settings.SetMode(preferred, remember: false);
+			Assert.Equal(preferred, C7Settings.UseStandaloneMode());
+		} finally {
+			C7Settings.SetMode(preferred, remember: false);
+		}
+	}
+
 	[Fact]
 	public void OnlyTheScenariosChoiceIsAllowedWhenItSaysSo() {
 		WorldChoice open = new();
