@@ -213,6 +213,7 @@ public static class RuleReferences {
 			t.Prerequisites.RemoveAll(p => Is(p, id));
 		}
 		foreach (SaveUnitPrototype u in s.UnitPrototypes.Where(u => Is(u.requiredTech, id))) { u.requiredTech = null; }
+		foreach (SaveInflow i in s.Inflows.Where(i => Is(i.requiredTech, id))) { i.requiredTech = null; }
 		foreach (SaveBuilding b in s.Buildings) {
 			if (Is(b.requiredTech, id)) { b.requiredTech = null; }
 			if (Is(b.renderedObsoleteBy, id)) { b.renderedObsoleteBy = null; }
@@ -239,6 +240,7 @@ public static class RuleReferences {
 		uses.AddRange(s.Techs.Where(t => t.Prerequisites.Any(p => Is(p, id))).Select(t => $"{t.Name}'s prerequisites"));
 		uses.AddRange(s.UnitPrototypes.Where(u => Is(u.requiredTech, id)).Select(u => u.name));
 		uses.AddRange(s.Buildings.Where(b => Is(b.requiredTech, id) || Is(b.renderedObsoleteBy, id)).Select(b => b.name));
+		uses.AddRange(s.Inflows.Where(i => Is(i.requiredTech, id)).Select(i => i.name));
 		uses.AddRange(s.Resources.Where(r => Is(r.Prerequisite, id)).Select(r => r.Name));
 		uses.AddRange(s.Governments.Where(g => Is(g.prerequisiteTech, id)).Select(g => g.name));
 		int knowing = s.Players.Count(p => p.knownTechs.Any(t => Is(t, id)));

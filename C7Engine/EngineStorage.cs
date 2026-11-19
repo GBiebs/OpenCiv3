@@ -466,8 +466,11 @@ namespace C7Engine {
 
 		public static void InitializeGameDataForTests(GameData gD) {
 			gameData = gD;
-			// A turn loop a previous test left waiting won't resume.
-			TurnHandling.ResetForNewGame();
+			// A turn loop a previous test left waiting won't resume, and the
+			// messages it left running or queued don't hold up this test's
+			// (a running message that holds the queue made the next test's
+			// message wait, so its answer never came; seen 2026-11-18).
+			ResetForNewGame();
 		}
 	}
 }

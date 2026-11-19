@@ -2020,6 +2020,16 @@ namespace C7GameData {
 			return Math.Max(0, owner?.rules?.FoodConsumptionPerCitizen ?? 2);
 		}
 
+		// The food a city's center makes, whatever it stands on, before the
+		// agricultural bonus: Rules.CityCenterFood (2, Civ3's) in units of
+		// 2 food a citizen, so with the rules' Food Consumption/Citizen it
+		// feeds the city's first citizen. Civ3's saves show it: 4,990
+		// cities in the user's (2026-11-18) made 2 on every terrain under
+		// 2 food a citizen, and 4 under QC's 4 (Agricultural +1 in both).
+		public static int CenterFood(Player owner) {
+			return Math.Max(0, (owner?.rules?.CityCenterFood ?? 2) * FoodPerCitizen(owner) / 2);
+		}
+
 		// Civ3's resistance in a city taken by force, after
 		// https://civfanatics.com/civ3/strategy/game-mechanics/the-inner-workings-of-resistance-revealed/:
 		// "upon capturing a city, each citizen has a certain chance of

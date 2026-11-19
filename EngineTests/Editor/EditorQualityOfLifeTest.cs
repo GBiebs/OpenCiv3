@@ -36,6 +36,17 @@ public class EditorQualityOfLifeTest : IClassFixture<SaveGameFixture> {
 		// QC's: 4 food a citizen.
 		owner.rules.FoodConsumptionPerCitizen = 4;
 		Assert.Equal(8, city.FoodConsumedPerTurn());
+
+		// The center feeds a citizen, whatever it stands on: 4 in QC, 2 in
+		// Civ3's rules (as Civ3's saves show).
+		bool agricultural = owner.civilization.traits.Contains(Civilization.Trait.Agricultural);
+		owner.government.hasTilePenalty = false;
+		Assert.Equal(4 + (agricultural ? 1 : 0), tile.FoodYield(city).yield);
+		owner.rules.FoodConsumptionPerCitizen = 2;
+		Assert.Equal(2 + (agricultural ? 1 : 0), tile.FoodYield(city).yield);
+		// Rising Tide's richer center (two citizens' food).
+		owner.rules.CityCenterFood = 4;
+		Assert.Equal(4 + (agricultural ? 1 : 0), tile.FoodYield(city).yield);
 	}
 
 	[Fact]
@@ -66,6 +77,39 @@ public class EditorQualityOfLifeTest : IClassFixture<SaveGameFixture> {
 		Assert.Equal(19, opened.Scenario.playableCivs.Count);
 		Assert.True(opened.Rules.AcceleratedProduction);
 		Assert.Equal(4, opened.Rules.FoodConsumptionPerCitizen);
+		// Its Wealth-type marker needs the last advance, as in Civ3.
+		SaveInflow marker = opened.Inflows.Single(i => i.name.StartsWith("Game Ends"));
+		Assert.Equal("End Of Game", opened.Techs.Single(t => t.id == marker.requiredTech).Name);
+		Assert.Null(opened.Inflows.Single(i => i.name == "Wealth").requiredTech);
+	}
+
+	// A Wealth-type item with an advance is offered only once it's known,
+	// and keeps its advance through a save.
+	[Fact]
+	public void AnInflowWaitsForItsAdvance() {
+		SaveGame s = fixture.saveGame.Clone();
+		SaveTech tech = s.Techs.Last();
+		s.Inflows.Add(new SaveInflow {
+			name = "Marker",
+			localYield = [new SaveLocalYield(InflowYield.commerce, "inflows.result.wealth.commerce")],
+			requiredTech = tech.id,
+		});
+		using TempDirectory dir = new();
+		s.Save(dir.File("inflow.json"));
+		SaveGame loaded = SaveGame.Load(dir.File("inflow.json"), x => x);
+		Assert.Equal(tech.id, loaded.Inflows.Single(i => i.name == "Marker").requiredTech);
+
+		C7GameData.GameData gameData = loaded.ToGameData(fixture.behaviors);
+		EngineStorage.InitializeGameDataForTests(gameData);
+		Player owner = gameData.players.First(p => !p.isBarbarians);
+		Tile tile = gameData.map.tiles.First(t => t.IsLand() && t.IsAllowCities() && !t.HasCity() && t.unitsOnTile.Count == 0
+			&& t.neighbors.Values.All(n => n == Tile.NONE || !n.HasCity()));
+		City city = CityInteractions.BuildCity(tile, owner, "Marker Test");
+		Inflow marker = gameData.Inflows.Single(i => i.name == "Marker");
+		Assert.DoesNotContain(marker, city.ListProductionOptions(gameData));
+		Assert.Contains(gameData.Inflows.First(i => i.requiredTech == null), city.ListProductionOptions(gameData));
+		owner.knownTechs.Add(tech.id);
+		Assert.Contains(marker, city.ListProductionOptions(gameData));
 	}
 
 	[Fact]

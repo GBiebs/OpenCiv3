@@ -519,7 +519,9 @@ namespace C7GameData.Save {
 		}
 
 		private void ConvertInflow(GameData data) {
-			data.Inflows = Inflows.ConvertAll(saveInflow => new Inflow(saveInflow, data.luaBehaviorEngine));
+			data.Inflows = Inflows.ConvertAll(saveInflow => new Inflow(saveInflow, data.luaBehaviorEngine) {
+				requiredTech = saveInflow.requiredTech == null ? null : data.techs.Find(t => t.id == saveInflow.requiredTech),
+			});
 		}
 
 		private void ConvertBuildings(GameData data) {

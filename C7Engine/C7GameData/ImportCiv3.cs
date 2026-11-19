@@ -2403,6 +2403,8 @@ namespace C7GameData {
 						localYield = [
 							new SaveLocalYield(InflowYield.commerce, "inflows.result.wealth.commerce"),
 						],
+						// Its Required Advance: Civ3 offers it only then.
+						requiredTech = bldg.RequiredAdvance >= 0 && bldg.RequiredAdvance < save.Techs.Count ? save.Techs[bldg.RequiredAdvance].id : null,
 					};
 					save.Inflows.Add(inflow);
 					continue; // We don't consider Wealth as a building

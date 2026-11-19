@@ -370,7 +370,7 @@ namespace C7Engine {
 		// more around it to grow on.
 		internal static float SiteFoodAdjustment(Tile t, Player player, BigFatCross bfc) {
 			float adjustment = 0;
-			int centerFood = player.rules?.CityCenterFood ?? 2;
+			int centerFood = City.CenterFood(player);
 			adjustment += player.civilization.Adjustments.FoodYieldBonus * (centerFood - t.FoodYield(player).yield);
 
 			if (t.BordersRiver() || t.NeighborsFreshWater()) {

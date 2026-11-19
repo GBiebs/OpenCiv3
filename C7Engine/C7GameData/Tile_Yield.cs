@@ -128,8 +128,9 @@ public partial class Tile {
 		if (this.HasCity()) {
 			// All city centers have a food yield of 2, regardless of bonus
 			// food. See https://wiki.civforum.de/wiki/Stadtfeldertrag_(Civ3).
-			// A scenario may set more (Rules.CityCenterFood).
-			yield = cityAtTile.owner?.rules?.CityCenterFood ?? 2;
+			// That's one citizen's food: QC's 4 a citizen makes it 4 (see
+			// City.CenterFood). A scenario may set more (Rules.CityCenterFood).
+			yield = City.CenterFood(cityAtTile.owner);
 
 			// Agricultural civilizations get a third. (The despotism penalty
 			// takes it away again, except in the cases FoodYield exempts.)
@@ -194,7 +195,7 @@ public partial class Tile {
 		// A scenario's richer city center (Rules.CityCenterFood) keeps its
 		// food under the despotism penalty; an agricultural city's third
 		// still needs the fresh water above (owner's ruling, 2026-10-24).
-		if (result.penalty > 0 && cityAtTile == city && (city.owner?.rules?.CityCenterFood ?? 2) > 2
+		if (result.penalty > 0 && cityAtTile == city && City.CenterFood(city.owner) > 2
 			&& city.owner.civilization?.traits.Contains(Civilization.Trait.Agricultural) != true) {
 			result.penalty -= 1;
 		}
